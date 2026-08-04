@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, beforeEach } from 'vitest';
 import { App } from '../app/App';
@@ -27,8 +27,53 @@ describe('navigation integration', () => {
     await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
     expect(screen.getByRole('dialog', { name: 'Edit game UI' })).toBeInTheDocument();
     expect(screen.getByText('Sidebar width')).toBeInTheDocument();
+    expect(screen.getByText('Home panels')).toBeInTheDocument();
+    expect(screen.getByText('No editable panels are registered for Home yet.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Close UI editor' }));
     expect(screen.queryByRole('dialog', { name: 'Edit game UI' })).not.toBeInTheDocument();
+  });
+
+  it('exposes individual combat panels to the visual UI editor', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Combat locations/ }));
+    expect(screen.getByText('Combat panels')).toBeInTheDocument();
+    expect(screen.getByText('Grid column')).toBeInTheDocument();
+    expect(screen.getByText('Panel width')).toBeInTheDocument();
+    expect(screen.getByText('Panel height')).toBeInTheDocument();
+    expect(document.querySelector('[data-ui-panel="combatLocations"]')).not.toBeNull();
+    expect(document.querySelector('[data-ui-panel="liveCombat"]')).not.toBeNull();
+
+    await user.click(within(editor).getByRole('button', { name: /^Player/ }));
+    expect(within(editor).getByText('Panel scale')).toBeInTheDocument();
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Panel scale' }), {
+      target: { value: '1.5' },
+    });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem('ironbound-idle-ui-layout') ?? '{}');
+      expect(stored.screenPanels.combat.player.scale).toBe(1.5);
+    });
+    await user.click(within(editor).getByRole('button', { name: 'Center Player' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem('ironbound-idle-ui-layout') ?? '{}');
+      expect(stored.screenPanels.combat.player.column).toBe(5);
+    });
+
+    await user.click(within(editor).getByRole('button', { name: 'Reset Player' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem('ironbound-idle-ui-layout') ?? '{}');
+      expect(stored.screenPanels.combat.player).toEqual({
+        column: 1,
+        row: 3,
+        columnSpan: 3,
+        height: 0,
+        scale: 1,
+      });
+    });
   });
 
   it('stops combat and shows the death report with recent actions', async () => {
@@ -45,8 +90,12 @@ describe('navigation integration', () => {
     );
     const deathDialog = screen.getByRole('dialog', { name: 'You died' });
     expect(useGameStore.getState().game?.activeAction.type).toBe('none');
-    expect(within(deathDialog).getAllByText(/You were killed by Forest Rat/).length).toBeGreaterThan(0);
-    expect(within(deathDialog).getByRole('heading', { name: 'Recent actions' })).toBeInTheDocument();
+    expect(
+      within(deathDialog).getAllByText(/You were killed by Forest Rat/).length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(deathDialog).getByRole('heading', { name: 'Recent actions' }),
+    ).toBeInTheDocument();
     await user.click(within(deathDialog).getByRole('button', { name: 'Continue' }));
     expect(screen.queryByRole('dialog', { name: 'You died' })).not.toBeInTheDocument();
   });
@@ -122,11 +171,9 @@ describe('navigation integration', () => {
     expect(screen.queryByRole('heading', { name: 'Switch target?' })).not.toBeInTheDocument();
     const activeAfterBrowse = useGameStore.getState().game?.activeAction;
     expect(activeAfterBrowse?.type).toBe('combat');
-    expect(
-      activeAfterBrowse?.type === 'combat'
-        ? activeAfterBrowse.enemyId
-        : null,
-    ).toBe('forest-rat');
+    expect(activeAfterBrowse?.type === 'combat' ? activeAfterBrowse.enemyId : null).toBe(
+      'forest-rat',
+    );
     expect(
       screen.getByRole('group', { name: 'Selected target: Goblin Scavenger, level 4' }),
     ).toBeInTheDocument();

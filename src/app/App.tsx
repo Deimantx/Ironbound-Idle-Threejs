@@ -50,7 +50,7 @@ import { SKILL_IDS } from '../game/types';
 import { NAVIGATION } from '../content/navigation';
 import { ThreeScene } from '../three/ThreeScene';
 import { UiEditor } from './UIEditor';
-import { loadUiLayout, saveUiLayout, type UiLayout } from './uiLayout';
+import { loadUiLayout, sanitizeUiLayout, saveUiLayout, type UiLayout } from './uiLayout';
 import { CombatScreen as RealtimeCombatScreen } from './CombatScreen';
 import { ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog';
 
@@ -1678,7 +1678,12 @@ function DeathModal({
 
   return (
     <div className="modal-backdrop death-backdrop">
-      <section className="modal death-modal" role="dialog" aria-modal="true" aria-labelledby="death-title">
+      <section
+        className="modal death-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="death-title"
+      >
         <div className="death-heading">
           <span className="death-icon" aria-hidden="true">
             <Skull size={22} />
@@ -1699,7 +1704,10 @@ function DeathModal({
               recentActions.map((entry) => (
                 <div className={`death-action ${entry.tone}`} key={entry.id}>
                   <time>
-                    {formatFightDuration(entry.combatEncounterStartedAt ?? encounterStartedAt, entry.at)}
+                    {formatFightDuration(
+                      entry.combatEncounterStartedAt ?? encounterStartedAt,
+                      entry.at,
+                    )}
                   </time>
                   <span>{entry.text}</span>
                 </div>
@@ -1849,6 +1857,8 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
   const [debugOpen, setDebugOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<ConfirmDialogOptions | null>(null);
   const [uiLayout, setUiLayout] = useState<UiLayout>(() => loadUiLayout());
+  const uiSaveTimer = useRef<number | null>(null);
+  const pendingUiLayout = useRef(uiLayout);
   const offlineSummary = useGameStore((store) => store.offlineSummary);
   const clearOfflineSummary = useGameStore((store) => store.clearOfflineSummary);
   const combatEvents = useGameStore((store) => store.combatEvents);
@@ -1860,9 +1870,21 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
   const previousDeathCount = useRef(currentGame.statistics.deaths);
   const [deathNotice, setDeathNotice] = useState<EnemyId | null>(null);
   const updateUiLayout = (next: UiLayout) => {
-    setUiLayout(next);
-    saveUiLayout(next);
+    const safeLayout = sanitizeUiLayout(next);
+    pendingUiLayout.current = safeLayout;
+    setUiLayout(safeLayout);
+    if (uiSaveTimer.current !== null) window.clearTimeout(uiSaveTimer.current);
+    uiSaveTimer.current = window.setTimeout(() => {
+      saveUiLayout(pendingUiLayout.current);
+      uiSaveTimer.current = null;
+    }, 180);
   };
+  useEffect(() => {
+    return () => {
+      if (uiSaveTimer.current !== null) window.clearTimeout(uiSaveTimer.current);
+      saveUiLayout(pendingUiLayout.current);
+    };
+  }, []);
   useEffect(() => {
     const timer = window.setInterval(
       () => useGameStore.getState().tick(Date.now()),
@@ -1930,6 +1952,7 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
         return (
           <RealtimeCombatScreen
             game={currentGame}
+            uiLayout={uiLayout}
             requestAction={requestAction}
             requestConfirmation={requestConfirmation}
             onNavigate={nav}
@@ -2019,7 +2042,12 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
       )}
       <DebugPanel game={currentGame} open={debugOpen} onClose={() => setDebugOpen(false)} />
       {editingUi && (
-        <UiEditor layout={uiLayout} onChange={updateUiLayout} onClose={() => setEditingUi(false)} />
+        <UiEditor
+          screen={screen}
+          layout={uiLayout}
+          onChange={updateUiLayout}
+          onClose={() => setEditingUi(false)}
+        />
       )}
     </>
   );

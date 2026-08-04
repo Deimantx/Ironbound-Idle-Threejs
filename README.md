@@ -27,6 +27,11 @@ The MVP includes six combat enemies across three areas, five mining nodes, seven
 
 ## Built-in visual UI editor
 
-The game includes an in-game **Edit UI** button. It provides drag-to-move handles,
-size/spacing sliders, color pickers, and a reset button. Layout changes are saved
-in the current browser and do not affect gameplay code.
+The game includes an in-game **Edit UI** button backed by a universal screen-panel registry. It
+provides drag-to-move handles for the global shell and registered screen panels, twelve-column
+grid placement with row/column/width/height controls, size/spacing sliders, color pickers, and
+global or per-panel reset buttons, including individual panel scaling from 50% to 150%. Combat is
+currently registered; additional screens can add
+editable panels through the same `UiPanelSlot` wrapper. Layout changes are saved in the current
+browser and do not affect gameplay code. Desktop panel placements fall back to a single-column
+stack on smaller screens.

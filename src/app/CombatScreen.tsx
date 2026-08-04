@@ -42,7 +42,6 @@ import {
   selectCombatProgress,
   selectCombatStatus,
   selectEnemyAttackProgress,
-  selectEnemyEstimatedDps,
   selectEnemyHitChance,
   selectEstimatedKillTimeMs,
   selectExpectedKillsPerHour,
@@ -50,7 +49,6 @@ import {
   selectTargetTrait,
   selectPlayerAttackProgress,
   selectPlayerEstimatedDps,
-  ZONE_COMPLETION_KILLS,
 } from '../game/selectors/combatSelectors';
 import { useGameStore } from '../game/state/gameStore';
 import { getItemQuantity, occupiedSlots } from '../game/systems/inventorySystem';
@@ -67,6 +65,8 @@ import type {
 import forestRatImage from '../Art/Monsters/ForestRat.png';
 import type { ConfirmDialogOptions } from './ConfirmDialog';
 import { ItemIcon } from './ItemIcon';
+import type { UiLayout } from './uiLayout';
+import { UiPanelSlot } from './UiPanelSlot';
 
 type CombatContentTab = 'areas' | 'dungeons' | 'slayer';
 type OverviewTab = 'overview' | 'loot' | 'progression';
@@ -357,15 +357,17 @@ function EnemySummaryPanel({
   onViewLoot: () => void;
 }) {
   const [combatDetailsExpanded, setCombatDetailsExpanded] = useState(false);
-  const active = game.activeAction.type === 'combat' && game.activeAction.enemyId === enemy.id
-    ? game.activeAction
-    : null;
+  const active =
+    game.activeAction.type === 'combat' && game.activeAction.enemyId === enemy.id
+      ? game.activeAction
+      : null;
   const enemyStats = getEnemyCombatStats(
     enemy,
     active?.combatState.eliteModifier ?? null,
     active?.combatState.enemyHp ?? enemy.maxHealth,
   );
-  const baseEnemyDps = ((1 + enemyStats.maxHit) / 2) / Math.max(0.001, enemyStats.attackIntervalMs / 1000);
+  const baseEnemyDps =
+    (1 + enemyStats.maxHit) / 2 / Math.max(0.001, enemyStats.attackIntervalMs / 1000);
   const discovered = game.discoveredMonsters.includes(enemy.id);
   return (
     <section className="combat-dashboard-panel combat-enemy-panel" aria-labelledby="enemy-title">
@@ -412,7 +414,11 @@ function EnemySummaryPanel({
           </button>
         </div>
       </div>
-      <div id="enemy-combat-details" className="combat-stats-grid combat-enemy-details" hidden={!combatDetailsExpanded}>
+      <div
+        id="enemy-combat-details"
+        className="combat-stats-grid combat-enemy-details"
+        hidden={!combatDetailsExpanded}
+      >
         <StatLine label="Accuracy" value={enemyStats.accuracyRating} />
         <StatLine label="Defence" value={enemyStats.defenceRating} />
         <StatLine label="Maximum hit" value={enemyStats.maxHit} />
@@ -555,7 +561,6 @@ function AreaAccordion({
           const unlocked = game.unlockedAreas.includes(area.id) || area.unlock(game);
           const expanded = expandedArea === area.id;
           const selected = selectedArea === area.id;
-          const kills = area.enemyIds.reduce((sum, id) => sum + (game.killCounts[id] ?? 0), 0);
           const Icon = zoneIcon[area.presentation.iconKey];
           return (
             <div
@@ -582,9 +587,6 @@ function AreaAccordion({
                 </span>
                 <span className="combat-location-level">
                   Recommended {area.recommendedLevel[0]}–{area.recommendedLevel[1]}
-                </span>
-                <span className="combat-location-progress">
-                  {kills}/{ZONE_COMPLETION_KILLS} kills
                 </span>
                 <span className={`combat-location-status ${unlocked ? '' : 'locked'}`}>
                   {unlocked ? (selected ? 'Selected' : 'Available') : 'Locked'}
@@ -708,7 +710,6 @@ function TargetAnalysis({
     ['Enemy chance to hit', `${Math.round(selectEnemyHitChance(game, enemy, style) * 100)}%`],
     ['Enemy health', `${enemyStats.maxHealth} HP`],
     ['Expected XP from full kill', `${getCombatDamageXp(enemyStats.maxHealth)} XP`],
-    ['Enemy expected DPS', selectEnemyEstimatedDps(game, enemy).toFixed(1)],
   ];
   return (
     <section className="combat-analysis" aria-labelledby="target-analysis-title">
@@ -904,9 +905,10 @@ function LiveCombatResolution({
   const playerProgress = selectPlayerAttackProgress(game, now);
   const enemyProgress = selectEnemyAttackProgress(game, now);
   const enemyHp = getCombatantHp(game, enemy, events, now);
-  const combatAction = game.activeAction.type === 'combat' && game.activeAction.enemyId === enemy.id
-    ? game.activeAction
-    : null;
+  const combatAction =
+    game.activeAction.type === 'combat' && game.activeAction.enemyId === enemy.id
+      ? game.activeAction
+      : null;
   const enemyStats = getEnemyCombatStats(
     enemy,
     combatAction?.combatState.eliteModifier ?? null,
@@ -919,11 +921,20 @@ function LiveCombatResolution({
     effects.push(`ELITE · ${eliteById[combatAction.combatState.eliteModifier].name}`);
   if (enemy.trait.id === 'desperate-swing' && enemyHp <= enemyStats.maxHealth * 0.3)
     effects.push('Desperate Swing active');
-  if (enemy.trait.id === 'bleeding-bites' && (combatAction?.combatState.traitState.bleedStacks ?? 0) > 0)
+  if (
+    enemy.trait.id === 'bleeding-bites' &&
+    (combatAction?.combatState.traitState.bleedStacks ?? 0) > 0
+  )
     effects.push(`Bleed stacks: ${combatAction?.combatState.traitState.bleedStacks}`);
-  if (enemy.trait.id === 'heavy-strike' && (combatAction?.combatState.traitState.enemyAttackCount ?? 0) % 4 === 3)
+  if (
+    enemy.trait.id === 'heavy-strike' &&
+    (combatAction?.combatState.traitState.enemyAttackCount ?? 0) % 4 === 3
+  )
     effects.push('Heavy Strike incoming');
-  if (combatAction?.pendingStyle) effects.push(`Style change applies next enemy: ${getCombatStyleInfo(combatAction.pendingStyle).name}`);
+  if (combatAction?.pendingStyle)
+    effects.push(
+      `Style change applies next enemy: ${getCombatStyleInfo(combatAction.pendingStyle).name}`,
+    );
   const statusIcon =
     status === 'VICTORY' ? (
       <Trophy size={15} />
@@ -960,7 +971,12 @@ function LiveCombatResolution({
           VS
         </div>
         <div className="combat-resolution-side enemy">
-          <HealthBar label={enemy.name} current={enemyHp} max={combatAction?.combatState.enemyMaxHp ?? enemyStats.maxHealth} tone="enemy" />
+          <HealthBar
+            label={enemy.name}
+            current={enemyHp}
+            max={combatAction?.combatState.enemyMaxHp ?? enemyStats.maxHealth}
+            tone="enemy"
+          />
           <AttackProgress label="Next attack" progress={enemyProgress} tone="enemy" />
         </div>
       </div>
@@ -990,13 +1006,24 @@ function LiveCombatResolution({
       <div className="combat-momentum" aria-label="Momentum">
         <div className="combat-momentum-head">
           <span>Momentum</span>
-          <strong>{momentum} / 100 {momentum >= 100 ? '· READY' : ''}</strong>
+          <strong>
+            {momentum} / 100 {momentum >= 100 ? '· READY' : ''}
+          </strong>
         </div>
-        <div className="combat-momentum-track" role="progressbar" aria-label="Momentum" aria-valuemin={0} aria-valuemax={100} aria-valuenow={momentum}>
+        <div
+          className="combat-momentum-track"
+          role="progressbar"
+          aria-label="Momentum"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={momentum}
+        >
           <i style={{ width: `${momentum}%` }} />
         </div>
         <small>
-          {special ? `${special.name}: ${special.description}` : 'Equip a weapon with a special attack'}
+          {special
+            ? `${special.name}: ${special.description}`
+            : 'Equip a weapon with a special attack'}
         </small>
       </div>
       <div className="combat-live-controls">
@@ -1013,7 +1040,12 @@ function LiveCombatResolution({
             <Settings2 size={15} />
           </button>
           {settingsOpen && (
-            <div id="combat-settings-popover" className="combat-settings-popover" role="dialog" aria-label="Combat settings">
+            <div
+              id="combat-settings-popover"
+              className="combat-settings-popover"
+              role="dialog"
+              aria-label="Combat settings"
+            >
               <strong>Combat settings</strong>
               <label className="combat-settings-option">
                 <input
@@ -1293,9 +1325,10 @@ function OverviewSummary({
   const totalXp = Object.values(session.xpGained).reduce((sum, amount) => sum + (amount ?? 0), 0);
   const itemsGained = Object.values(session.lootGained).reduce((sum, amount) => sum + amount, 0);
   const dps = selectPlayerEstimatedDps(game, enemy);
-  const hitRate = session.playerAttacks > 0
-    ? `${Math.round((session.playerHits / session.playerAttacks) * 100)}%`
-    : '—';
+  const hitRate =
+    session.playerAttacks > 0
+      ? `${Math.round((session.playerHits / session.playerAttacks) * 100)}%`
+      : '—';
   return (
     <section className="combat-overview-content" aria-labelledby="session-summary-title">
       <div className="combat-section-heading">
@@ -1319,10 +1352,12 @@ function OverviewSummary({
           <span className="combat-panel-kicker">Performance</span>
           <strong>{dps.toFixed(1)}</strong>
           <small>estimated DPS</small>
-           <strong>{hitRate}</strong>
-           <small>actual hit rate</small>
-           <strong>{session.specialHits} / {session.specialAttempts}</strong>
-           <small>special hits</small>
+          <strong>{hitRate}</strong>
+          <small>actual hit rate</small>
+          <strong>
+            {session.specialHits} / {session.specialAttempts}
+          </strong>
+          <small>special hits</small>
           <strong>{formatSeconds((enemy.maxHealth / Math.max(0.1, dps)) * 1_000)}</strong>
           <small>estimated kill time</small>
         </div>
@@ -1343,10 +1378,10 @@ function OverviewSummary({
           <small>auto repeat</small>
           <strong>{getCombatStyleInfo(style).name}</strong>
           <small>combat style</small>
-           <strong>{stats.maxHealth}</strong>
-           <small>maximum HP</small>
-           <strong>{session.eliteEnemiesDefeated}</strong>
-           <small>elite kills</small>
+          <strong>{stats.maxHealth}</strong>
+          <small>maximum HP</small>
+          <strong>{session.eliteEnemiesDefeated}</strong>
+          <small>elite kills</small>
         </div>
       </div>
     </section>
@@ -1412,11 +1447,13 @@ function CombatOverviewTabs({
 
 export function CombatScreen({
   game,
+  uiLayout,
   requestAction,
   requestConfirmation: _requestConfirmation,
   onNavigate,
 }: {
   game: GameState;
+  uiLayout: UiLayout;
   requestAction: (screen: ScreenId, action: () => void) => void;
   requestConfirmation: (options: ConfirmDialogOptions) => void;
   onNavigate: (screen: ScreenId) => void;
@@ -1540,12 +1577,12 @@ export function CombatScreen({
       : active && targetChanged
         ? 'New target'
         : active?.combatState.respawnMs
-        ? 'Waiting for respawn'
-        : active
-          ? 'Stop combat'
-          : session.enemyId === currentEnemy.id && session.enemiesDefeated > 0
-            ? 'Resume combat'
-            : 'Fight';
+          ? 'Waiting for respawn'
+          : active
+            ? 'Stop combat'
+            : session.enemyId === currentEnemy.id && session.enemiesDefeated > 0
+              ? 'Resume combat'
+              : 'Fight';
   const actionDisabled = locked || (!active && inventoryFull) || startPending.current;
   const saveLabel =
     saveStatus === 'saved' && savedAt
@@ -1598,72 +1635,84 @@ export function CombatScreen({
         </span>
       </div>
       <CombatContentTabs activeTab={contentTab} onChange={setContentTab} />
-      {contentTab === 'areas' ? (
-        <AreaAccordion
-          game={game}
-          selectedArea={selectedArea}
-          expandedArea={expandedArea}
-          selectedEnemy={selectedEnemy}
-          activeEnemy={active?.enemyId ?? null}
-          locationsExpanded={locationsExpanded}
-          onToggle={selectArea}
-          onSelectEnemy={selectEnemy}
-          onToggleLocations={() => setLocationsExpanded((expanded) => !expanded)}
-        />
-      ) : (
-        <LockedCombatContent tab={contentTab} />
-      )}
-      <TargetAnalysis game={game} enemy={selectedTarget} style={activeStyleValue} />
-      <main className="combat-dashboard" aria-label="Combat dashboard">
-        <PlayerSummaryPanel
-          game={game}
-          enemy={currentEnemy}
-          style={activeStyleValue}
-          onStyleChange={changeStyle}
-          onNavigate={onNavigate}
-        />
+      <div className="ui-panel-grid" data-ui-panel-grid="combat">
+        <UiPanelSlot screen="combat" id="combatLocations" layout={uiLayout}>
+          {contentTab === 'areas' ? (
+            <AreaAccordion
+              game={game}
+              selectedArea={selectedArea}
+              expandedArea={expandedArea}
+              selectedEnemy={selectedEnemy}
+              activeEnemy={active?.enemyId ?? null}
+              locationsExpanded={locationsExpanded}
+              onToggle={selectArea}
+              onSelectEnemy={selectEnemy}
+              onToggleLocations={() => setLocationsExpanded((expanded) => !expanded)}
+            />
+          ) : (
+            <LockedCombatContent tab={contentTab} />
+          )}
+        </UiPanelSlot>
+        <UiPanelSlot screen="combat" id="targetPreview" layout={uiLayout}>
+          <TargetAnalysis game={game} enemy={selectedTarget} style={activeStyleValue} />
+        </UiPanelSlot>
+        <UiPanelSlot screen="combat" id="player" layout={uiLayout}>
+          <PlayerSummaryPanel
+            game={game}
+            enemy={currentEnemy}
+            style={activeStyleValue}
+            onStyleChange={changeStyle}
+            onNavigate={onNavigate}
+          />
+        </UiPanelSlot>
+        <UiPanelSlot screen="combat" id="liveCombat" layout={uiLayout}>
           <LiveCombatResolution
-          game={game}
-          enemy={currentEnemy}
-          events={events}
-          autoRepeat={activeAutoRepeatValue}
-          onAutoRepeatChange={(checked) => {
-            setAutoRepeat(checked);
-            if (active) setCombatAutoRepeat(checked);
-          }}
-          autoSpecial={active?.autoSpecial ?? autoSpecial}
-          onAutoSpecialChange={(checked) => {
-            setAutoSpecial(checked);
-            if (active) setCombatAutoSpecial(checked);
-          }}
+            game={game}
+            enemy={currentEnemy}
+            events={events}
+            autoRepeat={activeAutoRepeatValue}
+            onAutoRepeatChange={(checked) => {
+              setAutoRepeat(checked);
+              if (active) setCombatAutoRepeat(checked);
+            }}
+            autoSpecial={active?.autoSpecial ?? autoSpecial}
+            onAutoSpecialChange={(checked) => {
+              setAutoSpecial(checked);
+              if (active) setCombatAutoSpecial(checked);
+            }}
             onUseSpecial={queueCombatSpecial}
             huntElites={game.settings.huntElites !== false}
             onHuntElitesChange={(checked) => setSettings({ huntElites: checked })}
             actionText={actionText}
-          actionTargetName={targetChanged ? selectedTarget.name : currentEnemy.name}
-          actionDisabled={actionDisabled}
-          onAction={active && !targetChanged ? stopAction : startSelectedTarget}
-          inventoryFull={inventoryFull}
-          onNavigate={onNavigate}
-          sessionStartedAt={session.startedAt}
-          encounterStartedAt={encounterStartedAt}
-        />
-        <EnemySummaryPanel
-          game={game}
-          enemy={currentEnemy}
-          onViewLoot={() => setOverviewTab('loot')}
-        />
-      </main>
-      <CombatOverviewTabs
-        game={game}
-        enemy={currentEnemy}
-        session={session}
-        style={activeStyleValue}
-        autoRepeat={activeAutoRepeatValue}
-        events={events}
-        tab={overviewTab}
-        onTabChange={setOverviewTab}
-      />
+            actionTargetName={targetChanged ? selectedTarget.name : currentEnemy.name}
+            actionDisabled={actionDisabled}
+            onAction={active && !targetChanged ? stopAction : startSelectedTarget}
+            inventoryFull={inventoryFull}
+            onNavigate={onNavigate}
+            sessionStartedAt={session.startedAt}
+            encounterStartedAt={encounterStartedAt}
+          />
+        </UiPanelSlot>
+        <UiPanelSlot screen="combat" id="enemy" layout={uiLayout}>
+          <EnemySummaryPanel
+            game={game}
+            enemy={currentEnemy}
+            onViewLoot={() => setOverviewTab('loot')}
+          />
+        </UiPanelSlot>
+        <UiPanelSlot screen="combat" id="combatOverview" layout={uiLayout}>
+          <CombatOverviewTabs
+            game={game}
+            enemy={currentEnemy}
+            session={session}
+            style={activeStyleValue}
+            autoRepeat={activeAutoRepeatValue}
+            events={events}
+            tab={overviewTab}
+            onTabChange={setOverviewTab}
+          />
+        </UiPanelSlot>
+      </div>
     </div>
   );
 }
