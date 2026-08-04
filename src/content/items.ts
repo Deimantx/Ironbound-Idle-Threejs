@@ -13,6 +13,7 @@ const material = (
   source,
   stackable: true,
   rarity: 'common',
+  presentation: { iconKey: 'ore', visualCategory: 'material' },
 });
 const bar = (id: string, name: string, description: string, source: string): ItemDefinition => ({
   id,
@@ -22,6 +23,7 @@ const bar = (id: string, name: string, description: string, source: string): Ite
   source,
   stackable: true,
   rarity: 'common',
+  presentation: { iconKey: 'bar', visualCategory: 'metal' },
 });
 const gear = (
   id: string,
@@ -45,6 +47,10 @@ const gear = (
   source: 'Smithing',
   stackable: true,
   rarity: tier === 'steel' ? 'rare' : tier === 'iron' ? 'uncommon' : 'common',
+  presentation: {
+    iconKey: slot === 'weapon' ? 'sword' : slot === 'shield' ? 'shield' : 'armor',
+    visualCategory: 'equipment',
+  },
   slot,
   tier,
   bonuses,
@@ -125,6 +131,7 @@ export const ITEMS: ItemDefinition[] = [
     source,
     stackable: true,
     rarity: 'uncommon' as const,
+    presentation: { iconKey: 'creature-part', visualCategory: 'creature-part' },
   })),
 ];
 

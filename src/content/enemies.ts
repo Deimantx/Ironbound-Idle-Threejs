@@ -16,6 +16,14 @@ export const ENEMIES: EnemyDefinition[] = [
     ],
     gold: [1, 4],
     theme: 'rodent',
+    presentation: {
+      archetype: 'rat',
+      primaryColor: '#9b765b',
+      secondaryColor: '#4b3530',
+      scale: 0.72,
+      idleAnimation: 'scurry',
+      attackAnimation: 'lunge',
+    },
     tags: ['Beast', 'Fast', 'Weak'],
   },
   {
@@ -33,6 +41,14 @@ export const ENEMIES: EnemyDefinition[] = [
     ],
     gold: [3, 8],
     theme: 'goblin',
+    presentation: {
+      archetype: 'goblin',
+      primaryColor: '#668356',
+      secondaryColor: '#354733',
+      scale: 0.92,
+      idleAnimation: 'hunch',
+      attackAnimation: 'swipe',
+    },
     tags: ['Humanoid', 'Scavenger'],
   },
   {
@@ -47,6 +63,14 @@ export const ENEMIES: EnemyDefinition[] = [
     loot: [{ itemId: 'bat-wing', chance: 0.58, min: 1, max: 1 }],
     gold: [8, 16],
     theme: 'bat',
+    presentation: {
+      archetype: 'bat',
+      primaryColor: '#7c6891',
+      secondaryColor: '#302744',
+      scale: 0.82,
+      idleAnimation: 'hover',
+      attackAnimation: 'swoop',
+    },
     tags: ['Beast', 'Flying', 'Fast'],
   },
   {
@@ -61,6 +85,14 @@ export const ENEMIES: EnemyDefinition[] = [
     loot: [{ itemId: 'crab-shell', chance: 0.48, min: 1, max: 1 }],
     gold: [10, 22],
     theme: 'crab',
+    presentation: {
+      archetype: 'crab',
+      primaryColor: '#a06b4d',
+      secondaryColor: '#51372d',
+      scale: 1.08,
+      idleAnimation: 'heavy',
+      attackAnimation: 'claw',
+    },
     tags: ['Beast', 'Armored', 'Slow'],
   },
   {
@@ -75,6 +107,14 @@ export const ENEMIES: EnemyDefinition[] = [
     loot: [{ itemId: 'wolf-pelt', chance: 0.52, min: 1, max: 1 }],
     gold: [20, 40],
     theme: 'wolf',
+    presentation: {
+      archetype: 'wolf',
+      primaryColor: '#7f909b',
+      secondaryColor: '#3e4d56',
+      scale: 1.1,
+      idleAnimation: 'alert',
+      attackAnimation: 'pounce',
+    },
     tags: ['Beast', 'Fast'],
   },
   {
@@ -92,6 +132,14 @@ export const ENEMIES: EnemyDefinition[] = [
     ],
     gold: [28, 60],
     theme: 'bandit',
+    presentation: {
+      archetype: 'bandit',
+      primaryColor: '#a47b5f',
+      secondaryColor: '#302b2c',
+      scale: 0.98,
+      idleAnimation: 'stride',
+      attackAnimation: 'slash',
+    },
     tags: ['Humanoid', 'Armored'],
   },
 ];

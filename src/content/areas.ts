@@ -15,6 +15,7 @@ export const AREAS: AreaDefinition[] = [
     enemyIds: ['forest-rat', 'goblin-scavenger'],
     accent: '#b58b53',
     recommendedLevel: [1, 8],
+    presentation: { iconKey: 'target', theme: 'training', environmentKey: 'practice-yard' },
   },
   {
     id: 'copper-hills',
@@ -27,6 +28,7 @@ export const AREAS: AreaDefinition[] = [
     enemyIds: ['cave-bat', 'stoneback-crab'],
     accent: '#c67b53',
     recommendedLevel: [8, 18],
+    presentation: { iconKey: 'crystal', theme: 'copper-cavern', environmentKey: 'copper-cavern' },
   },
   {
     id: 'ironwood-pass',
@@ -39,6 +41,7 @@ export const AREAS: AreaDefinition[] = [
     enemyIds: ['grey-wolf', 'road-bandit'],
     accent: '#71839a',
     recommendedLevel: [18, 35],
+    presentation: { iconKey: 'tree', theme: 'ironwood', environmentKey: 'ironwood-pass' },
   },
 ];
 

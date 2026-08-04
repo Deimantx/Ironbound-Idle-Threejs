@@ -8,6 +8,9 @@ import {
 import { simulateElapsed } from '../game/engine/simulation';
 import {
   displayDropChance,
+  getHealthPercent,
+  getHealthState,
+  getLootRarity,
   selectAreaThreat,
   selectEnemyAttackProgress,
   selectPlayerAttackProgress,
@@ -33,15 +36,37 @@ describe('combat selectors and visual events', () => {
     expect(selectEnemyAttackProgress(state, 1_000).ratio).toBe(0);
     expect(selectPlayerEstimatedDps(state)).toBeGreaterThan(0);
     expect(selectAreaThreat(state)).toMatch(/Trivial|Easy|Fair|Dangerous|Deadly/);
+    expect(selectPlayerAttackProgress(state, 4_000).state).toMatch(/active|ready/);
+    if (state.activeAction.type === 'combat') state.activeAction.combatState.respawnMs = 500;
+    expect(selectEnemyAttackProgress(state, 1_000).state).toBe('respawning');
+  });
+
+  it('exposes readable health states for the combat UI', () => {
+    expect(getHealthPercent(20, 24)).toBe(83);
+    expect(getHealthState(24, 24)).toBe('healthy');
+    expect(getHealthState(12, 24)).toBe('wounded');
+    expect(getHealthState(7, 24)).toBe('critical');
+    expect(getHealthState(2, 24)).toBe('near-death');
+    expect(getHealthState(0, 24)).toBe('defeated');
   });
 
   it('converts known drop probabilities without inventing certainty', () => {
     expect(displayDropChance(0.65)).toBe('65%');
     expect(displayDropChance(0.01)).toBe('1%');
+    expect(getLootRarity(0.65)).toBe('Common');
+    expect(getLootRarity(0.3)).toBe('Uncommon');
+    expect(getLootRarity(0.12)).toBe('Rare');
+    expect(getLootRarity(0.01)).toBe('Very Rare');
   });
 
   it('exposes a bounded authoritative visual event stream from combat simulation', () => {
-    const state = startCombat(createNewGame(0, 'Events'), 'training-grounds', 'forest-rat', 'accurate', true);
+    const state = startCombat(
+      createNewGame(0, 'Events'),
+      'training-grounds',
+      'forest-rat',
+      'accurate',
+      true,
+    );
     const result = simulateElapsed(state, 60_000);
     expect(result.events.length).toBeGreaterThan(0);
     expect(result.events.length).toBeLessThanOrEqual(64);

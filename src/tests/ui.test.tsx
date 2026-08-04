@@ -49,6 +49,22 @@ describe('navigation integration', () => {
     expect(useGameStore.getState().game?.activeAction.type).toBe('none');
   });
 
+  it('keeps target switching inside the game UI and restarts combat', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+    await user.click(screen.getByRole('button', { name: 'Fight' }));
+    expect(useGameStore.getState().game?.activeAction.type).toBe('combat');
+    expect(screen.getByRole('img', { name: 'Forest Rat combatant' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Switch target Goblin Scavenger/ }));
+    expect(screen.getByRole('heading', { name: 'Switch target?' })).toBeInTheDocument();
+    expect(useGameStore.getState().game?.activeAction.type).toBe('combat');
+    await user.click(screen.getByRole('button', { name: 'Switch target' }));
+    const activeCombat = useGameStore.getState().game?.activeAction;
+    expect(activeCombat?.type).toBe('combat');
+    expect(activeCombat?.type === 'combat' ? activeCombat.enemyId : null).toBe('goblin-scavenger');
+  });
+
   it('opens the development debug menu beside the UI editor', async () => {
     const user = userEvent.setup();
     render(<App />);

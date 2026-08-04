@@ -1799,6 +1799,7 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
             game={currentGame}
             requestAction={requestAction}
             requestConfirmation={requestConfirmation}
+            onNavigate={nav}
           />
         );
       case 'inventory':

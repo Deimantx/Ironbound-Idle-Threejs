@@ -31,6 +31,28 @@ export type ScreenId =
   | 'locked';
 export type QuantityMode = 1 | 10 | 'all' | 'continuous';
 export type CombatStyle = 'accurate' | 'aggressive' | 'defensive';
+export type EnemyVisualArchetype = 'rat' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
+export type ZoneVisualTheme = 'training' | 'copper-cavern' | 'ironwood';
+
+export interface ItemPresentation {
+  iconKey?: string;
+  visualCategory?: string;
+}
+
+export interface EnemyPresentation {
+  archetype: EnemyVisualArchetype;
+  primaryColor: string;
+  secondaryColor: string;
+  scale: number;
+  idleAnimation: 'scurry' | 'hunch' | 'hover' | 'heavy' | 'alert' | 'stride';
+  attackAnimation: 'lunge' | 'swipe' | 'swoop' | 'claw' | 'pounce' | 'slash';
+}
+
+export interface ZonePresentation {
+  iconKey: 'target' | 'crystal' | 'tree';
+  theme: ZoneVisualTheme;
+  environmentKey: string;
+}
 
 export interface SkillState {
   xp: number;
@@ -45,6 +67,7 @@ export interface ItemDefinition {
   stackable: boolean;
   rarity: 'common' | 'uncommon' | 'rare' | 'epic';
   source: string;
+  presentation?: ItemPresentation;
   slot?: EquipmentSlot;
   tier?: 'bronze' | 'iron' | 'steel';
   bonuses?: Partial<{
@@ -99,6 +122,7 @@ export interface EnemyDefinition {
   loot: LootEntry[];
   gold: [number, number];
   theme: 'rodent' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
+  presentation: EnemyPresentation;
   tags?: string[];
 }
 
@@ -111,6 +135,7 @@ export interface AreaDefinition {
   enemyIds: EnemyId[];
   accent: string;
   recommendedLevel: [number, number];
+  presentation: ZonePresentation;
 }
 
 export interface InventoryStack {
