@@ -30,9 +30,3 @@ The MVP includes six combat enemies across three areas, five mining nodes, seven
 The game includes an in-game **Edit UI** button. It provides drag-to-move handles,
 size/spacing sliders, color pickers, and a reset button. Layout changes are saved
 in the current browser and do not affect gameplay code.
-
-## Optional Plasmic visual editor
-
-Plasmic remains available as an optional visual shell for the existing React UI.
-Set `VITE_PLASMIC_ENABLED=true` along with the project values before using it.
-See [PLASMIC_SETUP.md](PLASMIC_SETUP.md) for the one-time connection steps.

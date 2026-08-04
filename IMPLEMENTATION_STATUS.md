@@ -18,7 +18,6 @@ Core MVP workflow is implemented and verified by the project checks.
 - [x] Offline replay cap and summary modal
 - [x] Responsive semantic interface with locked future-feature screens
 - [x] Procedural Three.js contextual visual layer with quality and reduced-motion settings
-- [x] Optional Plasmic visual-editor bridge with named live UI slots and local fallback
 - [x] Development-only item helper
 - [x] Unit and UI integration tests for formulas, inventory, equipment, actions, persistence, and navigation
 - [x] README and content guide

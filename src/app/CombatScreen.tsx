@@ -1,33 +1,34 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowUpRight,
   Check,
+  ChevronDown,
   ChevronRight,
   CircleStop,
   Clock3,
   Crosshair,
   Gem,
-  Heart,
   Lock,
   PackageOpen,
   Shield,
-  Sparkles,
   Skull,
+  Sparkles,
   Sword,
   Swords,
   Target,
   Timer,
   TreePine,
   Trophy,
+  UserRound,
   Zap,
 } from 'lucide-react';
 import { AREAS, areaById } from '../content/areas';
 import { enemyById } from '../content/enemies';
 import { itemById } from '../content/items';
 import { GAME_CONFIG } from '../config/gameConfig';
-import { getLevelProgress } from '../game/formulas/experienceFormulas';
 import { getCombatStyleSkill } from '../game/formulas/combatFormulas';
+import { getLevelProgress } from '../game/formulas/experienceFormulas';
 import { getDerivedStats } from '../game/formulas/statFormulas';
 import {
   displayDropChance,
@@ -35,7 +36,6 @@ import {
   getHealthPercent,
   getHealthState,
   getLootRarity,
-  selectAreaThreat,
   selectCombatProgress,
   selectCombatStatus,
   selectEnemyAttackProgress,
@@ -48,6 +48,7 @@ import { useGameStore } from '../game/state/gameStore';
 import { getItemQuantity, occupiedSlots } from '../game/systems/inventorySystem';
 import type {
   AreaId,
+  CombatSessionStats,
   CombatStyle,
   CombatVisualEvent,
   EnemyDefinition,
@@ -55,10 +56,12 @@ import type {
   GameState,
   ScreenId,
 } from '../game/types';
-import { ThreeScene } from '../three/ThreeScene';
 import forestRatImage from '../Art/Monsters/ForestRat.png';
 import type { ConfirmDialogOptions } from './ConfirmDialog';
 import { ItemIcon } from './ItemIcon';
+
+type CombatContentTab = 'areas' | 'dungeons' | 'slayer';
+type OverviewTab = 'overview' | 'loot' | 'progression';
 
 const formatSeconds = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
 const formatNumber = (value: number): string =>
@@ -74,13 +77,20 @@ const zoneIcon = {
   tree: TreePine,
 };
 
-const getEnemyGlyph = (theme: EnemyDefinition['theme']): string =>
-  ({ rodent: '◒', goblin: '♟', bat: '⋈', crab: '⬢', wolf: '◇', bandit: '⚔' })[theme];
+const enemyGlyph: Record<EnemyDefinition['theme'], string> = {
+  rodent: '◒',
+  goblin: '♟',
+  bat: '⋈',
+  crab: '⬢',
+  wolf: '◇',
+  bandit: '⚔',
+};
 
 const getCombatantHp = (
   game: GameState,
   enemy: EnemyDefinition,
-  events: CombatVisualEvent[] = [],
+  events: CombatVisualEvent[],
+  now: number,
 ): number => {
   if (game.activeAction.type === 'combat' && game.activeAction.enemyId === enemy.id)
     return game.activeAction.combatState.enemyHp;
@@ -88,21 +98,9 @@ const getCombatantHp = (
     .reverse()
     .find(
       (event) =>
-        event.type === 'enemy-defeated' &&
-        event.enemyId === enemy.id &&
-        Date.now() - event.at < 2_500,
+        event.type === 'enemy-defeated' && event.enemyId === enemy.id && now - event.at < 2_500,
     );
   return recentDefeat ? 0 : enemy.maxHealth;
-};
-
-const getArmorTier = (game: GameState): 'none' | 'bronze' | 'iron' | 'steel' | 'mixed' => {
-  const tiers = (['head', 'body', 'legs'] as const)
-    .map((slot) => game.equipment[slot])
-    .filter(Boolean)
-    .map((id) => itemById[id as string]?.tier)
-    .filter((tier): tier is 'bronze' | 'iron' | 'steel' => Boolean(tier));
-  if (tiers.length === 0) return 'none';
-  return tiers.every((tier) => tier === tiers[0]) ? tiers[0] : 'mixed';
 };
 
 function HealthBar({
@@ -118,16 +116,6 @@ function HealthBar({
 }) {
   const percent = getHealthPercent(current, max);
   const state = getHealthState(current, max);
-  const stateLabel =
-    state === 'defeated'
-      ? 'Defeated'
-      : state === 'near-death'
-        ? 'Near death'
-        : state === 'critical'
-          ? 'Critical health'
-          : state === 'wounded'
-            ? 'Wounded'
-            : 'Healthy';
   return (
     <div className={`combat-health combat-health-${tone} health-state-${state}`}>
       <div className="combat-health-head">
@@ -136,6 +124,9 @@ function HealthBar({
             <AlertTriangle size={13} aria-hidden="true" />
           )}
           {label}
+          <span className="combat-health-separator" aria-hidden="true">
+            —
+          </span>
         </span>
         <strong>
           {Math.ceil(Math.max(0, current))} / {max} HP · {percent}%
@@ -148,11 +139,10 @@ function HealthBar({
         aria-valuemin={0}
         aria-valuemax={max}
         aria-valuenow={Math.ceil(Math.max(0, current))}
-        aria-valuetext={`${Math.ceil(Math.max(0, current))} of ${max} hit points, ${percent} percent, ${stateLabel}`}
+        aria-valuetext={`${Math.ceil(Math.max(0, current))} of ${max} hit points`}
       >
         <i style={{ width: `${percent}%` }} />
       </div>
-      <small className="combat-health-state">{stateLabel}</small>
     </div>
   );
 }
@@ -167,31 +157,23 @@ function AttackProgress({
   tone: 'player' | 'enemy';
 }) {
   const statusLabel =
-    progress.state === 'idle'
-      ? 'Idle'
-      : progress.state === 'ready'
-        ? 'Ready'
-        : progress.state === 'defeated'
-          ? 'Defeated'
-          : progress.state === 'respawning'
-            ? 'Respawning'
-            : `${formatSeconds(progress.timeUntilAttackMs)} remaining · ${formatSeconds(progress.intervalMs)} interval`;
-  const timing =
-    progress.state === 'active' || progress.state === 'ready'
-      ? `${formatSeconds(progress.timeUntilAttackMs)} remaining · ${formatSeconds(progress.intervalMs)} interval`
-      : statusLabel;
+    progress.state === 'idle' || progress.state === 'ready'
+      ? 'Ready'
+      : progress.state === 'defeated'
+        ? 'Defeated'
+        : progress.state === 'respawning'
+          ? 'Respawning'
+          : formatSeconds(progress.timeUntilAttackMs);
   return (
     <div className={`attack-progress attack-state-${progress.state}`}>
       <div className="attack-progress-head">
         <span className="attack-progress-label">
-          {tone === 'player' ? (
-            <Swords size={12} aria-hidden="true" />
-          ) : (
-            <Shield size={12} aria-hidden="true" />
-          )}
           {label}
+          <span className="attack-progress-separator" aria-hidden="true">
+            —
+          </span>
         </span>
-        <span>{timing}</span>
+        <span>{statusLabel}</span>
       </div>
       <div
         className={`attack-progress-track ${tone}`}
@@ -204,7 +186,6 @@ function AttackProgress({
       >
         <i style={{ width: `${progress.ratio * 100}%` }} />
       </div>
-      <small className="attack-progress-state">{statusLabel}</small>
     </div>
   );
 }
@@ -226,481 +207,36 @@ function StatLine({
   );
 }
 
-function ZoneSelector({
-  game,
-  selectedArea,
-  onSelect,
-  selectedEnemy,
-}: {
-  game: GameState;
-  selectedArea: AreaId;
-  selectedEnemy: EnemyId;
-  onSelect: (id: AreaId) => void;
-}) {
-  const combatLevel = getDerivedStats(game).combatLevel;
-  const trainingKills =
-    (game.killCounts['forest-rat'] ?? 0) + (game.killCounts['goblin-scavenger'] ?? 0);
-  const copperKills = (game.killCounts['cave-bat'] ?? 0) + (game.killCounts['stoneback-crab'] ?? 0);
+function CombatPortrait({ enemy, large = false }: { enemy: EnemyDefinition; large?: boolean }) {
+  const usesForestRatArt = enemy.id === 'forest-rat';
   return (
-    <section className="combat-section zone-section" aria-labelledby="zone-selector-title">
-      <div className="section-heading-row">
-        <div>
-          <div className="eyebrow">Choose your road</div>
-          <h2 id="zone-selector-title">Combat zones</h2>
-        </div>
-        <span className="muted">Select a zone to inspect its targets.</span>
-      </div>
-      <div className="zone-scroller" role="listbox" aria-label="Combat zones">
-        {AREAS.map((area) => {
-          const unlocked = game.unlockedAreas.includes(area.id) || area.unlock(game);
-          const selected = area.id === selectedArea;
-          const kills = area.enemyIds.reduce(
-            (sum, enemyId) => sum + (game.killCounts[enemyId] ?? 0),
-            0,
-          );
-          const completed = unlocked && kills >= ZONE_COMPLETION_KILLS;
-          const preview = enemyById[area.enemyIds[0]];
-          const Icon = zoneIcon[area.presentation.iconKey];
-          const requirement =
-            area.id === 'copper-hills'
-              ? `Combat level ${combatLevel}/5 or Training Grounds kills ${trainingKills}/5`
-              : area.id === 'ironwood-pass'
-                ? `Combat level ${combatLevel}/15 and Copper Hills kills ${copperKills}/8`
-                : area.requirement;
-          return (
-            <button
-              type="button"
-              role="option"
-              aria-selected={selected}
-              className={`zone-card zone-theme-${area.presentation.theme} ${selected ? 'selected' : ''} ${!unlocked ? 'locked' : ''} ${completed ? 'completed' : ''}`}
-              key={area.id}
-              onClick={() => unlocked && onSelect(area.id)}
-              disabled={!unlocked}
-              title={!unlocked ? requirement : `Inspect ${area.name}`}
-            >
-              <div className="zone-pattern" aria-hidden="true" />
-              <div className="zone-card-top">
-                <span className="zone-mark">
-                  <Icon size={18} />
-                </span>
-                <span
-                  className={`status-pill ${selected ? 'selected' : !unlocked ? 'locked' : completed ? 'complete' : ''}`}
-                >
-                  {selected
-                    ? 'Selected'
-                    : !unlocked
-                      ? 'Locked'
-                      : completed
-                        ? 'Completed'
-                        : 'Available'}
-                </span>
-              </div>
-              <strong>{area.name}</strong>
-              <small>{area.description}</small>
-              <div className="zone-card-meta">
-                <span>
-                  Recommended{' '}
-                  <b>
-                    {area.recommendedLevel[0]}–{area.recommendedLevel[1]}
-                  </b>
-                </span>
-                <span>{area.enemyIds.length} enemies</span>
-              </div>
-              <div className="zone-card-progress">
-                <div className="bar">
-                  <i
-                    style={{
-                      width: `${Math.min(100, (kills / ZONE_COMPLETION_KILLS) * 100)}`,
-                      background: area.accent,
-                    }}
-                  />
-                </div>
-                <small>
-                  {kills} / {ZONE_COMPLETION_KILLS} kills
-                </small>
-              </div>
-              {!unlocked ? (
-                <div className="zone-requirement">
-                  <Lock size={12} /> Requires: {requirement}
-                </div>
-              ) : (
-                <div className="zone-drop-preview">First encounter: {preview.name}</div>
-              )}
-              {selected && selectedEnemy && area.enemyIds.includes(selectedEnemy) && (
-                <Check className="zone-selected-check" size={16} />
-              )}
-            </button>
-          );
-        })}
-      </div>
-    </section>
+    <div
+      className={`combat-portrait theme-${enemy.theme} ${large ? 'combat-portrait-large' : ''}`}
+      role="img"
+      aria-label={`${enemy.name} portrait`}
+    >
+      {usesForestRatArt ? <img src={forestRatImage} alt="" /> : enemyGlyph[enemy.theme]}
+    </div>
   );
 }
 
 function EquipmentStrip({ game }: { game: GameState }) {
+  const slots = ['weapon', 'head', 'body', 'legs', 'shield'] as const;
   return (
-    <div className="combat-equipment-strip">
-      {(['weapon', 'shield', 'head', 'body', 'legs'] as const).map((slot) => {
+    <div className="combat-equipment-strip" aria-label="Equipped items">
+      {slots.map((slot) => {
         const itemId = game.equipment[slot];
         const item = itemId ? itemById[itemId] : undefined;
+        const label = slot === 'head' ? 'Helmet' : slot[0].toUpperCase() + slot.slice(1);
         return (
-          <div
-            className={`combat-equip-slot ${item ? 'filled' : ''}`}
-            key={slot}
-            title={item?.description ?? `${slot} slot`}
-          >
-            <span>{slot}</span>
+          <div className={`combat-equip-slot ${item ? 'filled' : ''}`} key={slot}>
+            <span>{label}</span>
             {item ? <ItemIcon itemId={item.id} size="xs" /> : <b>—</b>}
-            <small>{item?.name ?? 'Empty'}</small>
+            <small title={item?.name}>{item?.name ?? 'Empty'}</small>
           </div>
         );
       })}
     </div>
-  );
-}
-
-function CombatFigure({ side, enemy }: { side: 'player' | 'enemy'; enemy: EnemyDefinition }) {
-  const usesForestRatArt = side === 'enemy' && enemy.id === 'forest-rat';
-  return (
-    <div
-      className={`combat-figure-wrap ${side}`}
-      aria-label={side === 'player' ? 'Player combatant' : `${enemy.name} combatant`}
-    >
-      <div
-        className={`combat-figure ${side} theme-${enemy.theme} ${usesForestRatArt ? 'asset-enemy' : ''}`}
-      >
-        <div className="figure-shadow" />
-        {side === 'player' ? (
-          <>
-            <div className="figure-head" />
-            <div className="figure-body" />
-            <div className="figure-weapon" />
-            <div className="figure-shield" />
-          </>
-        ) : usesForestRatArt ? (
-          <img className="combat-enemy-art" src={forestRatImage} alt={`${enemy.name} combatant`} />
-        ) : (
-          <>
-            <div className="figure-head enemy-head">{getEnemyGlyph(enemy.theme)}</div>
-            <div className="figure-body enemy-body" />
-            <div className="figure-weapon enemy-weapon" />
-          </>
-        )}
-      </div>
-      <span className="figure-name">{side === 'player' ? 'You' : enemy.name}</span>
-    </div>
-  );
-}
-
-function CombatPanel({
-  game,
-  enemy,
-  side,
-  playerProgress,
-  enemyProgress,
-  events,
-}: {
-  game: GameState;
-  enemy: EnemyDefinition;
-  side: 'player' | 'enemy';
-  playerProgress: ReturnType<typeof selectPlayerAttackProgress>;
-  enemyProgress: ReturnType<typeof selectEnemyAttackProgress>;
-  events: CombatVisualEvent[];
-}) {
-  const stats = getDerivedStats(game);
-  if (side === 'player') {
-    return (
-      <section className="combatant-panel player-panel" aria-labelledby="player-panel-title">
-        <div className="combatant-heading">
-          <div className="panel-avatar player-avatar">
-            <Swords size={20} />
-          </div>
-          <div>
-            <div className="eyebrow">Combatant</div>
-            <h2 id="player-panel-title">{game.player.name}</h2>
-            <span className="muted">Combat level {stats.combatLevel}</span>
-          </div>
-        </div>
-        <HealthBar
-          label="Player"
-          current={game.player.currentHp}
-          max={stats.maxHealth}
-          tone="player"
-        />
-        <AttackProgress label="Your next attack" progress={playerProgress} tone="player" />
-        <div className="combat-stat-grid">
-          <StatLine
-            label="Attack"
-            value={stats.attack}
-            hint="Attack level plus equipment bonuses"
-          />
-          <StatLine label="Maximum hit" value={stats.maxHit} />
-          <StatLine
-            label="Estimated DPS"
-            value={selectPlayerEstimatedDps(game, enemy).toFixed(1)}
-          />
-          <StatLine label="Attack interval" value={formatSeconds(stats.attackIntervalMs)} />
-          <StatLine label="Defence" value={stats.defence} />
-        </div>
-        <div className="panel-label">Equipped for battle</div>
-        <EquipmentStrip game={game} />
-        <div className="hp-note">
-          <Heart size={13} /> Damage dealt grants combat-style XP and Hitpoints XP.
-        </div>
-      </section>
-    );
-  }
-  const currentHp = getCombatantHp(game, enemy, events);
-  return (
-    <section className="combatant-panel enemy-panel" aria-labelledby="enemy-panel-title">
-      <div className="combatant-heading">
-        <div className={`panel-avatar enemy-avatar theme-${enemy.theme}`}>
-          {enemy.id === 'forest-rat' ? (
-            <img src={forestRatImage} alt="" />
-          ) : (
-            getEnemyGlyph(enemy.theme)
-          )}
-        </div>
-        <div>
-          <div className="eyebrow">{enemy.areaId.replaceAll('-', ' ')}</div>
-          <h2 id="enemy-panel-title">{enemy.name}</h2>
-          <span className="muted">Display level {enemy.displayLevel}</span>
-        </div>
-      </div>
-      <HealthBar label={enemy.name} current={currentHp} max={enemy.maxHealth} tone="enemy" />
-      <AttackProgress label="Enemy next attack" progress={enemyProgress} tone="enemy" />
-      <div className="combat-stat-grid">
-        <StatLine label="Maximum hit" value={enemy.maxHit} />
-        <StatLine label="Estimated DPS" value={selectEnemyEstimatedDps(game, enemy).toFixed(1)} />
-        <StatLine label="Attack interval" value={formatSeconds(enemy.attackIntervalMs)} />
-        <StatLine label="Threat" value={selectAreaThreat(game, enemy)} />
-      </div>
-      <div className="enemy-tags">
-        {(enemy.tags ?? []).map((tag) => (
-          <span className="tag" key={tag}>
-            {tag}
-          </span>
-        ))}
-      </div>
-      <div className="enemy-description">{enemy.description}</div>
-      <div className="enemy-panel-footer">
-        <span>
-          <Trophy size={13} /> {game.killCounts[enemy.id] ?? 0} defeated
-        </span>
-        <span>
-          {game.discoveredMonsters.includes(enemy.id) ? 'Encounter logged' : 'New encounter'}
-        </span>
-      </div>
-    </section>
-  );
-}
-
-const getRecentCombatMessage = (
-  event: CombatVisualEvent | undefined,
-  enemy: EnemyDefinition,
-): string => {
-  if (!event) return '';
-  if (event.type === 'player-hit') return `You hit ${enemy.name} for ${event.damage}`;
-  if (event.type === 'enemy-hit') return `${enemy.name} hit you for ${event.damage}`;
-  if (event.type === 'enemy-defeated') return `${enemy.name} defeated`;
-  if (event.type === 'player-defeated') return 'Your belongings are safe';
-  if (event.type === 'loot')
-    return event.items.length
-      ? `Loot secured · ${event.items.length} drop${event.items.length === 1 ? '' : 's'}`
-      : `+${event.gold} gold secured`;
-  return '';
-};
-
-function BattleStateBanner({
-  game,
-  enemy,
-  now,
-  events,
-}: {
-  game: GameState;
-  enemy: EnemyDefinition;
-  now: number;
-  events: CombatVisualEvent[];
-}) {
-  const active = game.activeAction.type === 'combat' ? game.activeAction : null;
-  const session = useGameStore((store) => store.combatSession);
-  const combatEvent = [...events]
-    .reverse()
-    .find((event) => event.enemyId === enemy.id && now - event.at < 1800);
-  const recentOutcome = [...events]
-    .reverse()
-    .find(
-      (event) =>
-        event.enemyId === enemy.id &&
-        now - event.at < 1800 &&
-        (event.type === 'enemy-defeated' || event.type === 'player-defeated'),
-    );
-  const recentMessage = getRecentCombatMessage(combatEvent, enemy);
-  const primary = active
-    ? active.combatState.respawnMs > 0
-      ? 'RESPAWNING'
-      : active.combatState.enemyHp <= 0
-        ? 'VICTORY'
-        : game.player.currentHp <= 0
-          ? 'DEFEATED'
-          : 'FIGHTING'
-    : recentOutcome?.type === 'enemy-defeated'
-      ? 'VICTORY'
-      : recentOutcome?.type === 'player-defeated'
-        ? 'DEFEATED'
-        : selectCombatStatus(game) === 'Inventory full'
-          ? 'INVENTORY FULL'
-          : session.enemyId === enemy.id && session.startedAt
-            ? 'COMBAT STOPPED'
-            : 'READY';
-  const secondary =
-    active && active.combatState.respawnMs > 0
-      ? `Respawning in ${formatSeconds(active.combatState.respawnMs)}`
-      : active && primary === 'FIGHTING'
-        ? `Next player attack in ${formatSeconds(selectPlayerAttackProgress(game, now).timeUntilAttackMs)}`
-        : primary === 'READY'
-          ? `Ready to fight ${enemy.name}`
-          : primary === 'COMBAT STOPPED'
-            ? `Press Fight to resume against ${enemy.name}`
-            : primary === 'INVENTORY FULL'
-              ? 'Open Inventory to make room for rewards.'
-              : primary === 'VICTORY'
-                ? 'Victory secured'
-                : primary === 'DEFEATED'
-                  ? 'Recovering safely'
-                  : '';
-  return (
-    <div
-      className={`arena-state-banner arena-state-${primary.toLowerCase().replaceAll(' ', '-')}`}
-      aria-live="polite"
-    >
-      <div className="arena-state-primary">
-        {primary === 'VICTORY' ? (
-          <Trophy size={15} />
-        ) : primary === 'DEFEATED' ? (
-          <Skull size={15} />
-        ) : primary === 'INVENTORY FULL' ? (
-          <PackageOpen size={15} />
-        ) : (
-          <Crosshair size={15} />
-        )}
-        {primary}
-      </div>
-      {recentMessage ? (
-        <div className="arena-recent-action">{recentMessage}</div>
-      ) : (
-        <div className="arena-state-secondary">{secondary}</div>
-      )}
-      {recentMessage && <small>{secondary}</small>}
-    </div>
-  );
-}
-
-function BattleArena({
-  game,
-  areaId,
-  enemy,
-  now,
-  events,
-}: {
-  game: GameState;
-  areaId: AreaId;
-  enemy: EnemyDefinition;
-  now: number;
-  events: CombatVisualEvent[];
-}) {
-  const area = areaById[areaId];
-  const playerProgress = selectPlayerAttackProgress(game, now);
-  const enemyProgress = selectEnemyAttackProgress(game, now);
-  const active = game.activeAction.type === 'combat' && game.activeAction.enemyId === enemy.id;
-  const visibleEvents = events
-    .filter((event) => event.enemyId === enemy.id && now - event.at < 1800)
-    .slice(-8);
-  const recentEvent = visibleEvents.at(-1);
-  const weaponTier = game.equipment.weapon
-    ? (itemById[game.equipment.weapon]?.tier ?? 'none')
-    : 'none';
-  const shieldTier = game.equipment.shield
-    ? (itemById[game.equipment.shield]?.tier ?? 'none')
-    : 'none';
-  return (
-    <section
-      className={`battle-arena ${active ? 'is-active' : ''} ${recentEvent ? `event-${recentEvent.type}` : ''}`}
-      aria-label="Real-time battle arena"
-    >
-      <ThreeScene
-        screen="combat"
-        settings={game.settings}
-        theme={area.accent}
-        enemyTheme={enemy.theme}
-        enemyPresentation={enemy.presentation}
-        combatActive={active}
-        playerWeaponTier={weaponTier}
-        playerShieldTier={shieldTier}
-        playerArmorTier={getArmorTier(game)}
-        playerHasHelmet={Boolean(game.equipment.head)}
-        playerHasBodyArmor={Boolean(game.equipment.body)}
-        playerHasLegArmor={Boolean(game.equipment.legs)}
-        playerHasShield={Boolean(game.equipment.shield)}
-      />
-      <div className="arena-side-label arena-side-player">
-        <Swords size={12} /> PLAYER
-      </div>
-      <div className="arena-side-label arena-side-enemy">
-        ENEMY <Shield size={12} />
-      </div>
-      <div className="arena-topline">
-        <span className="arena-zone-dot" style={{ background: area.accent }} />
-        {area.name}
-        <span className="arena-divider">·</span>
-        {enemy.name}
-        <span className="arena-threat">{selectAreaThreat(game, enemy)}</span>
-      </div>
-      <div className="arena-combatants">
-        <CombatFigure side="player" enemy={enemy} />
-        <div className="arena-center">
-          <BattleStateBanner game={game} enemy={enemy} now={now} events={events} />
-          <div className="arena-divider-mark" aria-hidden="true" />
-        </div>
-        <CombatFigure side="enemy" enemy={enemy} />
-      </div>
-      <div className="arena-health-row">
-        <HealthBar
-          label="Player"
-          current={game.player.currentHp}
-          max={getDerivedStats(game).maxHealth}
-          tone="player"
-        />
-        <HealthBar
-          label={enemy.name}
-          current={getCombatantHp(game, enemy, events)}
-          max={enemy.maxHealth}
-          tone="enemy"
-        />
-      </div>
-      <div className="arena-floating-events" aria-live="polite">
-        {visibleEvents.map((event) => (
-          <span
-            className={`floating-event ${event.type} ${event.type === 'player-hit' ? 'near-enemy' : event.type === 'enemy-hit' ? 'near-player' : 'center-event'}`}
-            key={event.id}
-          >
-            {event.type === 'enemy-defeated'
-              ? 'Defeated'
-              : event.type === 'player-defeated'
-                ? 'Down'
-                : event.type === 'loot'
-                  ? 'Loot!'
-                  : 'damage' in event
-                    ? `-${event.damage}`
-                    : 'Event'}
-          </span>
-        ))}
-      </div>
-      <div className="arena-progress-row">
-        <AttackProgress label="Your next attack" progress={playerProgress} tone="player" />
-        <AttackProgress label="Enemy next attack" progress={enemyProgress} tone="enemy" />
-      </div>
-    </section>
   );
 }
 
@@ -712,39 +248,330 @@ function StyleControls({
   onChange: (style: CombatStyle) => void;
 }) {
   return (
-    <section className="combat-section style-section" aria-labelledby="style-title">
-      <div className="section-heading-row">
-        <div>
-          <div className="eyebrow">Choose how you train</div>
-          <h2 id="style-title">Combat style</h2>
-        </div>
-        <span className="muted">Updates live during combat.</span>
+    <div className="combat-style-block">
+      <div className="combat-subheading-row">
+        <span className="combat-panel-kicker">Combat style</span>
       </div>
-      <div className="style-grid">
+      <div className="combat-style-list" role="group" aria-label="Combat style">
         {(['accurate', 'aggressive', 'defensive'] as CombatStyle[]).map((option) => {
           const info = getCombatStyleInfo(option);
           return (
             <button
               type="button"
-              className={`style-card ${style === option ? 'selected' : ''}`}
+              className={`combat-style-option ${style === option ? 'selected' : ''}`}
               aria-pressed={style === option}
               key={option}
               onClick={() => onChange(option)}
             >
-              <span className="style-icon">
+              <span className="combat-style-option-icon">
                 {option === 'accurate' ? (
-                  <Crosshair size={18} />
+                  <Crosshair size={14} />
                 ) : option === 'aggressive' ? (
-                  <Zap size={18} />
+                  <Zap size={14} />
                 ) : (
-                  <Shield size={18} />
+                  <Shield size={14} />
                 )}
               </span>
-              <strong>{info.name}</strong>
-              <small>{info.skill}</small>
-              <span>{info.benefit}</span>
-              <em>{info.modifier}</em>
+              <span>
+                <strong>{info.name}</strong>
+                <small>{info.modifier}</small>
+              </span>
+              {style === option && <Check size={14} aria-label="Selected" />}
             </button>
+          );
+        })}
+      </div>
+      <p className="combat-style-description">
+        {getCombatStyleInfo(style).benefit}. Hitpoints always gains 1 XP per damage.
+      </p>
+    </div>
+  );
+}
+
+function PlayerSummaryPanel({
+  game,
+  enemy,
+  style,
+  onStyleChange,
+  onNavigate,
+}: {
+  game: GameState;
+  enemy: EnemyDefinition;
+  style: CombatStyle;
+  onStyleChange: (style: CombatStyle) => void;
+  onNavigate: (screen: ScreenId) => void;
+}) {
+  const stats = getDerivedStats(game);
+  return (
+    <section className="combat-dashboard-panel combat-player-panel" aria-labelledby="player-title">
+      <div className="combat-panel-heading">
+        <div className="combat-panel-kicker">Player</div>
+        <div className="combat-player-heading-line">
+          <div className="combat-player-portrait" aria-hidden="true">
+            <UserRound size={25} />
+          </div>
+          <div>
+            <h2 id="player-title">{game.player.name}</h2>
+            <span className="muted">Combat level {stats.combatLevel}</span>
+          </div>
+        </div>
+      </div>
+      <div className="combat-panel-divider" />
+      <div className="combat-panel-kicker">Equipment</div>
+      <EquipmentStrip game={game} />
+      <StyleControls style={style} onChange={onStyleChange} />
+      <div className="combat-subheading-row">
+        <span className="combat-panel-kicker">Core stats</span>
+        <button type="button" className="combat-text-link" onClick={() => onNavigate('equipment')}>
+          View full stats <ArrowUpRight size={13} />
+        </button>
+      </div>
+      <div className="combat-stats-grid">
+        <StatLine label="Attack" value={stats.attack} />
+        <StatLine label="Strength" value={stats.strength} />
+        <StatLine label="Defence" value={stats.defence} />
+        <StatLine label="Hitpoints" value={game.skills.hitpoints.level} />
+        <StatLine label="Maximum hit" value={stats.maxHit} />
+        <StatLine label="Attack interval" value={formatSeconds(stats.attackIntervalMs)} />
+      </div>
+      <span className="sr-only">Current target: {enemy.name}</span>
+    </section>
+  );
+}
+
+function EnemySummaryPanel({
+  game,
+  enemy,
+  onViewLoot,
+}: {
+  game: GameState;
+  enemy: EnemyDefinition;
+  onViewLoot: () => void;
+}) {
+  const enemyDps = selectEnemyEstimatedDps(game, enemy);
+  const discovered = game.discoveredMonsters.includes(enemy.id);
+  return (
+    <section className="combat-dashboard-panel combat-enemy-panel" aria-labelledby="enemy-title">
+      <div className="combat-panel-heading">
+        <div className="combat-panel-kicker">Enemy</div>
+        <div className="combat-enemy-heading-line">
+          <CombatPortrait enemy={enemy} large />
+          <div>
+            <h2 id="enemy-title">{enemy.name}</h2>
+            <span className="muted">
+              Level {enemy.displayLevel} · {enemy.tags?.[0] ?? 'Unknown type'}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="combat-enemy-tags">
+        {(enemy.tags ?? []).map((tag) => (
+          <span className="combat-tag" key={tag}>
+            {tag}
+          </span>
+        ))}
+      </div>
+      <p className="combat-enemy-description">{enemy.description}</p>
+      <div className="combat-subheading-row">
+        <span className="combat-panel-kicker">Combat stats</span>
+        <span className="combat-enemy-discovery">
+          {discovered ? 'Encounter logged' : 'Undiscovered'}
+        </span>
+      </div>
+      <div className="combat-stats-grid">
+        <StatLine label="Maximum hit" value={enemy.maxHit} />
+        <StatLine label="Attack interval" value={formatSeconds(enemy.attackIntervalMs)} />
+        <StatLine label="Estimated DPS" value={enemyDps.toFixed(1)} />
+      </div>
+      <div className="combat-enemy-kill-count">
+        <Trophy size={15} />
+        <span>
+          <strong>{formatNumber(game.killCounts[enemy.id] ?? 0)}</strong> defeated
+        </span>
+      </div>
+      <div className="combat-drop-preview">
+        <div className="combat-subheading-row">
+          <span className="combat-panel-kicker">Drop preview</span>
+          <button type="button" className="combat-text-link" onClick={onViewLoot}>
+            Full drop table <ArrowUpRight size={13} />
+          </button>
+        </div>
+        <div className="combat-drop-list">
+          {enemy.loot.slice(0, 3).map((drop) => (
+            <div className="combat-drop-item" key={drop.itemId}>
+              <ItemIcon
+                itemId={drop.itemId}
+                discovered={game.discoveredItems.includes(drop.itemId)}
+                size="xs"
+              />
+              <span>
+                {game.discoveredItems.includes(drop.itemId)
+                  ? itemById[drop.itemId]?.name
+                  : 'Undiscovered'}
+              </span>
+              <small>{displayDropChance(drop.chance)}</small>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CombatPortraitSmall({ enemy }: { enemy: EnemyDefinition }) {
+  const usesForestRatArt = enemy.id === 'forest-rat';
+  return (
+    <div className={`combat-roster-portrait theme-${enemy.theme}`} aria-hidden="true">
+      {usesForestRatArt ? <img src={forestRatImage} alt="" /> : enemyGlyph[enemy.theme]}
+    </div>
+  );
+}
+
+function EnemyRoster({
+  game,
+  area,
+  selectedEnemy,
+  activeEnemy,
+  onSelect,
+}: {
+  game: GameState;
+  area: (typeof AREAS)[number];
+  selectedEnemy: EnemyId;
+  activeEnemy: EnemyId | null;
+  onSelect: (enemyId: EnemyId, areaId: AreaId) => void;
+}) {
+  return (
+    <div className="combat-enemy-roster" aria-label={`${area.name} enemies`}>
+      {area.enemyIds.map((enemyId) => {
+        const enemy = enemyById[enemyId];
+        const selected = selectedEnemy === enemyId;
+        const fighting = activeEnemy === enemyId;
+        const kills = game.killCounts[enemyId] ?? 0;
+        const status = fighting ? 'Fighting' : selected ? 'Selected' : kills ? 'Defeated' : 'New';
+        const action = fighting ? 'Fighting' : activeEnemy ? 'Switch target' : 'Select target';
+        return (
+          <button
+            type="button"
+            className={`combat-enemy-card ${selected ? 'selected' : ''} ${fighting ? 'fighting' : ''}`}
+            aria-pressed={selected}
+            aria-label={`${action} ${enemy.name}, level ${enemy.displayLevel}`}
+            key={enemyId}
+            onClick={() => onSelect(enemyId, area.id)}
+          >
+            <CombatPortraitSmall enemy={enemy} />
+            <span className="combat-enemy-card-copy">
+              <strong>{enemy.name}</strong>
+              <span>Lv {enemy.displayLevel}</span>
+              <small>{status}</small>
+            </span>
+            {fighting && <Swords size={14} aria-label="Currently fighting" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function AreaAccordion({
+  game,
+  selectedArea,
+  expandedArea,
+  selectedEnemy,
+  activeEnemy,
+  locationsExpanded,
+  onToggle,
+  onSelectEnemy,
+  onToggleLocations,
+}: {
+  game: GameState;
+  selectedArea: AreaId;
+  expandedArea: AreaId | null;
+  selectedEnemy: EnemyId;
+  activeEnemy: EnemyId | null;
+  locationsExpanded: boolean;
+  onToggle: (areaId: AreaId) => void;
+  onSelectEnemy: (enemyId: EnemyId, areaId: AreaId) => void;
+  onToggleLocations: () => void;
+}) {
+  return (
+    <section className="combat-locations" aria-labelledby="combat-locations-title">
+      <div className="combat-section-heading">
+        <div>
+          <div className="eyebrow">Choose your road</div>
+          <h2 id="combat-locations-title">Combat locations</h2>
+        </div>
+        <button
+          type="button"
+          className="combat-locations-toggle"
+          aria-expanded={locationsExpanded}
+          aria-controls="combat-location-list"
+          onClick={onToggleLocations}
+        >
+          {locationsExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          {locationsExpanded ? 'Collapse locations' : 'Expand locations'}
+        </button>
+      </div>
+      <div id="combat-location-list" className="combat-location-list" hidden={!locationsExpanded}>
+        {AREAS.map((area) => {
+          const unlocked = game.unlockedAreas.includes(area.id) || area.unlock(game);
+          const expanded = expandedArea === area.id;
+          const selected = selectedArea === area.id;
+          const kills = area.enemyIds.reduce((sum, id) => sum + (game.killCounts[id] ?? 0), 0);
+          const Icon = zoneIcon[area.presentation.iconKey];
+          return (
+            <div
+              className={`combat-location ${expanded ? 'expanded' : ''} ${selected ? 'selected' : ''} ${!unlocked ? 'locked' : ''}`}
+              key={area.id}
+            >
+              <button
+                type="button"
+                className="combat-location-row"
+                aria-expanded={expanded}
+                disabled={!unlocked}
+                aria-controls={`combat-location-${area.id}`}
+                onClick={() => onToggle(area.id)}
+              >
+                <span className="combat-location-chevron" aria-hidden="true">
+                  {expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}
+                </span>
+                <span className="combat-location-icon">
+                  <Icon size={17} />
+                </span>
+                <span className="combat-location-name">
+                  <strong>{area.name}</strong>
+                  <small>{area.description}</small>
+                </span>
+                <span className="combat-location-level">
+                  Recommended {area.recommendedLevel[0]}–{area.recommendedLevel[1]}
+                </span>
+                <span className="combat-location-progress">
+                  {kills}/{ZONE_COMPLETION_KILLS} kills
+                </span>
+                <span className={`combat-location-status ${unlocked ? '' : 'locked'}`}>
+                  {unlocked ? (selected ? 'Selected' : 'Available') : 'Locked'}
+                </span>
+              </button>
+              {!unlocked && (
+                <div className="combat-location-requirement">
+                  <Lock size={13} /> Requires: {area.requirement}
+                </div>
+              )}
+              {expanded && unlocked && (
+                <div className="combat-location-content" id={`combat-location-${area.id}`}>
+                  <div className="combat-location-content-heading">
+                    <span className="combat-panel-kicker">Know your enemy</span>
+                    <span className="muted">Select a target to update the live panels.</span>
+                  </div>
+                  <EnemyRoster
+                    game={game}
+                    area={area}
+                    selectedEnemy={selectedEnemy}
+                    activeEnemy={activeEnemy}
+                    onSelect={onSelectEnemy}
+                  />
+                </div>
+              )}
+            </div>
           );
         })}
       </div>
@@ -752,100 +579,288 @@ function StyleControls({
   );
 }
 
-function EnemyRoster({
+function CombatContentTabs({
+  activeTab,
+  onChange,
+}: {
+  activeTab: CombatContentTab;
+  onChange: (tab: CombatContentTab) => void;
+}) {
+  const tabs: Array<{ id: CombatContentTab; label: string; description: string }> = [
+    { id: 'areas', label: 'Areas', description: 'Open-world combat locations' },
+    { id: 'dungeons', label: 'Dungeons', description: 'Future multi-stage encounters' },
+    { id: 'slayer', label: 'Slayer Areas', description: 'Future task-based hunts' },
+  ];
+  return (
+    <div className="combat-content-tabs" role="tablist" aria-label="Combat content">
+      {tabs.map((tab) => (
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === tab.id}
+          className={activeTab === tab.id ? 'selected' : ''}
+          key={tab.id}
+          onClick={() => onChange(tab.id)}
+        >
+          <span>{tab.label}</span>
+          <small>{tab.description}</small>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function LockedCombatContent({ tab }: { tab: Exclude<CombatContentTab, 'areas'> }) {
+  const label = tab === 'dungeons' ? 'Dungeons' : 'Slayer Areas';
+  return (
+    <section className="combat-future-content" role="tabpanel" aria-label={label}>
+      <Lock size={19} />
+      <div>
+        <strong>{label} are not available yet</strong>
+        <span>This content slot is ready for a future combat system.</span>
+      </div>
+    </section>
+  );
+}
+
+function getLiveStatus(
+  game: GameState,
+  enemy: EnemyDefinition,
+  events: CombatVisualEvent[],
+  now: number,
+): string {
+  const active = game.activeAction.type === 'combat' ? game.activeAction : null;
+  if (active) {
+    if (active.combatState.respawnMs > 0) return 'RESPAWNING';
+    if (active.combatState.enemyHp <= 0) return 'VICTORY';
+    if (game.player.currentHp <= 0) return 'DEFEATED';
+    return 'FIGHTING';
+  }
+  const recentOutcome = [...events]
+    .reverse()
+    .find(
+      (event) =>
+        event.enemyId === enemy.id &&
+        now - event.at < 2_000 &&
+        (event.type === 'enemy-defeated' || event.type === 'player-defeated'),
+    );
+  if (recentOutcome?.type === 'enemy-defeated') return 'VICTORY';
+  if (recentOutcome?.type === 'player-defeated') return 'DEFEATED';
+  if (selectCombatStatus(game) === 'Inventory full') return 'INVENTORY FULL';
+  return 'READY';
+}
+
+function getLogPresentation(
+  text: string,
+  tone: GameState['log'][number]['tone'],
+): { label: string; icon: typeof Sword; category: string; important: boolean } {
+  const lower = text.toLowerCase();
+  if (lower.includes('defeated'))
+    return { label: 'Defeat', icon: Skull, category: 'defeat', important: true };
+  if (lower.includes('received') || lower.includes('gold'))
+    return { label: 'Loot', icon: Sparkles, category: 'loot', important: tone === 'success' };
+  if (lower.includes('reached level'))
+    return { label: 'Level', icon: ArrowUpRight, category: 'level', important: true };
+  if (lower.includes('accessible'))
+    return { label: 'Unlock', icon: Trophy, category: 'unlock', important: true };
+  if (lower.includes('hit'))
+    return {
+      label: 'Damage',
+      icon: Sword,
+      category: tone === 'danger' ? 'enemy-hit' : 'player-hit',
+      important: false,
+    };
+  return { label: 'System', icon: Clock3, category: 'system', important: false };
+}
+
+function RecentActions({ game, enemy }: { game: GameState; enemy: EnemyDefinition }) {
+  const entries = useMemo(
+    () =>
+      game.log
+        .filter((entry) => {
+          const lower = entry.text.toLowerCase();
+          return (
+            lower.includes('hit') ||
+            lower.includes('defeated') ||
+            lower.includes('received') ||
+            lower.includes('gold') ||
+            lower.includes('level') ||
+            lower.includes('combat') ||
+            lower.includes('inventory')
+          );
+        })
+        .filter(
+          (entry) =>
+            entry.text.toLowerCase().includes(enemy.name.toLowerCase()) ||
+            !entry.text.toLowerCase().includes('hit'),
+        )
+        .slice(0, 8),
+    [game.log, enemy.name],
+  );
+  return (
+    <div className="combat-recent-actions">
+      <div className="combat-subheading-row">
+        <span className="combat-panel-kicker">Recent actions</span>
+        <span className="muted">Live combat log</span>
+      </div>
+      <div className="combat-live-log" aria-live="polite">
+        {entries.length ? (
+          entries.map((entry) => {
+            const presentation = getLogPresentation(entry.text, entry.tone);
+            const Icon = presentation.icon;
+            return (
+              <div
+                className={`combat-live-log-entry ${presentation.category} ${presentation.important ? 'important' : ''}`}
+                key={entry.id}
+              >
+                <time>
+                  {new Date(entry.at).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </time>
+                <span className="combat-live-log-icon">
+                  <Icon size={12} />
+                </span>
+                <span>{entry.text}</span>
+              </div>
+            );
+          })
+        ) : (
+          <span className="muted">Combat actions will appear here.</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LiveCombatResolution({
   game,
-  areaId,
-  selectedEnemy,
-  activeEnemy,
-  onSelect,
+  enemy,
+  events,
+  autoRepeat,
+  onAutoRepeatChange,
+  actionText,
+  actionDisabled,
+  onAction,
+  inventoryFull,
+  onNavigate,
 }: {
   game: GameState;
-  areaId: AreaId;
-  selectedEnemy: EnemyId;
-  activeEnemy: EnemyId | null;
-  onSelect: (enemyId: EnemyId) => void;
+  enemy: EnemyDefinition;
+  events: CombatVisualEvent[];
+  autoRepeat: boolean;
+  onAutoRepeatChange: (checked: boolean) => void;
+  actionText: string;
+  actionDisabled: boolean;
+  onAction: () => void;
+  inventoryFull: boolean;
+  onNavigate: (screen: ScreenId) => void;
 }) {
-  const area = areaById[areaId];
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 200);
+    return () => window.clearInterval(timer);
+  }, []);
+  const status = getLiveStatus(game, enemy, events, now);
+  const active = game.activeAction.type === 'combat' && game.activeAction.enemyId === enemy.id;
+  const playerProgress = selectPlayerAttackProgress(game, now);
+  const enemyProgress = selectEnemyAttackProgress(game, now);
+  const enemyHp = getCombatantHp(game, enemy, events, now);
+  const statusIcon =
+    status === 'VICTORY' ? (
+      <Trophy size={15} />
+    ) : status === 'DEFEATED' ? (
+      <Skull size={15} />
+    ) : (
+      <Crosshair size={15} />
+    );
   return (
-    <section className="combat-section roster-section" aria-labelledby="roster-title">
-      <div className="section-heading-row">
+    <section
+      className={`combat-live-panel status-${status.toLowerCase().replaceAll(' ', '-')}`}
+      aria-label="Live combat resolution"
+    >
+      <div className="combat-live-heading">
         <div>
-          <div className="eyebrow">Know your enemy</div>
-          <h2 id="roster-title">{area.name} roster</h2>
+          <div className="combat-panel-kicker">Live combat resolution</div>
+          <h2 id="live-combat-title">{enemy.name}</h2>
         </div>
-        <span className="muted">Review the threat, then select or switch targets.</span>
+        <div className="combat-live-status" aria-live="polite">
+          {statusIcon} {status}
+        </div>
       </div>
-      <div className="enemy-roster">
-        {area.enemyIds.map((enemyId) => {
-          const enemy = enemyById[enemyId];
-          const selected = enemyId === selectedEnemy;
-          const fighting = enemyId === activeEnemy;
-          const discovered = game.discoveredMonsters.includes(enemyId);
-          const kills = game.killCounts[enemyId] ?? 0;
-          const status = fighting
-            ? 'Fighting'
-            : selected
-              ? 'Selected'
-              : kills > 0
-                ? 'Defeated before'
-                : 'New';
-          const action = fighting
-            ? 'Fighting'
-            : selected
-              ? 'Selected'
-              : activeEnemy
-                ? 'Switch target'
-                : 'Select';
-          return (
-            <button
-              type="button"
-              className={`enemy-roster-card enemy-state-${status.toLowerCase().replaceAll(' ', '-')} ${selected ? 'selected' : ''} ${fighting ? 'fighting' : ''}`}
-              aria-pressed={selected}
-              aria-label={`${action} ${enemy.name}, level ${enemy.displayLevel}`}
-              key={enemyId}
-              onClick={() => onSelect(enemyId)}
-            >
-              <div className={`roster-portrait theme-${enemy.theme}`}>
-                {enemy.id === 'forest-rat' ? (
-                  <img src={forestRatImage} alt="" />
-                ) : (
-                  getEnemyGlyph(enemy.theme)
-                )}
-              </div>
-              <div className="roster-copy">
-                <div className="roster-title">
-                  <strong>{enemy.name}</strong>
-                  <span className="badge">Lv {enemy.displayLevel}</span>
-                  <span className="status-pill">{status}</span>
-                </div>
-                <p>{enemy.description}</p>
-                <div className="roster-stats">
-                  <span>{enemy.maxHealth} HP</span>
-                  <span>{enemy.maxHit} max hit</span>
-                  <span>{formatSeconds(enemy.attackIntervalMs)}</span>
-                  <span>{selectAreaThreat(game, enemy)}</span>
-                  <span>{kills} kills</span>
-                </div>
-                <div className="roster-drops">
-                  <span>Drops</span>
-                  {enemy.loot.slice(0, 3).map((drop) => (
-                    <ItemIcon
-                      itemId={drop.itemId}
-                      discovered={discovered || game.discoveredItems.includes(drop.itemId)}
-                      size="xs"
-                      key={drop.itemId}
-                    />
-                  ))}
-                </div>
-              </div>
-              <span className="roster-action-label">
-                {action}
-                <ChevronRight size={15} />
-              </span>
-            </button>
-          );
-        })}
+      <div className="combat-resolution-compare">
+        <div className="combat-resolution-side player">
+          <HealthBar
+            label="YOU"
+            current={game.player.currentHp}
+            max={getDerivedStats(game).maxHealth}
+            tone="player"
+          />
+          <AttackProgress label="Next attack" progress={playerProgress} tone="player" />
+        </div>
+        <div className="combat-resolution-vs" aria-hidden="true">
+          VS
+        </div>
+        <div className="combat-resolution-side enemy">
+          <HealthBar label={enemy.name} current={enemyHp} max={enemy.maxHealth} tone="enemy" />
+          <AttackProgress label="Next attack" progress={enemyProgress} tone="enemy" />
+        </div>
       </div>
+      <div className="combat-resolution-state">
+        <span>
+          <Timer size={14} />
+          {active &&
+          game.activeAction.type === 'combat' &&
+          game.activeAction.combatState.respawnMs > 0
+            ? `Respawning in ${formatSeconds(game.activeAction.combatState.respawnMs)}`
+            : status === 'READY'
+              ? `Ready to fight ${enemy.name}`
+              : status === 'INVENTORY FULL'
+                ? 'Open Inventory to make room for rewards.'
+                : status === 'DEFEATED'
+                  ? 'Recovering safely'
+                  : status === 'VICTORY'
+                    ? 'Victory secured'
+                    : active
+                      ? `Next player attack in ${formatSeconds(playerProgress.timeUntilAttackMs)}`
+                      : 'Combat stopped'}
+        </span>
+        <span className="combat-effects">
+          <Sparkles size={13} /> Active effects: None
+        </span>
+      </div>
+      <div className="combat-live-controls">
+        <label className="auto-repeat-toggle">
+          <input
+            type="checkbox"
+            checked={autoRepeat}
+            onChange={(event) => onAutoRepeatChange(event.target.checked)}
+          />{' '}
+          <span>Auto Repeat</span>
+        </label>
+        <button
+          type="button"
+          aria-label={actionText}
+          className={`button ${active ? 'danger' : 'primary'} combat-main-action`}
+          disabled={actionDisabled}
+          onClick={onAction}
+        >
+          {active ? <CircleStop size={17} /> : <Swords size={17} />}
+          {actionText}
+          <small>{!inventoryFull ? enemy.name : ''}</small>
+        </button>
+        {inventoryFull && !active && (
+          <button
+            type="button"
+            className="button ghost inventory-shortcut"
+            onClick={() => onNavigate('inventory')}
+          >
+            <PackageOpen size={14} /> Open Inventory
+          </button>
+        )}
+      </div>
+      <RecentActions game={game} enemy={enemy} />
     </section>
   );
 }
@@ -867,10 +882,10 @@ function LootPanel({
     .slice(-4)
     .reverse();
   return (
-    <section className="combat-section loot-panel" aria-labelledby="loot-title">
-      <div className="section-heading-row">
+    <section className="combat-overview-content combat-loot-content" aria-labelledby="loot-title">
+      <div className="combat-section-heading">
         <div>
-          <div className="eyebrow">What the road gives back</div>
+          <div className="eyebrow">Rewards and discovery</div>
           <h2 id="loot-title">Loot table</h2>
         </div>
         <span className="muted">
@@ -879,23 +894,22 @@ function LootPanel({
             : 'Discover drops by fighting'}
         </span>
       </div>
-      <div className="loot-table">
-        <div className="loot-row loot-head">
+      <div className="combat-loot-table">
+        <div className="combat-loot-row header">
           <span>Item</span>
           <span>Quantity</span>
           <span>Chance</span>
           <span>Owned</span>
         </div>
         {enemy.loot.map((drop) => {
-          const item = itemById[drop.itemId];
           const discovered = game.discoveredItems.includes(drop.itemId);
           const rarity = getLootRarity(drop.chance);
           return (
-            <div className="loot-row" key={drop.itemId}>
-              <span className="loot-item">
+            <div className="combat-loot-row" key={drop.itemId}>
+              <span className="combat-loot-item">
                 <ItemIcon itemId={drop.itemId} discovered={discovered} size="sm" />
-                <span className="loot-item-copy">
-                  <b>{discovered ? item?.name : '???'}</b>
+                <span>
+                  <strong>{discovered ? itemById[drop.itemId]?.name : 'Undiscovered'}</strong>
                   <small
                     className={`loot-rarity loot-rarity-${rarity.toLowerCase().replace(' ', '-')}`}
                   >
@@ -906,58 +920,38 @@ function LootPanel({
               <span>
                 {drop.min}–{drop.max}
               </span>
-              <span className="loot-chance">{displayDropChance(drop.chance)}</span>
+              <span>{displayDropChance(drop.chance)}</span>
               <span>{getItemQuantity(game.inventory, drop.itemId)}</span>
             </div>
           );
         })}
-        <div className="loot-row gold-row">
-          <span className="loot-item">
+        <div className="combat-loot-row gold">
+          <span className="combat-loot-item">
             <ItemIcon gold size="sm" />
-            <span className="loot-item-copy">
-              <b>Gold</b>
-              <small className="loot-rarity loot-rarity-common">Guaranteed</small>
+            <span>
+              <strong>Gold</strong>
+              <small>Guaranteed</small>
             </span>
           </span>
           <span>
             {enemy.gold[0]}–{enemy.gold[1]}
           </span>
-          <span className="loot-chance">Guaranteed</span>
+          <span>Guaranteed</span>
           <span>{formatNumber(game.gold)}</span>
         </div>
       </div>
-      <div className="recent-loot">
-        <div className="panel-label">Recent rewards</div>
+      <div className="combat-rewards-list">
+        <span className="combat-panel-kicker">Recent rewards</span>
         {recentLoot.length ? (
           recentLoot.map((event) => (
-            <div className="recent-loot-event" key={event.id}>
-              <div className="recent-loot-event-head">
-                <Trophy size={12} /> <strong>Victory reward</strong>
-                <time>
-                  {new Date(event.at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </time>
-              </div>
-              {event.gold > 0 && (
-                <div className="recent-loot-row">
-                  <ItemIcon gold size="xs" />+{event.gold} Gold
-                </div>
-              )}
-              {event.items.map((item) => (
-                <div className="recent-loot-row" key={`${event.id}-${item.itemId}`}>
-                  <ItemIcon
-                    itemId={item.itemId}
-                    discovered={game.discoveredItems.includes(item.itemId)}
-                    size="xs"
-                  />
-                  +{item.quantity} {itemById[item.itemId]?.name ?? item.itemId}
-                  {game.discoveredItems.includes(item.itemId) && (
-                    <span className="discovery-note">· discovered</span>
-                  )}
-                </div>
-              ))}
+            <div className="combat-reward-row" key={event.id}>
+              <Trophy size={13} />
+              <span>
+                +{event.gold} Gold
+                {event.items.length
+                  ? ` · ${event.items.length} item drop${event.items.length === 1 ? '' : 's'}`
+                  : ''}
+              </span>
             </div>
           ))
         ) : (
@@ -968,26 +962,15 @@ function LootPanel({
   );
 }
 
-const getNextUnlockText = (game: GameState): { name: string; requirement: string } => {
-  const combatLevel = getDerivedStats(game).combatLevel;
-  const trainingKills =
-    (game.killCounts['forest-rat'] ?? 0) + (game.killCounts['goblin-scavenger'] ?? 0);
-  const copperKills = (game.killCounts['cave-bat'] ?? 0) + (game.killCounts['stoneback-crab'] ?? 0);
-  if (!game.unlockedAreas.includes('copper-hills'))
-    return {
-      name: 'Copper Hills',
-      requirement: `Combat level ${combatLevel}/5 or Training Grounds kills ${trainingKills}/5`,
-    };
-  if (!game.unlockedAreas.includes('ironwood-pass'))
-    return {
-      name: 'Ironwood Pass',
-      requirement: `Combat level ${combatLevel}/15 and Copper Hills kills ${copperKills}/8`,
-    };
-  return {
-    name: 'All current zones unlocked',
-    requirement: 'Keep training for the next content pass.',
-  };
-};
+function getNextUnlockText(game: GameState): { name: string; requirement: string } {
+  const next = AREAS.find((area) => !game.unlockedAreas.includes(area.id) && !area.unlock(game));
+  return next
+    ? { name: next.name, requirement: next.requirement }
+    : {
+        name: 'All current zones unlocked',
+        requirement: 'Keep training for the next content pass.',
+      };
+}
 
 function ProgressionPanel({
   game,
@@ -995,183 +978,202 @@ function ProgressionPanel({
   style,
 }: {
   game: GameState;
-  session: ReturnType<typeof useGameStore.getState>['combatSession'];
+  session: CombatSessionStats;
   style: CombatStyle;
 }) {
   const skills = ['attack', 'strength', 'defence', 'hitpoints'] as const;
   const started = session.startedAt ? Math.max(1_000, Date.now() - session.startedAt) : 0;
-  const totalXp = Object.values(session.xpGained).reduce((sum, amount) => sum + (amount ?? 0), 0);
   const selectedSkill = getCombatStyleSkill(style);
-  const selectedXpHour = started
-    ? ((session.xpGained[selectedSkill] ?? 0) * 3_600_000) / started
-    : 0;
-  const killsHour = started ? (session.enemiesDefeated * 3_600_000) / started : 0;
-  const unlock = getNextUnlockText(game);
+  const totalXp = Object.values(session.xpGained).reduce((sum, amount) => sum + (amount ?? 0), 0);
+  const xpHour = started ? ((session.xpGained[selectedSkill] ?? 0) * 3_600_000) / started : 0;
   return (
-    <section className="combat-section progression-panel" aria-labelledby="progression-title">
-      <div className="section-heading-row">
+    <section className="combat-overview-content" aria-labelledby="progression-title">
+      <div className="combat-section-heading">
         <div>
           <div className="eyebrow">The long game</div>
           <h2 id="progression-title">Combat progression</h2>
         </div>
         <span className="muted">Current session</span>
       </div>
-      <div className="training-focus">
+      <div className="combat-training-focus">
         <ArrowUpRight size={15} />
-        <div>
-          <span>Training</span>
-          <strong>
-            {selectedSkill[0].toUpperCase() + selectedSkill.slice(1)} ·{' '}
-            {formatNumber(session.xpGained[selectedSkill] ?? 0)} XP this session
-          </strong>
-        </div>
-        <small>{formatNumber(selectedXpHour)} XP/hour</small>
+        <span>Training {selectedSkill[0].toUpperCase() + selectedSkill.slice(1)}</span>
+        <strong>{formatNumber(session.xpGained[selectedSkill] ?? 0)} XP</strong>
+        <small>{formatNumber(xpHour)} XP/hour</small>
       </div>
-      <div className="xp-grid">
+      <div className="combat-xp-grid">
         {skills.map((skill) => {
           const progress = getLevelProgress(game.skills[skill]);
           return (
-            <div className="xp-row" key={skill}>
-              <div className="xp-label">
+            <div className="combat-xp-row" key={skill}>
+              <div>
                 <span>{skill[0].toUpperCase() + skill.slice(1)}</span>
                 <b>Lv {game.skills[skill].level}</b>
               </div>
-              <div className="bar">
+              <div className="combat-xp-bar">
                 <i style={{ width: `${progress.percent}%` }} />
               </div>
               <small>
                 {formatNumber(progress.current)} / {progress.next || 'MAX'} XP
-                {session.xpGained[skill]
-                  ? ` · +${formatNumber(session.xpGained[skill] ?? 0)} session`
-                  : ''}
               </small>
             </div>
           );
         })}
       </div>
-      <div className="session-stats">
+      <div className="combat-session-stat-grid">
         <div>
-          <b>{formatDuration(started)}</b>
-          <span>session duration</span>
+          <strong>{formatDuration(started)}</strong>
+          <span>time active</span>
         </div>
         <div>
-          <b>{formatNumber(session.enemiesDefeated)}</b>
-          <span>kills · {formatNumber(killsHour)}/hr</span>
+          <strong>{formatNumber(session.enemiesDefeated)}</strong>
+          <span>enemies defeated</span>
         </div>
         <div>
-          <b>{formatNumber(totalXp)}</b>
+          <strong>{formatNumber(totalXp)}</strong>
           <span>XP gained</span>
         </div>
         <div>
-          <b>{formatNumber(session.goldGained)}</b>
+          <strong>{formatNumber(session.goldGained)}</strong>
           <span>gold gained</span>
         </div>
       </div>
-      <div className="next-unlock">
-        <div>
-          <span className="panel-label">Next unlock</span>
-          <strong>{unlock.name}</strong>
-        </div>
-        <small>{unlock.requirement}</small>
+      <div className="combat-next-unlock">
+        <span>
+          Next unlock: <strong>{getNextUnlockText(game).name}</strong>
+        </span>
+        <small>{getNextUnlockText(game).requirement}</small>
       </div>
     </section>
   );
 }
 
-type LogFilter = 'all' | 'damage' | 'loot' | 'progression' | 'system';
-const getLogPresentation = (
-  text: string,
-  tone: GameState['log'][number]['tone'],
-): { category: string; label: string; icon: typeof Sword; important: boolean } => {
-  const lower = text.toLowerCase();
-  if (lower.includes('defeated'))
-    return { category: 'defeat', label: 'Defeat', icon: Skull, important: true };
-  if (lower.includes('received') || lower.includes('gold'))
-    return { category: 'loot', label: 'Loot', icon: Sparkles, important: tone === 'success' };
-  if (lower.includes('reached level'))
-    return { category: 'level', label: 'Level', icon: ArrowUpRight, important: true };
-  if (lower.includes('accessible'))
-    return { category: 'unlock', label: 'Unlock', icon: Trophy, important: true };
-  if (lower.includes('discovered') || lower.includes('collection'))
-    return { category: 'discovery', label: 'Discovery', icon: Gem, important: true };
-  if (lower.includes('hit'))
-    return {
-      category: tone === 'danger' ? 'enemy-hit' : 'player-hit',
-      label: 'Damage',
-      icon: Sword,
-      important: false,
-    };
-  if (lower.includes('inventory') || lower.includes('save') || lower.includes('stopped'))
-    return { category: 'warning', label: 'System', icon: AlertTriangle, important: true };
-  return { category: 'system', label: 'System', icon: Clock3, important: false };
-};
-
-function CombatLog({ game }: { game: GameState }) {
-  const [filter, setFilter] = useState<LogFilter>('all');
-  const entries = useMemo(
-    () =>
-      game.log
-        .filter((entry) => {
-          const category = getLogPresentation(entry.text, entry.tone).category;
-          if (filter === 'all') return true;
-          if (filter === 'damage') return category === 'player-hit' || category === 'enemy-hit';
-          if (filter === 'loot') return category === 'loot';
-          if (filter === 'progression') return ['level', 'unlock', 'discovery'].includes(category);
-          return ['system', 'warning', 'defeat'].includes(category);
-        })
-        .slice(0, 50),
-    [game.log, filter],
-  );
+function OverviewSummary({
+  game,
+  enemy,
+  session,
+  style,
+  autoRepeat,
+}: {
+  game: GameState;
+  enemy: EnemyDefinition;
+  session: CombatSessionStats;
+  style: CombatStyle;
+  autoRepeat: boolean;
+}) {
+  const stats = getDerivedStats(game);
+  const sessionStartedAt =
+    session.startedAt ?? (game.activeAction.type === 'combat' ? game.updatedAt : null);
+  const started = sessionStartedAt ? Math.max(1_000, Date.now() - sessionStartedAt) : 0;
+  const totalXp = Object.values(session.xpGained).reduce((sum, amount) => sum + (amount ?? 0), 0);
+  const itemsGained = Object.values(session.lootGained).reduce((sum, amount) => sum + amount, 0);
+  const dps = selectPlayerEstimatedDps(game, enemy);
   return (
-    <section className="combat-section log-panel" aria-labelledby="combat-log-title">
-      <div className="section-heading-row">
+    <section className="combat-overview-content" aria-labelledby="session-summary-title">
+      <div className="combat-section-heading">
         <div>
-          <div className="eyebrow">Readable feedback</div>
-          <h2 id="combat-log-title">Combat log</h2>
+          <div className="eyebrow">Session summary</div>
+          <h2 id="session-summary-title">Session summary</h2>
         </div>
-        <span className="muted">Latest {entries.length} of 50 entries</span>
+        <span className="muted">Live values from this combat session</span>
       </div>
-      <div className="log-filters" role="group" aria-label="Combat log filters">
-        {(['all', 'damage', 'loot', 'progression', 'system'] as LogFilter[]).map((option) => (
+      <div className="combat-overview-columns">
+        <div>
+          <span className="combat-panel-kicker">Session totals</span>
+          <strong>{formatDuration(started)}</strong>
+          <small>time active</small>
+          <strong>{formatNumber(session.enemiesDefeated)}</strong>
+          <small>enemies defeated</small>
+          <strong>{formatNumber(totalXp)}</strong>
+          <small>XP gained</small>
+        </div>
+        <div>
+          <span className="combat-panel-kicker">Performance</span>
+          <strong>{dps.toFixed(1)}</strong>
+          <small>estimated DPS</small>
+          <strong>100%</strong>
+          <small>hit chance</small>
+          <strong>{formatSeconds((enemy.maxHealth / Math.max(0.1, dps)) * 1_000)}</strong>
+          <small>estimated kill time</small>
+        </div>
+        <div>
+          <span className="combat-panel-kicker">Resources</span>
+          <strong>{formatNumber(session.goldGained)}</strong>
+          <small>gold gained</small>
+          <strong>{formatNumber(itemsGained)}</strong>
+          <small>items gained</small>
+          <strong>
+            {occupiedSlots(game.inventory)} / {GAME_CONFIG.inventorySlots}
+          </strong>
+          <small>inventory slots used</small>
+        </div>
+        <div>
+          <span className="combat-panel-kicker">Status</span>
+          <strong>{autoRepeat ? 'On' : 'Off'}</strong>
+          <small>auto repeat</small>
+          <strong>{getCombatStyleInfo(style).name}</strong>
+          <small>combat style</small>
+          <strong>{stats.maxHealth}</strong>
+          <small>maximum HP</small>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CombatOverviewTabs({
+  game,
+  enemy,
+  session,
+  style,
+  autoRepeat,
+  events,
+  tab,
+  onTabChange,
+}: {
+  game: GameState;
+  enemy: EnemyDefinition;
+  session: CombatSessionStats;
+  style: CombatStyle;
+  autoRepeat: boolean;
+  events: CombatVisualEvent[];
+  tab: OverviewTab;
+  onTabChange: (tab: OverviewTab) => void;
+}) {
+  const tabLabels: Record<OverviewTab, string> = {
+    overview: 'Session summary',
+    loot: 'Loot',
+    progression: 'Progression',
+  };
+  return (
+    <section className="combat-overview" aria-label="Combat summary">
+      <div className="combat-overview-tabs" role="tablist" aria-label="Combat summary tabs">
+        {(['overview', 'loot', 'progression'] as OverviewTab[]).map((option) => (
           <button
             type="button"
-            className={filter === option ? 'active' : ''}
-            aria-pressed={filter === option}
+            role="tab"
+            aria-selected={tab === option}
+            className={tab === option ? 'selected' : ''}
             key={option}
-            onClick={() => setFilter(option)}
+            onClick={() => onTabChange(option)}
           >
-            {option}
+            {tabLabels[option]}
           </button>
         ))}
       </div>
-      <div className="combat-log" aria-live="polite">
-        {entries.length ? (
-          entries.map((entry) => {
-            const presentation = getLogPresentation(entry.text, entry.tone);
-            const Icon = presentation.icon;
-            return (
-              <div
-                className={`combat-log-entry ${entry.tone} log-category-${presentation.category} ${presentation.important ? 'important' : ''}`}
-                key={entry.id}
-              >
-                <time>
-                  {new Date(entry.at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </time>
-                <span className="log-entry-icon">
-                  <Icon size={12} />
-                </span>
-                <b className="log-entry-label">{presentation.label}</b>
-                <span>{entry.text}</span>
-              </div>
-            );
-          })
-        ) : (
-          <span className="muted">No entries in this filter yet.</span>
-        )}
-      </div>
+      {tab === 'overview' ? (
+        <OverviewSummary
+          game={game}
+          enemy={enemy}
+          session={session}
+          style={style}
+          autoRepeat={autoRepeat}
+        />
+      ) : tab === 'loot' ? (
+        <LootPanel game={game} enemy={enemy} events={events} />
+      ) : (
+        <ProgressionPanel game={game} session={session} style={style} />
+      )}
     </section>
   );
 }
@@ -1187,91 +1189,126 @@ export function CombatScreen({
   requestConfirmation: (options: ConfirmDialogOptions) => void;
   onNavigate: (screen: ScreenId) => void;
 }) {
-  const [now, setNow] = useState(Date.now());
   const active = game.activeAction.type === 'combat' ? game.activeAction : null;
-  const [selectedArea, setSelectedArea] = useState<AreaId>(active?.areaId ?? 'training-grounds');
-  const [selectedEnemy, setSelectedEnemy] = useState<EnemyId>(active?.enemyId ?? 'forest-rat');
-  const [style, setStyle] = useState<CombatStyle>(active?.style ?? 'accurate');
-  const [autoRepeat, setAutoRepeat] = useState(active?.autoRepeat ?? true);
+  const activeAreaId = active?.areaId;
+  const activeEnemyId = active?.enemyId;
+  const activeStyle = active?.style;
+  const activeAutoRepeat = active?.autoRepeat;
+  const [contentTab, setContentTab] = useState<CombatContentTab>('areas');
+  const [locationsExpanded, setLocationsExpanded] = useState(true);
+  const [overviewTab, setOverviewTab] = useState<OverviewTab>('overview');
+  const [selectedArea, setSelectedArea] = useState<AreaId>(activeAreaId ?? 'training-grounds');
+  const [expandedArea, setExpandedArea] = useState<AreaId | null>(
+    activeAreaId ?? 'training-grounds',
+  );
+  const [selectedEnemy, setSelectedEnemy] = useState<EnemyId>(activeEnemyId ?? 'forest-rat');
+  const [style, setStyle] = useState<CombatStyle>(activeStyle ?? 'accurate');
+  const [autoRepeat, setAutoRepeat] = useState(activeAutoRepeat ?? true);
   const startCombat = useGameStore((store) => store.startCombat);
   const stopAction = useGameStore((store) => store.stopAction);
   const setCombatStyle = useGameStore((store) => store.setCombatStyle);
   const setCombatAutoRepeat = useGameStore((store) => store.setCombatAutoRepeat);
   const events = useGameStore((store) => store.combatEvents);
   const session = useGameStore((store) => store.combatSession);
-  const currentAreaId = active?.areaId ?? selectedArea;
-  const currentEnemyId = active?.enemyId ?? selectedEnemy;
-  const currentArea = areaById[currentAreaId];
-  const currentEnemy = enemyById[currentEnemyId];
-  const locked = !game.unlockedAreas.includes(currentAreaId) && !currentArea.unlock(game);
-  const stats = getDerivedStats(game);
+  const saveStatus = useGameStore((store) => store.saveStatus);
+  const savedAt = useGameStore((store) => store.savedAt);
+  const startPending = useRef(false);
+  const currentAreaId = activeAreaId ?? selectedArea;
+  const currentEnemyId = activeEnemyId ?? selectedEnemy;
+  const currentArea = areaById[currentAreaId] ?? areaById['training-grounds'];
+  const currentEnemy = enemyById[currentEnemyId] ?? enemyById['forest-rat'];
   const progress = selectCombatProgress(game);
   const inventoryFull = occupiedSlots(game.inventory) >= GAME_CONFIG.inventorySlots;
+  const locked = !game.unlockedAreas.includes(currentArea.id) && !currentArea.unlock(game);
+
   useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 200);
-    return () => window.clearInterval(timer);
-  }, []);
-  useEffect(() => {
-    if (active) {
-      setSelectedArea(active.areaId);
-      setSelectedEnemy(active.enemyId);
-      setStyle(active.style);
-      setAutoRepeat(active.autoRepeat);
-    }
-  }, [active]);
+    if (
+      activeAreaId === undefined ||
+      activeEnemyId === undefined ||
+      activeStyle === undefined ||
+      activeAutoRepeat === undefined
+    )
+      return;
+    setSelectedArea(activeAreaId);
+    setExpandedArea((expanded) => (expanded === null ? activeAreaId : expanded));
+    setSelectedEnemy(activeEnemyId);
+    setStyle(activeStyle);
+    setAutoRepeat(activeAutoRepeat);
+  }, [activeAreaId, activeEnemyId, activeStyle, activeAutoRepeat]);
+
   const selectArea = (areaId: AreaId) => {
-    const applySelection = () => {
-      const nextEnemy = areaById[areaId].enemyIds[0];
-      setSelectedArea(areaId);
-      setSelectedEnemy(nextEnemy);
-    };
-    if (active && active.areaId !== areaId) {
-      requestConfirmation({
-        title: 'Switch combat zone?',
-        message: 'Current combat will restart against the first target in the new zone.',
-        confirmLabel: 'Switch zone',
-        onConfirm: () => {
-          const nextEnemy = areaById[areaId].enemyIds[0];
-          startCombat(areaId, nextEnemy, active.style, active.autoRepeat);
-          applySelection();
-        },
-      });
+    const area = areaById[areaId];
+    if (!area || (game.unlockedAreas.includes(areaId) === false && !area.unlock(game))) return;
+    if (active?.areaId === areaId) {
+      setExpandedArea((expanded) => (expanded === areaId ? null : areaId));
       return;
     }
-    applySelection();
+    // Area changes are browsing-only while combat is active. Selecting a
+    // target is the explicit action that can request a combat switch.
+    setSelectedArea(areaId);
+    setSelectedEnemy(area.enemyIds[0]);
+    setExpandedArea((expanded) => (expanded === areaId ? null : areaId));
   };
-  const selectEnemy = (enemyId: EnemyId) => {
-    if (active && active.enemyId !== enemyId) {
+
+  const selectEnemy = (enemyId: EnemyId, areaId: AreaId) => {
+    if (active && (active.enemyId !== enemyId || active.areaId !== areaId)) {
       requestConfirmation({
         title: 'Switch target?',
         message: 'Current combat will restart against the new target.',
         confirmLabel: 'Switch target',
         onConfirm: () => {
-          startCombat(active.areaId, enemyId, active.style, active.autoRepeat);
+          startCombat(areaId, enemyId, active.style, active.autoRepeat);
+          setSelectedArea(areaId);
+          setExpandedArea(areaId);
           setSelectedEnemy(enemyId);
         },
       });
       return;
     }
+    setSelectedArea(areaId);
+    setExpandedArea(areaId);
     setSelectedEnemy(enemyId);
+  };
+
+  const beginFight = () => {
+    if (startPending.current || locked || inventoryFull) return;
+    startPending.current = true;
+    requestAction('combat', () => {
+      startCombat(currentArea.id, currentEnemy.id, style, autoRepeat);
+      startPending.current = false;
+    });
   };
   const changeStyle = (next: CombatStyle) => {
     setStyle(next);
     if (active) setCombatStyle(next);
   };
-  const beginFight = () =>
-    requestAction('combat', () => startCombat(currentAreaId, currentEnemyId, style, autoRepeat));
+  const activeStyleValue = active?.style ?? style;
+  const activeAutoRepeatValue = active?.autoRepeat ?? autoRepeat;
   const actionText = locked
     ? 'Target locked'
     : inventoryFull && !active
       ? 'Inventory full'
-      : active
-        ? 'Stop combat'
-        : 'Fight';
-  const actionDisabled = locked || (!active && inventoryFull);
+      : active?.combatState.respawnMs
+        ? 'Waiting for respawn'
+        : active
+          ? 'Stop combat'
+          : session.enemyId === currentEnemy.id && session.enemiesDefeated > 0
+            ? 'Resume combat'
+            : 'Fight';
+  const actionDisabled = locked || (!active && inventoryFull) || startPending.current;
+  const saveLabel =
+    saveStatus === 'saved' && savedAt
+      ? `Saved ${new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      : saveStatus === 'saving'
+        ? 'Saving…'
+        : saveStatus === 'failed'
+          ? 'Save failed'
+          : 'Not saved';
   return (
-    <div className={`combat-screen ${game.settings.reducedMotion ? 'reduced-motion' : ''}`}>
-      <div className="combat-header">
+    <div
+      className={`combat-screen combat-redesign ${game.settings.reducedMotion ? 'reduced-motion' : ''}`}
+    >
+      <header className="combat-header combat-redesign-header">
         <div>
           <div className="eyebrow">World · Live encounter</div>
           <h1>Combat</h1>
@@ -1280,65 +1317,18 @@ export function CombatScreen({
           </p>
         </div>
         <div className="combat-header-actions">
-          <div className="combat-level-badge">
-            <span>Combat level</span>
-            <strong>{stats.combatLevel}</strong>
-          </div>
-          <label className="auto-repeat-toggle">
-            <input
-              type="checkbox"
-              checked={active?.autoRepeat ?? autoRepeat}
-              onChange={(event) => {
-                setAutoRepeat(event.target.checked);
-                if (active) setCombatAutoRepeat(event.target.checked);
-              }}
-            />{' '}
-            <span>Auto Repeat</span>
-          </label>
-          <button
-            type="button"
-            aria-label={actionText}
-            className={`button ${active ? 'danger' : 'primary'} combat-main-action`}
-            disabled={actionDisabled}
-            title={
-              actionDisabled
-                ? locked
-                  ? currentArea.requirement
-                  : 'Your inventory is full. Open Inventory to continue.'
-                : `${actionText} ${currentEnemy.name}`
-            }
-            onClick={active ? stopAction : beginFight}
-          >
-            {active ? <CircleStop size={17} /> : <Swords size={17} />}
-            {actionText}
-            <small>
-              {!active && !locked && !inventoryFull
-                ? currentEnemy.name
-                : active
-                  ? currentEnemy.name
-                  : ''}
-            </small>
-          </button>
-          {inventoryFull && !active && (
-            <button
-              type="button"
-              className="button ghost inventory-shortcut"
-              onClick={() => onNavigate('inventory')}
-            >
-              <PackageOpen size={14} /> Open Inventory
-            </button>
-          )}
+          <span className="combat-save-status">
+            <Check size={13} /> {saveLabel}
+          </span>
         </div>
-      </div>
-      <div className="combat-context-bar">
-        <span className="context-item">
-          <span className="context-kicker">Zone</span>
-          <b>{currentArea.name}</b>
+      </header>
+      <div className="combat-context-bar combat-redesign-context">
+        <span>
+          <span className="context-kicker">Location</span> <b>{currentArea.name}</b>
         </span>
         <ChevronRight size={15} />
-        <span className="context-item">
-          <span className="context-kicker">Target</span>
-          <b>{currentEnemy.name}</b>
+        <span>
+          <span className="context-kicker">Target</span> <b>{currentEnemy.name}</b>
         </span>
         <span
           className={`combat-status status-${selectCombatStatus(game).toLowerCase().replaceAll(' ', '-')}`}
@@ -1352,67 +1342,65 @@ export function CombatScreen({
                 : 'Ready'}
         </span>
         <span className="context-spacer" />
-        <span className="muted">
-          {progress.killed} / {progress.target} zone kills
+        <span className="combat-context-meta">
+          {progress.killed} / {progress.target} area kills
         </span>
       </div>
-      <ZoneSelector
+      <CombatContentTabs activeTab={contentTab} onChange={setContentTab} />
+      {contentTab === 'areas' ? (
+        <AreaAccordion
+          game={game}
+          selectedArea={selectedArea}
+          expandedArea={expandedArea}
+          selectedEnemy={selectedEnemy}
+          activeEnemy={active?.enemyId ?? null}
+          locationsExpanded={locationsExpanded}
+          onToggle={selectArea}
+          onSelectEnemy={selectEnemy}
+          onToggleLocations={() => setLocationsExpanded((expanded) => !expanded)}
+        />
+      ) : (
+        <LockedCombatContent tab={contentTab} />
+      )}
+      <main className="combat-dashboard" aria-label="Combat dashboard">
+        <PlayerSummaryPanel
+          game={game}
+          enemy={currentEnemy}
+          style={activeStyleValue}
+          onStyleChange={changeStyle}
+          onNavigate={onNavigate}
+        />
+        <LiveCombatResolution
+          game={game}
+          enemy={currentEnemy}
+          events={events}
+          autoRepeat={activeAutoRepeatValue}
+          onAutoRepeatChange={(checked) => {
+            setAutoRepeat(checked);
+            if (active) setCombatAutoRepeat(checked);
+          }}
+          actionText={actionText}
+          actionDisabled={actionDisabled}
+          onAction={active ? stopAction : beginFight}
+          inventoryFull={inventoryFull}
+          onNavigate={onNavigate}
+        />
+        <EnemySummaryPanel
+          game={game}
+          enemy={currentEnemy}
+          onViewLoot={() => setOverviewTab('loot')}
+        />
+      </main>
+      <CombatOverviewTabs
         game={game}
-        selectedArea={selectedArea}
-        selectedEnemy={selectedEnemy}
-        onSelect={selectArea}
+        enemy={currentEnemy}
+        session={session}
+        style={activeStyleValue}
+        autoRepeat={activeAutoRepeatValue}
+        events={events}
+        tab={overviewTab}
+        onTabChange={setOverviewTab}
       />
-      <EnemyRoster
-        game={game}
-        areaId={currentAreaId}
-        selectedEnemy={selectedEnemy}
-        activeEnemy={active?.enemyId ?? null}
-        onSelect={selectEnemy}
-      />
-      <div className="battle-layout">
-        <CombatPanel
-          game={game}
-          enemy={currentEnemy}
-          side="player"
-          playerProgress={selectPlayerAttackProgress(game, now)}
-          enemyProgress={selectEnemyAttackProgress(game, now)}
-          events={events}
-        />
-        <BattleArena
-          game={game}
-          areaId={currentAreaId}
-          enemy={currentEnemy}
-          now={now}
-          events={events}
-        />
-        <CombatPanel
-          game={game}
-          enemy={currentEnemy}
-          side="enemy"
-          playerProgress={selectPlayerAttackProgress(game, now)}
-          enemyProgress={selectEnemyAttackProgress(game, now)}
-          events={events}
-        />
-      </div>
-      <div className="combat-detail-grid">
-        <div>
-          <StyleControls style={active?.style ?? style} onChange={changeStyle} />
-          <ProgressionPanel game={game} session={session} style={active?.style ?? style} />
-        </div>
-        <div>
-          <LootPanel game={game} enemy={currentEnemy} events={events} />
-          <CombatLog game={game} />
-        </div>
-      </div>
-      <div className="combat-footnote">
-        <Timer size={13} /> Timers are simulation-driven; presentation interpolates between
-        authoritative ticks.{' '}
-        <span className="muted">
-          {game.settings.reducedMotion
-            ? 'Reduced motion enabled.'
-            : 'Animations can be reduced in Settings.'}
-        </span>
-      </div>
     </div>
   );
 }

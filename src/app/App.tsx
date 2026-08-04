@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   Bug,
   Hammer,
+  Heart,
   Lock,
   Paintbrush,
   Pickaxe,
@@ -46,7 +47,6 @@ import type {
 import { SKILL_IDS } from '../game/types';
 import { NAVIGATION } from '../content/navigation';
 import { ThreeScene } from '../three/ThreeScene';
-import { PlasmicFrame } from '../plasmic/PlasmicFrame';
 import { UiEditor } from './UIEditor';
 import { loadUiLayout, saveUiLayout, type UiLayout } from './uiLayout';
 import { CombatScreen as RealtimeCombatScreen } from './CombatScreen';
@@ -171,97 +171,97 @@ function ProfileSelection({
   return (
     <>
       <div className="profile-screen">
-      <div className="profile-scene">
-        <ThreeScene
-          screen="home"
-          settings={{
-            sound: true,
-            music: true,
-            reducedMotion: false,
-            compactNumbers: false,
-            threeQuality: 'low',
-          }}
-        />
-      </div>
-      <main className="profile-wrap">
-        <div className="profile-title">
-          <div className="eyebrow">A quiet frontier · a living world</div>
-          <h1>Ironbound Idle</h1>
-          <p className="subtle">
-            Build a life from ore and embers. Every interval matters, every discovery is yours.
-          </p>
+        <div className="profile-scene">
+          <ThreeScene
+            screen="home"
+            settings={{
+              sound: true,
+              music: true,
+              reducedMotion: false,
+              compactNumbers: false,
+              threeQuality: 'low',
+            }}
+          />
         </div>
-        {error && (
-          <div className="panel panel-pad" style={{ marginBottom: 15, color: 'var(--red)' }}>
-            {error}
+        <main className="profile-wrap">
+          <div className="profile-title">
+            <div className="eyebrow">A quiet frontier · a living world</div>
+            <h1>Ironbound Idle</h1>
+            <p className="subtle">
+              Build a life from ore and embers. Every interval matters, every discovery is yours.
+            </p>
           </div>
-        )}
-        <div className="slot-grid">
-          {[0, 1, 2].map((slot) => {
-            const record = profiles[slot];
-            const name = record ? getProfileName(record) : '';
-            return (
-              <section className="panel slot-card" key={slot}>
-                <div>
-                  <div className="slot-number">Profile {slot + 1}</div>
-                  {loading ? (
-                    <p className="muted">Checking save vault…</p>
-                  ) : record ? (
-                    <>
-                      <h2>{name}</h2>
-                      <p className="subtle">
-                        Last saved {new Date(record.updatedAt).toLocaleString()}
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <h2>Empty slot</h2>
-                      <p className="subtle">Start a new expedition here.</p>
-                    </>
-                  )}
-                </div>
-                <div className="button-row">
-                  {record ? (
-                    <>
-                      <button className="button primary" onClick={() => void load(slot)}>
-                        Load profile
+          {error && (
+            <div className="panel panel-pad" style={{ marginBottom: 15, color: 'var(--red)' }}>
+              {error}
+            </div>
+          )}
+          <div className="slot-grid">
+            {[0, 1, 2].map((slot) => {
+              const record = profiles[slot];
+              const name = record ? getProfileName(record) : '';
+              return (
+                <section className="panel slot-card" key={slot}>
+                  <div>
+                    <div className="slot-number">Profile {slot + 1}</div>
+                    {loading ? (
+                      <p className="muted">Checking save vault…</p>
+                    ) : record ? (
+                      <>
+                        <h2>{name}</h2>
+                        <p className="subtle">
+                          Last saved {new Date(record.updatedAt).toLocaleString()}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <h2>Empty slot</h2>
+                        <p className="subtle">Start a new expedition here.</p>
+                      </>
+                    )}
+                  </div>
+                  <div className="button-row">
+                    {record ? (
+                      <>
+                        <button className="button primary" onClick={() => void load(slot)}>
+                          Load profile
+                        </button>
+                        <button
+                          className="button danger"
+                          onClick={() => void remove(slot)}
+                          aria-label={`Delete profile ${slot + 1}`}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : (
+                      <button className="button gold" onClick={() => create(slot)}>
+                        Create character
                       </button>
-                      <button
-                        className="button danger"
-                        onClick={() => void remove(slot)}
-                        aria-label={`Delete profile ${slot + 1}`}
-                      >
-                        Delete
-                      </button>
-                    </>
-                  ) : (
-                    <button className="button gold" onClick={() => create(slot)}>
-                      Create character
-                    </button>
-                  )}
-                  <label className="button ghost">
-                    Import
-                    <input
-                      type="file"
-                      accept=".json,application/json"
-                      hidden
-                      onChange={(event) => {
-                        const file = event.target.files?.[0];
-                        if (file) void importFile(file, slot);
-                        event.currentTarget.value = '';
-                      }}
-                    />
-                  </label>
-                </div>
-              </section>
-            );
-          })}
-        </div>
-        <p className="subtle" style={{ marginTop: 20 }}>
-          Local profiles are stored in this browser. Export a save from Settings before clearing
-          browser data.
-        </p>
-      </main>
+                    )}
+                    <label className="button ghost">
+                      Import
+                      <input
+                        type="file"
+                        accept=".json,application/json"
+                        hidden
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          if (file) void importFile(file, slot);
+                          event.currentTarget.value = '';
+                        }}
+                      />
+                    </label>
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+          <p className="subtle" style={{ marginTop: 20 }}>
+            Local profiles are stored in this browser. Export a save from Settings before clearing
+            browser data.
+          </p>
+        </main>
       </div>
       {confirmation && (
         <ConfirmDialog
@@ -422,29 +422,32 @@ function ActionStrip({
     action.type === 'mining' ? 'mining' : action.type === 'smithing' ? 'smithing' : 'combat';
   if (action.type === 'combat') {
     const enemy = enemyById[action.enemyId];
-    const stats = getDerivedStats(game);
-    const enemyHp = Math.max(0, action.combatState.enemyHp);
-    const playerRatio = Math.max(0, Math.min(1, game.player.currentHp / Math.max(1, stats.maxHealth)));
-    const enemyRatio = Math.max(0, Math.min(1, enemyHp / Math.max(1, enemy?.maxHealth ?? 1)));
+    const combatStats = getDerivedStats(game);
+    const combatStartedAt = combatSession.startedAt ?? game.updatedAt;
     return (
       <div className="action-strip combat-strip" data-ui-region="actionStrip">
-        <div className="action-icon"><Swords size={19} /></div>
-        <button className="action-main button ghost" onClick={() => onNavigate('combat')}>
-          <strong>Fighting {enemy?.name ?? 'enemy'}</strong>
-          <small>{game.player.currentHp} HP · Click to open combat</small>
-        </button>
-        <div className="action-health-summary" aria-label="Combat health">
-          <div className="action-health-item player-health">
-            <div><span>You</span><b>{Math.ceil(game.player.currentHp)} / {stats.maxHealth}</b></div>
-            <div className="action-health-track" role="progressbar" aria-label="Player health" aria-valuemin={0} aria-valuemax={stats.maxHealth} aria-valuenow={Math.ceil(Math.max(0, game.player.currentHp))}><i style={{ width: `${playerRatio * 100}%` }} /></div>
+        <div className="action-icon">
+          <Swords size={19} />
+        </div>
+        <div className="combat-activity-stats" aria-label="Combat activity summary">
+          <div className="combat-activity-stat">
+            <span>Combat level</span>
+            <strong>{combatStats.combatLevel}</strong>
           </div>
-          <div className="action-health-item enemy-health">
-            <div><span>{enemy?.name ?? 'Monster'}</span><b>{Math.ceil(enemyHp)} / {enemy?.maxHealth ?? 0}</b></div>
-            <div className="action-health-track" role="progressbar" aria-label="Monster health" aria-valuemin={0} aria-valuemax={enemy?.maxHealth ?? 0} aria-valuenow={Math.ceil(enemyHp)}><i style={{ width: `${enemyRatio * 100}%` }} /></div>
+          <div className="combat-activity-stat">
+            <span>HP</span>
+            <strong>
+              <Heart size={13} /> {Math.ceil(game.player.currentHp)} / {combatStats.maxHealth}
+            </strong>
           </div>
         </div>
-        <div className="action-meta action-fight-time"><Timer size={13} /> {formatFightDuration(combatSession.startedAt, now)}</div>
-        <button className="button danger" onClick={stopAction}>Stop Combat</button>
+        <button className="action-main button ghost" onClick={() => onNavigate('combat')}>
+          <strong>Fighting {enemy?.name ?? 'enemy'}</strong>
+          <small>Click to open Live Combat Resolution</small>
+        </button>
+        <div className="action-meta action-fight-time">
+          <Timer size={13} /> {formatFightDuration(combatStartedAt, now)}
+        </div>
       </div>
     );
   }
@@ -469,9 +472,7 @@ function ActionStrip({
           style={{ width: `${Math.max(4, Math.min(100, ratio * 100))}%` }}
         />
       </div>
-      <div className="action-meta">
-        Cycle in progress
-      </div>
+      <div className="action-meta">Cycle in progress</div>
       <button className="button danger" onClick={stopAction}>
         Stop
       </button>
@@ -945,7 +946,6 @@ function _LegacyCombatScreen({
       </div>
       <div className="dashboard-grid">
         <section className="panel scene-panel">
-          <ThreeScene screen="combat" settings={game.settings} theme={area.accent} />
           <div style={{ position: 'relative', padding: 22 }}>
             <span className="badge">{area.name}</span>
             <h2 style={{ marginTop: 18 }}>{area.name}</h2>
@@ -1482,13 +1482,15 @@ function SettingsScreen({
             </button>
             <button
               className="button danger"
-              onClick={() => setConfirmation({
-                title: 'Delete character?',
-                message: 'This character and its backup will be permanently deleted.',
-                confirmLabel: 'Delete character',
-                danger: true,
-                onConfirm: onDelete,
-              })}
+              onClick={() =>
+                setConfirmation({
+                  title: 'Delete character?',
+                  message: 'This character and its backup will be permanently deleted.',
+                  confirmLabel: 'Delete character',
+                  danger: true,
+                  onConfirm: onDelete,
+                })
+              }
             >
               Delete current character
             </button>
@@ -1673,9 +1675,10 @@ function DebugPanel({
     setGame(next);
   };
   const targets = skillTarget === 'all' ? SKILL_IDS : [skillTarget];
-  const resetLevels = () => updateGame((next) => {
-    for (const skill of targets) next.skills[skill] = { level: 1, xp: 0 };
-  });
+  const resetLevels = () =>
+    updateGame((next) => {
+      for (const skill of targets) next.skills[skill] = { level: 1, xp: 0 };
+    });
   const grantLevels = () => {
     const amount = Math.max(1, Math.floor(Number(levelAmount) || 1));
     updateGame((next) => {
@@ -1688,37 +1691,88 @@ function DebugPanel({
   const giveGold = () => {
     const amount = Math.max(0, Math.floor(Number(goldAmount) || 0));
     if (amount === 0) return;
-    updateGame((next) => { next.gold += amount; });
+    updateGame((next) => {
+      next.gold += amount;
+    });
   };
-  const killCurrentMonster = () => updateGame((next) => {
-    if (next.activeAction.type !== 'combat') return;
-    next.activeAction = {
-      ...next.activeAction,
-      combatState: { ...next.activeAction.combatState, enemyHp: 0, respawnMs: 0 },
-    };
-  });
-  const suicidePlayer = () => updateGame((next) => { next.player.currentHp = 0; });
-  const activeEnemy = game.activeAction.type === 'combat' ? enemyById[game.activeAction.enemyId] : null;
+  const killCurrentMonster = () =>
+    updateGame((next) => {
+      if (next.activeAction.type !== 'combat') return;
+      next.activeAction = {
+        ...next.activeAction,
+        combatState: { ...next.activeAction.combatState, enemyHp: 0, respawnMs: 0 },
+      };
+    });
+  const suicidePlayer = () =>
+    updateGame((next) => {
+      next.player.currentHp = 0;
+    });
+  const activeEnemy =
+    game.activeAction.type === 'combat' ? enemyById[game.activeAction.enemyId] : null;
   const inputNumber = (value: string, setter: (value: string) => void) => (
-    <input className="debug-number" type="number" min="1" value={value} onChange={(event) => setter(event.target.value)} />
+    <input
+      className="debug-number"
+      type="number"
+      min="1"
+      value={value}
+      onChange={(event) => setter(event.target.value)}
+    />
   );
   return (
     <div className="debug-menu" role="dialog" aria-label="Debug menu">
-      <div className="debug-menu-head"><div><div className="eyebrow">Development only</div><h2>Debug menu</h2></div><button className="button ghost" onClick={onClose} aria-label="Close debug menu">×</button></div>
+      <div className="debug-menu-head">
+        <div>
+          <div className="eyebrow">Development only</div>
+          <h2>Debug menu</h2>
+        </div>
+        <button className="button ghost" onClick={onClose} aria-label="Close debug menu">
+          ×
+        </button>
+      </div>
       <div className="debug-menu-section">
-        <label className="debug-label">Skill target<select className="debug-select" value={skillTarget} onChange={(event) => setSkillTarget(event.target.value as SkillId | 'all')}><option value="all">All skills</option>{SKILL_IDS.map((skill) => <option value={skill} key={skill}>{skill[0].toUpperCase() + skill.slice(1)}</option>)}</select></label>
-        <div className="debug-button-row"><button className="button danger" onClick={resetLevels}>Reset level(s)</button>{inputNumber(levelAmount, setLevelAmount)}<button className="button gold" onClick={grantLevels}>Grant level(s)</button></div>
+        <label className="debug-label">
+          Skill target
+          <select
+            className="debug-select"
+            value={skillTarget}
+            onChange={(event) => setSkillTarget(event.target.value as SkillId | 'all')}
+          >
+            <option value="all">All skills</option>
+            {SKILL_IDS.map((skill) => (
+              <option value={skill} key={skill}>
+                {skill[0].toUpperCase() + skill.slice(1)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="debug-button-row">
+          <button className="button danger" onClick={resetLevels}>
+            Reset level(s)
+          </button>
+          {inputNumber(levelAmount, setLevelAmount)}
+          <button className="button gold" onClick={grantLevels}>
+            Grant level(s)
+          </button>
+        </div>
       </div>
       <div className="debug-menu-section">
         <label className="debug-label">Gold amount{inputNumber(goldAmount, setGoldAmount)}</label>
-        <button className="button gold" onClick={giveGold}>Give gold</button>
+        <button className="button gold" onClick={giveGold}>
+          Give gold
+        </button>
       </div>
       <div className="debug-menu-section debug-danger-actions">
         <div className="debug-label">Combat shortcuts</div>
-        <button className="button danger" disabled={!activeEnemy} onClick={killCurrentMonster}>Kill current monster{activeEnemy ? ` · ${activeEnemy.name}` : ''}</button>
-        <button className="button danger" onClick={suicidePlayer}>Suicide player</button>
+        <button className="button danger" disabled={!activeEnemy} onClick={killCurrentMonster}>
+          Kill current monster{activeEnemy ? ` · ${activeEnemy.name}` : ''}
+        </button>
+        <button className="button danger" onClick={suicidePlayer}>
+          Suicide player
+        </button>
       </div>
-      <small className="debug-note">Changes are applied to the live game state and may affect the active action.</small>
+      <small className="debug-note">
+        Changes are applied to the live game state and may affect the active action.
+      </small>
     </div>
   );
 }
@@ -1892,12 +1946,7 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
       {overlays}
     </div>
   );
-  return (
-    <PlasmicFrame
-      slots={{ sidebar, header, content: render(), actionStrip, overlays }}
-      fallback={fallback}
-    />
-  );
+  return fallback;
 }
 
 export function App() {

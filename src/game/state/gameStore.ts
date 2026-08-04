@@ -1,7 +1,13 @@
 import { create } from 'zustand';
 import { saveProfile } from '../persistence/saveManager';
 import { simulateElapsed } from '../engine/simulation';
-import { setCombatAutoRepeat, setCombatStyle, startCombat, startMining, startSmithing } from '../engine/actionController';
+import {
+  setCombatAutoRepeat,
+  setCombatStyle,
+  startCombat,
+  startMining,
+  startSmithing,
+} from '../engine/actionController';
 import { destroyItem, toggleItemLock } from '../systems/inventorySystem';
 import { equipItem, unequipItem } from '../systems/equipmentSystem';
 import { emptyCombatSession } from '../types';
@@ -91,12 +97,16 @@ export const useGameStore = create<Store>((set, get) => ({
   combatSession: emptyCombatSession(),
   setGame: (game, offlineSummary = null) => {
     lastTick = Date.now();
+    const loadedCombat = game?.activeAction.type === 'combat' ? game.activeAction : null;
     set({
       game,
       offlineSummary,
       saveStatus: 'saved',
       combatEvents: [],
-      combatSession: emptyCombatSession(),
+      combatSession: emptyCombatSession(
+        loadedCombat?.enemyId ?? null,
+        loadedCombat && game ? game.updatedAt : null,
+      ),
     });
   },
   tick: (now) => {
