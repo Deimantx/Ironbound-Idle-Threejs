@@ -1,0 +1,1923 @@
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import {
+  Bug,
+  Hammer,
+  Lock,
+  Paintbrush,
+  Pickaxe,
+  Save,
+  Settings,
+  Shield,
+  Swords,
+  Timer,
+  Zap,
+} from 'lucide-react';
+import { AREAS, areaById } from '../content/areas';
+import { ENEMIES, enemyById } from '../content/enemies';
+import { ITEMS, itemById } from '../content/items';
+import { MINING_NODES, miningNodeById } from '../content/miningNodes';
+import { RECIPES, recipeById } from '../content/recipes';
+import { GAME_CONFIG } from '../config/gameConfig';
+import { getLevelProgress, getXpForLevel } from '../game/formulas/experienceFormulas';
+import { getDerivedStats } from '../game/formulas/statFormulas';
+import { progressRatio } from '../game/engine/simulation';
+import { createNewGame } from '../game/state/initialState';
+import { useGameStore } from '../game/state/gameStore';
+import { getItemQuantity, occupiedSlots } from '../game/systems/inventorySystem';
+import {
+  exportProfile,
+  importProfile,
+  listProfiles,
+  loadProfile,
+  clearProfile,
+  saveProfile,
+  type SaveRecord,
+} from '../game/persistence/saveManager';
+import type {
+  AreaId,
+  CombatStyle,
+  EquipmentSlot,
+  GameState,
+  QuantityMode,
+  ScreenId,
+  SimulationSummary,
+  SkillId,
+} from '../game/types';
+import { SKILL_IDS } from '../game/types';
+import { NAVIGATION } from '../content/navigation';
+import { ThreeScene } from '../three/ThreeScene';
+import { PlasmicFrame } from '../plasmic/PlasmicFrame';
+import { UiEditor } from './UIEditor';
+import { loadUiLayout, saveUiLayout, type UiLayout } from './uiLayout';
+import { CombatScreen as RealtimeCombatScreen } from './CombatScreen';
+import { ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog';
+
+const formatNumber = (value: number): string =>
+  new Intl.NumberFormat('en-US', {
+    notation: value > 9999 ? 'compact' : 'standard',
+    maximumFractionDigits: 1,
+  }).format(Math.floor(value));
+const formatFightDuration = (startedAt: number | null, now = Date.now()): string => {
+  if (!startedAt) return '0:00';
+  const seconds = Math.max(0, Math.floor((now - startedAt) / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+};
+const actionLabel = (state: GameState): string => {
+  const action = state.activeAction;
+  if (action.type === 'mining') return miningNodeById[action.nodeId]?.name ?? 'Mining';
+  if (action.type === 'smithing') return recipeById[action.recipeId]?.name ?? 'Smithing';
+  if (action.type === 'combat') return `Fighting ${enemyById[action.enemyId]?.name ?? 'enemy'}`;
+  return 'No active action';
+};
+const itemGlyph = (category: string): string =>
+  ({ material: '◆', bar: '▬', weapon: '⚔', armor: '◇', shield: '◈', tool: '⛏', drop: '✦' })[
+    category
+  ] ?? '•';
+const getProfileName = (record: SaveRecord): string => {
+  try {
+    const parsed: unknown = JSON.parse(record.payload);
+    if (typeof parsed === 'object' && parsed !== null && 'player' in parsed) {
+      const player: unknown = parsed.player;
+      if (
+        typeof player === 'object' &&
+        player !== null &&
+        'name' in player &&
+        typeof player.name === 'string'
+      )
+        return player.name;
+    }
+  } catch {
+    /* malformed records are shown as unknown */
+  }
+  return 'Unknown';
+};
+
+const getUiStyle = (layout: UiLayout): CSSProperties =>
+  ({
+    '--ui-sidebar-width': `${layout.sidebarWidth}px`,
+    '--ui-header-height': `${layout.headerHeight}px`,
+    '--ui-content-padding': `${layout.contentPadding}px`,
+    '--ui-action-height': `${layout.actionStripHeight}px`,
+    '--ui-panel-radius': `${layout.panelRadius}px`,
+    '--ui-scale': String(layout.uiScale),
+    '--ui-accent': layout.accent,
+    '--ui-background': layout.background,
+    '--ui-panel-color': layout.panel,
+    '--gold': layout.accent,
+    '--bg': layout.background,
+    '--panel': layout.panel,
+    '--ui-sidebar-x': `${layout.offsets.sidebar.x}px`,
+    '--ui-sidebar-y': `${layout.offsets.sidebar.y}px`,
+    '--ui-header-x': `${layout.offsets.header.x}px`,
+    '--ui-header-y': `${layout.offsets.header.y}px`,
+    '--ui-content-x': `${layout.offsets.content.x}px`,
+    '--ui-content-y': `${layout.offsets.content.y}px`,
+    '--ui-action-x': `${layout.offsets.actionStrip.x}px`,
+    '--ui-action-y': `${layout.offsets.actionStrip.y}px`,
+  }) as CSSProperties;
+
+function ProfileSelection({
+  onLoad,
+}: {
+  onLoad: (game: GameState, summary?: SimulationSummary | null) => void;
+}) {
+  const [profiles, setProfiles] = useState<Array<SaveRecord | null>>([null, null, null]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [confirmation, setConfirmation] = useState<ConfirmDialogOptions | null>(null);
+  const refresh = () => {
+    void listProfiles().then((items) => {
+      setProfiles(items);
+      setLoading(false);
+    });
+  };
+  useEffect(refresh, []);
+  const create = async (slot: number) => {
+    const entered = window.prompt('Name your character', `Wanderer ${slot + 1}`);
+    if (entered === null) return;
+    const game = createNewGame(slot, entered);
+    await saveProfile(game);
+    onLoad(game);
+  };
+  const load = async (slot: number) => {
+    setError('');
+    const loaded = await loadProfile(slot);
+    if (!loaded) {
+      setError('That profile could not be recovered.');
+      return;
+    }
+    onLoad(loaded.state, loaded.offline);
+  };
+  const remove = (slot: number) => {
+    setConfirmation({
+      title: 'Delete character?',
+      message: 'This character and its backup will be permanently deleted.',
+      confirmLabel: 'Delete character',
+      danger: true,
+      onConfirm: async () => {
+        await clearProfile(slot);
+        refresh();
+      },
+    });
+  };
+  const importFile = async (file: File, slot: number) => {
+    try {
+      const game = await importProfile(await file.text(), slot);
+      onLoad(game);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'Import failed.');
+    }
+  };
+  return (
+    <>
+      <div className="profile-screen">
+      <div className="profile-scene">
+        <ThreeScene
+          screen="home"
+          settings={{
+            sound: true,
+            music: true,
+            reducedMotion: false,
+            compactNumbers: false,
+            threeQuality: 'low',
+          }}
+        />
+      </div>
+      <main className="profile-wrap">
+        <div className="profile-title">
+          <div className="eyebrow">A quiet frontier · a living world</div>
+          <h1>Ironbound Idle</h1>
+          <p className="subtle">
+            Build a life from ore and embers. Every interval matters, every discovery is yours.
+          </p>
+        </div>
+        {error && (
+          <div className="panel panel-pad" style={{ marginBottom: 15, color: 'var(--red)' }}>
+            {error}
+          </div>
+        )}
+        <div className="slot-grid">
+          {[0, 1, 2].map((slot) => {
+            const record = profiles[slot];
+            const name = record ? getProfileName(record) : '';
+            return (
+              <section className="panel slot-card" key={slot}>
+                <div>
+                  <div className="slot-number">Profile {slot + 1}</div>
+                  {loading ? (
+                    <p className="muted">Checking save vault…</p>
+                  ) : record ? (
+                    <>
+                      <h2>{name}</h2>
+                      <p className="subtle">
+                        Last saved {new Date(record.updatedAt).toLocaleString()}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h2>Empty slot</h2>
+                      <p className="subtle">Start a new expedition here.</p>
+                    </>
+                  )}
+                </div>
+                <div className="button-row">
+                  {record ? (
+                    <>
+                      <button className="button primary" onClick={() => void load(slot)}>
+                        Load profile
+                      </button>
+                      <button
+                        className="button danger"
+                        onClick={() => void remove(slot)}
+                        aria-label={`Delete profile ${slot + 1}`}
+                      >
+                        Delete
+                      </button>
+                    </>
+                  ) : (
+                    <button className="button gold" onClick={() => create(slot)}>
+                      Create character
+                    </button>
+                  )}
+                  <label className="button ghost">
+                    Import
+                    <input
+                      type="file"
+                      accept=".json,application/json"
+                      hidden
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) void importFile(file, slot);
+                        event.currentTarget.value = '';
+                      }}
+                    />
+                  </label>
+                </div>
+              </section>
+            );
+          })}
+        </div>
+        <p className="subtle" style={{ marginTop: 20 }}>
+          Local profiles are stored in this browser. Export a save from Settings before clearing
+          browser data.
+        </p>
+      </main>
+      </div>
+      {confirmation && (
+        <ConfirmDialog
+          title={confirmation.title}
+          message={confirmation.message}
+          confirmLabel={confirmation.confirmLabel}
+          cancelLabel={confirmation.cancelLabel}
+          danger={confirmation.danger}
+          onCancel={() => setConfirmation(null)}
+          onConfirm={() => {
+            const action = confirmation.onConfirm;
+            setConfirmation(null);
+            void action();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function Sidebar({
+  screen,
+  onNavigate,
+  onLocked,
+}: {
+  screen: ScreenId;
+  onNavigate: (id: ScreenId) => void;
+  onLocked: (label: string, description?: string) => void;
+}) {
+  return (
+    <aside className="sidebar" data-ui-region="sidebar">
+      <div className="brand">
+        <div className="brand-mark">I</div>
+        <div>
+          <strong>Ironbound</strong>
+          <small>Idle RPG</small>
+        </div>
+      </div>
+      <nav className="nav">
+        {['Main', 'Skills', 'World', 'System'].map((group) => (
+          <div className="nav-group" key={group}>
+            <div className="nav-group-title">{group}</div>
+            {NAVIGATION.filter((item) => item.group === group).map((item, index) => (
+              <button
+                className={`nav-button ${screen === item.id && !item.locked ? 'active' : ''} ${item.locked ? 'locked-label' : ''}`}
+                key={`${item.label}-${index}`}
+                onClick={() =>
+                  item.locked ? onLocked(item.label, item.description) : onNavigate(item.id)
+                }
+              >
+                <span className="nav-icon">{item.icon}</span>
+                <span>{item.label}</span>
+                {item.locked && <span className="lock">⌑</span>}
+              </button>
+            ))}
+          </div>
+        ))}
+      </nav>
+      <div className="sidebar-foot">
+        The forge remembers every interval.
+        <br />v{GAME_CONFIG.version}
+      </div>
+    </aside>
+  );
+}
+
+function Header({
+  game,
+  onSettings,
+  onEditUi,
+  onDebug,
+}: {
+  game: GameState;
+  onSettings: () => void;
+  onEditUi: () => void;
+  onDebug: () => void;
+}) {
+  const stats = getDerivedStats(game);
+  const saveStatus = useGameStore((store) => store.saveStatus);
+  const savedAt = useGameStore((store) => store.savedAt);
+  const totalLevel = Object.values(game.skills).reduce((total, skill) => total + skill.level, 0);
+  return (
+    <header className="topbar" data-ui-region="header">
+      <div>
+        <div className="crumb">Character / {game.player.name}</div>
+        <div className="character">
+          Level {totalLevel} · Combat {stats.combatLevel}
+        </div>
+      </div>
+      <div className="header-stats">
+        <span className="header-stat">
+          Gold <strong>◈ {formatNumber(game.gold)}</strong>
+        </span>
+        <span className="header-stat">
+          HP{' '}
+          <strong>
+            {game.player.currentHp}/{stats.maxHealth}
+          </strong>
+        </span>
+        <span className={`save-state ${saveStatus === 'failed' ? 'failed' : ''}`}>
+          {saveStatus === 'saving' ? (
+            'Saving…'
+          ) : saveStatus === 'failed' ? (
+            'Save failed'
+          ) : (
+            <>
+              <Save size={13} /> Saved
+              {savedAt
+                ? ` ${new Date(savedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+                : ''}
+            </>
+          )}
+        </span>
+        <button
+          className="button ghost"
+          onClick={onEditUi}
+          aria-label="Edit game UI"
+          title="Edit game UI"
+        >
+          <Paintbrush size={16} />
+        </button>
+        {import.meta.env.DEV && (
+          <button
+            className="button ghost debug-header-button"
+            onClick={onDebug}
+            aria-label="Open debug menu"
+            title="Open debug menu"
+          >
+            <Bug size={16} />
+          </button>
+        )}
+        <button className="button ghost" onClick={onSettings} aria-label="Open settings">
+          <Settings size={16} />
+        </button>
+      </div>
+    </header>
+  );
+}
+
+function ActionStrip({
+  game,
+  onNavigate,
+}: {
+  game: GameState;
+  onNavigate: (screen: ScreenId) => void;
+}) {
+  const action = game.activeAction;
+  const stopAction = useGameStore((store) => store.stopAction);
+  const combatSession = useGameStore((store) => store.combatSession);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const ratio = progressRatio(action, Date.now(), game);
+  if (action.type === 'none') return null;
+  const screen: ScreenId =
+    action.type === 'mining' ? 'mining' : action.type === 'smithing' ? 'smithing' : 'combat';
+  if (action.type === 'combat') {
+    const enemy = enemyById[action.enemyId];
+    const stats = getDerivedStats(game);
+    const enemyHp = Math.max(0, action.combatState.enemyHp);
+    const playerRatio = Math.max(0, Math.min(1, game.player.currentHp / Math.max(1, stats.maxHealth)));
+    const enemyRatio = Math.max(0, Math.min(1, enemyHp / Math.max(1, enemy?.maxHealth ?? 1)));
+    return (
+      <div className="action-strip combat-strip" data-ui-region="actionStrip">
+        <div className="action-icon"><Swords size={19} /></div>
+        <button className="action-main button ghost" onClick={() => onNavigate('combat')}>
+          <strong>Fighting {enemy?.name ?? 'enemy'}</strong>
+          <small>{game.player.currentHp} HP · Click to open combat</small>
+        </button>
+        <div className="action-health-summary" aria-label="Combat health">
+          <div className="action-health-item player-health">
+            <div><span>You</span><b>{Math.ceil(game.player.currentHp)} / {stats.maxHealth}</b></div>
+            <div className="action-health-track" role="progressbar" aria-label="Player health" aria-valuemin={0} aria-valuemax={stats.maxHealth} aria-valuenow={Math.ceil(Math.max(0, game.player.currentHp))}><i style={{ width: `${playerRatio * 100}%` }} /></div>
+          </div>
+          <div className="action-health-item enemy-health">
+            <div><span>{enemy?.name ?? 'Monster'}</span><b>{Math.ceil(enemyHp)} / {enemy?.maxHealth ?? 0}</b></div>
+            <div className="action-health-track" role="progressbar" aria-label="Monster health" aria-valuemin={0} aria-valuemax={enemy?.maxHealth ?? 0} aria-valuenow={Math.ceil(enemyHp)}><i style={{ width: `${enemyRatio * 100}%` }} /></div>
+          </div>
+        </div>
+        <div className="action-meta action-fight-time"><Timer size={13} /> {formatFightDuration(combatSession.startedAt, now)}</div>
+        <button className="button danger" onClick={stopAction}>Stop Combat</button>
+      </div>
+    );
+  }
+  return (
+    <div className="action-strip" data-ui-region="actionStrip">
+      <div className="action-icon">
+        {action.type === 'mining' ? (
+          <Pickaxe size={19} />
+        ) : action.type === 'smithing' ? (
+          <Hammer size={19} />
+        ) : (
+          <Swords size={19} />
+        )}
+      </div>
+      <button className="action-main button ghost" onClick={() => onNavigate(screen)}>
+        <strong>{actionLabel(game)}</strong>
+        <small>Active in background</small>
+      </button>
+      <div className="progress-track">
+        <div
+          className="progress-fill"
+          style={{ width: `${Math.max(4, Math.min(100, ratio * 100))}%` }}
+        />
+      </div>
+      <div className="action-meta">
+        Cycle in progress
+      </div>
+      <button className="button danger" onClick={stopAction}>
+        Stop
+      </button>
+    </div>
+  );
+}
+
+function HomeScreen({
+  game,
+  onNavigate,
+}: {
+  game: GameState;
+  onNavigate: (screen: ScreenId) => void;
+}) {
+  const stats = getDerivedStats(game);
+  const objectives = [
+    {
+      text: 'Mine Copper and Tin',
+      done:
+        getItemQuantity(game.inventory, 'copper-ore') > 0 &&
+        getItemQuantity(game.inventory, 'tin-ore') > 0,
+      target: 'mining' as const,
+    },
+    {
+      text: 'Smelt a Bronze Bar',
+      done: getItemQuantity(game.inventory, 'bronze-bar') > 0,
+      target: 'smithing' as const,
+    },
+    {
+      text: 'Forge a Bronze Sword',
+      done: game.discoveredItems.includes('bronze-sword'),
+      target: 'smithing' as const,
+    },
+    { text: 'Equip a Weapon', done: Boolean(game.equipment.weapon), target: 'equipment' as const },
+    {
+      text: 'Defeat a Forest Rat',
+      done: (game.killCounts['forest-rat'] ?? 0) > 0,
+      target: 'combat' as const,
+    },
+  ];
+  return (
+    <>
+      <div className="screen-heading">
+        <div>
+          <div className="eyebrow">The frontier is awake</div>
+          <h1>Good to see you, {game.player.name}.</h1>
+          <p className="subtle">A small forge, a deep mine, and a road that keeps going.</p>
+        </div>
+        <button
+          className="button primary"
+          onClick={() =>
+            onNavigate(
+              game.activeAction.type === 'none'
+                ? 'mining'
+                : game.activeAction.type === 'combat'
+                  ? 'combat'
+                  : game.activeAction.type === 'smithing'
+                    ? 'smithing'
+                    : 'mining',
+            )
+          }
+        >
+          Continue journey →
+        </button>
+      </div>
+      <div className="dashboard-grid">
+        <section className="panel hero">
+          <ThreeScene screen="home" settings={game.settings} theme="#b58b53" />
+          <div className="hero-copy">
+            <span className="badge gold">Current standing</span>
+            <h2 style={{ fontSize: 28, marginTop: 18 }}>
+              {stats.combatLevel < 5 ? 'A spark becomes a craft.' : 'The road opens before you.'}
+            </h2>
+            <p className="subtle">
+              {game.activeAction.type === 'none'
+                ? 'Choose a skill or seek a fight. The world will keep time while you explore.'
+                : `Currently ${actionLabel(game).toLowerCase()}. You can navigate freely while it continues.`}
+            </p>
+            <div className="button-row" style={{ marginTop: 22 }}>
+              <button className="button" onClick={() => onNavigate('combat')}>
+                <Swords size={14} /> Combat
+              </button>
+              <button className="button" onClick={() => onNavigate('equipment')}>
+                <Shield size={14} /> Equipment
+              </button>
+            </div>
+          </div>
+        </section>
+        <section className="panel panel-pad">
+          <div className="split">
+            <div>
+              <div className="eyebrow">Starter path</div>
+              <h2>First embers</h2>
+            </div>
+            <span className="badge">
+              {objectives.filter((objective) => objective.done).length}/{objectives.length}
+            </span>
+          </div>
+          <div>
+            {objectives.map((objective) => (
+              <button
+                className={`objective ${objective.done ? 'done' : ''}`}
+                key={objective.text}
+                onClick={() => onNavigate(objective.target)}
+                style={{
+                  width: '100%',
+                  border: 0,
+                  background: 'transparent',
+                  color: 'inherit',
+                  textAlign: 'left',
+                }}
+              >
+                <span className="objective-check">{objective.done ? '✓' : ''}</span>
+                <span>{objective.text}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      </div>
+      <div className="grid grid-4" style={{ marginTop: 16 }}>
+        <div className="panel stat-card">
+          <div className="label">Mining</div>
+          <div className="value">{game.skills.mining.level}</div>
+          <div className="bar">
+            <i style={{ width: `${getLevelProgress(game.skills.mining).percent}%` }} />
+          </div>
+        </div>
+        <div className="panel stat-card">
+          <div className="label">Smithing</div>
+          <div className="value">{game.skills.smithing.level}</div>
+          <div className="bar">
+            <i style={{ width: `${getLevelProgress(game.skills.smithing).percent}%` }} />
+          </div>
+        </div>
+        <div className="panel stat-card">
+          <div className="label">Enemies defeated</div>
+          <div className="value">{formatNumber(game.statistics.totalKills)}</div>
+          <div className="label">The log grows</div>
+        </div>
+        <div className="panel stat-card">
+          <div className="label">Discoveries</div>
+          <div className="value">
+            {game.discoveredItems.length}/{ITEMS.length}
+          </div>
+          <div className="label">Collection log</div>
+        </div>
+      </div>
+      <div className="grid grid-2" style={{ marginTop: 16 }}>
+        <section className="panel panel-pad">
+          <div className="split">
+            <h2>Recent activity</h2>
+            <button className="button ghost" onClick={() => onNavigate('collection')}>
+              Collection log
+            </button>
+          </div>
+          <div className="list" style={{ marginTop: 12 }}>
+            {game.log.slice(0, 5).map((entry) => (
+              <div className="list-row" key={entry.id}>
+                <div className="row-main">
+                  <strong>{entry.text}</strong>
+                  <small>
+                    {new Date(entry.at).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </small>
+                </div>
+                <span className={`badge ${entry.tone === 'danger' ? 'locked' : ''}`}>
+                  {entry.tone}
+                </span>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="panel panel-pad">
+          <div className="split">
+            <h2>Combat profile</h2>
+            <button className="button ghost" onClick={() => onNavigate('equipment')}>
+              View gear
+            </button>
+          </div>
+          {(['attack', 'strength', 'defence', 'hitpoints'] as const).map((skill) => (
+            <div className="stat-line" key={skill}>
+              <span>{skill[0].toUpperCase() + skill.slice(1)}</span>
+              <strong>{game.skills[skill].level}</strong>
+            </div>
+          ))}
+        </section>
+      </div>
+    </>
+  );
+}
+
+function MiningScreen({
+  game,
+  requestAction,
+}: {
+  game: GameState;
+  requestAction: (screen: ScreenId, action: () => void) => void;
+}) {
+  const startMining = useGameStore((store) => store.startMining);
+  const stopAction = useGameStore((store) => store.stopAction);
+  const active = game.activeAction.type === 'mining' ? game.activeAction.nodeId : null;
+  return (
+    <>
+      <div className="screen-heading">
+        <div>
+          <div className="eyebrow">Skill · Gathering</div>
+          <h1>Mining</h1>
+          <p className="subtle">Find a seam, set the pick, and let steady work fill your pack.</p>
+        </div>
+        <span className="badge gold">
+          Level {game.skills.mining.level} · {formatNumber(game.skills.mining.xp)} XP
+        </span>
+      </div>
+      <div className="dashboard-grid">
+        <section className="panel scene-panel">
+          <ThreeScene screen="mining" settings={game.settings} theme="#b87950" />
+          <div style={{ position: 'relative', padding: 20 }}>
+            <div className="eyebrow">Deep-earth study</div>
+            <h2>{active ? miningNodeById[active]?.name : 'Choose a rock node'}</h2>
+            <p className="subtle">
+              Mining stays active as you move through the keep. Your pickaxe trims the interval.
+            </p>
+            {active && (
+              <div style={{ marginTop: 35 }}>
+                <div className="split">
+                  <span className="muted">Current cycle</span>
+                  <span className="muted">
+                    {Math.round(
+                      (game.activeAction.type === 'mining' ? game.activeAction.progressMs : 0) /
+                        1000,
+                    )}
+                    s
+                  </span>
+                </div>
+                <div className="bar" style={{ marginTop: 7 }}>
+                  <i
+                    style={{
+                      width: `${(game.activeAction.type === 'mining' ? game.activeAction.progressMs / miningNodeById[active].intervalMs : 0) * 100}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+        <section className="panel panel-pad">
+          <div className="split">
+            <div>
+              <h2>Rock nodes</h2>
+              <p className="subtle">Output per hour is an estimate before tool bonuses.</p>
+            </div>
+            <span className="badge">
+              {occupiedSlots(game.inventory)}/{GAME_CONFIG.inventorySlots} slots
+            </span>
+          </div>
+          <div className="list" style={{ marginTop: 12 }}>
+            {MINING_NODES.map((node) => {
+              const locked = game.skills.mining.level < node.level;
+              const isActive = active === node.id;
+              const pickaxe = getDerivedStats(game).miningIntervalMultiplier;
+              return (
+                <div className={`list-row ${locked ? 'locked-card' : ''}`} key={node.id}>
+                  <div className="row-main">
+                    <strong>
+                      {node.name}{' '}
+                      {locked && <span className="badge locked">Level {node.level}</span>}
+                    </strong>
+                    <small>
+                      {node.description} · {itemById[node.rewardItemId]?.name} ·{' '}
+                      {Math.round(3_600_000 / (node.intervalMs * pickaxe))}/hr
+                    </small>
+                  </div>
+                  {locked ? (
+                    <Lock size={15} className="muted" />
+                  ) : isActive ? (
+                    <button className="button danger" onClick={stopAction}>
+                      Stop
+                    </button>
+                  ) : (
+                    <button
+                      className="button primary"
+                      onClick={() => requestAction('mining', () => startMining(node.id))}
+                    >
+                      Mine
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
+
+function SmithingScreen({
+  game,
+  requestAction,
+}: {
+  game: GameState;
+  requestAction: (screen: ScreenId, action: () => void) => void;
+}) {
+  const [tab, setTab] = useState<'smelting' | 'forging'>('smelting');
+  const [mode, setMode] = useState<QuantityMode>(1);
+  const startSmithing = useGameStore((store) => store.startSmithing);
+  const stopAction = useGameStore((store) => store.stopAction);
+  const active = game.activeAction.type === 'smithing' ? game.activeAction : null;
+  const recipes = RECIPES.filter((recipe) => recipe.category === tab);
+  return (
+    <>
+      <div className="screen-heading">
+        <div>
+          <div className="eyebrow">Skill · The forge</div>
+          <h1>Smithing</h1>
+          <p className="subtle">
+            Turn gathered material into tools, protection, and a stronger road ahead.
+          </p>
+        </div>
+        <span className="badge gold">
+          Level {game.skills.smithing.level} · {formatNumber(game.skills.smithing.xp)} XP
+        </span>
+      </div>
+      <section className="panel panel-pad">
+        <div className="tabs">
+          <button
+            className={`tab ${tab === 'smelting' ? 'active' : ''}`}
+            onClick={() => setTab('smelting')}
+          >
+            Smelting
+          </button>
+          <button
+            className={`tab ${tab === 'forging' ? 'active' : ''}`}
+            onClick={() => setTab('forging')}
+          >
+            Forging
+          </button>
+        </div>
+        <div className="button-row" style={{ marginBottom: 15 }}>
+          <span className="muted">Quantity:</span>
+          {([1, 10, 'all', 'continuous'] as QuantityMode[]).map((option) => (
+            <button
+              className={`button ${mode === option ? 'gold' : 'ghost'}`}
+              key={String(option)}
+              onClick={() => setMode(option)}
+            >
+              {option === 'all' ? 'All possible' : option === 'continuous' ? 'Continuous' : option}
+            </button>
+          ))}
+          {active && (
+            <>
+              <span className="muted" style={{ marginLeft: 'auto' }}>
+                Working: {recipeById[active.recipeId]?.name}
+              </span>
+              <button className="button danger" onClick={stopAction}>
+                Stop
+              </button>
+            </>
+          )}
+        </div>
+        <div className="grid grid-3">
+          {recipes.map((recipe) => {
+            const locked = game.skills.smithing.level < recipe.level;
+            const canStart = recipe.inputs.every(
+              (input) => getItemQuantity(game.inventory, input.itemId) >= input.quantity,
+            );
+            const isActive = active?.recipeId === recipe.id;
+            return (
+              <article className={`panel card ${locked ? 'locked-card' : ''}`} key={recipe.id}>
+                <div className="card-head">
+                  <div>
+                    <div className="eyebrow">{recipe.category}</div>
+                    <h2>{recipe.name}</h2>
+                  </div>
+                  <span className="badge">Lv {recipe.level}</span>
+                </div>
+                <p className="subtle">{recipe.description}</p>
+                <div className="recipe-materials">
+                  {recipe.inputs.map((input) => (
+                    <span
+                      className={`material-chip ${getItemQuantity(game.inventory, input.itemId) < input.quantity ? 'missing' : ''}`}
+                      key={input.itemId}
+                    >
+                      {itemById[input.itemId]?.name} ×{input.quantity} ·{' '}
+                      {getItemQuantity(game.inventory, input.itemId)}
+                    </span>
+                  ))}
+                </div>
+                <div className="split" style={{ marginBottom: 13 }}>
+                  <span className="muted">→ {itemById[recipe.outputItemId]?.name}</span>
+                  <span className="muted">
+                    {recipe.xp} XP · {recipe.intervalMs / 1000}s
+                  </span>
+                </div>
+                {locked ? (
+                  <button className="button ghost" disabled>
+                    <Lock size={13} /> Requires level {recipe.level}
+                  </button>
+                ) : isActive ? (
+                  <button className="button gold" disabled>
+                    Working…
+                  </button>
+                ) : (
+                  <button
+                    className="button primary"
+                    disabled={!canStart}
+                    onClick={() => requestAction('smithing', () => startSmithing(recipe.id, mode))}
+                  >
+                    {canStart ? 'Start forging' : 'Missing materials'}
+                  </button>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      </section>
+    </>
+  );
+}
+
+/* eslint-disable react-hooks/rules-of-hooks -- retained for the migration diff; the routed screen is RealtimeCombatScreen. */
+function _LegacyCombatScreen({
+  game,
+  requestAction,
+}: {
+  game: GameState;
+  requestAction: (screen: ScreenId, action: () => void) => void;
+}) {
+  const [areaId, setAreaId] = useState<AreaId>('training-grounds');
+  const [style, setStyle] = useState<CombatStyle>('accurate');
+  const [autoRepeat, setAutoRepeat] = useState(true);
+  const startCombat = useGameStore((store) => store.startCombat);
+  const stopAction = useGameStore((store) => store.stopAction);
+  const active = game.activeAction.type === 'combat' ? game.activeAction : null;
+  const area = areaById[areaId];
+  const stats = getDerivedStats(game);
+  return (
+    <>
+      <div className="screen-heading">
+        <div>
+          <div className="eyebrow">World · Automated combat</div>
+          <h1>Combat</h1>
+          <p className="subtle">
+            Choose a road, settle into a style, and let the intervals resolve.
+          </p>
+        </div>
+        <span className="badge gold">Combat level {stats.combatLevel}</span>
+      </div>
+      <div className="button-row" style={{ marginBottom: 15 }}>
+        {AREAS.map((candidate) => {
+          const unlocked = game.unlockedAreas.includes(candidate.id) || candidate.unlock(game);
+          return (
+            <button
+              key={candidate.id}
+              className={`button ${candidate.id === areaId ? 'gold' : 'ghost'}`}
+              disabled={!unlocked}
+              onClick={() => setAreaId(candidate.id)}
+            >
+              {unlocked ? (
+                candidate.name
+              ) : (
+                <>
+                  <Lock size={13} /> {candidate.name}
+                </>
+              )}
+            </button>
+          );
+        })}
+      </div>
+      <div className="dashboard-grid">
+        <section className="panel scene-panel">
+          <ThreeScene screen="combat" settings={game.settings} theme={area.accent} />
+          <div style={{ position: 'relative', padding: 22 }}>
+            <span className="badge">{area.name}</span>
+            <h2 style={{ marginTop: 18 }}>{area.name}</h2>
+            <p className="subtle">{area.description}</p>
+            <div className="grid grid-2" style={{ marginTop: 25 }}>
+              <div>
+                <div className="muted">Your attack</div>
+                <strong>
+                  {stats.attack} attack · {stats.maxHit} max hit
+                </strong>
+              </div>
+              <div>
+                <div className="muted">Your defence</div>
+                <strong>
+                  {stats.defence} rating · {stats.maxHealth} health
+                </strong>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className="panel panel-pad">
+          <div className="split">
+            <h2>Available targets</h2>
+            <label className="subtle">
+              <input
+                type="checkbox"
+                checked={autoRepeat}
+                onChange={(event) => setAutoRepeat(event.target.checked)}
+              />{' '}
+              Auto Repeat
+            </label>
+          </div>
+          <div className="list" style={{ marginTop: 12 }}>
+            {area.enemyIds.map((enemyId) => {
+              const enemy = enemyById[enemyId];
+              const isActive = active?.enemyId === enemyId;
+              return (
+                <div className="list-row" key={enemy.id}>
+                  <div className="enemy-art">
+                    {enemy.theme === 'wolf'
+                      ? '◒'
+                      : enemy.theme === 'bat'
+                        ? '◓'
+                        : enemy.theme === 'crab'
+                          ? '◇'
+                          : '◈'}
+                  </div>
+                  <div className="row-main">
+                    <strong>
+                      {enemy.name} <span className="badge">Lv {enemy.displayLevel}</span>
+                    </strong>
+                    <small>
+                      {enemy.description}
+                      <br />
+                      {enemy.maxHealth} HP · {game.killCounts[enemy.id] ?? 0} defeated
+                    </small>
+                  </div>
+                  {isActive ? (
+                    <button className="button danger" onClick={stopAction}>
+                      Stop
+                    </button>
+                  ) : (
+                    <button
+                      className="button primary"
+                      onClick={() =>
+                        requestAction('combat', () =>
+                          startCombat(areaId, enemy.id, style, autoRepeat),
+                        )
+                      }
+                    >
+                      Fight
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 18 }}>
+            <div className="eyebrow">Combat style</div>
+            <div className="button-row">
+              {(['accurate', 'aggressive', 'defensive'] as CombatStyle[]).map((option) => (
+                <button
+                  className={`button ${style === option ? 'gold' : 'ghost'}`}
+                  key={option}
+                  onClick={() => setStyle(option)}
+                >
+                  {option[0].toUpperCase() + option.slice(1)}
+                </button>
+              ))}
+            </div>
+            <p className="subtle" style={{ marginTop: 10 }}>
+              {style === 'accurate'
+                ? 'Attack XP from every point of damage.'
+                : style === 'aggressive'
+                  ? 'Strength XP from every point of damage.'
+                  : 'Defence XP from every point of damage.'}{' '}
+              Damage also grants Hitpoints XP.
+            </p>
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
+
+/* eslint-enable react-hooks/rules-of-hooks */
+function InventoryScreen({
+  game,
+  onNavigate,
+}: {
+  game: GameState;
+  onNavigate: (screen: ScreenId) => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [category, setCategory] = useState('all');
+  const [selected, setSelected] = useState('');
+  const [confirmation, setConfirmation] = useState<ConfirmDialogOptions | null>(null);
+  const equip = useGameStore((store) => store.equip);
+  const destroy = useGameStore((store) => store.destroy);
+  const toggleLock = useGameStore((store) => store.toggleLock);
+  const entries = game.inventory.filter((stack) => {
+    const item = itemById[stack.itemId];
+    return (
+      item &&
+      (category === 'all' || item.category === category) &&
+      item.name.toLowerCase().includes(search.toLowerCase())
+    );
+  });
+  const selectedStack = game.inventory.find((stack) => stack.itemId === selected);
+  const selectedItem = selectedStack ? itemById[selectedStack.itemId] : undefined;
+  return (
+    <>
+      <div className="screen-heading">
+        <div>
+          <div className="eyebrow">The bank</div>
+          <h1>Inventory</h1>
+          <p className="subtle">
+            Every item has a source. Locked stacks are protected from destruction.
+          </p>
+        </div>
+        <span className="badge gold">
+          {occupiedSlots(game.inventory)} / {GAME_CONFIG.inventorySlots} stacks
+        </span>
+      </div>
+      <section className="panel panel-pad">
+        <div className="filterbar">
+          <input
+            className="field"
+            placeholder="Search items…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+          <select
+            className="select"
+            value={category}
+            onChange={(event) => setCategory(event.target.value)}
+          >
+            <option value="all">All categories</option>
+            {['material', 'bar', 'weapon', 'armor', 'shield', 'tool', 'drop'].map((value) => (
+              <option value={value} key={value}>
+                {value[0].toUpperCase() + value.slice(1)}
+              </option>
+            ))}
+          </select>
+          <button className="button ghost" onClick={() => onNavigate('equipment')}>
+            Open equipment
+          </button>
+        </div>
+        {entries.length === 0 ? (
+          <div className="empty">Your pack is quiet. Mining and combat will change that.</div>
+        ) : (
+          <div className="inventory-grid">
+            {entries.map((stack) => {
+              const item = itemById[stack.itemId];
+              return (
+                <button
+                  className="item-card"
+                  key={stack.itemId}
+                  onClick={() => setSelected(stack.itemId)}
+                >
+                  <span className={`item-icon ${item.category}`}>{itemGlyph(item.category)}</span>
+                  <strong>{item.name}</strong>
+                  <small>{item.category}</small>
+                  <span className="quantity">×{formatNumber(stack.quantity)}</span>
+                  {stack.locked && (
+                    <span
+                      style={{ position: 'absolute', bottom: 8, right: 9, color: 'var(--gold)' }}
+                    >
+                      ⌑
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </section>
+      {selectedItem && selectedStack && (
+        <div className="modal-backdrop" onClick={() => setSelected('')}>
+          <section
+            className="modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="item-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="split">
+              <div>
+                <div className="eyebrow">{selectedItem.category}</div>
+                <h2 id="item-modal-title">{selectedItem.name}</h2>
+              </div>
+              <button className="button ghost" onClick={() => setSelected('')}>
+                Close
+              </button>
+            </div>
+            <p className="subtle">{selectedItem.description}</p>
+            <div className="stat-line">
+              <span>Quantity</span>
+              <strong>{selectedStack.quantity}</strong>
+            </div>
+            <div className="stat-line">
+              <span>Source</span>
+              <strong>{selectedItem.source}</strong>
+            </div>
+            {selectedItem.bonuses &&
+              Object.entries(selectedItem.bonuses).map(([key, value]) => (
+                <div className="stat-line" key={key}>
+                  <span>{key}</span>
+                  <strong>+{value}</strong>
+                </div>
+              ))}
+            <div className="button-row" style={{ marginTop: 18 }}>
+              {selectedItem.slot && (
+                <button
+                  className="button primary"
+                  onClick={() => {
+                    equip(selectedItem.id);
+                    setSelected('');
+                  }}
+                >
+                  Equip
+                </button>
+              )}
+              <button className="button ghost" onClick={() => toggleLock(selectedItem.id)}>
+                {selectedStack.locked ? 'Unlock stack' : 'Lock stack'}
+              </button>
+              <button
+                className="button danger"
+                onClick={() => {
+                  setConfirmation({
+                    title: 'Destroy item?',
+                    message: `Destroy one ${selectedItem.name}? This cannot be undone.`,
+                    confirmLabel: 'Destroy one',
+                    danger: true,
+                    onConfirm: () => {
+                      destroy(selectedItem.id, 1);
+                      setSelected('');
+                    },
+                  });
+                }}
+              >
+                Destroy one
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+      {confirmation && (
+        <ConfirmDialog
+          title={confirmation.title}
+          message={confirmation.message}
+          confirmLabel={confirmation.confirmLabel}
+          cancelLabel={confirmation.cancelLabel}
+          danger={confirmation.danger}
+          onCancel={() => setConfirmation(null)}
+          onConfirm={() => {
+            const action = confirmation.onConfirm;
+            setConfirmation(null);
+            void action();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function EquipmentScreen({ game }: { game: GameState }) {
+  const unequip = useGameStore((store) => store.unequip);
+  const stats = getDerivedStats(game);
+  const slots: EquipmentSlot[] = ['head', 'body', 'weapon', 'shield', 'legs', 'tool'];
+  return (
+    <>
+      <div className="screen-heading">
+        <div>
+          <div className="eyebrow">Loadout</div>
+          <h1>Equipment</h1>
+          <p className="subtle">A good tool changes the rhythm of every action.</p>
+        </div>
+        <span className="badge gold">Derived stats live</span>
+      </div>
+      <div className="grid grid-2">
+        <section className="panel panel-pad">
+          <div className="eyebrow">Mannequin</div>
+          <div className="equipment-grid">
+            {slots.map((slot) => {
+              const id = game.equipment[slot];
+              const item = id ? itemById[id] : undefined;
+              return (
+                <button
+                  className={`equip-slot slot-${slot}`}
+                  key={slot}
+                  onClick={() => id && unequip(slot)}
+                  title={id ? `Unequip ${item?.name}` : `${slot} slot`}
+                >
+                  <strong>{slot}</strong>
+                  {item ? (
+                    <>
+                      <span className="item-icon" style={{ margin: 'auto' }}>
+                        {itemGlyph(item.category)}
+                      </span>
+                      <small>{item.name}</small>
+                    </>
+                  ) : (
+                    <span className="empty-slot">Empty</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div className="button-row" style={{ marginTop: 18, justifyContent: 'center' }}>
+            {(['amulet', 'ring', 'cape'] as EquipmentSlot[]).map((slot) => (
+              <span className="badge locked" key={slot}>
+                <Lock size={10} /> {slot} · future
+              </span>
+            ))}
+          </div>
+        </section>
+        <section className="panel panel-pad">
+          <div className="eyebrow">Combat readout</div>
+          <h2>Field statistics</h2>
+          {[
+            ['Attack level', stats.attack],
+            ['Maximum hit', stats.maxHit],
+            ['Defence rating', stats.defence],
+            ['Maximum health', stats.maxHealth],
+            ['Attack interval', `${(stats.attackIntervalMs / 1000).toFixed(1)}s`],
+            [
+              'Mining interval',
+              `${Math.round((1 - stats.miningIntervalMultiplier) * 100)}% faster`,
+            ],
+          ].map(([label, value]) => (
+            <div className="stat-line" key={String(label)}>
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </div>
+          ))}
+          <p className="subtle" style={{ marginTop: 18 }}>
+            Equip items from Inventory. Swapping is atomic; the displaced item returns to your bank.
+          </p>
+        </section>
+      </div>
+    </>
+  );
+}
+
+function CollectionScreen({ game }: { game: GameState }) {
+  const [tab, setTab] = useState<'items' | 'monsters' | 'skills'>('items');
+  return (
+    <>
+      <div className="screen-heading">
+        <div>
+          <div className="eyebrow">Records of the road</div>
+          <h1>Collection Log</h1>
+          <p className="subtle">
+            First acquisition is permanent. Unknown entries preserve their clues.
+          </p>
+        </div>
+        <span className="badge gold">
+          {game.discoveredItems.length}/{ITEMS.length} items
+        </span>
+      </div>
+      <section className="panel panel-pad">
+        <div className="tabs">
+          <button
+            className={`tab ${tab === 'items' ? 'active' : ''}`}
+            onClick={() => setTab('items')}
+          >
+            Items
+          </button>
+          <button
+            className={`tab ${tab === 'monsters' ? 'active' : ''}`}
+            onClick={() => setTab('monsters')}
+          >
+            Monsters
+          </button>
+          <button
+            className={`tab ${tab === 'skills' ? 'active' : ''}`}
+            onClick={() => setTab('skills')}
+          >
+            Skills / Achievements
+          </button>
+        </div>
+        {tab === 'items' && (
+          <div className="inventory-grid">
+            {ITEMS.map((item) => {
+              const found = game.discoveredItems.includes(item.id);
+              return (
+                <div className="item-card" key={item.id} style={{ opacity: found ? 1 : 0.58 }}>
+                  <span className={`item-icon ${item.category}`}>
+                    {found ? itemGlyph(item.category) : '?'}
+                  </span>
+                  <strong>{found ? item.name : '???'}</strong>
+                  <small>
+                    {item.category} · {found ? item.source : 'Source unknown'}
+                  </small>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {tab === 'monsters' && (
+          <div className="grid grid-3">
+            {ENEMIES.map((enemy) => {
+              const found = game.discoveredMonsters.includes(enemy.id);
+              return (
+                <div className="panel card" key={enemy.id}>
+                  <div className="enemy-art">{found ? '◈' : '?'}</div>
+                  <h3>{found ? enemy.name : 'Unknown foe'}</h3>
+                  <p className="subtle">
+                    {found ? enemy.description : 'Defeat this enemy to reveal its record.'}
+                  </p>
+                  <span className="badge">{game.killCounts[enemy.id] ?? 0} kills</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {tab === 'skills' && (
+          <div className="empty">
+            <Zap size={26} />
+            <p>Milestones and mastery records arrive after the first season.</p>
+            <span className="badge locked">Coming after MVP</span>
+          </div>
+        )}
+      </section>
+    </>
+  );
+}
+
+function SettingsScreen({
+  game,
+  onProfiles,
+  onDelete,
+}: {
+  game: GameState;
+  onProfiles: () => void;
+  onDelete: () => void;
+}) {
+  const saveNow = useGameStore((store) => store.saveNow);
+  const setSettings = useGameStore((store) => store.setSettings);
+  const setGame = useGameStore((store) => store.setGame);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [confirmation, setConfirmation] = useState<ConfirmDialogOptions | null>(null);
+  const exportSave = async () => {
+    const text = await exportProfile(game);
+    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${game.player.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-ironbound.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  const importSave = async (file: File) => {
+    try {
+      const imported = await importProfile(await file.text(), game.profileSlot);
+      setGame(imported);
+    } catch (cause) {
+      window.alert(cause instanceof Error ? cause.message : 'Import failed.');
+    }
+  };
+  const reset = () => {
+    setConfirmation({
+      title: 'Reset character?',
+      message: 'The current save will be replaced with a fresh character.',
+      confirmLabel: 'Reset character',
+      danger: true,
+      onConfirm: () => setGame(createNewGame(game.profileSlot, game.player.name)),
+    });
+  };
+  return (
+    <>
+      <div className="screen-heading">
+        <div>
+          <div className="eyebrow">System</div>
+          <h1>Settings</h1>
+          <p className="subtle">Controls for this browser profile and its presentation.</p>
+        </div>
+      </div>
+      <div className="grid grid-2">
+        <section className="panel panel-pad">
+          <h2>Save controls</h2>
+          <div className="button-row" style={{ margin: '15px 0' }}>
+            <button className="button primary" onClick={() => void saveNow()}>
+              <Save size={14} /> Save Now
+            </button>
+            <button className="button" onClick={() => void exportSave()}>
+              Export Save
+            </button>
+            <label className="button">
+              Import Save
+              <input
+                ref={fileRef}
+                type="file"
+                accept=".json,application/json"
+                hidden
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (file) void importSave(file);
+                  event.currentTarget.value = '';
+                }}
+              />
+            </label>
+          </div>
+          <p className="subtle">
+            Primary and last-known-good backup are maintained locally. Offline progress is capped at
+            24 hours.
+          </p>
+          <div className="button-row">
+            <button className="button ghost" onClick={onProfiles}>
+              Return to profiles
+            </button>
+            <button className="button danger" onClick={reset}>
+              Reset current character
+            </button>
+            <button
+              className="button danger"
+              onClick={() => setConfirmation({
+                title: 'Delete character?',
+                message: 'This character and its backup will be permanently deleted.',
+                confirmLabel: 'Delete character',
+                danger: true,
+                onConfirm: onDelete,
+              })}
+            >
+              Delete current character
+            </button>
+          </div>
+        </section>
+        <section className="panel panel-pad">
+          <h2>Presentation</h2>
+          {[
+            ['sound', 'Sound effects'],
+            ['music', 'Music'],
+            ['reducedMotion', 'Reduced motion'],
+            ['compactNumbers', 'Compact numbers'],
+          ].map(([key, label]) => (
+            <label className="stat-line" key={key}>
+              <span>{label}</span>
+              <input
+                type="checkbox"
+                checked={Boolean(game.settings[key as keyof typeof game.settings])}
+                onChange={(event) => setSettings({ [key]: event.target.checked })}
+              />
+            </label>
+          ))}
+          <label className="stat-line">
+            <span>Three.js quality</span>
+            <select
+              className="select"
+              value={game.settings.threeQuality}
+              onChange={(event) =>
+                setSettings({
+                  threeQuality: event.target.value as GameState['settings']['threeQuality'],
+                })
+              }
+            >
+              <option value="off">Off</option>
+              <option value="low">Low</option>
+              <option value="high">High</option>
+            </select>
+          </label>
+        </section>
+      </div>
+      {confirmation && (
+        <ConfirmDialog
+          title={confirmation.title}
+          message={confirmation.message}
+          confirmLabel={confirmation.confirmLabel}
+          cancelLabel={confirmation.cancelLabel}
+          danger={confirmation.danger}
+          onCancel={() => setConfirmation(null)}
+          onConfirm={() => {
+            const action = confirmation.onConfirm;
+            setConfirmation(null);
+            void action();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function LockedScreen({ name, description }: { name: string; description?: string }) {
+  return (
+    <div className="locked-screen">
+      <div className="locked-icon">
+        <Lock size={30} />
+      </div>
+      <span className="badge locked">Coming after MVP</span>
+      <h1 style={{ marginTop: 18 }}>{name}</h1>
+      <p className="subtle">
+        {description ??
+          'This feature is part of the wider frontier and will open in a future content pass.'}
+      </p>
+      <p className="subtle">
+        When it arrives, it will add another meaningful way to shape your character and your
+        settlement.
+      </p>
+    </div>
+  );
+}
+function HelpScreen() {
+  return (
+    <>
+      <div className="screen-heading">
+        <div>
+          <div className="eyebrow">Field notes</div>
+          <h1>Help</h1>
+          <p className="subtle">A short guide to the systems currently in your hands.</p>
+        </div>
+      </div>
+      <div className="grid grid-2">
+        <section className="panel panel-pad">
+          <h2>How time works</h2>
+          <p className="subtle">
+            Mining, smithing, and combat use elapsed time rather than animation frames. Start one
+            action, then navigate freely. Starting another action replaces it after confirmation.
+          </p>
+          <h2 style={{ marginTop: 20 }}>Offline progress</h2>
+          <p className="subtle">
+            On load, the last simulated timestamp is replayed for up to 24 hours. Actions stop
+            safely when materials, inventory, or combat survivability run out.
+          </p>
+        </section>
+        <section className="panel panel-pad">
+          <h2>Keeping your save safe</h2>
+          <p className="subtle">
+            Autosave runs about every ten seconds and when the tab is hidden. Settings can export a
+            portable JSON file for backup or transfer.
+          </p>
+          <h2 style={{ marginTop: 20 }}>Inventory</h2>
+          <p className="subtle">
+            Identical items stack. Equipped gear does not take a slot. Lock important stacks before
+            destroying anything.
+          </p>
+        </section>
+      </div>
+    </>
+  );
+}
+
+function OfflineModal({ summary, onClose }: { summary: SimulationSummary; onClose: () => void }) {
+  const entries = Object.entries(summary.completed);
+  return (
+    <div className="modal-backdrop">
+      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="offline-title">
+        <div className="eyebrow">Welcome back</div>
+        <h2 id="offline-title">Your time away has been counted.</h2>
+        <p className="subtle">{Math.round(summary.elapsedMs / 60_000)} minutes simulated safely.</p>
+        <div className="offline-summary">
+          <div className="summary-stat">
+            <strong>{summary.enemiesDefeated}</strong>
+            <span className="muted">foes defeated</span>
+          </div>
+          <div className="summary-stat">
+            <strong>{Object.values(summary.itemsGained).reduce((a, b) => a + b, 0)}</strong>
+            <span className="muted">items gained</span>
+          </div>
+          <div className="summary-stat">
+            <strong>{Object.values(summary.xpGained).reduce((a, b) => a + b, 0)}</strong>
+            <span className="muted">XP earned</span>
+          </div>
+        </div>
+        {entries.length > 0 && (
+          <div className="list">
+            {entries.slice(0, 8).map(([label, amount]) => (
+              <div className="list-row" key={label}>
+                <span>{label.replace(':', ' · ')}</span>
+                <strong>×{amount}</strong>
+              </div>
+            ))}
+          </div>
+        )}
+        {summary.stoppedReason && (
+          <p style={{ color: 'var(--gold)', marginTop: 15 }}>Stopped: {summary.stoppedReason}</p>
+        )}
+        <button className="button primary" style={{ marginTop: 18 }} onClick={onClose}>
+          Continue
+        </button>
+      </section>
+    </div>
+  );
+}
+
+function DebugPanel({
+  game,
+  open,
+  onClose,
+}: {
+  game: GameState;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const setGame = useGameStore((store) => store.setGame);
+  const [skillTarget, setSkillTarget] = useState<SkillId | 'all'>('all');
+  const [levelAmount, setLevelAmount] = useState('1');
+  const [goldAmount, setGoldAmount] = useState('1000');
+  if (!import.meta.env.DEV || !open) return null;
+
+  const updateGame = (mutate: (next: GameState) => void) => {
+    const next = structuredClone(game);
+    mutate(next);
+    next.updatedAt = Date.now();
+    next.player.currentHp = Math.min(next.player.currentHp, getDerivedStats(next).maxHealth);
+    setGame(next);
+  };
+  const targets = skillTarget === 'all' ? SKILL_IDS : [skillTarget];
+  const resetLevels = () => updateGame((next) => {
+    for (const skill of targets) next.skills[skill] = { level: 1, xp: 0 };
+  });
+  const grantLevels = () => {
+    const amount = Math.max(1, Math.floor(Number(levelAmount) || 1));
+    updateGame((next) => {
+      for (const skill of targets) {
+        const level = Math.min(100, next.skills[skill].level + amount);
+        next.skills[skill] = { level, xp: getXpForLevel(level) };
+      }
+    });
+  };
+  const giveGold = () => {
+    const amount = Math.max(0, Math.floor(Number(goldAmount) || 0));
+    if (amount === 0) return;
+    updateGame((next) => { next.gold += amount; });
+  };
+  const killCurrentMonster = () => updateGame((next) => {
+    if (next.activeAction.type !== 'combat') return;
+    next.activeAction = {
+      ...next.activeAction,
+      combatState: { ...next.activeAction.combatState, enemyHp: 0, respawnMs: 0 },
+    };
+  });
+  const suicidePlayer = () => updateGame((next) => { next.player.currentHp = 0; });
+  const activeEnemy = game.activeAction.type === 'combat' ? enemyById[game.activeAction.enemyId] : null;
+  const inputNumber = (value: string, setter: (value: string) => void) => (
+    <input className="debug-number" type="number" min="1" value={value} onChange={(event) => setter(event.target.value)} />
+  );
+  return (
+    <div className="debug-menu" role="dialog" aria-label="Debug menu">
+      <div className="debug-menu-head"><div><div className="eyebrow">Development only</div><h2>Debug menu</h2></div><button className="button ghost" onClick={onClose} aria-label="Close debug menu">×</button></div>
+      <div className="debug-menu-section">
+        <label className="debug-label">Skill target<select className="debug-select" value={skillTarget} onChange={(event) => setSkillTarget(event.target.value as SkillId | 'all')}><option value="all">All skills</option>{SKILL_IDS.map((skill) => <option value={skill} key={skill}>{skill[0].toUpperCase() + skill.slice(1)}</option>)}</select></label>
+        <div className="debug-button-row"><button className="button danger" onClick={resetLevels}>Reset level(s)</button>{inputNumber(levelAmount, setLevelAmount)}<button className="button gold" onClick={grantLevels}>Grant level(s)</button></div>
+      </div>
+      <div className="debug-menu-section">
+        <label className="debug-label">Gold amount{inputNumber(goldAmount, setGoldAmount)}</label>
+        <button className="button gold" onClick={giveGold}>Give gold</button>
+      </div>
+      <div className="debug-menu-section debug-danger-actions">
+        <div className="debug-label">Combat shortcuts</div>
+        <button className="button danger" disabled={!activeEnemy} onClick={killCurrentMonster}>Kill current monster{activeEnemy ? ` · ${activeEnemy.name}` : ''}</button>
+        <button className="button danger" onClick={suicidePlayer}>Suicide player</button>
+      </div>
+      <small className="debug-note">Changes are applied to the live game state and may affect the active action.</small>
+    </div>
+  );
+}
+
+function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
+  const [screen, setScreen] = useState<ScreenId>('home');
+  const [lockedFeature, setLockedFeature] = useState({ name: '', description: '' });
+  const [editingUi, setEditingUi] = useState(false);
+  const [debugOpen, setDebugOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState<ConfirmDialogOptions | null>(null);
+  const [uiLayout, setUiLayout] = useState<UiLayout>(() => loadUiLayout());
+  const offlineSummary = useGameStore((store) => store.offlineSummary);
+  const clearOfflineSummary = useGameStore((store) => store.clearOfflineSummary);
+  const toast = useGameStore((store) => store.toast);
+  const clearToast = useGameStore((store) => store.clearToast);
+  const saveNow = useGameStore((store) => store.saveNow);
+  const currentGame = useGameStore((store) => store.game) ?? game;
+  const updateUiLayout = (next: UiLayout) => {
+    setUiLayout(next);
+    saveUiLayout(next);
+  };
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => useGameStore.getState().tick(Date.now()),
+      GAME_CONFIG.heartbeatMs,
+    );
+    return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    const timer = window.setInterval(
+      () => void useGameStore.getState().saveNow(),
+      GAME_CONFIG.autosaveMs,
+    );
+    const onVisibility = () => {
+      if (document.hidden) void useGameStore.getState().saveNow();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(clearToast, 2800);
+    return () => window.clearTimeout(timer);
+  }, [toast, clearToast]);
+  const requestConfirmation = (options: ConfirmDialogOptions) => setConfirmation(options);
+  const requestAction = (target: ScreenId, action: () => void) => {
+    const active = useGameStore.getState().game?.activeAction.type !== 'none';
+    if (active) {
+      requestConfirmation({
+        title: 'Replace current activity?',
+        message: 'Its progress will stop safely before the new activity begins.',
+        confirmLabel: 'Replace activity',
+        onConfirm: () => {
+          action();
+          setScreen(target);
+        },
+      });
+      return;
+    }
+    action();
+    setScreen(target);
+  };
+  const nav = (target: ScreenId) => setScreen(target);
+  const render = () => {
+    switch (screen) {
+      case 'home':
+        return <HomeScreen game={currentGame} onNavigate={nav} />;
+      case 'mining':
+        return <MiningScreen game={currentGame} requestAction={requestAction} />;
+      case 'smithing':
+        return <SmithingScreen game={currentGame} requestAction={requestAction} />;
+      case 'combat':
+        return (
+          <RealtimeCombatScreen
+            game={currentGame}
+            requestAction={requestAction}
+            requestConfirmation={requestConfirmation}
+          />
+        );
+      case 'inventory':
+        return <InventoryScreen game={currentGame} onNavigate={nav} />;
+      case 'equipment':
+        return <EquipmentScreen game={currentGame} />;
+      case 'collection':
+        return <CollectionScreen game={currentGame} />;
+      case 'settings':
+        return (
+          <SettingsScreen
+            game={currentGame}
+            onProfiles={async () => {
+              await saveNow();
+              onExit();
+            }}
+            onDelete={async () => {
+              await clearProfile(currentGame.profileSlot);
+              onExit();
+            }}
+          />
+        );
+      case 'help':
+        return <HelpScreen />;
+      default:
+        return <LockedScreen name={lockedFeature.name} description={lockedFeature.description} />;
+    }
+  };
+  const sidebar = (
+    <Sidebar
+      screen={screen}
+      onNavigate={nav}
+      onLocked={(name, description) => {
+        setLockedFeature({ name, description: description ?? '' });
+        setScreen('locked');
+      }}
+    />
+  );
+  const header = (
+    <Header
+      game={currentGame}
+      onSettings={() => setScreen('settings')}
+      onEditUi={() => setEditingUi(true)}
+      onDebug={() => setDebugOpen((open) => !open)}
+    />
+  );
+  const content = (
+    <main className="content" data-ui-region="content">
+      {render()}
+    </main>
+  );
+  const actionStrip = <ActionStrip game={currentGame} onNavigate={nav} />;
+  const overlays = (
+    <>
+      {toast && (
+        <div className="toast" role="status">
+          {toast}
+        </div>
+      )}
+      {confirmation && (
+        <ConfirmDialog
+          title={confirmation.title}
+          message={confirmation.message}
+          confirmLabel={confirmation.confirmLabel}
+          cancelLabel={confirmation.cancelLabel}
+          danger={confirmation.danger}
+          onCancel={() => setConfirmation(null)}
+          onConfirm={() => {
+            const action = confirmation.onConfirm;
+            setConfirmation(null);
+            void action();
+          }}
+        />
+      )}
+      {offlineSummary && <OfflineModal summary={offlineSummary} onClose={clearOfflineSummary} />}
+      <DebugPanel game={currentGame} open={debugOpen} onClose={() => setDebugOpen(false)} />
+      {editingUi && (
+        <UiEditor layout={uiLayout} onChange={updateUiLayout} onClose={() => setEditingUi(false)} />
+      )}
+    </>
+  );
+  const fallback = (
+    <div className={`app ${editingUi ? 'ui-editor-open' : ''}`} style={getUiStyle(uiLayout)}>
+      {sidebar}
+      <div className="main">
+        {header}
+        {content}
+        {actionStrip}
+      </div>
+      {overlays}
+    </div>
+  );
+  return (
+    <PlasmicFrame
+      slots={{ sidebar, header, content: render(), actionStrip, overlays }}
+      fallback={fallback}
+    />
+  );
+}
+
+export function App() {
+  const game = useGameStore((store) => store.game);
+  const [profiles, setProfiles] = useState(false);
+  if (!game || profiles)
+    return (
+      <ProfileSelection
+        onLoad={(loaded, summary) => {
+          useGameStore.getState().setGame(loaded, summary);
+          setProfiles(false);
+        }}
+      />
+    );
+  return (
+    <GameShell
+      game={game}
+      onExit={() => {
+        setProfiles(true);
+        useGameStore.getState().setGame(null);
+      }}
+    />
+  );
+}

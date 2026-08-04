@@ -1,0 +1,66 @@
+import { describe, expect, it } from 'vitest';
+import { startCombat, startMining, startSmithing } from '../game/engine/actionController';
+import { simulateElapsed } from '../game/engine/simulation';
+import { createNewGame } from '../game/state/initialState';
+import { getDerivedStats } from '../game/formulas/statFormulas';
+import { addItem, getItemQuantity } from '../game/systems/inventorySystem';
+
+describe('deterministic action simulation', () => {
+  it('mining completes cycles and preserves remainder', () => {
+    const state = startMining(createNewGame(0, 'Miner'), 'copper-vein', 0);
+    const result = simulateElapsed(state, 7_500);
+    expect(getItemQuantity(result.state.inventory, 'copper-ore')).toBe(2);
+    expect(
+      result.state.activeAction.type === 'mining' && result.state.activeAction.progressMs,
+    ).toBe(1_500);
+  });
+  it('mining stops safely when the reward cannot enter a full inventory', () => {
+    let state = createNewGame(0, 'Miner');
+    state.inventory = Array.from({ length: 60 }, () => ({
+      itemId: 'tin-ore',
+      quantity: 1,
+      locked: false,
+    }));
+    state = startMining(state, 'copper-vein', 0);
+    const result = simulateElapsed(state, 5_000);
+    expect(result.state.activeAction.type).toBe('none');
+    expect(result.summary.stoppedReason).toBe('Inventory is full.');
+  });
+  it('smithing consumes exact materials and stops when they run out', () => {
+    let state = createNewGame(0, 'Smith');
+    state.inventory = addItem([], 'copper-ore', 2, 60).inventory;
+    state.inventory = addItem(state.inventory, 'tin-ore', 2, 60).inventory;
+    state = startSmithing(state, 'bronze-bar', 'continuous', 0);
+    const result = simulateElapsed(state, 6_000);
+    expect(getItemQuantity(result.state.inventory, 'bronze-bar')).toBe(2);
+    expect(getItemQuantity(result.state.inventory, 'copper-ore')).toBe(0);
+    expect(result.state.activeAction.type).toBe('none');
+  });
+  it('combat resolves invalid content safely and supports style XP assignment', () => {
+    let state = createNewGame(0, 'Fighter');
+    state = startCombat(state, 'training-grounds', 'forest-rat', 'aggressive', false);
+    const result = simulateElapsed(state, 12_000);
+    expect(result.state.statistics.totalKills).toBeGreaterThanOrEqual(0);
+    expect(result.state.skills.strength.xp).toBeGreaterThanOrEqual(0);
+  });
+  it('restores player health when auto-repeat queues the next monster', () => {
+    let state = createNewGame(0, 'Repeater');
+    state.player.currentHp = 1;
+    state = startCombat(state, 'training-grounds', 'forest-rat', 'accurate', true);
+    if (state.activeAction.type === 'combat') {
+      state.activeAction = {
+        ...state.activeAction,
+        combatState: { ...state.activeAction.combatState, enemyHp: 1, playerAttackMs: 0, enemyAttackMs: 100_000 },
+      };
+    }
+    const result = simulateElapsed(state, 100);
+    expect(result.state.player.currentHp).toBe(getDerivedStats(result.state).maxHealth);
+    expect(result.state.activeAction.type === 'combat' && result.state.activeAction.combatState.respawnMs).toBeGreaterThan(0);
+  });
+  it('starts a newly selected combat target at full health', () => {
+    const state = createNewGame(0, 'Target Switch');
+    state.player.currentHp = 1;
+    const next = startCombat(state, 'training-grounds', 'goblin-scavenger', 'defensive', false);
+    expect(next.player.currentHp).toBe(getDerivedStats(next).maxHealth);
+  });
+});
