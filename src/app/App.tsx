@@ -9,6 +9,7 @@ import {
   Save,
   Settings,
   Shield,
+  Skull,
   Swords,
   Timer,
   Zap,
@@ -38,6 +39,7 @@ import type {
   AreaId,
   CombatStyle,
   EquipmentSlot,
+  EnemyId,
   GameState,
   QuantityMode,
   ScreenId,
@@ -58,7 +60,7 @@ const formatNumber = (value: number): string =>
     maximumFractionDigits: 1,
   }).format(Math.floor(value));
 const formatFightDuration = (startedAt: number | null, now = Date.now()): string => {
-  if (!startedAt) return '0:00';
+  if (startedAt === null) return '0:00';
   const seconds = Math.max(0, Math.floor((now - startedAt) / 1000));
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 };
@@ -179,6 +181,7 @@ function ProfileSelection({
               music: true,
               reducedMotion: false,
               compactNumbers: false,
+              huntElites: true,
               threeQuality: 'low',
             }}
           />
@@ -422,7 +425,7 @@ function ActionStrip({
     action.type === 'mining' ? 'mining' : action.type === 'smithing' ? 'smithing' : 'combat';
   if (action.type === 'combat') {
     const enemy = enemyById[action.enemyId];
-    const combatStats = getDerivedStats(game);
+    const combatStats = getDerivedStats(game, action.style);
     const combatStartedAt = combatSession.startedAt ?? game.updatedAt;
     return (
       <div className="action-strip combat-strip" data-ui-region="actionStrip">
@@ -1652,6 +1655,68 @@ function OfflineModal({ summary, onClose }: { summary: SimulationSummary; onClos
   );
 }
 
+function DeathModal({
+  game,
+  enemyId,
+  sessionStartedAt,
+  encounterStartedAt,
+  onClose,
+}: {
+  game: GameState;
+  enemyId: EnemyId | null;
+  sessionStartedAt: number | null;
+  encounterStartedAt: number | null;
+  onClose: () => void;
+}) {
+  const enemy = enemyId ? enemyById[enemyId] : undefined;
+  const recentActions = game.log
+    .filter((entry) => sessionStartedAt === null || entry.at >= sessionStartedAt)
+    .slice(0, 8);
+  const deathCause =
+    recentActions.find((entry) => entry.text.startsWith('You were killed by'))?.text ??
+    (enemy ? `You were killed by ${enemy.name}.` : 'The final blow ended the fight.');
+
+  return (
+    <div className="modal-backdrop death-backdrop">
+      <section className="modal death-modal" role="dialog" aria-modal="true" aria-labelledby="death-title">
+        <div className="death-heading">
+          <span className="death-icon" aria-hidden="true">
+            <Skull size={22} />
+          </span>
+          <div>
+            <div className="eyebrow">Combat ended</div>
+            <h2 id="death-title">You died</h2>
+          </div>
+        </div>
+        <p className="death-cause">{deathCause}</p>
+        <section className="death-recent-actions" aria-labelledby="death-actions-title">
+          <div className="death-recent-actions-heading">
+            <h3 id="death-actions-title">Recent actions</h3>
+            <span className="muted">How the fight ended</span>
+          </div>
+          <div className="death-action-list">
+            {recentActions.length ? (
+              recentActions.map((entry) => (
+                <div className={`death-action ${entry.tone}`} key={entry.id}>
+                  <time>
+                    {formatFightDuration(entry.combatEncounterStartedAt ?? encounterStartedAt, entry.at)}
+                  </time>
+                  <span>{entry.text}</span>
+                </div>
+              ))
+            ) : (
+              <span className="muted">No recent actions recorded.</span>
+            )}
+          </div>
+        </section>
+        <button className="button primary death-continue" onClick={onClose}>
+          Continue
+        </button>
+      </section>
+    </div>
+  );
+}
+
 function DebugPanel({
   game,
   open,
@@ -1786,10 +1851,14 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
   const [uiLayout, setUiLayout] = useState<UiLayout>(() => loadUiLayout());
   const offlineSummary = useGameStore((store) => store.offlineSummary);
   const clearOfflineSummary = useGameStore((store) => store.clearOfflineSummary);
+  const combatEvents = useGameStore((store) => store.combatEvents);
+  const combatSession = useGameStore((store) => store.combatSession);
   const toast = useGameStore((store) => store.toast);
   const clearToast = useGameStore((store) => store.clearToast);
   const saveNow = useGameStore((store) => store.saveNow);
   const currentGame = useGameStore((store) => store.game) ?? game;
+  const previousDeathCount = useRef(currentGame.statistics.deaths);
+  const [deathNotice, setDeathNotice] = useState<EnemyId | null>(null);
   const updateUiLayout = (next: UiLayout) => {
     setUiLayout(next);
     saveUiLayout(next);
@@ -1820,6 +1889,16 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
     const timer = window.setTimeout(clearToast, 2800);
     return () => window.clearTimeout(timer);
   }, [toast, clearToast]);
+  useEffect(() => {
+    const deaths = currentGame.statistics.deaths;
+    if (deaths > previousDeathCount.current) {
+      const deathEvent = [...combatEvents]
+        .reverse()
+        .find((event) => event.type === 'player-defeated');
+      setDeathNotice(deathEvent?.enemyId ?? null);
+    }
+    previousDeathCount.current = deaths;
+  }, [combatEvents, currentGame.statistics.deaths]);
   const requestConfirmation = (options: ConfirmDialogOptions) => setConfirmation(options);
   const requestAction = (target: ScreenId, action: () => void) => {
     const active = useGameStore.getState().game?.activeAction.type !== 'none';
@@ -1929,6 +2008,15 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
         />
       )}
       {offlineSummary && <OfflineModal summary={offlineSummary} onClose={clearOfflineSummary} />}
+      {deathNotice && (
+        <DeathModal
+          game={currentGame}
+          enemyId={deathNotice}
+          sessionStartedAt={combatSession.startedAt}
+          encounterStartedAt={combatSession.encounterStartedAt ?? combatSession.startedAt}
+          onClose={() => setDeathNotice(null)}
+        />
+      )}
       <DebugPanel game={currentGame} open={debugOpen} onClose={() => setDebugOpen(false)} />
       {editingUi && (
         <UiEditor layout={uiLayout} onChange={updateUiLayout} onClose={() => setEditingUi(false)} />

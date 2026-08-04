@@ -1,7 +1,10 @@
+import { COMBAT_TUNING } from '../../config/combatTuning';
 import { areaById, AREAS } from '../../content/areas';
 import { enemyById } from '../../content/enemies';
+import { getEnemyCombatStats } from '../formulas/combatStats';
+import { getCombatStyleModifiers, getHitChance } from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
-import type { AreaId, CombatStyle, EnemyDefinition, EnemyId, GameState } from '../types';
+import type { AreaId, CombatStyle, EliteModifierId, EnemyDefinition, EnemyId, GameState } from '../types';
 
 export const ZONE_COMPLETION_KILLS = 25;
 export type AttackProgressState = 'idle' | 'active' | 'ready' | 'defeated' | 'respawning';
@@ -39,11 +42,29 @@ export const selectSelectedEnemy = (
   enemyById[state.activeAction.type === 'combat' ? state.activeAction.enemyId : fallback] ??
   enemyById[fallback];
 
+const getActiveStyle = (state: GameState, style?: CombatStyle): CombatStyle =>
+  style ?? (state.activeAction.type === 'combat' ? state.activeAction.style : 'accurate');
+
+const getActiveElite = (state: GameState, enemy: EnemyDefinition): EliteModifierId | null =>
+  state.activeAction.type === 'combat' && state.activeAction.enemyId === enemy.id
+    ? state.activeAction.combatState.eliteModifier
+    : null;
+
+const selectEnemyStats = (state: GameState, enemy: EnemyDefinition) =>
+  getEnemyCombatStats(
+    enemy,
+    getActiveElite(state, enemy),
+    state.activeAction.type === 'combat' && state.activeAction.enemyId === enemy.id
+      ? state.activeAction.combatState.enemyHp
+      : getEnemyCombatStats(enemy, getActiveElite(state, enemy)).maxHealth,
+  );
+
 const interpolatedRemaining = (remainingMs: number, updatedAt: number, now: number): number =>
   Math.max(0, remainingMs - Math.min(250, Math.max(0, now - updatedAt)));
 
 export const selectPlayerAttackProgress = (state: GameState, now = Date.now()): AttackProgress => {
-  const stats = getDerivedStats(state);
+  const style = getActiveStyle(state);
+  const stats = getDerivedStats(state, style);
   if (state.activeAction.type !== 'combat')
     return {
       ratio: 0,
@@ -81,25 +102,26 @@ export const selectPlayerAttackProgress = (state: GameState, now = Date.now()): 
 
 export const selectEnemyAttackProgress = (state: GameState, now = Date.now()): AttackProgress => {
   const enemy = selectSelectedEnemy(state);
+  const stats = selectEnemyStats(state, enemy);
   if (state.activeAction.type !== 'combat')
     return {
       ratio: 0,
-      timeUntilAttackMs: enemy.attackIntervalMs,
-      intervalMs: enemy.attackIntervalMs,
+      timeUntilAttackMs: stats.attackIntervalMs,
+      intervalMs: stats.attackIntervalMs,
       state: 'idle',
     };
   if (state.activeAction.combatState.respawnMs > 0)
     return {
       ratio: 0,
-      timeUntilAttackMs: enemy.attackIntervalMs,
-      intervalMs: enemy.attackIntervalMs,
+      timeUntilAttackMs: stats.attackIntervalMs,
+      intervalMs: stats.attackIntervalMs,
       state: 'respawning',
     };
   if (state.activeAction.combatState.enemyHp <= 0 || state.player.currentHp <= 0)
     return {
       ratio: 0,
-      timeUntilAttackMs: enemy.attackIntervalMs,
-      intervalMs: enemy.attackIntervalMs,
+      timeUntilAttackMs: stats.attackIntervalMs,
+      intervalMs: stats.attackIntervalMs,
       state: 'defeated',
     };
   const timeUntilAttackMs = interpolatedRemaining(
@@ -107,28 +129,104 @@ export const selectEnemyAttackProgress = (state: GameState, now = Date.now()): A
     state.updatedAt,
     now,
   );
-  const ratio = Math.max(0, Math.min(1, 1 - timeUntilAttackMs / enemy.attackIntervalMs));
+  const progressInterval = state.activeAction.combatState.traitState.firstAttackPending
+    ? Math.max(1, state.activeAction.combatState.enemyAttackMs)
+    : stats.attackIntervalMs;
+  const ratio = Math.max(0, Math.min(1, 1 - timeUntilAttackMs / progressInterval));
   return {
     ratio,
     timeUntilAttackMs,
-    intervalMs: enemy.attackIntervalMs,
+    intervalMs: stats.attackIntervalMs,
     state: ratio >= 0.85 ? 'ready' : 'active',
   };
+};
+
+export const selectPlayerHitChance = (
+  state: GameState,
+  enemy = selectSelectedEnemy(state),
+  style = getActiveStyle(state),
+): number => getHitChance(getDerivedStats(state, style).effectiveAccuracyRating, selectEnemyStats(state, enemy).defenceRating);
+
+export const selectEnemyHitChance = (
+  state: GameState,
+  enemy = selectSelectedEnemy(state),
+  style = getActiveStyle(state),
+): number => getHitChance(selectEnemyStats(state, enemy).accuracyRating, getDerivedStats(state, style).effectiveDefenceRating);
+
+export const selectPlayerAverageDamage = (
+  state: GameState,
+  _enemy = selectSelectedEnemy(state),
+  style = getActiveStyle(state),
+): number => {
+  const maxHit = getDerivedStats(state, style).effectiveMaxHit;
+  return (1 + maxHit) / 2;
+};
+
+export const selectEnemyAverageDamage = (
+  state: GameState,
+  enemy = selectSelectedEnemy(state),
+): number => {
+  const stats = selectEnemyStats(state, enemy);
+  let average = (1 + stats.maxHit) / 2;
+  if (enemy.trait.id === 'heavy-strike') average *= 0.75 + 0.25 * COMBAT_TUNING.banditHeavyMaxHitMultiplier;
+  if (enemy.trait.id === 'bleeding-bites') average += COMBAT_TUNING.wolfBleedChance;
+  if (enemy.trait.id === 'scurry') average *= 2 / (1 + COMBAT_TUNING.ratFirstAttackMultiplier);
+  return average;
 };
 
 export const selectPlayerEstimatedDps = (
   state: GameState,
   enemy = selectSelectedEnemy(state),
+  style = getActiveStyle(state),
 ): number => {
-  const stats = getDerivedStats(state);
-  void enemy;
-  return (1 + stats.maxHit / 2) / (stats.attackIntervalMs / 1000);
+  const attackInterval = getDerivedStats(state, style).attackIntervalMs;
+  return (selectPlayerHitChance(state, enemy, style) * selectPlayerAverageDamage(state, enemy, style)) /
+    Math.max(0.001, attackInterval / 1000);
 };
 
 export const selectEnemyEstimatedDps = (
   state: GameState,
   enemy = selectSelectedEnemy(state),
-): number => (1 + enemy.maxHit / 2) / (enemy.attackIntervalMs / 1000);
+): number => selectEnemyHitChance(state, enemy) * selectEnemyAverageDamage(state, enemy) /
+  Math.max(0.001, selectEnemyStats(state, enemy).attackIntervalMs / 1000);
+
+export const selectEstimatedKillTimeMs = (
+  state: GameState,
+  enemy = selectSelectedEnemy(state),
+  style = getActiveStyle(state),
+): number => selectEnemyStats(state, enemy).maxHealth / Math.max(0.001, selectPlayerEstimatedDps(state, enemy, style)) * 1000;
+
+export const selectEstimatedSurvivalTimeMs = (
+  state: GameState,
+  enemy = selectSelectedEnemy(state),
+  style = getActiveStyle(state),
+): number => getDerivedStats(state, style).maxHealth / Math.max(0.001, selectEnemyEstimatedDps(state, enemy)) * 1000;
+
+export const selectExpectedKillsPerHour = (
+  state: GameState,
+  enemy = selectSelectedEnemy(state),
+  style = getActiveStyle(state),
+): number => 3_600_000 /
+  Math.max(1, selectEstimatedKillTimeMs(state, enemy, style) + 3_000);
+
+export const selectExpectedFoodPerHour = (_state?: GameState): 'Not available yet' => 'Not available yet';
+
+export const selectTargetTrait = (state: GameState, enemy = selectSelectedEnemy(state)) => enemy.trait;
+
+export const selectAreaThreat = (
+  state: GameState,
+  enemy = selectSelectedEnemy(state),
+  style = getActiveStyle(state),
+): 'Trivial' | 'Easy' | 'Fair' | 'Dangerous' | 'Deadly' => {
+  const killTime = selectEstimatedKillTimeMs(state, enemy, style);
+  const surviveTime = Math.max(1, selectEstimatedSurvivalTimeMs(state, enemy, style));
+  const pressure = killTime / surviveTime;
+  if (pressure < COMBAT_TUNING.threatTrivial) return 'Trivial';
+  if (pressure < COMBAT_TUNING.threatEasy) return 'Easy';
+  if (pressure < COMBAT_TUNING.threatFair) return 'Fair';
+  if (pressure < COMBAT_TUNING.threatDangerous) return 'Dangerous';
+  return 'Deadly';
+};
 
 export const selectCombatStatus = (state: GameState): string => {
   if (state.activeAction.type !== 'combat') {
@@ -143,11 +241,7 @@ export const selectCombatStatus = (state: GameState): string => {
 
 export const selectCombatProgress = (
   state: GameState,
-): {
-  killed: number;
-  target: number;
-  percent: number;
-} => {
+): { killed: number; target: number; percent: number } => {
   const area = selectSelectedCombatArea(state);
   const killed = area.enemyIds.reduce((total, id) => total + (state.killCounts[id] ?? 0), 0);
   return {
@@ -159,24 +253,7 @@ export const selectCombatProgress = (
 
 export const selectZoneUnlockProgress = selectCombatProgress;
 
-export const selectAreaThreat = (
-  state: GameState,
-  enemy = selectSelectedEnemy(state),
-): 'Trivial' | 'Easy' | 'Fair' | 'Dangerous' | 'Deadly' => {
-  const playerDps = Math.max(0.1, selectPlayerEstimatedDps(state, enemy));
-  const enemyDps = selectEnemyEstimatedDps(state, enemy);
-  const killTime = enemy.maxHealth / playerDps;
-  const surviveTime = Math.max(1, getDerivedStats(state).maxHealth / Math.max(0.1, enemyDps));
-  const pressure = killTime / surviveTime;
-  if (pressure < 0.25) return 'Trivial';
-  if (pressure < 0.6) return 'Easy';
-  if (pressure < 1) return 'Fair';
-  if (pressure < 1.8) return 'Dangerous';
-  return 'Deadly';
-};
-
 export const displayDropChance = (chance: number): string => `${Math.round(chance * 100)}%`;
-
 export type LootRarityLabel = 'Common' | 'Uncommon' | 'Rare' | 'Very Rare';
 export const getLootRarity = (chance: number): LootRarityLabel => {
   if (chance >= 0.5) return 'Common';
@@ -187,30 +264,26 @@ export const getLootRarity = (chance: number): LootRarityLabel => {
 
 export const getCombatStyleInfo = (
   style: CombatStyle,
-): {
-  name: string;
-  skill: string;
-  benefit: string;
-  modifier: string;
-} => {
+): { name: string; skill: string; benefit: string; modifier: string } => {
+  const modifiers = getCombatStyleModifiers(style);
   if (style === 'accurate')
     return {
       name: 'Accurate',
       skill: 'Attack XP',
       benefit: 'Train Attack through damage',
-      modifier: '5 Attack XP per damage',
+      modifier: `+${Math.round((modifiers.accuracyMultiplier - 1) * 100)}% Accuracy`,
     };
   if (style === 'aggressive')
     return {
       name: 'Aggressive',
       skill: 'Strength XP',
       benefit: 'Train Strength through damage',
-      modifier: '5 Strength XP per damage',
+      modifier: '+10% max hit · −10% Accuracy',
     };
   return {
     name: 'Defensive',
     skill: 'Defence XP',
     benefit: 'Train Defence through damage',
-    modifier: '5 Defence XP per damage',
+    modifier: '+20% Defence · −10% max hit',
   };
 };

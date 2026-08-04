@@ -30,6 +30,7 @@ export const createNewGame = (slot: number, name: string, now = Date.now()): Gam
       music: true,
       reducedMotion: false,
       compactNumbers: false,
+      huntElites: true,
       threeQuality: 'high',
     },
     log: [{ id: `welcome-${now}`, at: now, text: 'The road is yours to forge.', tone: 'neutral' }],

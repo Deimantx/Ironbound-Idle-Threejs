@@ -31,6 +31,15 @@ export type ScreenId =
   | 'locked';
 export type QuantityMode = 1 | 10 | 'all' | 'continuous';
 export type CombatStyle = 'accurate' | 'aggressive' | 'defensive';
+export type EnemyTraitId =
+  | 'scurry'
+  | 'desperate-swing'
+  | 'evasive'
+  | 'armoured-shell'
+  | 'bleeding-bites'
+  | 'heavy-strike';
+export type EliteModifierId = 'savage' | 'armoured' | 'swift' | 'wealthy' | 'treasure-touched';
+export type WeaponSpecialId = 'focused-slash' | 'sundering-strike' | 'executioners-cut';
 export type EnemyVisualArchetype = 'rat' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
 export type ZoneVisualTheme = 'training' | 'copper-cavern' | 'ironwood';
 
@@ -77,6 +86,18 @@ export interface ItemDefinition {
     health: number;
     speed: number;
   }>;
+  specialAttack?: WeaponSpecial;
+}
+
+export interface WeaponSpecial {
+  id: WeaponSpecialId;
+  name: string;
+  description: string;
+  damageMultiplier: number;
+  accuracyMultiplier: number;
+  ignoresFlatDamageReduction?: boolean;
+  executeThreshold?: number;
+  executeDamageMultiplier?: number;
 }
 
 export interface MiningNodeDefinition {
@@ -119,6 +140,13 @@ export interface EnemyDefinition {
   maxHealth: number;
   attackIntervalMs: number;
   maxHit: number;
+  accuracyRating: number;
+  defenceRating: number;
+  trait: {
+    id: EnemyTraitId;
+    name: string;
+    description: string;
+  };
   loot: LootEntry[];
   gold: [number, number];
   theme: 'rodent' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
@@ -146,6 +174,28 @@ export interface InventoryStack {
 
 export type EquipmentLoadout = Partial<Record<EquipmentSlot, string>>;
 
+export interface CombatTraitState {
+  firstAttackPending: boolean;
+  enemyAttackCount: number;
+  bleedStacks: number;
+}
+
+export interface ActiveCombatState {
+  enemyHp: number;
+  enemyMaxHp: number;
+  playerAttackMs: number;
+  enemyAttackMs: number;
+  respawnMs: number;
+  rngSeed: number;
+  rngCursor: number;
+  momentum: number;
+  eliteModifier: EliteModifierId | null;
+  eliteAnnounced: boolean;
+  traitState: CombatTraitState;
+  encounterIndex: number;
+  encounterStartedAt: number;
+}
+
 export type ActiveAction =
   | { type: 'none' }
   | { type: 'mining'; nodeId: MiningNodeId; startedAt: number; progressMs: number }
@@ -161,13 +211,11 @@ export type ActiveAction =
       enemyId: EnemyId;
       areaId: AreaId;
       style: CombatStyle;
+      pendingStyle: CombatStyle | null;
       autoRepeat: boolean;
-      combatState: {
-        enemyHp: number;
-        playerAttackMs: number;
-        enemyAttackMs: number;
-        respawnMs: number;
-      };
+      autoSpecial: boolean;
+      specialQueued: boolean;
+      combatState: ActiveCombatState;
     };
 
 export interface GameSettings {
@@ -175,6 +223,7 @@ export interface GameSettings {
   music: boolean;
   reducedMotion: boolean;
   compactNumbers: boolean;
+  huntElites: boolean;
   threeQuality: 'off' | 'low' | 'high';
 }
 
@@ -183,6 +232,7 @@ export interface GameLogEntry {
   at: number;
   text: string;
   tone: 'neutral' | 'success' | 'warning' | 'danger';
+  combatEncounterStartedAt?: number;
 }
 
 export interface GameState {
@@ -223,13 +273,67 @@ export interface SimulationSummary {
   enemiesDefeated: number;
   deaths: number;
   goldGained: number;
+  eliteEnemiesDefeated: number;
+  combatStats: {
+    playerAttacks: number;
+    playerHits: number;
+    enemyAttacks: number;
+    enemyHits: number;
+    specialAttempts: number;
+    specialHits: number;
+    damageDealt: number;
+    damageTaken: number;
+  };
   stoppedReason?: string;
 }
 
 export type CombatVisualEvent =
-  | { id: string; type: 'player-hit'; enemyId: EnemyId; damage: number; at: number }
-  | { id: string; type: 'enemy-hit'; enemyId: EnemyId; damage: number; at: number }
-  | { id: string; type: 'enemy-defeated'; enemyId: EnemyId; at: number; gold: number }
+  | {
+      id: string;
+      type: 'player-hit';
+      enemyId: EnemyId;
+      damage: number;
+      at: number;
+      special?: boolean;
+    }
+  | {
+      id: string;
+      type: 'player-miss';
+      enemyId: EnemyId;
+      damage: number;
+      at: number;
+      special?: boolean;
+    }
+  | {
+      id: string;
+      type: 'enemy-hit';
+      enemyId: EnemyId;
+      damage: number;
+      at: number;
+    }
+  | {
+      id: string;
+      type: 'enemy-miss';
+      enemyId: EnemyId;
+      damage: number;
+      at: number;
+    }
+  | {
+      id: string;
+      type: 'enemy-bleed';
+      enemyId: EnemyId;
+      damage: number;
+      at: number;
+    }
+  | {
+      id: string;
+      type: 'enemy-defeated';
+      enemyId: EnemyId;
+      at: number;
+      gold: number;
+      eliteModifier?: EliteModifierId | null;
+    }
+  | { id: string; type: 'elite-spawned'; enemyId: EnemyId; at: number; modifier: EliteModifierId }
   | { id: string; type: 'player-defeated'; enemyId: EnemyId; at: number }
   | {
       id: string;
@@ -242,14 +346,18 @@ export type CombatVisualEvent =
 
 export interface CombatSessionStats {
   startedAt: number | null;
+  encounterStartedAt: number | null;
   enemyId: EnemyId | null;
   playerAttacks: number;
   playerHits: number;
   enemyAttacks: number;
   enemyHits: number;
+  specialAttempts: number;
+  specialHits: number;
   damageDealt: number;
   damageTaken: number;
   enemiesDefeated: number;
+  eliteEnemiesDefeated: number;
   xpGained: Partial<Record<SkillId, number>>;
   lootGained: Record<string, number>;
   goldGained: number;
@@ -258,16 +366,21 @@ export interface CombatSessionStats {
 export const emptyCombatSession = (
   enemyId: EnemyId | null = null,
   startedAt: number | null = null,
+  encounterStartedAt: number | null = startedAt,
 ): CombatSessionStats => ({
   startedAt,
+  encounterStartedAt,
   enemyId,
   playerAttacks: 0,
   playerHits: 0,
   enemyAttacks: 0,
   enemyHits: 0,
+  specialAttempts: 0,
+  specialHits: 0,
   damageDealt: 0,
   damageTaken: 0,
   enemiesDefeated: 0,
+  eliteEnemiesDefeated: 0,
   xpGained: {},
   lootGained: {},
   goldGained: 0,
@@ -283,4 +396,15 @@ export const emptySummary = (elapsedMs = 0): SimulationSummary => ({
   enemiesDefeated: 0,
   deaths: 0,
   goldGained: 0,
+  eliteEnemiesDefeated: 0,
+  combatStats: {
+    playerAttacks: 0,
+    playerHits: 0,
+    enemyAttacks: 0,
+    enemyHits: 0,
+    specialAttempts: 0,
+    specialHits: 0,
+    damageDealt: 0,
+    damageTaken: 0,
+  },
 });

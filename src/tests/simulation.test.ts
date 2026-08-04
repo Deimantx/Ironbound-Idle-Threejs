@@ -4,6 +4,7 @@ import { simulateElapsed } from '../game/engine/simulation';
 import { createNewGame } from '../game/state/initialState';
 import { getDerivedStats } from '../game/formulas/statFormulas';
 import { addItem, getItemQuantity } from '../game/systems/inventorySystem';
+import { GAME_CONFIG } from '../config/gameConfig';
 
 describe('deterministic action simulation', () => {
   it('mining completes cycles and preserves remainder', () => {
@@ -52,6 +53,10 @@ describe('deterministic action simulation', () => {
         ...state.activeAction,
         combatState: { ...state.activeAction.combatState, enemyHp: 1, playerAttackMs: 0, enemyAttackMs: 100_000 },
       };
+      state.activeAction.combatState.rngSeed = 1;
+      state.activeAction.combatState.rngCursor = 1;
+      state.activeAction.combatState.eliteModifier = null;
+      state.activeAction.combatState.enemyMaxHp = 1;
     }
     const result = simulateElapsed(state, 100);
     expect(result.state.player.currentHp).toBe(getDerivedStats(result.state).maxHealth);
@@ -62,5 +67,54 @@ describe('deterministic action simulation', () => {
     state.player.currentHp = 1;
     const next = startCombat(state, 'training-grounds', 'goblin-scavenger', 'defensive', false);
     expect(next.player.currentHp).toBe(getDerivedStats(next).maxHealth);
+  });
+  it('stops combat and records the killer when the player dies', () => {
+    const state = startCombat(
+      createNewGame(0, 'Fallen Fighter'),
+      'training-grounds',
+      'forest-rat',
+      'accurate',
+      false,
+      0,
+    );
+    state.player.currentHp = 1;
+    if (state.activeAction.type === 'combat') {
+      state.activeAction.combatState.playerAttackMs = 100_000;
+      state.activeAction.combatState.enemyAttackMs = 0;
+    }
+    const result = simulateElapsed(state, 20_000);
+    expect(result.state.activeAction.type).toBe('none');
+    expect(result.state.statistics.deaths).toBe(1);
+    expect(result.state.player.currentHp).toBe(getDerivedStats(result.state).maxHealth);
+    expect(result.events.some((event) => event.type === 'player-defeated')).toBe(true);
+    expect(result.state.log[0]?.text).toMatch(/You were killed by Forest Rat/);
+  });
+  it('resets the encounter clock when auto-repeat spawns a new monster', () => {
+    const state = startCombat(
+      createNewGame(0, 'Repeating Fighter', 0),
+      'training-grounds',
+      'forest-rat',
+      'accurate',
+      true,
+      0,
+    );
+    const firstEncounterStartedAt =
+      state.activeAction.type === 'combat' ? state.activeAction.combatState.encounterStartedAt : null;
+    if (state.activeAction.type === 'combat') {
+      state.activeAction.combatState.enemyHp = 1;
+      state.activeAction.combatState.enemyMaxHp = 1;
+      state.activeAction.combatState.playerAttackMs = 1;
+      state.activeAction.combatState.enemyAttackMs = 100_000;
+    }
+    const result = simulateElapsed(state, GAME_CONFIG.respawnMs + 10_000);
+    expect(result.state.activeAction.type).toBe('combat');
+    expect(
+      result.state.activeAction.type === 'combat'
+        ? result.state.activeAction.combatState.encounterStartedAt
+        : null,
+    ).toBeGreaterThan(firstEncounterStartedAt ?? -1);
+    expect(result.state.log.find((entry) => entry.text.includes('defeated'))?.combatEncounterStartedAt).toBe(
+      firstEncounterStartedAt,
+    );
   });
 });

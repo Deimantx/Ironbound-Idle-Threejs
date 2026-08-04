@@ -1,4 +1,5 @@
 import type { EnemyDefinition } from '../game/types';
+import { COMBAT_TUNING } from '../config/combatTuning';
 
 export const ENEMIES: EnemyDefinition[] = [
   {
@@ -10,6 +11,13 @@ export const ENEMIES: EnemyDefinition[] = [
     maxHealth: 12,
     attackIntervalMs: 2600,
     maxHit: 2,
+    accuracyRating: COMBAT_TUNING.enemyRatings['forest-rat'].accuracy,
+    defenceRating: COMBAT_TUNING.enemyRatings['forest-rat'].defence,
+    trait: {
+      id: 'scurry',
+      name: 'Scurry',
+      description: 'Its first attack arrives sooner than normal.',
+    },
     loot: [
       { itemId: 'rat-tail', chance: 0.25, min: 1, max: 1 },
       { itemId: 'tattered-hide', chance: 0.18, min: 1, max: 1 },
@@ -35,6 +43,13 @@ export const ENEMIES: EnemyDefinition[] = [
     maxHealth: 25,
     attackIntervalMs: 2800,
     maxHit: 4,
+    accuracyRating: COMBAT_TUNING.enemyRatings['goblin-scavenger'].accuracy,
+    defenceRating: COMBAT_TUNING.enemyRatings['goblin-scavenger'].defence,
+    trait: {
+      id: 'desperate-swing',
+      name: 'Desperate Swing',
+      description: 'Deals heavier damage while below 30% Health.',
+    },
     loot: [
       { itemId: 'goblin-scrap', chance: 0.55, min: 1, max: 1 },
       { itemId: 'tattered-hide', chance: 0.2, min: 1, max: 1 },
@@ -60,6 +75,13 @@ export const ENEMIES: EnemyDefinition[] = [
     maxHealth: 110,
     attackIntervalMs: 2200,
     maxHit: 9,
+    accuracyRating: COMBAT_TUNING.enemyRatings['cave-bat'].accuracy,
+    defenceRating: COMBAT_TUNING.enemyRatings['cave-bat'].defence,
+    trait: {
+      id: 'evasive',
+      name: 'Evasive',
+      description: 'Its erratic movement greatly increases Defence.',
+    },
     loot: [{ itemId: 'bat-wing', chance: 0.58, min: 1, max: 1 }],
     gold: [8, 16],
     theme: 'bat',
@@ -82,6 +104,13 @@ export const ENEMIES: EnemyDefinition[] = [
     maxHealth: 180,
     attackIntervalMs: 3400,
     maxHit: 13,
+    accuracyRating: COMBAT_TUNING.enemyRatings['stoneback-crab'].accuracy,
+    defenceRating: COMBAT_TUNING.enemyRatings['stoneback-crab'].defence,
+    trait: {
+      id: 'armoured-shell',
+      name: 'Armoured Shell',
+      description: 'Reduces damage from each successful hit.',
+    },
     loot: [{ itemId: 'crab-shell', chance: 0.48, min: 1, max: 1 }],
     gold: [10, 22],
     theme: 'crab',
@@ -104,6 +133,13 @@ export const ENEMIES: EnemyDefinition[] = [
     maxHealth: 300,
     attackIntervalMs: 2400,
     maxHit: 19,
+    accuracyRating: COMBAT_TUNING.enemyRatings['grey-wolf'].accuracy,
+    defenceRating: COMBAT_TUNING.enemyRatings['grey-wolf'].defence,
+    trait: {
+      id: 'bleeding-bites',
+      name: 'Bleeding Bites',
+      description: 'Successful attacks can cause stacking damage over time.',
+    },
     loot: [{ itemId: 'wolf-pelt', chance: 0.52, min: 1, max: 1 }],
     gold: [20, 40],
     theme: 'wolf',
@@ -126,6 +162,13 @@ export const ENEMIES: EnemyDefinition[] = [
     maxHealth: 430,
     attackIntervalMs: 3000,
     maxHit: 24,
+    accuracyRating: COMBAT_TUNING.enemyRatings['road-bandit'].accuracy,
+    defenceRating: COMBAT_TUNING.enemyRatings['road-bandit'].defence,
+    trait: {
+      id: 'heavy-strike',
+      name: 'Heavy Strike',
+      description: 'Every fourth attack is much more powerful.',
+    },
     loot: [
       { itemId: 'bandit-token', chance: 0.44, min: 1, max: 1 },
       { itemId: 'rusted-emblem', chance: 0.12, min: 1, max: 1 },

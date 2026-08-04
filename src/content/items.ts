@@ -1,4 +1,4 @@
-import type { ItemDefinition } from '../game/types';
+import type { ItemDefinition, WeaponSpecial } from '../game/types';
 
 const material = (
   id: string,
@@ -32,6 +32,7 @@ const gear = (
   tier: ItemDefinition['tier'],
   bonuses: NonNullable<ItemDefinition['bonuses']>,
   level: string,
+  specialAttack?: WeaponSpecial,
 ): ItemDefinition => ({
   id,
   name,
@@ -54,6 +55,7 @@ const gear = (
   slot,
   tier,
   bonuses,
+  specialAttack,
 });
 
 export const ITEMS: ItemDefinition[] = [
@@ -82,6 +84,14 @@ export const ITEMS: ItemDefinition[] = [
     'bronze',
     { attack: 8, strength: 5, speed: 0 },
     'Bronze',
+    {
+      id: 'focused-slash',
+      name: 'Focused Slash',
+      description: 'A controlled strike with increased damage and accuracy.',
+      damageMultiplier: 1.6,
+      accuracyMultiplier: 1.25,
+    },
+    
   ),
   gear('bronze-helmet', 'Bronze Helm', 'head', 'bronze', { defence: 5, health: 2 }, 'Bronze'),
   gear('bronze-platebody', 'Bronze Cuirass', 'body', 'bronze', { defence: 9, health: 4 }, 'Bronze'),
@@ -95,6 +105,15 @@ export const ITEMS: ItemDefinition[] = [
     'iron',
     { attack: 18, strength: 12, speed: 0.05 },
     'Iron',
+    {
+      id: 'sundering-strike',
+      name: 'Sundering Strike',
+      description: 'A heavy blow that breaks through flat damage reduction.',
+      damageMultiplier: 1.75,
+      accuracyMultiplier: 1.15,
+      ignoresFlatDamageReduction: true,
+    },
+    
   ),
   gear('iron-helmet', 'Iron Helm', 'head', 'iron', { defence: 12, health: 6 }, 'Iron'),
   gear('iron-platebody', 'Iron Cuirass', 'body', 'iron', { defence: 22, health: 10 }, 'Iron'),
@@ -108,6 +127,16 @@ export const ITEMS: ItemDefinition[] = [
     'steel',
     { attack: 32, strength: 24, speed: 0.1 },
     'Steel',
+    {
+      id: 'executioners-cut',
+      name: "Executioner's Cut",
+      description: 'Deals greatly increased damage to wounded enemies.',
+      damageMultiplier: 1.75,
+      accuracyMultiplier: 1.1,
+      executeThreshold: 0.35,
+      executeDamageMultiplier: 2.25,
+    },
+    
   ),
   gear('steel-helmet', 'Steel Helm', 'head', 'steel', { defence: 21, health: 10 }, 'Steel'),
   gear('steel-platebody', 'Steel Cuirass', 'body', 'steel', { defence: 38, health: 18 }, 'Steel'),

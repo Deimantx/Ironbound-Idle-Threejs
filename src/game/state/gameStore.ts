@@ -3,7 +3,9 @@ import { saveProfile } from '../persistence/saveManager';
 import { simulateElapsed } from '../engine/simulation';
 import {
   setCombatAutoRepeat,
+  setCombatAutoSpecial,
   setCombatStyle,
+  queueCombatSpecial,
   startCombat,
   startMining,
   startSmithing,
@@ -35,7 +37,7 @@ interface Store {
   tick: (now: number) => void;
   startMining: (nodeId: MiningNodeId) => void;
   startSmithing: (recipeId: string, mode: QuantityMode) => void;
-  startCombat: (areaId: AreaId, enemyId: EnemyId, style: CombatStyle, autoRepeat: boolean) => void;
+  startCombat: (areaId: AreaId, enemyId: EnemyId, style: CombatStyle, autoRepeat: boolean, autoSpecial?: boolean) => void;
   stopAction: () => void;
   equip: (itemId: string) => void;
   unequip: (slot: Parameters<typeof unequipItem>[1]) => void;
@@ -49,6 +51,8 @@ interface Store {
   combatSession: CombatSessionStats;
   setCombatStyle: (style: CombatStyle) => void;
   setCombatAutoRepeat: (autoRepeat: boolean) => void;
+  setCombatAutoSpecial: (autoSpecial: boolean) => void;
+  queueCombatSpecial: () => void;
 }
 
 let lastTick = Date.now();
@@ -70,20 +74,19 @@ const mergeCombatSession = (
     next.xpGained[skill as keyof CombatSessionStats['xpGained']] =
       (next.xpGained[skill as keyof CombatSessionStats['xpGained']] ?? 0) + (amount ?? 0);
   next.enemiesDefeated += summary.enemiesDefeated;
+  next.eliteEnemiesDefeated += summary.eliteEnemiesDefeated;
   next.goldGained += summary.goldGained;
   for (const [itemId, amount] of Object.entries(summary.itemsGained))
     next.lootGained[itemId] = (next.lootGained[itemId] ?? 0) + amount;
-  for (const event of events) {
-    if (event.type === 'player-hit') {
-      next.playerAttacks += 1;
-      next.playerHits += 1;
-      next.damageDealt += event.damage;
-    } else if (event.type === 'enemy-hit') {
-      next.enemyAttacks += 1;
-      next.enemyHits += 1;
-      next.damageTaken += event.damage;
-    }
-  }
+  next.playerAttacks += summary.combatStats.playerAttacks;
+  next.playerHits += summary.combatStats.playerHits;
+  next.enemyAttacks += summary.combatStats.enemyAttacks;
+  next.enemyHits += summary.combatStats.enemyHits;
+  next.specialAttempts += summary.combatStats.specialAttempts;
+  next.specialHits += summary.combatStats.specialHits;
+  next.damageDealt += summary.combatStats.damageDealt;
+  next.damageTaken += summary.combatStats.damageTaken;
+  void events;
   return next;
 };
 
@@ -106,6 +109,7 @@ export const useGameStore = create<Store>((set, get) => ({
       combatSession: emptyCombatSession(
         loadedCombat?.enemyId ?? null,
         loadedCombat && game ? game.updatedAt : null,
+        loadedCombat?.combatState.encounterStartedAt ?? (loadedCombat && game ? game.updatedAt : null),
       ),
     });
   },
@@ -117,14 +121,17 @@ export const useGameStore = create<Store>((set, get) => ({
     if (elapsed <= 0) return;
     const result = simulateElapsed(game, elapsed);
     const isCombat = game.activeAction.type === 'combat';
+    const nextCombatSession = isCombat
+      ? mergeCombatSession(get().combatSession, result.summary, result.events)
+      : get().combatSession;
+    if (result.state.activeAction.type === 'combat')
+      nextCombatSession.encounterStartedAt = result.state.activeAction.combatState.encounterStartedAt;
     set({
       game: result.state,
       combatEvents: result.events.length
         ? [...get().combatEvents, ...result.events].slice(-64)
         : get().combatEvents,
-      combatSession: isCombat
-        ? mergeCombatSession(get().combatSession, result.summary, result.events)
-        : get().combatSession,
+      combatSession: nextCombatSession,
     });
   },
   startMining: (nodeId) => {
@@ -135,14 +142,18 @@ export const useGameStore = create<Store>((set, get) => ({
     const game = get().game;
     if (game) set({ game: startSmithing(game, recipeId, mode) });
   },
-  startCombat: (areaId, enemyId, style, autoRepeat) => {
+  startCombat: (areaId, enemyId, style, autoRepeat, autoSpecial = true) => {
     const game = get().game;
-    if (game)
+    if (game) {
+      const startedAt = Date.now();
+      const nextGame = startCombat(game, areaId, enemyId, style, autoRepeat, startedAt, autoSpecial);
+      nextGame.lastSimulatedAt = startedAt;
       set({
-        game: startCombat(game, areaId, enemyId, style, autoRepeat),
+        game: nextGame,
         combatEvents: [],
-        combatSession: emptyCombatSession(enemyId, Date.now()),
+        combatSession: emptyCombatSession(enemyId, startedAt, startedAt),
       });
+    }
   },
   setCombatStyle: (style) => {
     const game = get().game;
@@ -151,6 +162,14 @@ export const useGameStore = create<Store>((set, get) => ({
   setCombatAutoRepeat: (autoRepeat) => {
     const game = get().game;
     if (game) set({ game: setCombatAutoRepeat(game, autoRepeat) });
+  },
+  setCombatAutoSpecial: (autoSpecial) => {
+    const game = get().game;
+    if (game) set({ game: setCombatAutoSpecial(game, autoSpecial) });
+  },
+  queueCombatSpecial: () => {
+    const game = get().game;
+    if (game) set({ game: queueCombatSpecial(game) });
   },
   stopAction: () => {
     const game = get().game;

@@ -10,6 +10,45 @@ export const saveRecordSchema = z.object({
   updatedAt: z.number(),
   checksum: z.string().min(3),
 });
+const activeCombatStateSchema = z
+  .object({
+    enemyHp: z.number().finite(),
+    playerAttackMs: z.number().finite(),
+    enemyAttackMs: z.number().finite(),
+    respawnMs: z.number().finite(),
+    enemyMaxHp: z.number().finite().optional(),
+    rngSeed: z.number().finite().optional(),
+    rngCursor: z.number().finite().optional(),
+    momentum: z.number().finite().optional(),
+    eliteModifier: z.string().nullable().optional(),
+    eliteAnnounced: z.boolean().optional(),
+    traitState: z
+      .object({
+        firstAttackPending: z.boolean().optional(),
+        enemyAttackCount: z.number().finite().optional(),
+        bleedStacks: z.number().finite().optional(),
+      })
+      .optional(),
+    encounterIndex: z.number().finite().optional(),
+    encounterStartedAt: z.number().finite().optional(),
+  })
+  .passthrough();
+const activeActionSchema = z.union([
+  z.object({ type: z.literal('none') }).passthrough(),
+  z.object({ type: z.literal('mining'), nodeId: z.string(), startedAt: z.number(), progressMs: z.number() }).passthrough(),
+  z.object({ type: z.literal('smithing'), recipeId: z.string(), quantityMode: z.unknown(), remaining: z.number().nullable(), progressMs: z.number() }).passthrough(),
+  z.object({
+    type: z.literal('combat'),
+    enemyId: z.string(),
+    areaId: z.string(),
+    style: z.enum(['accurate', 'aggressive', 'defensive']),
+    autoRepeat: z.boolean(),
+    pendingStyle: z.enum(['accurate', 'aggressive', 'defensive']).nullable().optional(),
+    autoSpecial: z.boolean().optional(),
+    specialQueued: z.boolean().optional(),
+    combatState: activeCombatStateSchema,
+  }).passthrough(),
+]);
 export const savePayloadSchema = z.object({
   schemaVersion: z.number().int().positive(),
   profileId: z.string().min(1),
@@ -34,13 +73,14 @@ export const savePayloadSchema = z.object({
     totalKills: z.number(),
   }),
   gold: z.number().nonnegative(),
-  activeAction: z.record(z.string(), z.unknown()),
+  activeAction: activeActionSchema,
   unlockedAreas: z.array(z.string()),
   settings: z.object({
     sound: z.boolean(),
     music: z.boolean(),
     reducedMotion: z.boolean(),
     compactNumbers: z.boolean(),
+    huntElites: z.boolean().optional(),
     threeQuality: z.enum(['off', 'low', 'high']),
   }),
   log: z.array(
@@ -49,6 +89,7 @@ export const savePayloadSchema = z.object({
       at: z.number(),
       text: z.string(),
       tone: z.enum(['neutral', 'success', 'warning', 'danger']),
+      combatEncounterStartedAt: z.number().finite().optional(),
     }),
   ),
 });
