@@ -1,9 +1,58 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, beforeEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../app/App';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
+import { UI_LAYOUT_STORAGE_KEY } from '../app/uiLayout';
+
+const rect = (left: number, top: number, width: number, height: number): DOMRect =>
+  ({
+    x: left,
+    y: top,
+    left,
+    top,
+    right: left + width,
+    bottom: top + height,
+    width,
+    height,
+    toJSON: () => ({}),
+  }) as DOMRect;
+
+const mockCombatGeometry = () => {
+  const grid = document.querySelector<HTMLElement>('[data-ui-panel-grid="combat"]');
+  if (!grid) throw new Error('Combat panel grid was not rendered');
+  const geometry: Record<string, DOMRect> = {
+    combatLocations: rect(0, 0, 1200, 200),
+    targetPreview: rect(0, 212, 1200, 180),
+    player: rect(0, 404, 280, 220),
+    liveCombat: rect(292, 404, 560, 220),
+    enemy: rect(864, 404, 280, 220),
+    combatOverview: rect(0, 636, 1200, 180),
+  };
+  vi.spyOn(grid, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 1200, 900));
+  Object.entries(geometry).forEach(([id, panelRect]) => {
+    const panel = document.querySelector<HTMLElement>(`[data-ui-panel="${id}"]`);
+    if (!panel) throw new Error(`Combat panel ${id} was not rendered`);
+    vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(panelRect);
+  });
+};
+
+const dispatchPointer = (
+  target: EventTarget,
+  type: 'pointerdown' | 'pointermove' | 'pointerup',
+  values: Record<string, number>,
+) => {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.entries(values).forEach(([key, value]) =>
+    Object.defineProperty(event, key, { configurable: true, value }),
+  );
+  act(() => target.dispatchEvent(event));
+};
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe('navigation integration', () => {
   beforeEach(() => {
@@ -57,6 +106,17 @@ describe('navigation integration', () => {
       const stored = JSON.parse(window.localStorage.getItem('ironbound-idle-ui-layout') ?? '{}');
       expect(stored.screenPanels.combat.player.scale).toBe(1.5);
     });
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Minimum panel height' }), {
+      target: { value: '200' },
+    });
+    await waitFor(() => {
+      const playerSlot = document.querySelector<HTMLElement>('[data-ui-panel="player"]');
+      const scaledContent = playerSlot?.querySelector<HTMLElement>('.ui-panel-scale-content');
+      expect(['0', '0px']).toContain(playerSlot?.style.minWidth);
+      expect(playerSlot?.style.minHeight).toBe('300px');
+      expect(scaledContent?.style.width).toBe(`${100 / 1.5}%`);
+      expect(scaledContent?.style.transform).toBe('scale(1.5)');
+    });
     await user.click(within(editor).getByRole('button', { name: 'Center Player' }));
     await waitFor(() => {
       const stored = JSON.parse(window.localStorage.getItem('ironbound-idle-ui-layout') ?? '{}');
@@ -74,6 +134,97 @@ describe('navigation integration', () => {
         scale: 1,
       });
     });
+  });
+
+  it('moves a combat panel with a real pointer drag and resolves row collisions', async () => {
+    window.localStorage.removeItem(UI_LAYOUT_STORAGE_KEY);
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+    mockCombatGeometry();
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+
+    const playerHandle = document.querySelector<HTMLButtonElement>(
+      '[title="Drag to move Player"]',
+    );
+    expect(playerHandle).not.toBeNull();
+    dispatchPointer(playerHandle as HTMLButtonElement, 'pointerdown', {
+      pointerId: 7,
+      clientX: 24,
+      clientY: 420,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointermove', {
+      pointerId: 99,
+      clientX: 424,
+      clientY: 700,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointerup', { pointerId: 99, clientX: 424, clientY: 700 });
+    expect(JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? 'null')).toBeNull();
+
+    dispatchPointer(window, 'pointermove', {
+      pointerId: 7,
+      clientX: 424,
+      clientY: 700,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointerup', { pointerId: 7, clientX: 424, clientY: 700 });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.screenPanels.combat.player.row).toBe(5);
+      expect(stored.screenPanels.combat.player.column).toBe(5);
+    });
+  });
+
+  it('disables panel dragging in compact viewports while keeping controls available', async () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query === '(max-width: 900px)',
+        media: query,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      }),
+    });
+    try {
+      window.localStorage.removeItem(UI_LAYOUT_STORAGE_KEY);
+      const user = userEvent.setup();
+      render(<App />);
+      await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+      mockCombatGeometry();
+      await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+
+      expect(
+        screen.getByText(/Panel drag placement requires a viewport wider than 900px/),
+      ).toBeInTheDocument();
+      const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+      await user.click(within(editor).getByRole('button', { name: /^Player/ }));
+      const playerHandle = document.querySelector<HTMLButtonElement>(
+        '[title="Panel dragging is available above 900px viewport width"]',
+      );
+      expect(playerHandle).toHaveAttribute('aria-disabled', 'true');
+      expect(within(editor).getByRole('slider', { name: 'Grid row' })).toBeInTheDocument();
+      dispatchPointer(playerHandle as HTMLButtonElement, 'pointerdown', {
+        pointerId: 1,
+        clientX: 24,
+        clientY: 420,
+        buttons: 1,
+      });
+      dispatchPointer(window, 'pointermove', { pointerId: 1, clientX: 24, clientY: 700, buttons: 1 });
+      dispatchPointer(window, 'pointerup', { pointerId: 1, clientX: 24, clientY: 700 });
+      expect(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY)).toBeNull();
+    } finally {
+      Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
   });
 
   it('stops combat and shows the death report with recent actions', async () => {

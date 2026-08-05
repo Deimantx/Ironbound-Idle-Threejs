@@ -1099,6 +1099,10 @@ h3 {
 .ui-editor-target-label:active {
   cursor: grabbing;
 }
+.ui-editor-target-label.disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
 .ui-editor-panel {
   pointer-events: auto;
   position: fixed;
@@ -3622,8 +3626,10 @@ h3 {
   font-size: 10px;
 }
 .ui-panel-grid {
+  --ui-editor-row-height: 80px;
   display: grid;
   grid-template-columns: repeat(12, minmax(0, 1fr));
+  grid-auto-rows: minmax(var(--ui-editor-row-height), auto);
   gap: 12px;
   align-items: stretch;
 }
@@ -4602,6 +4608,7 @@ h3 {
   }
   .ui-panel-grid {
     grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-auto-rows: auto;
   }
   .ui-panel-slot {
     grid-column: 1 / -1 !important;

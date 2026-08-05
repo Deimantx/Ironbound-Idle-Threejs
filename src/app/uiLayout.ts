@@ -1,6 +1,8 @@
 import type { ScreenId } from '../game/types';
 
 export const UI_LAYOUT_STORAGE_KEY = 'ironbound-idle-ui-layout';
+export const UI_EDITOR_COMPACT_QUERY = '(max-width: 900px)';
+export const UI_EDITOR_GRID_ROW_HEIGHT = 80;
 
 export type UiRegion = 'sidebar' | 'header' | 'content' | 'actionStrip';
 export type UiPanelId = string;

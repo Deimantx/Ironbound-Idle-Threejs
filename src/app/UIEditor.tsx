@@ -3,6 +3,8 @@ import { GripVertical, LayoutGrid, Move, Palette, RotateCcw, X } from 'lucide-re
 import {
   DEFAULT_UI_LAYOUT,
   getUiPanels,
+  UI_EDITOR_COMPACT_QUERY,
+  UI_EDITOR_GRID_ROW_HEIGHT,
   UI_REGIONS,
   type UiLayout,
   type UiPanelId,
@@ -63,7 +65,8 @@ const clamp = (value: number, min: number, max: number): number => {
 
 const getGridMetrics = (
   screen: ScreenId,
-  measuredPanels: Partial<Record<UiPanelId, RegionBox>> = {},
+  panelLayout: Record<UiPanelId, UiPanelPosition>,
+  measuredPanels: Partial<Record<UiPanelId, RegionBox>>,
 ): GridMetrics | null => {
   const grid = document.querySelector<HTMLElement>(`[data-ui-panel-grid="${screen}"]`);
   if (!grid) return null;
@@ -79,27 +82,26 @@ const getGridMetrics = (
       .filter((value) => Number.isFinite(value) && value > 0) ?? [];
   const fallbackColumnWidth = (rect.width - columnGap * 11) / 12;
   const columnWidth = columns.length >= 12 ? columns[0] : fallbackColumnWidth;
-  const rowHeights =
-    computed.gridTemplateRows
-      .match(/[\d.]+px/g)
-      ?.map(Number)
-      .filter((value) => Number.isFinite(value) && value > 0) ?? [];
   if (!Number.isFinite(columnWidth) || columnWidth <= 0) return null;
-  const fallbackRowHeight = Math.max(64, rowHeights[0] ?? 0);
-  const measuredRowStarts = Object.values(measuredPanels)
-    .filter((box): box is RegionBox => Boolean(box))
-    .map((box) => box.top - rect.top)
-    .filter((top) => Number.isFinite(top) && top >= 0)
-    .sort((first, second) => first - second)
-    .filter((top, index, values) => index === 0 || top - values[index - 1] > 2);
-  const rowStarts = measuredRowStarts.length > 0 ? measuredRowStarts : [0];
-  while (rowStarts.length <= 12) {
-    const rowIndex = rowStarts.length - 1;
-    const rowHeight = rowHeights[rowIndex] ?? fallbackRowHeight;
-    rowStarts.push(rowStarts[rowIndex] + rowHeight + rowGap);
-  }
   const columnStep = columnWidth + columnGap;
-  if (!Number.isFinite(columnStep) || columnStep <= 0) return null;
+  const rowStep = UI_EDITOR_GRID_ROW_HEIGHT + rowGap;
+  if (!Number.isFinite(columnStep) || columnStep <= 0 || rowStep <= 0) return null;
+  const rowStarts = Array.from({ length: 12 }, () => Number.NaN);
+  for (const panel of getUiPanels(screen)) {
+    const position = panelLayout[panel.id];
+    const box = measuredPanels[panel.id];
+    if (!position || !box || position.row < 1 || position.row > 12) continue;
+    const measuredStart = box.top - rect.top;
+    if (Number.isFinite(measuredStart) && measuredStart >= 0) {
+      rowStarts[position.row - 1] = measuredStart;
+    }
+  }
+  if (!Number.isFinite(rowStarts[0])) rowStarts[0] = 0;
+  for (let index = 1; index < rowStarts.length; index += 1) {
+    if (!Number.isFinite(rowStarts[index])) {
+      rowStarts[index] = rowStarts[index - 1] + rowStep;
+    }
+  }
   return {
     left: rect.left,
     top: rect.top,
@@ -122,7 +124,7 @@ const panelOverlaps = (first: UiPanelPosition, second: UiPanelPosition): boolean
   first.column < second.column + second.columnSpan &&
   second.column < first.column + first.columnSpan;
 
-const findAvailablePanelPosition = (
+export const findAvailablePanelPosition = (
   layout: UiLayout,
   screen: ScreenId,
   panelId: UiPanelId,
@@ -139,6 +141,23 @@ const findAvailablePanelPosition = (
   let best: UiPanelPosition | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   const maxColumn = 13 - proposed.columnSpan;
+  if (strategy === 'nearest') {
+    const rowCandidates = Array.from({ length: 12 }, (_, index) => index + 1).sort(
+      (first, second) =>
+        Math.abs(first - proposed.row) - Math.abs(second - proposed.row) ||
+        (first < proposed.row ? 1 : -1) - (second < proposed.row ? 1 : -1),
+    );
+    const columnCandidates = Array.from({ length: maxColumn }, (_, index) => index + 1).sort(
+      (first, second) => Math.abs(first - proposed.column) - Math.abs(second - proposed.column),
+    );
+    for (const row of rowCandidates) {
+      for (const column of columnCandidates) {
+        const candidate = { ...proposed, column, row };
+        if (!occupied.some((position) => panelOverlaps(candidate, position))) return candidate;
+      }
+    }
+    return proposed;
+  }
   for (let row = 1; row <= 12; row += 1) {
     for (let column = 1; column <= maxColumn; column += 1) {
       const candidate = { ...proposed, column, row };
@@ -159,13 +178,45 @@ const findAvailablePanelPosition = (
 export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
   const [selected, setSelected] = useState<SelectedTarget>({ kind: 'region', id: 'content' });
   const [boxes, setBoxes] = useState<EditorBoxes>({ regions: {}, panels: {} });
+  const [compactViewport, setCompactViewport] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(UI_EDITOR_COMPACT_QUERY).matches
+      : false,
+  );
   const drag = useRef<DragState | null>(null);
   const panelDefinitions = useMemo(() => getUiPanels(screen), [screen]);
   const panelLayout = useMemo(
     () => layout.screenPanels[screen] ?? EMPTY_PANEL_LAYOUT,
     [layout.screenPanels, screen],
   );
+  const boxesRef = useRef(boxes);
+  const layoutRef = useRef(layout);
+  const onChangeRef = useRef(onChange);
+  const panelLayoutRef = useRef(panelLayout);
+  const screenRef = useRef(screen);
+  const scheduleMeasureRef = useRef<() => void>(() => undefined);
   const screenLabel = screen.charAt(0).toUpperCase() + screen.slice(1);
+
+  useEffect(() => {
+    boxesRef.current = boxes;
+    layoutRef.current = layout;
+    onChangeRef.current = onChange;
+    panelLayoutRef.current = panelLayout;
+    screenRef.current = screen;
+  }, [boxes, layout, onChange, panelLayout, screen]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    const mediaQuery = window.matchMedia(UI_EDITOR_COMPACT_QUERY);
+    const updateViewport = () => setCompactViewport(mediaQuery.matches);
+    updateViewport();
+    mediaQuery.addEventListener?.('change', updateViewport);
+    mediaQuery.addListener?.(updateViewport);
+    return () => {
+      mediaQuery.removeEventListener?.('change', updateViewport);
+      mediaQuery.removeListener?.(updateViewport);
+    };
+  }, []);
 
   useEffect(() => {
     let frame: number | null = null;
@@ -211,6 +262,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         frame = null;
       });
     };
+    scheduleMeasureRef.current = scheduleMeasure;
     measure();
     window.addEventListener('resize', scheduleMeasure);
     window.addEventListener('scroll', scheduleMeasure, true);
@@ -231,8 +283,13 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       window.removeEventListener('scroll', scheduleMeasure, true);
       observer?.disconnect();
       if (frame !== null) cancelFrame(frame);
+      if (scheduleMeasureRef.current === scheduleMeasure) scheduleMeasureRef.current = () => undefined;
     };
-  }, [layout, panelDefinitions, screen]);
+  }, [panelDefinitions, screen]);
+
+  useEffect(() => {
+    scheduleMeasureRef.current();
+  }, [layout]);
 
   useEffect(() => {
     let frame: number | null = null;
@@ -248,21 +305,27 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     const applyMove = (clientX: number, clientY: number) => {
       const active = drag.current;
       if (!active) return;
+      const currentLayout = layoutRef.current;
+      const currentScreen = screenRef.current;
+      const currentPanelLayout = panelLayoutRef.current;
       if (active.target.kind === 'region' && active.originalOffset) {
-        onChange({
-          ...layout,
+        const nextOffset = {
+          x: clamp(active.originalOffset.x + clientX - active.startX, -80, 80),
+          y: clamp(active.originalOffset.y + clientY - active.startY, -60, 60),
+        };
+        const currentOffset = currentLayout.offsets[active.target.id];
+        if (currentOffset.x === nextOffset.x && currentOffset.y === nextOffset.y) return;
+        onChangeRef.current({
+          ...currentLayout,
           offsets: {
-            ...layout.offsets,
-            [active.target.id]: {
-              x: clamp(active.originalOffset.x + clientX - active.startX, -80, 80),
-              y: clamp(active.originalOffset.y + clientY - active.startY, -60, 60),
-            },
+            ...currentLayout.offsets,
+            [active.target.id]: nextOffset,
           },
         });
         return;
       }
       if (active.target.kind !== 'panel' || !active.gridMetrics) return;
-      const current = panelLayout[active.target.id];
+      const current = currentPanelLayout[active.target.id];
       if (!current) return;
       const desiredLeft = clientX - (active.grabOffsetX ?? 0);
       const desiredTop = clientY - (active.grabOffsetY ?? 0);
@@ -272,24 +335,26 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         13 - current.columnSpan,
       );
       const row = getGridRow(active.gridMetrics, desiredTop);
-      const position = findAvailablePanelPosition(layout, screen, active.target.id, {
+      const position = findAvailablePanelPosition(currentLayout, currentScreen, active.target.id, {
         ...current,
         column,
         row,
       });
       if (position.column === current.column && position.row === current.row) return;
-      onChange({
-        ...layout,
+      onChangeRef.current({
+        ...currentLayout,
         screenPanels: {
-          ...layout.screenPanels,
-          [screen]: {
-            ...panelLayout,
+          ...currentLayout.screenPanels,
+          [currentScreen]: {
+            ...currentPanelLayout,
             [active.target.id]: position,
           },
         },
       });
     };
     const move = (event: PointerEvent) => {
+      const active = drag.current;
+      if (!active || event.pointerId !== active.pointerId) return;
       latestPointer = { clientX: event.clientX, clientY: event.clientY };
       if (frame !== null) return;
       frame = requestFrame(() => {
@@ -299,8 +364,10 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         if (pointer) applyMove(pointer.clientX, pointer.clientY);
       });
     };
-    const stop = () => {
+    const stop = (event: PointerEvent) => {
       const active = drag.current;
+      if (!active || event.pointerId !== active.pointerId) return;
+      latestPointer = { clientX: event.clientX, clientY: event.clientY };
       if (frame !== null) cancelFrame(frame);
       frame = null;
       const pointer = latestPointer;
@@ -318,13 +385,18 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
       window.removeEventListener('pointercancel', stop);
+      const active = drag.current;
+      if (active?.handle.hasPointerCapture?.(active.pointerId)) {
+        active.handle.releasePointerCapture(active.pointerId);
+      }
       if (frame !== null) cancelFrame(frame);
     };
-  }, [layout, onChange, panelLayout, screen]);
+  }, []);
 
   const beginDrag = (target: SelectedTarget, event: React.PointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
     setSelected(target);
+    if (target.kind === 'panel' && compactViewport) return;
     if (target.kind === 'region') {
       const offset = layout.offsets[target.id];
       event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -338,8 +410,10 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       };
       return;
     }
-    const box = boxes.panels[target.id];
-    const gridMetrics = getGridMetrics(screen, boxes.panels);
+    const measuredPanels =
+      Object.keys(boxesRef.current.panels).length > 0 ? boxesRef.current.panels : boxes.panels;
+    const box = measuredPanels[target.id];
+    const gridMetrics = getGridMetrics(screen, panelLayout, measuredPanels);
     if (!box || !gridMetrics) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
     drag.current = {
@@ -481,6 +555,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         const box = boxes.panels[panel.id];
         if (!box) return null;
         const target = { kind: 'panel', id: panel.id } as const;
+        const dragDisabled = compactViewport;
         return (
           <div
             className={`ui-editor-target ui-editor-panel-target ${selected.kind === 'panel' && selected.id === panel.id ? 'selected' : ''}`}
@@ -488,10 +563,15 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
             style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
           >
             <button
-              className="ui-editor-target-label"
+              className={`ui-editor-target-label ${dragDisabled ? 'disabled' : ''}`}
               onClick={() => setSelected(target)}
               onPointerDown={(event) => beginDrag(target, event)}
-              title={`Drag to move ${panel.label}`}
+              aria-disabled={dragDisabled}
+              title={
+                dragDisabled
+                  ? 'Panel dragging is available above 900px viewport width'
+                  : `Drag to move ${panel.label}`
+              }
             >
               <GripVertical size={14} />
               {panel.label}
@@ -591,6 +671,12 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
           </div>
           {panelsVisible ? (
             <>
+              {compactViewport && (
+                <p className="ui-editor-warning" role="note">
+                  Panel drag placement requires a viewport wider than 900px. Enlarge the window or
+                  reset browser zoom to 100%; the panel controls remain available here.
+                </p>
+              )}
               <div className="ui-editor-region-list">
                 {panelDefinitions.map((panel) => {
                   const position = panelLayout[panel.id];

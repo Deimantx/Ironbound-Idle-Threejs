@@ -5,6 +5,7 @@ import {
   getUiPanels,
   sanitizeUiLayout,
 } from '../app/uiLayout';
+import { findAvailablePanelPosition } from '../app/UIEditor';
 
 describe('visual UI layout', () => {
   it('exposes panel definitions by active screen', () => {
@@ -81,5 +82,18 @@ describe('visual UI layout', () => {
 
   it('keeps the complete default layout valid', () => {
     expect(sanitizeUiLayout(DEFAULT_UI_LAYOUT)).toEqual(DEFAULT_UI_LAYOUT);
+  });
+
+  it('resolves a panel collision on the intended row direction deterministically', () => {
+    const layout = sanitizeUiLayout(DEFAULT_UI_LAYOUT);
+    const player = layout.screenPanels.combat?.player;
+    expect(player).toBeDefined();
+    const resolved = findAvailablePanelPosition(
+      layout,
+      'combat',
+      'player',
+      { ...player!, row: 4 },
+    );
+    expect(resolved).toMatchObject({ column: 1, row: 5, columnSpan: 3 });
   });
 });

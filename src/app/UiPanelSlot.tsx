@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ScreenId } from '../game/types';
-import { getUiPanels, type UiLayout, type UiPanelId, type UiPanelPosition } from './uiLayout';
+import {
+  getUiPanels,
+  UI_EDITOR_COMPACT_QUERY,
+  type UiLayout,
+  type UiPanelId,
+  type UiPanelPosition,
+} from './uiLayout';
 
 interface UiPanelSlotProps {
   screen: ScreenId;
@@ -11,25 +17,27 @@ interface UiPanelSlotProps {
 
 const getPanelStyle = (
   position: UiPanelPosition,
-  reservedWidth: number,
   reservedHeight: number,
 ) => ({
   gridColumn: `${position.column} / span ${position.columnSpan}`,
   gridRow: position.row,
-  minWidth: reservedWidth > 0 ? `${reservedWidth}px` : undefined,
+  minWidth: 0,
   minHeight: reservedHeight > 0 ? `${reservedHeight}px` : undefined,
 });
 
 export function UiPanelSlot({ screen, id, layout, children }: UiPanelSlotProps) {
   const contentRef = useRef<HTMLDivElement>(null);
-  const [contentWidth, setContentWidth] = useState(0);
   const [contentHeight, setContentHeight] = useState(0);
-  const [compactViewport, setCompactViewport] = useState(false);
+  const [compactViewport, setCompactViewport] = useState(() =>
+    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+      ? window.matchMedia(UI_EDITOR_COMPACT_QUERY).matches
+      : false,
+  );
   const definition = getUiPanels(screen).find((panel) => panel.id === id);
   const position = layout.screenPanels[screen]?.[id] ?? definition?.defaultPosition;
 
   useEffect(() => {
-    const media = window.matchMedia?.('(max-width: 900px)');
+    const media = window.matchMedia?.(UI_EDITOR_COMPACT_QUERY);
     if (!media) return;
     const update = () => setCompactViewport(media.matches);
     update();
@@ -44,15 +52,14 @@ export function UiPanelSlot({ screen, id, layout, children }: UiPanelSlotProps) 
   useEffect(() => {
     const element = contentRef.current;
     if (!element) return;
-    const update = (width: number, height: number) => {
-      if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) return;
-      setContentWidth((current) => (Math.abs(current - width) < 0.5 ? current : width));
+    const update = (height: number) => {
+      if (!Number.isFinite(height) || height < 0) return;
       setContentHeight((current) => (Math.abs(current - height) < 0.5 ? current : height));
     };
-    update(element.offsetWidth, element.offsetHeight);
+    update(element.offsetHeight);
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([entry]) =>
-      update(entry?.contentRect.width ?? 0, entry?.contentRect.height ?? 0),
+      update(entry?.contentRect.height ?? 0),
     );
     observer.observe(element);
     return () => observer.disconnect();
@@ -62,14 +69,13 @@ export function UiPanelSlot({ screen, id, layout, children }: UiPanelSlotProps) 
 
   const scale = compactViewport ? 1 : position.scale;
   const hasMeasurement = contentHeight > 0;
-  const reservedWidth = contentWidth * scale;
   const reservedHeight = Math.max(position.height, contentHeight) * scale;
 
   return (
     <div
       className="ui-panel-slot"
       data-ui-panel={id}
-      style={getPanelStyle(position, reservedWidth, reservedHeight)}
+      style={getPanelStyle(position, reservedHeight)}
     >
       <div
         ref={contentRef}
