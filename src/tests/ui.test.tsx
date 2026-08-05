@@ -70,6 +70,125 @@ describe('navigation integration', () => {
     expect(useGameStore.getState().game?.activeAction.type).toBe('mining');
   });
 
+  it('renders and exposes the registered panels for every extracted screen', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    const cases = [
+      {
+        nav: 'Inventory',
+        screen: 'inventory',
+        panels: ['inventoryToolbar', 'inventoryBank'],
+        labels: ['Inventory controls', 'Inventory bank'],
+      },
+      {
+        nav: 'Equipment',
+        screen: 'equipment',
+        panels: ['equipmentLoadout', 'equipmentStats'],
+        labels: ['Equipment loadout', 'Equipment statistics'],
+      },
+      {
+        nav: 'Mining',
+        screen: 'mining',
+        panels: ['miningOverview', 'miningNodes'],
+        labels: ['Mining overview', 'Mining nodes'],
+      },
+      {
+        nav: 'Smithing',
+        screen: 'smithing',
+        panels: ['smithingControls', 'smithingRecipes'],
+        labels: ['Smithing controls', 'Smithing recipes'],
+      },
+    ];
+
+    for (const current of cases) {
+      await user.click(screen.getAllByRole('button', { name: new RegExp(current.nav) })[0]);
+      expect(document.querySelector(`[data-ui-panel-grid="${current.screen}"]`)).not.toBeNull();
+      for (const panel of current.panels) {
+        expect(document.querySelector(`[data-ui-panel="${panel}"]`)).not.toBeNull();
+      }
+
+      await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+      const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+      for (const label of current.labels) {
+        expect(within(editor).getByRole('button', { name: new RegExp(label) })).toBeInTheDocument();
+      }
+      await user.click(within(editor).getByRole('button', { name: 'Close UI editor' }));
+    }
+  });
+
+  it('persists an Inventory panel edit through the local UI layout', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    let editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Inventory bank/ }));
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Panel scale' }), {
+      target: { value: '1.5' },
+    });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.screenPanels.inventory.inventoryBank.scale).toBe(1.5);
+    });
+
+    await user.click(within(editor).getByRole('button', { name: 'Close UI editor' }));
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Inventory bank/ }));
+    expect(within(editor).getByRole('slider', { name: 'Panel scale' })).toHaveValue('1.5');
+    await user.click(within(editor).getByRole('button', { name: 'Close UI editor' }));
+  });
+
+  it('keeps Mining active while editing a panel layout', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Mining/ })[0]);
+    await user.click(screen.getAllByRole('button', { name: 'Mine' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Mining overview/ }));
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Panel scale' }), {
+      target: { value: '1.25' },
+    });
+    await waitFor(() => {
+      expect(useGameStore.getState().game?.activeAction.type).toBe('mining');
+    });
+    await user.click(within(editor).getByRole('button', { name: 'Close UI editor' }));
+  });
+
+  it('keeps extracted Inventory, Equipment, and Smithing interactions working', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Crafter');
+    game.settings.threeQuality = 'off';
+    game.inventory = [
+      { itemId: 'copper-ore', quantity: 1, locked: false },
+      { itemId: 'tin-ore', quantity: 1, locked: false },
+      { itemId: 'bronze-sword', quantity: 1, locked: false },
+    ];
+    game.discoveredItems = ['copper-ore', 'tin-ore', 'bronze-sword'];
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+    await user.click(screen.getByRole('button', { name: /View Bronze Sword/ }));
+    expect(screen.getByRole('dialog')).toHaveTextContent('Bronze Sword');
+    await user.click(screen.getByRole('button', { name: 'Equip' }));
+    expect(useGameStore.getState().game?.equipment.weapon).toBe('bronze-sword');
+
+    await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
+    await user.click(screen.getByRole('button', { name: 'Unequip Bronze Sword' }));
+    expect(useGameStore.getState().game?.equipment.weapon).toBeUndefined();
+
+    await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
+    await user.click(screen.getByRole('button', { name: 'Forging' }));
+    await user.click(screen.getByRole('button', { name: 'Continuous' }));
+    await user.click(screen.getByRole('button', { name: 'Smelting' }));
+    await user.click(screen.getAllByRole('button', { name: 'Start forging' })[0]);
+    const action = useGameStore.getState().game?.activeAction;
+    expect(action?.type).toBe('smithing');
+    expect(action?.type === 'smithing' ? action.quantityMode : null).toBe('continuous');
+  });
+
   it('opens and closes the local visual UI editor', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -144,9 +263,7 @@ describe('navigation integration', () => {
     mockCombatGeometry();
     await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
 
-    const playerHandle = document.querySelector<HTMLButtonElement>(
-      '[title="Drag to move Player"]',
-    );
+    const playerHandle = document.querySelector<HTMLButtonElement>('[title="Drag to move Player"]');
     expect(playerHandle).not.toBeNull();
     dispatchPointer(playerHandle as HTMLButtonElement, 'pointerdown', {
       pointerId: 7,
@@ -216,7 +333,12 @@ describe('navigation integration', () => {
         clientY: 420,
         buttons: 1,
       });
-      dispatchPointer(window, 'pointermove', { pointerId: 1, clientX: 24, clientY: 700, buttons: 1 });
+      dispatchPointer(window, 'pointermove', {
+        pointerId: 1,
+        clientX: 24,
+        clientY: 700,
+        buttons: 1,
+      });
       dispatchPointer(window, 'pointerup', { pointerId: 1, clientX: 24, clientY: 700 });
       expect(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY)).toBeNull();
     } finally {

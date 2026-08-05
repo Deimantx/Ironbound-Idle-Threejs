@@ -31,7 +31,6 @@ The game includes an in-game **Edit UI** button backed by a universal screen-pan
 provides drag-to-move handles for the global shell and registered screen panels, twelve-column
 grid placement with row/column/width/height controls, size/spacing sliders, color pickers, and
 global or per-panel reset buttons, including individual panel scaling from 50% to 150%. Combat is
-currently registered; additional screens can add
-editable panels through the same `UiPanelSlot` wrapper. Layout changes are saved in the current
-browser and do not affect gameplay code. Desktop panel placements fall back to a single-column
-stack on smaller screens.
+Inventory, Equipment, Mining, and Smithing use the same `UiPanelSlot` wrapper. Layout changes are
+saved in the current browser and do not affect gameplay code. Desktop panel placements fall back
+to a single-column stack on smaller screens.

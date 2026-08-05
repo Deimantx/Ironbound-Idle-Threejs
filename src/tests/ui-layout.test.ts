@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_COMBAT_PANEL_LAYOUT,
+  DEFAULT_EQUIPMENT_PANEL_LAYOUT,
+  DEFAULT_INVENTORY_PANEL_LAYOUT,
+  DEFAULT_MINING_PANEL_LAYOUT,
+  DEFAULT_SMITHING_PANEL_LAYOUT,
   DEFAULT_UI_LAYOUT,
   getUiPanels,
   sanitizeUiLayout,
@@ -10,7 +14,26 @@ import { findAvailablePanelPosition } from '../app/UIEditor';
 describe('visual UI layout', () => {
   it('exposes panel definitions by active screen', () => {
     expect(getUiPanels('combat')).toHaveLength(6);
-    expect(getUiPanels('inventory')).toEqual([]);
+    expect(getUiPanels('inventory')).toHaveLength(2);
+    expect(getUiPanels('equipment')).toHaveLength(2);
+    expect(getUiPanels('mining')).toHaveLength(2);
+    expect(getUiPanels('smithing')).toHaveLength(2);
+    expect(getUiPanels('inventory').map((panel) => panel.id)).toEqual([
+      'inventoryToolbar',
+      'inventoryBank',
+    ]);
+    expect(getUiPanels('equipment').map((panel) => panel.id)).toEqual([
+      'equipmentLoadout',
+      'equipmentStats',
+    ]);
+    expect(getUiPanels('mining').map((panel) => panel.id)).toEqual([
+      'miningOverview',
+      'miningNodes',
+    ]);
+    expect(getUiPanels('smithing').map((panel) => panel.id)).toEqual([
+      'smithingControls',
+      'smithingRecipes',
+    ]);
   });
 
   it('adds the default combat panel grid to older saved layouts', () => {
@@ -22,6 +45,56 @@ describe('visual UI layout', () => {
     expect(layout.sidebarWidth).toBe(240);
     expect(layout.offsets.content).toEqual({ x: 12, y: -8 });
     expect(layout.screenPanels.combat).toEqual(DEFAULT_COMBAT_PANEL_LAYOUT);
+    expect(layout.screenPanels.inventory).toEqual(DEFAULT_INVENTORY_PANEL_LAYOUT);
+    expect(layout.screenPanels.equipment).toEqual(DEFAULT_EQUIPMENT_PANEL_LAYOUT);
+    expect(layout.screenPanels.mining).toEqual(DEFAULT_MINING_PANEL_LAYOUT);
+    expect(layout.screenPanels.smithing).toEqual(DEFAULT_SMITHING_PANEL_LAYOUT);
+  });
+
+  it('backfills new screen panels without changing custom combat values', () => {
+    const layout = sanitizeUiLayout({
+      screenPanels: {
+        combat: {
+          player: { column: 5, row: 5, columnSpan: 4, height: 140, scale: 1.25 },
+        },
+      },
+    });
+
+    expect(layout.screenPanels.combat?.player).toEqual({
+      column: 5,
+      row: 5,
+      columnSpan: 4,
+      height: 140,
+      scale: 1.25,
+    });
+    expect(layout.screenPanels.inventory).toEqual(DEFAULT_INVENTORY_PANEL_LAYOUT);
+    expect(layout.screenPanels.equipment).toEqual(DEFAULT_EQUIPMENT_PANEL_LAYOUT);
+    expect(layout.screenPanels.mining).toEqual(DEFAULT_MINING_PANEL_LAYOUT);
+    expect(layout.screenPanels.smithing).toEqual(DEFAULT_SMITHING_PANEL_LAYOUT);
+  });
+
+  it('repairs invalid non-combat panel positions', () => {
+    const layout = sanitizeUiLayout({
+      screenPanels: {
+        equipment: {
+          equipmentLoadout: {
+            column: 12,
+            row: 99,
+            columnSpan: 8,
+            height: -100,
+            scale: 4,
+          },
+        },
+      },
+    });
+
+    expect(layout.screenPanels.equipment?.equipmentLoadout).toEqual({
+      column: 12,
+      row: 12,
+      columnSpan: 1,
+      height: 0,
+      scale: 1.5,
+    });
   });
 
   it('clamps combat panel positions to the twelve-column grid', () => {
@@ -88,12 +161,7 @@ describe('visual UI layout', () => {
     const layout = sanitizeUiLayout(DEFAULT_UI_LAYOUT);
     const player = layout.screenPanels.combat?.player;
     expect(player).toBeDefined();
-    const resolved = findAvailablePanelPosition(
-      layout,
-      'combat',
-      'player',
-      { ...player!, row: 4 },
-    );
+    const resolved = findAvailablePanelPosition(layout, 'combat', 'player', { ...player!, row: 4 });
     expect(resolved).toMatchObject({ column: 1, row: 5, columnSpan: 3 });
   });
 });

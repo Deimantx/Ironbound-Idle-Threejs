@@ -16,16 +16,16 @@ import {
 } from 'lucide-react';
 import { AREAS, areaById } from '../content/areas';
 import { ENEMIES, enemyById } from '../content/enemies';
-import { ITEMS, itemById } from '../content/items';
-import { MINING_NODES, miningNodeById } from '../content/miningNodes';
-import { RECIPES, recipeById } from '../content/recipes';
+import { ITEMS } from '../content/items';
+import { miningNodeById } from '../content/miningNodes';
+import { recipeById } from '../content/recipes';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { getLevelProgress, getXpForLevel } from '../game/formulas/experienceFormulas';
 import { getDerivedStats } from '../game/formulas/statFormulas';
 import { progressRatio } from '../game/engine/simulation';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
-import { getItemQuantity, occupiedSlots } from '../game/systems/inventorySystem';
+import { getItemQuantity } from '../game/systems/inventorySystem';
 import {
   exportProfile,
   importProfile,
@@ -38,10 +38,8 @@ import {
 import type {
   AreaId,
   CombatStyle,
-  EquipmentSlot,
   EnemyId,
   GameState,
-  QuantityMode,
   ScreenId,
   SimulationSummary,
   SkillId,
@@ -50,15 +48,16 @@ import { SKILL_IDS } from '../game/types';
 import { NAVIGATION } from '../content/navigation';
 import { ThreeScene } from '../three/ThreeScene';
 import { UiEditor } from './UIEditor';
+import { EquipmentScreen } from './EquipmentScreen';
+import { InventoryScreen } from './InventoryScreen';
+import { MiningScreen } from './MiningScreen';
+import { SmithingScreen } from './SmithingScreen';
+import { formatNumber } from './formatters';
+import { ItemIcon } from './ItemIcon';
 import { loadUiLayout, sanitizeUiLayout, saveUiLayout, type UiLayout } from './uiLayout';
 import { CombatScreen as RealtimeCombatScreen } from './CombatScreen';
 import { ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog';
 
-const formatNumber = (value: number): string =>
-  new Intl.NumberFormat('en-US', {
-    notation: value > 9999 ? 'compact' : 'standard',
-    maximumFractionDigits: 1,
-  }).format(Math.floor(value));
 const formatFightDuration = (startedAt: number | null, now = Date.now()): string => {
   if (startedAt === null) return '0:00';
   const seconds = Math.max(0, Math.floor((now - startedAt) / 1000));
@@ -71,10 +70,6 @@ const actionLabel = (state: GameState): string => {
   if (action.type === 'combat') return `Fighting ${enemyById[action.enemyId]?.name ?? 'enemy'}`;
   return 'No active action';
 };
-const itemGlyph = (category: string): string =>
-  ({ material: '◆', bar: '▬', weapon: '⚔', armor: '◇', shield: '◈', tool: '⛏', drop: '✦' })[
-    category
-  ] ?? '•';
 const getProfileName = (record: SaveRecord): string => {
   try {
     const parsed: unknown = JSON.parse(record.payload);
@@ -669,235 +664,6 @@ function HomeScreen({
   );
 }
 
-function MiningScreen({
-  game,
-  requestAction,
-}: {
-  game: GameState;
-  requestAction: (screen: ScreenId, action: () => void) => void;
-}) {
-  const startMining = useGameStore((store) => store.startMining);
-  const stopAction = useGameStore((store) => store.stopAction);
-  const active = game.activeAction.type === 'mining' ? game.activeAction.nodeId : null;
-  return (
-    <>
-      <div className="screen-heading">
-        <div>
-          <div className="eyebrow">Skill · Gathering</div>
-          <h1>Mining</h1>
-          <p className="subtle">Find a seam, set the pick, and let steady work fill your pack.</p>
-        </div>
-        <span className="badge gold">
-          Level {game.skills.mining.level} · {formatNumber(game.skills.mining.xp)} XP
-        </span>
-      </div>
-      <div className="dashboard-grid">
-        <section className="panel scene-panel">
-          <ThreeScene screen="mining" settings={game.settings} theme="#b87950" />
-          <div style={{ position: 'relative', padding: 20 }}>
-            <div className="eyebrow">Deep-earth study</div>
-            <h2>{active ? miningNodeById[active]?.name : 'Choose a rock node'}</h2>
-            <p className="subtle">
-              Mining stays active as you move through the keep. Your pickaxe trims the interval.
-            </p>
-            {active && (
-              <div style={{ marginTop: 35 }}>
-                <div className="split">
-                  <span className="muted">Current cycle</span>
-                  <span className="muted">
-                    {Math.round(
-                      (game.activeAction.type === 'mining' ? game.activeAction.progressMs : 0) /
-                        1000,
-                    )}
-                    s
-                  </span>
-                </div>
-                <div className="bar" style={{ marginTop: 7 }}>
-                  <i
-                    style={{
-                      width: `${(game.activeAction.type === 'mining' ? game.activeAction.progressMs / miningNodeById[active].intervalMs : 0) * 100}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
-        <section className="panel panel-pad">
-          <div className="split">
-            <div>
-              <h2>Rock nodes</h2>
-              <p className="subtle">Output per hour is an estimate before tool bonuses.</p>
-            </div>
-            <span className="badge">
-              {occupiedSlots(game.inventory)}/{GAME_CONFIG.inventorySlots} slots
-            </span>
-          </div>
-          <div className="list" style={{ marginTop: 12 }}>
-            {MINING_NODES.map((node) => {
-              const locked = game.skills.mining.level < node.level;
-              const isActive = active === node.id;
-              const pickaxe = getDerivedStats(game).miningIntervalMultiplier;
-              return (
-                <div className={`list-row ${locked ? 'locked-card' : ''}`} key={node.id}>
-                  <div className="row-main">
-                    <strong>
-                      {node.name}{' '}
-                      {locked && <span className="badge locked">Level {node.level}</span>}
-                    </strong>
-                    <small>
-                      {node.description} · {itemById[node.rewardItemId]?.name} ·{' '}
-                      {Math.round(3_600_000 / (node.intervalMs * pickaxe))}/hr
-                    </small>
-                  </div>
-                  {locked ? (
-                    <Lock size={15} className="muted" />
-                  ) : isActive ? (
-                    <button className="button danger" onClick={stopAction}>
-                      Stop
-                    </button>
-                  ) : (
-                    <button
-                      className="button primary"
-                      onClick={() => requestAction('mining', () => startMining(node.id))}
-                    >
-                      Mine
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      </div>
-    </>
-  );
-}
-
-function SmithingScreen({
-  game,
-  requestAction,
-}: {
-  game: GameState;
-  requestAction: (screen: ScreenId, action: () => void) => void;
-}) {
-  const [tab, setTab] = useState<'smelting' | 'forging'>('smelting');
-  const [mode, setMode] = useState<QuantityMode>(1);
-  const startSmithing = useGameStore((store) => store.startSmithing);
-  const stopAction = useGameStore((store) => store.stopAction);
-  const active = game.activeAction.type === 'smithing' ? game.activeAction : null;
-  const recipes = RECIPES.filter((recipe) => recipe.category === tab);
-  return (
-    <>
-      <div className="screen-heading">
-        <div>
-          <div className="eyebrow">Skill · The forge</div>
-          <h1>Smithing</h1>
-          <p className="subtle">
-            Turn gathered material into tools, protection, and a stronger road ahead.
-          </p>
-        </div>
-        <span className="badge gold">
-          Level {game.skills.smithing.level} · {formatNumber(game.skills.smithing.xp)} XP
-        </span>
-      </div>
-      <section className="panel panel-pad">
-        <div className="tabs">
-          <button
-            className={`tab ${tab === 'smelting' ? 'active' : ''}`}
-            onClick={() => setTab('smelting')}
-          >
-            Smelting
-          </button>
-          <button
-            className={`tab ${tab === 'forging' ? 'active' : ''}`}
-            onClick={() => setTab('forging')}
-          >
-            Forging
-          </button>
-        </div>
-        <div className="button-row" style={{ marginBottom: 15 }}>
-          <span className="muted">Quantity:</span>
-          {([1, 10, 'all', 'continuous'] as QuantityMode[]).map((option) => (
-            <button
-              className={`button ${mode === option ? 'gold' : 'ghost'}`}
-              key={String(option)}
-              onClick={() => setMode(option)}
-            >
-              {option === 'all' ? 'All possible' : option === 'continuous' ? 'Continuous' : option}
-            </button>
-          ))}
-          {active && (
-            <>
-              <span className="muted" style={{ marginLeft: 'auto' }}>
-                Working: {recipeById[active.recipeId]?.name}
-              </span>
-              <button className="button danger" onClick={stopAction}>
-                Stop
-              </button>
-            </>
-          )}
-        </div>
-        <div className="grid grid-3">
-          {recipes.map((recipe) => {
-            const locked = game.skills.smithing.level < recipe.level;
-            const canStart = recipe.inputs.every(
-              (input) => getItemQuantity(game.inventory, input.itemId) >= input.quantity,
-            );
-            const isActive = active?.recipeId === recipe.id;
-            return (
-              <article className={`panel card ${locked ? 'locked-card' : ''}`} key={recipe.id}>
-                <div className="card-head">
-                  <div>
-                    <div className="eyebrow">{recipe.category}</div>
-                    <h2>{recipe.name}</h2>
-                  </div>
-                  <span className="badge">Lv {recipe.level}</span>
-                </div>
-                <p className="subtle">{recipe.description}</p>
-                <div className="recipe-materials">
-                  {recipe.inputs.map((input) => (
-                    <span
-                      className={`material-chip ${getItemQuantity(game.inventory, input.itemId) < input.quantity ? 'missing' : ''}`}
-                      key={input.itemId}
-                    >
-                      {itemById[input.itemId]?.name} ×{input.quantity} ·{' '}
-                      {getItemQuantity(game.inventory, input.itemId)}
-                    </span>
-                  ))}
-                </div>
-                <div className="split" style={{ marginBottom: 13 }}>
-                  <span className="muted">→ {itemById[recipe.outputItemId]?.name}</span>
-                  <span className="muted">
-                    {recipe.xp} XP · {recipe.intervalMs / 1000}s
-                  </span>
-                </div>
-                {locked ? (
-                  <button className="button ghost" disabled>
-                    <Lock size={13} /> Requires level {recipe.level}
-                  </button>
-                ) : isActive ? (
-                  <button className="button gold" disabled>
-                    Working…
-                  </button>
-                ) : (
-                  <button
-                    className="button primary"
-                    disabled={!canStart}
-                    onClick={() => requestAction('smithing', () => startSmithing(recipe.id, mode))}
-                  >
-                    {canStart ? 'Start forging' : 'Missing materials'}
-                  </button>
-                )}
-              </article>
-            );
-          })}
-        </div>
-      </section>
-    </>
-  );
-}
-
 /* eslint-disable react-hooks/rules-of-hooks -- retained for the migration diff; the routed screen is RealtimeCombatScreen. */
 function _LegacyCombatScreen({
   game,
@@ -1055,265 +821,6 @@ function _LegacyCombatScreen({
 }
 
 /* eslint-enable react-hooks/rules-of-hooks */
-function InventoryScreen({
-  game,
-  onNavigate,
-}: {
-  game: GameState;
-  onNavigate: (screen: ScreenId) => void;
-}) {
-  const [search, setSearch] = useState('');
-  const [category, setCategory] = useState('all');
-  const [selected, setSelected] = useState('');
-  const [confirmation, setConfirmation] = useState<ConfirmDialogOptions | null>(null);
-  const equip = useGameStore((store) => store.equip);
-  const destroy = useGameStore((store) => store.destroy);
-  const toggleLock = useGameStore((store) => store.toggleLock);
-  const entries = game.inventory.filter((stack) => {
-    const item = itemById[stack.itemId];
-    return (
-      item &&
-      (category === 'all' || item.category === category) &&
-      item.name.toLowerCase().includes(search.toLowerCase())
-    );
-  });
-  const selectedStack = game.inventory.find((stack) => stack.itemId === selected);
-  const selectedItem = selectedStack ? itemById[selectedStack.itemId] : undefined;
-  return (
-    <>
-      <div className="screen-heading">
-        <div>
-          <div className="eyebrow">The bank</div>
-          <h1>Inventory</h1>
-          <p className="subtle">
-            Every item has a source. Locked stacks are protected from destruction.
-          </p>
-        </div>
-        <span className="badge gold">
-          {occupiedSlots(game.inventory)} / {GAME_CONFIG.inventorySlots} stacks
-        </span>
-      </div>
-      <section className="panel panel-pad">
-        <div className="filterbar">
-          <input
-            className="field"
-            placeholder="Search items…"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <select
-            className="select"
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-          >
-            <option value="all">All categories</option>
-            {['material', 'bar', 'weapon', 'armor', 'shield', 'tool', 'drop'].map((value) => (
-              <option value={value} key={value}>
-                {value[0].toUpperCase() + value.slice(1)}
-              </option>
-            ))}
-          </select>
-          <button className="button ghost" onClick={() => onNavigate('equipment')}>
-            Open equipment
-          </button>
-        </div>
-        {entries.length === 0 ? (
-          <div className="empty">Your pack is quiet. Mining and combat will change that.</div>
-        ) : (
-          <div className="inventory-grid">
-            {entries.map((stack) => {
-              const item = itemById[stack.itemId];
-              return (
-                <button
-                  className="item-card"
-                  key={stack.itemId}
-                  onClick={() => setSelected(stack.itemId)}
-                >
-                  <span className={`item-icon ${item.category}`}>{itemGlyph(item.category)}</span>
-                  <strong>{item.name}</strong>
-                  <small>{item.category}</small>
-                  <span className="quantity">×{formatNumber(stack.quantity)}</span>
-                  {stack.locked && (
-                    <span
-                      style={{ position: 'absolute', bottom: 8, right: 9, color: 'var(--gold)' }}
-                    >
-                      ⌑
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        )}
-      </section>
-      {selectedItem && selectedStack && (
-        <div className="modal-backdrop" onClick={() => setSelected('')}>
-          <section
-            className="modal"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="item-modal-title"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="split">
-              <div>
-                <div className="eyebrow">{selectedItem.category}</div>
-                <h2 id="item-modal-title">{selectedItem.name}</h2>
-              </div>
-              <button className="button ghost" onClick={() => setSelected('')}>
-                Close
-              </button>
-            </div>
-            <p className="subtle">{selectedItem.description}</p>
-            <div className="stat-line">
-              <span>Quantity</span>
-              <strong>{selectedStack.quantity}</strong>
-            </div>
-            <div className="stat-line">
-              <span>Source</span>
-              <strong>{selectedItem.source}</strong>
-            </div>
-            {selectedItem.bonuses &&
-              Object.entries(selectedItem.bonuses).map(([key, value]) => (
-                <div className="stat-line" key={key}>
-                  <span>{key}</span>
-                  <strong>+{value}</strong>
-                </div>
-              ))}
-            <div className="button-row" style={{ marginTop: 18 }}>
-              {selectedItem.slot && (
-                <button
-                  className="button primary"
-                  onClick={() => {
-                    equip(selectedItem.id);
-                    setSelected('');
-                  }}
-                >
-                  Equip
-                </button>
-              )}
-              <button className="button ghost" onClick={() => toggleLock(selectedItem.id)}>
-                {selectedStack.locked ? 'Unlock stack' : 'Lock stack'}
-              </button>
-              <button
-                className="button danger"
-                onClick={() => {
-                  setConfirmation({
-                    title: 'Destroy item?',
-                    message: `Destroy one ${selectedItem.name}? This cannot be undone.`,
-                    confirmLabel: 'Destroy one',
-                    danger: true,
-                    onConfirm: () => {
-                      destroy(selectedItem.id, 1);
-                      setSelected('');
-                    },
-                  });
-                }}
-              >
-                Destroy one
-              </button>
-            </div>
-          </section>
-        </div>
-      )}
-      {confirmation && (
-        <ConfirmDialog
-          title={confirmation.title}
-          message={confirmation.message}
-          confirmLabel={confirmation.confirmLabel}
-          cancelLabel={confirmation.cancelLabel}
-          danger={confirmation.danger}
-          onCancel={() => setConfirmation(null)}
-          onConfirm={() => {
-            const action = confirmation.onConfirm;
-            setConfirmation(null);
-            void action();
-          }}
-        />
-      )}
-    </>
-  );
-}
-
-function EquipmentScreen({ game }: { game: GameState }) {
-  const unequip = useGameStore((store) => store.unequip);
-  const stats = getDerivedStats(game);
-  const slots: EquipmentSlot[] = ['head', 'body', 'weapon', 'shield', 'legs', 'tool'];
-  return (
-    <>
-      <div className="screen-heading">
-        <div>
-          <div className="eyebrow">Loadout</div>
-          <h1>Equipment</h1>
-          <p className="subtle">A good tool changes the rhythm of every action.</p>
-        </div>
-        <span className="badge gold">Derived stats live</span>
-      </div>
-      <div className="grid grid-2">
-        <section className="panel panel-pad">
-          <div className="eyebrow">Mannequin</div>
-          <div className="equipment-grid">
-            {slots.map((slot) => {
-              const id = game.equipment[slot];
-              const item = id ? itemById[id] : undefined;
-              return (
-                <button
-                  className={`equip-slot slot-${slot}`}
-                  key={slot}
-                  onClick={() => id && unequip(slot)}
-                  title={id ? `Unequip ${item?.name}` : `${slot} slot`}
-                >
-                  <strong>{slot}</strong>
-                  {item ? (
-                    <>
-                      <span className="item-icon" style={{ margin: 'auto' }}>
-                        {itemGlyph(item.category)}
-                      </span>
-                      <small>{item.name}</small>
-                    </>
-                  ) : (
-                    <span className="empty-slot">Empty</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <div className="button-row" style={{ marginTop: 18, justifyContent: 'center' }}>
-            {(['amulet', 'ring', 'cape'] as EquipmentSlot[]).map((slot) => (
-              <span className="badge locked" key={slot}>
-                <Lock size={10} /> {slot} · future
-              </span>
-            ))}
-          </div>
-        </section>
-        <section className="panel panel-pad">
-          <div className="eyebrow">Combat readout</div>
-          <h2>Field statistics</h2>
-          {[
-            ['Attack level', stats.attack],
-            ['Maximum hit', stats.maxHit],
-            ['Defence rating', stats.defence],
-            ['Maximum health', stats.maxHealth],
-            ['Attack interval', `${(stats.attackIntervalMs / 1000).toFixed(1)}s`],
-            [
-              'Mining interval',
-              `${Math.round((1 - stats.miningIntervalMultiplier) * 100)}% faster`,
-            ],
-          ].map(([label, value]) => (
-            <div className="stat-line" key={String(label)}>
-              <span>{label}</span>
-              <strong>{value}</strong>
-            </div>
-          ))}
-          <p className="subtle" style={{ marginTop: 18 }}>
-            Equip items from Inventory. Swapping is atomic; the displaced item returns to your bank.
-          </p>
-        </section>
-      </div>
-    </>
-  );
-}
-
 function CollectionScreen({ game }: { game: GameState }) {
   const [tab, setTab] = useState<'items' | 'monsters' | 'skills'>('items');
   return (
@@ -1357,9 +864,7 @@ function CollectionScreen({ game }: { game: GameState }) {
               const found = game.discoveredItems.includes(item.id);
               return (
                 <div className="item-card" key={item.id} style={{ opacity: found ? 1 : 0.58 }}>
-                  <span className={`item-icon ${item.category}`}>
-                    {found ? itemGlyph(item.category) : '?'}
-                  </span>
+                  <ItemIcon itemId={item.id} discovered={found} size="md" />
                   <strong>{found ? item.name : '???'}</strong>
                   <small>
                     {item.category} · {found ? item.source : 'Source unknown'}
@@ -1951,9 +1456,13 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
       case 'home':
         return <HomeScreen game={currentGame} onNavigate={nav} />;
       case 'mining':
-        return <MiningScreen game={currentGame} requestAction={requestAction} />;
+        return (
+          <MiningScreen game={currentGame} uiLayout={uiLayout} requestAction={requestAction} />
+        );
       case 'smithing':
-        return <SmithingScreen game={currentGame} requestAction={requestAction} />;
+        return (
+          <SmithingScreen game={currentGame} uiLayout={uiLayout} requestAction={requestAction} />
+        );
       case 'combat':
         return (
           <RealtimeCombatScreen
@@ -1965,9 +1474,9 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
           />
         );
       case 'inventory':
-        return <InventoryScreen game={currentGame} onNavigate={nav} />;
+        return <InventoryScreen game={currentGame} uiLayout={uiLayout} onNavigate={nav} />;
       case 'equipment':
-        return <EquipmentScreen game={currentGame} />;
+        return <EquipmentScreen game={currentGame} uiLayout={uiLayout} />;
       case 'collection':
         return <CollectionScreen game={currentGame} />;
       case 'settings':

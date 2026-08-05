@@ -57,6 +57,26 @@ export const DEFAULT_COMBAT_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
   combatOverview: { column: 1, row: 4, columnSpan: 12, height: 0, scale: 1 },
 };
 
+export const DEFAULT_INVENTORY_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
+  inventoryToolbar: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1 },
+  inventoryBank: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1 },
+};
+
+export const DEFAULT_EQUIPMENT_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
+  equipmentLoadout: { column: 1, row: 1, columnSpan: 6, height: 0, scale: 1 },
+  equipmentStats: { column: 7, row: 1, columnSpan: 6, height: 0, scale: 1 },
+};
+
+export const DEFAULT_MINING_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
+  miningOverview: { column: 1, row: 1, columnSpan: 5, height: 0, scale: 1 },
+  miningNodes: { column: 6, row: 1, columnSpan: 7, height: 0, scale: 1 },
+};
+
+export const DEFAULT_SMITHING_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
+  smithingControls: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1 },
+  smithingRecipes: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1 },
+};
+
 export const UI_SCREEN_PANELS: Partial<Record<ScreenId, UiPanelDefinition[]>> = {
   combat: [
     {
@@ -96,6 +116,62 @@ export const UI_SCREEN_PANELS: Partial<Record<ScreenId, UiPanelDefinition[]>> = 
       defaultPosition: DEFAULT_COMBAT_PANEL_LAYOUT.combatOverview,
     },
   ],
+  inventory: [
+    {
+      id: 'inventoryToolbar',
+      label: 'Inventory controls',
+      description: 'Search, category filters, capacity, and inventory navigation',
+      defaultPosition: DEFAULT_INVENTORY_PANEL_LAYOUT.inventoryToolbar,
+    },
+    {
+      id: 'inventoryBank',
+      label: 'Inventory bank',
+      description: 'Stored item stacks and empty inventory state',
+      defaultPosition: DEFAULT_INVENTORY_PANEL_LAYOUT.inventoryBank,
+    },
+  ],
+  equipment: [
+    {
+      id: 'equipmentLoadout',
+      label: 'Equipment loadout',
+      description: 'Equipped slots, mannequin, and future-slot indicators',
+      defaultPosition: DEFAULT_EQUIPMENT_PANEL_LAYOUT.equipmentLoadout,
+    },
+    {
+      id: 'equipmentStats',
+      label: 'Equipment statistics',
+      description: 'Derived combat and gathering statistics',
+      defaultPosition: DEFAULT_EQUIPMENT_PANEL_LAYOUT.equipmentStats,
+    },
+  ],
+  mining: [
+    {
+      id: 'miningOverview',
+      label: 'Mining overview',
+      description: 'Mining scene, selected node, and current cycle',
+      defaultPosition: DEFAULT_MINING_PANEL_LAYOUT.miningOverview,
+    },
+    {
+      id: 'miningNodes',
+      label: 'Mining nodes',
+      description: 'Available nodes, requirements, outputs, and action controls',
+      defaultPosition: DEFAULT_MINING_PANEL_LAYOUT.miningNodes,
+    },
+  ],
+  smithing: [
+    {
+      id: 'smithingControls',
+      label: 'Smithing controls',
+      description: 'Recipe category tabs, quantity mode, and active work',
+      defaultPosition: DEFAULT_SMITHING_PANEL_LAYOUT.smithingControls,
+    },
+    {
+      id: 'smithingRecipes',
+      label: 'Smithing recipes',
+      description: 'Available recipes, requirements, outputs, and start controls',
+      defaultPosition: DEFAULT_SMITHING_PANEL_LAYOUT.smithingRecipes,
+    },
+  ],
 };
 
 const EMPTY_UI_PANELS: UiPanelDefinition[] = [];
@@ -121,6 +197,10 @@ export const DEFAULT_UI_LAYOUT: UiLayout = {
   },
   screenPanels: {
     combat: DEFAULT_COMBAT_PANEL_LAYOUT,
+    inventory: DEFAULT_INVENTORY_PANEL_LAYOUT,
+    equipment: DEFAULT_EQUIPMENT_PANEL_LAYOUT,
+    mining: DEFAULT_MINING_PANEL_LAYOUT,
+    smithing: DEFAULT_SMITHING_PANEL_LAYOUT,
   },
 };
 

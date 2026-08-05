@@ -623,29 +623,21 @@ h3 {
 .item-card:hover {
   border-color: #78847f;
 }
-.item-icon {
+.item-card .loot-icon {
+  margin-bottom: 9px;
+}
+.item-card .loot-icon-md {
   width: 34px;
   height: 34px;
+  border-radius: 6px;
+}
+.item-card-lock {
+  position: absolute;
+  right: 9px;
+  bottom: 8px;
   display: grid;
   place-items: center;
-  margin-bottom: 9px;
-  border-radius: 6px;
-  color: #1c1a17;
-  background: linear-gradient(135deg, #d5aa62, #785b43);
-  font-weight: 800;
-}
-.item-icon.bar {
-  background: linear-gradient(135deg, #b9c5c0, #637176);
-}
-.item-icon.drop {
-  background: linear-gradient(135deg, #a585ae, #574763);
-  color: #f5e8f4;
-}
-.item-icon.armor,
-.item-icon.weapon,
-.item-icon.shield,
-.item-icon.tool {
-  background: linear-gradient(135deg, #d3d8d0, #68777a);
+  color: var(--gold);
 }
 .item-card strong {
   display: block;
@@ -711,6 +703,11 @@ h3 {
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+.equipment-item-icon {
+  display: grid;
+  place-items: center;
+  margin: auto auto 7px;
 }
 .empty-slot {
   color: #667176;
@@ -2910,6 +2907,11 @@ h3 {
   width: 29px;
   height: 29px;
 }
+.loot-icon-md {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+}
 .loot-icon-xs {
   width: 21px;
   height: 21px;
@@ -3632,6 +3634,12 @@ h3 {
   grid-auto-rows: minmax(var(--ui-editor-row-height), auto);
   gap: 12px;
   align-items: stretch;
+}
+.inventory-panel-grid,
+.equipment-panel-grid,
+.mining-panel-grid,
+.smithing-panel-grid {
+  min-width: 0;
 }
 .ui-panel-slot {
   display: flex;
