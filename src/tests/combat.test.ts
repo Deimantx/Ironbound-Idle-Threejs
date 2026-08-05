@@ -11,7 +11,6 @@ import {
   getHealthPercent,
   getHealthState,
   getLootRarity,
-  selectAreaThreat,
   selectEnemyAttackProgress,
   selectPlayerAttackProgress,
   selectPlayerEstimatedDps,
@@ -35,7 +34,6 @@ describe('combat selectors and visual events', () => {
     expect(selectPlayerAttackProgress(state, 1_000).ratio).toBe(0);
     expect(selectEnemyAttackProgress(state, 1_000).ratio).toBe(0);
     expect(selectPlayerEstimatedDps(state)).toBeGreaterThan(0);
-    expect(selectAreaThreat(state)).toMatch(/Trivial|Easy|Fair|Dangerous|Deadly/);
     expect(selectPlayerAttackProgress(state, 4_000).state).toMatch(/active|ready/);
     if (state.activeAction.type === 'combat') state.activeAction.combatState.respawnMs = 500;
     expect(selectEnemyAttackProgress(state, 1_000).state).toBe('respawning');

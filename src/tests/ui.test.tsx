@@ -44,7 +44,7 @@ describe('navigation integration', () => {
     expect(screen.getByText('Combat panels')).toBeInTheDocument();
     expect(screen.getByText('Grid column')).toBeInTheDocument();
     expect(screen.getByText('Panel width')).toBeInTheDocument();
-    expect(screen.getByText('Panel height')).toBeInTheDocument();
+    expect(screen.getByText('Minimum panel height')).toBeInTheDocument();
     expect(document.querySelector('[data-ui-panel="combatLocations"]')).not.toBeNull();
     expect(document.querySelector('[data-ui-panel="liveCombat"]')).not.toBeNull();
 

@@ -252,9 +252,11 @@ function EquipmentStrip({ game }: { game: GameState }) {
 
 function StyleControls({
   style,
+  queuedStyle,
   onChange,
 }: {
   style: CombatStyle;
+  queuedStyle?: CombatStyle | null;
   onChange: (style: CombatStyle) => void;
 }) {
   return (
@@ -265,11 +267,13 @@ function StyleControls({
       <div className="combat-style-list" role="group" aria-label="Combat style">
         {(['accurate', 'aggressive', 'defensive'] as CombatStyle[]).map((option) => {
           const info = getCombatStyleInfo(option);
+          const current = style === option;
+          const queued = queuedStyle === option && !current;
           return (
             <button
               type="button"
-              className={`combat-style-option ${style === option ? 'selected' : ''}`}
-              aria-pressed={style === option}
+              className={`combat-style-option ${current ? 'selected' : ''} ${queued ? 'queued' : ''}`}
+              aria-pressed={current}
               key={option}
               onClick={() => onChange(option)}
             >
@@ -284,9 +288,9 @@ function StyleControls({
               </span>
               <span>
                 <strong>{info.name}</strong>
-                <small>{info.modifier}</small>
+                <small>{queued ? 'Queued — applies next enemy' : info.modifier}</small>
               </span>
-              {style === option && <Check size={14} aria-label="Selected" />}
+              {current && <Check size={14} aria-label="Current" />}
             </button>
           );
         })}
@@ -302,12 +306,14 @@ function PlayerSummaryPanel({
   game,
   enemy,
   style,
+  queuedStyle,
   onStyleChange,
   onNavigate,
 }: {
   game: GameState;
   enemy: EnemyDefinition;
   style: CombatStyle;
+  queuedStyle?: CombatStyle | null;
   onStyleChange: (style: CombatStyle) => void;
   onNavigate: (screen: ScreenId) => void;
 }) {
@@ -329,7 +335,7 @@ function PlayerSummaryPanel({
       <div className="combat-panel-divider" />
       <div className="combat-panel-kicker">Equipment</div>
       <EquipmentStrip game={game} />
-      <StyleControls style={style} onChange={onStyleChange} />
+      <StyleControls style={style} queuedStyle={queuedStyle} onChange={onStyleChange} />
       <div className="combat-subheading-row">
         <span className="combat-panel-kicker">Derived stats</span>
         <button type="button" className="combat-text-link" onClick={() => onNavigate('equipment')}>
@@ -695,10 +701,12 @@ function TargetAnalysis({
   game,
   enemy,
   style,
+  styleIsQueued = false,
 }: {
   game: GameState;
   enemy: EnemyDefinition;
   style: CombatStyle;
+  styleIsQueued?: boolean;
 }) {
   const [expanded, setExpanded] = useState(true);
   const enemyStats = getEnemyCombatStats(enemy);
@@ -727,6 +735,10 @@ function TargetAnalysis({
           <span className="combat-analysis-target-copy">
             <strong>{enemy.name}</strong>
             <span>Lv {enemy.displayLevel}</span>
+          </span>
+          <span className="combat-analysis-style">
+            Preview: {getCombatStyleInfo(style).name}
+            {styleIsQueued ? ' · queued' : ''}
           </span>
         </div>
         <div className="combat-analysis-heading-actions">
@@ -1318,13 +1330,13 @@ function OverviewSummary({
   style: CombatStyle;
   autoRepeat: boolean;
 }) {
-  const stats = getDerivedStats(game);
+  const stats = getDerivedStats(game, style);
   const sessionStartedAt =
     session.startedAt ?? (game.activeAction.type === 'combat' ? game.updatedAt : null);
   const started = sessionStartedAt ? Math.max(1_000, Date.now() - sessionStartedAt) : 0;
   const totalXp = Object.values(session.xpGained).reduce((sum, amount) => sum + (amount ?? 0), 0);
   const itemsGained = Object.values(session.lootGained).reduce((sum, amount) => sum + amount, 0);
-  const dps = selectPlayerEstimatedDps(game, enemy);
+  const dps = selectPlayerEstimatedDps(game, enemy, style);
   const hitRate =
     session.playerAttacks > 0
       ? `${Math.round((session.playerHits / session.playerAttacks) * 100)}%`
@@ -1568,7 +1580,8 @@ export function CombatScreen({
     setStyle(next);
     if (active) setCombatStyle(next);
   };
-  const activeStyleValue = active?.pendingStyle ?? active?.style ?? style;
+  const currentStyle = active?.style ?? style;
+  const nextEncounterStyle = active?.pendingStyle ?? style;
   const activeAutoRepeatValue = active?.autoRepeat ?? autoRepeat;
   const actionText = locked
     ? 'Target locked'
@@ -1654,13 +1667,19 @@ export function CombatScreen({
           )}
         </UiPanelSlot>
         <UiPanelSlot screen="combat" id="targetPreview" layout={uiLayout}>
-          <TargetAnalysis game={game} enemy={selectedTarget} style={activeStyleValue} />
+          <TargetAnalysis
+            game={game}
+            enemy={selectedTarget}
+            style={nextEncounterStyle}
+            styleIsQueued={Boolean(active?.pendingStyle)}
+          />
         </UiPanelSlot>
         <UiPanelSlot screen="combat" id="player" layout={uiLayout}>
           <PlayerSummaryPanel
             game={game}
             enemy={currentEnemy}
-            style={activeStyleValue}
+            style={currentStyle}
+            queuedStyle={active?.pendingStyle}
             onStyleChange={changeStyle}
             onNavigate={onNavigate}
           />
@@ -1705,7 +1724,7 @@ export function CombatScreen({
             game={game}
             enemy={currentEnemy}
             session={session}
-            style={activeStyleValue}
+            style={currentStyle}
             autoRepeat={activeAutoRepeatValue}
             events={events}
             tab={overviewTab}

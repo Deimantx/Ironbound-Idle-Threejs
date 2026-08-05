@@ -134,8 +134,8 @@ const safeOffset = (value: unknown, fallback: UiOffset): UiOffset => {
   if (!value || typeof value !== 'object') return fallback;
   const record = value as Record<string, unknown>;
   return {
-    x: clamp(record.x, -240, 240, fallback.x),
-    y: clamp(record.y, -180, 180, fallback.y),
+    x: clamp(record.x, -80, 80, fallback.x),
+    y: clamp(record.y, -60, 60, fallback.y),
   };
 };
 

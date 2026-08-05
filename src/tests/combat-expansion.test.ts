@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { getEnemyCombatStats } from '../game/formulas/combatStats';
 import {
+  getAverageDamageAfterFlatReduction,
   getCombatStyleModifiers,
   getHitChance,
   rollDamage,
@@ -8,9 +9,16 @@ import {
 import { getDerivedStats } from '../game/formulas/statFormulas';
 import { startCombat, queueCombatSpecial, setCombatAutoSpecial } from '../game/engine/actionController';
 import { simulateElapsed } from '../game/engine/simulation';
+import { GAME_CONFIG } from '../config/gameConfig';
 import { enemyById } from '../content/enemies';
 import { createNewGame } from '../game/state/initialState';
-import { selectEnemyHitChance, selectPlayerHitChance } from '../game/selectors/combatSelectors';
+import {
+  selectEnemyAttackProgress,
+  selectEnemyHitChance,
+  selectExpectedKillsPerHour,
+  selectEstimatedKillTimeMs,
+  selectPlayerHitChance,
+} from '../game/selectors/combatSelectors';
 import type { CombatVisualEvent } from '../game/types';
 
 const configuredCombat = (enemyId: 'forest-rat' | 'goblin-scavenger' | 'grey-wolf' | 'road-bandit' = 'forest-rat', seed = 1) => {
@@ -47,6 +55,12 @@ describe('authoritative combat expansion formulas', () => {
     expect(getHitChance(100_000, -100)).toBe(0.97);
     expect(getHitChance(30, 20)).toBeGreaterThan(getHitChance(20, 20));
     expect(getHitChance(20, 30)).toBeLessThan(getHitChance(20, 20));
+  });
+
+  it('calculates expected damage after flat reduction from the same roll distribution', () => {
+    expect(getAverageDamageAfterFlatReduction(5, 0)).toBe(3);
+    expect(getAverageDamageAfterFlatReduction(5, 2)).toBe(1.6);
+    expect(getAverageDamageAfterFlatReduction(5, 99)).toBe(1);
   });
 
   it('applies style modifiers to the same derived player ratings used by combat', () => {
@@ -109,6 +123,21 @@ describe('combat event resolution and traits', () => {
     expect(getEnemyCombatStats(enemyById['stoneback-crab']).flatDamageReduction).toBe(2);
     expect(getEnemyCombatStats(enemyById['grey-wolf']).maxHit).toBe(19);
     expect(getEnemyCombatStats(enemyById['road-bandit']).attackIntervalMs).toBe(3000);
+  });
+
+  it('uses Scurry only for the first attack interval', () => {
+    const state = configuredCombat('forest-rat');
+    const progress = selectEnemyAttackProgress(state, state.updatedAt);
+    expect(progress.intervalMs).toBe(1_690);
+    expect(progress.timeUntilAttackMs).toBe(1_690);
+  });
+
+  it('uses the configured respawn time in expected kills per hour', () => {
+    const state = configuredCombat();
+    const killTime = selectEstimatedKillTimeMs(state, undefined, 'accurate');
+    expect(selectExpectedKillsPerHour(state, undefined, 'accurate')).toBeCloseTo(
+      3_600_000 / (killTime + GAME_CONFIG.respawnMs),
+    );
   });
 
   it('ticks and decrements wolf bleed before the direct attack', () => {

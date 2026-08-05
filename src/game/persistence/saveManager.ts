@@ -87,7 +87,9 @@ export const loadProfile = async (slot: number): Promise<LoadedProfile | null> =
     capped > 1000 && state.activeAction.type !== 'none'
       ? simulateElapsed(state, capped)
       : { state, summary: null };
-  simulation.state.lastSimulatedAt = now;
+  simulation.state.lastSimulatedAt = simulation.summary
+    ? state.lastSimulatedAt + simulation.summary.processedElapsedMs
+    : now;
   simulation.state.updatedAt = now;
   return { state: simulation.state, offline: simulation.summary, recovered };
 };

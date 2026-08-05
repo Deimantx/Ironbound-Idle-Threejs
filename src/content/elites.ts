@@ -8,18 +8,10 @@ export interface EliteModifierDefinition {
 
 export const ELITE_MODIFIERS: EliteModifierDefinition[] = [
   { id: 'savage', name: 'Savage', description: '+35% effective maximum hit.' },
-  {
-    id: 'armoured',
-    name: 'Armoured',
-    description: '+35% Defence and 1 additional flat damage reduction.',
-  },
+  { id: 'armoured', name: 'Armoured', description: '+35% Defence and 1 additional flat damage reduction.' },
   { id: 'swift', name: 'Swift', description: 'Attacks 20% faster.' },
   { id: 'wealthy', name: 'Wealthy', description: 'Rewards 2.5× final gold.' },
-  {
-    id: 'treasure-touched',
-    name: 'Treasure-Touched',
-    description: 'Loot chances are increased by 75%.',
-  },
+  { id: 'treasure-touched', name: 'Treasure-Touched', description: 'Loot chances are increased by 75%.',},
 ];
 
 export const eliteById = Object.fromEntries(

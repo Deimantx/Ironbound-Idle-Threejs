@@ -1,8 +1,13 @@
 import { COMBAT_TUNING } from '../../config/combatTuning';
+import { GAME_CONFIG } from '../../config/gameConfig';
 import { areaById, AREAS } from '../../content/areas';
 import { enemyById } from '../../content/enemies';
 import { getEnemyCombatStats } from '../formulas/combatStats';
-import { getCombatStyleModifiers, getHitChance } from '../formulas/combatFormulas';
+import {
+  getAverageDamageAfterFlatReduction,
+  getCombatStyleModifiers,
+  getHitChance,
+} from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
 import type { AreaId, CombatStyle, EliteModifierId, EnemyDefinition, EnemyId, GameState } from '../types';
 
@@ -130,13 +135,16 @@ export const selectEnemyAttackProgress = (state: GameState, now = Date.now()): A
     now,
   );
   const progressInterval = state.activeAction.combatState.traitState.firstAttackPending
-    ? Math.max(1, state.activeAction.combatState.enemyAttackMs)
+    ? Math.max(
+        COMBAT_TUNING.minimumAttackIntervalMs,
+        stats.attackIntervalMs * COMBAT_TUNING.ratFirstAttackMultiplier,
+      )
     : stats.attackIntervalMs;
   const ratio = Math.max(0, Math.min(1, 1 - timeUntilAttackMs / progressInterval));
   return {
     ratio,
     timeUntilAttackMs,
-    intervalMs: stats.attackIntervalMs,
+    intervalMs: progressInterval,
     state: ratio >= 0.85 ? 'ready' : 'active',
   };
 };
@@ -155,11 +163,14 @@ export const selectEnemyHitChance = (
 
 export const selectPlayerAverageDamage = (
   state: GameState,
-  _enemy = selectSelectedEnemy(state),
+  enemy = selectSelectedEnemy(state),
   style = getActiveStyle(state),
 ): number => {
-  const maxHit = getDerivedStats(state, style).effectiveMaxHit;
-  return (1 + maxHit) / 2;
+  const stats = selectEnemyStats(state, enemy);
+  return getAverageDamageAfterFlatReduction(
+    getDerivedStats(state, style).effectiveMaxHit,
+    stats.flatDamageReduction,
+  );
 };
 
 export const selectEnemyAverageDamage = (
@@ -167,10 +178,9 @@ export const selectEnemyAverageDamage = (
   enemy = selectSelectedEnemy(state),
 ): number => {
   const stats = selectEnemyStats(state, enemy);
-  let average = (1 + stats.maxHit) / 2;
+  let average = getAverageDamageAfterFlatReduction(stats.maxHit, 0);
   if (enemy.trait.id === 'heavy-strike') average *= 0.75 + 0.25 * COMBAT_TUNING.banditHeavyMaxHitMultiplier;
   if (enemy.trait.id === 'bleeding-bites') average += COMBAT_TUNING.wolfBleedChance;
-  if (enemy.trait.id === 'scurry') average *= 2 / (1 + COMBAT_TUNING.ratFirstAttackMultiplier);
   return average;
 };
 
@@ -187,7 +197,8 @@ export const selectPlayerEstimatedDps = (
 export const selectEnemyEstimatedDps = (
   state: GameState,
   enemy = selectSelectedEnemy(state),
-): number => selectEnemyHitChance(state, enemy) * selectEnemyAverageDamage(state, enemy) /
+  style = getActiveStyle(state),
+): number => selectEnemyHitChance(state, enemy, style) * selectEnemyAverageDamage(state, enemy) /
   Math.max(0.001, selectEnemyStats(state, enemy).attackIntervalMs / 1000);
 
 export const selectEstimatedKillTimeMs = (
@@ -196,37 +207,16 @@ export const selectEstimatedKillTimeMs = (
   style = getActiveStyle(state),
 ): number => selectEnemyStats(state, enemy).maxHealth / Math.max(0.001, selectPlayerEstimatedDps(state, enemy, style)) * 1000;
 
-export const selectEstimatedSurvivalTimeMs = (
-  state: GameState,
-  enemy = selectSelectedEnemy(state),
-  style = getActiveStyle(state),
-): number => getDerivedStats(state, style).maxHealth / Math.max(0.001, selectEnemyEstimatedDps(state, enemy)) * 1000;
-
 export const selectExpectedKillsPerHour = (
   state: GameState,
   enemy = selectSelectedEnemy(state),
   style = getActiveStyle(state),
 ): number => 3_600_000 /
-  Math.max(1, selectEstimatedKillTimeMs(state, enemy, style) + 3_000);
+  Math.max(1, selectEstimatedKillTimeMs(state, enemy, style) + GAME_CONFIG.respawnMs);
 
 export const selectExpectedFoodPerHour = (_state?: GameState): 'Not available yet' => 'Not available yet';
 
 export const selectTargetTrait = (state: GameState, enemy = selectSelectedEnemy(state)) => enemy.trait;
-
-export const selectAreaThreat = (
-  state: GameState,
-  enemy = selectSelectedEnemy(state),
-  style = getActiveStyle(state),
-): 'Trivial' | 'Easy' | 'Fair' | 'Dangerous' | 'Deadly' => {
-  const killTime = selectEstimatedKillTimeMs(state, enemy, style);
-  const surviveTime = Math.max(1, selectEstimatedSurvivalTimeMs(state, enemy, style));
-  const pressure = killTime / surviveTime;
-  if (pressure < COMBAT_TUNING.threatTrivial) return 'Trivial';
-  if (pressure < COMBAT_TUNING.threatEasy) return 'Easy';
-  if (pressure < COMBAT_TUNING.threatFair) return 'Fair';
-  if (pressure < COMBAT_TUNING.threatDangerous) return 'Dangerous';
-  return 'Deadly';
-};
 
 export const selectCombatStatus = (state: GameState): string => {
   if (state.activeAction.type !== 'combat') {

@@ -43,6 +43,8 @@ interface DragState {
   target: SelectedTarget;
   startX: number;
   startY: number;
+  pointerId: number;
+  handle: HTMLButtonElement;
   originalOffset?: { x: number; y: number };
   grabOffsetX?: number;
   grabOffsetY?: number;
@@ -59,7 +61,10 @@ const clamp = (value: number, min: number, max: number): number => {
   return Math.min(max, Math.max(min, safeValue));
 };
 
-const getGridMetrics = (screen: ScreenId): GridMetrics | null => {
+const getGridMetrics = (
+  screen: ScreenId,
+  measuredPanels: Partial<Record<UiPanelId, RegionBox>> = {},
+): GridMetrics | null => {
   const grid = document.querySelector<HTMLElement>(`[data-ui-panel-grid="${screen}"]`);
   if (!grid) return null;
   const rect = grid.getBoundingClientRect();
@@ -80,11 +85,18 @@ const getGridMetrics = (screen: ScreenId): GridMetrics | null => {
       ?.map(Number)
       .filter((value) => Number.isFinite(value) && value > 0) ?? [];
   if (!Number.isFinite(columnWidth) || columnWidth <= 0) return null;
-  const rowStarts = [0];
   const fallbackRowHeight = Math.max(64, rowHeights[0] ?? 0);
-  for (let index = 0; index < 12; index += 1) {
-    const rowHeight = rowHeights[index] ?? fallbackRowHeight;
-    rowStarts.push(rowStarts[index] + rowHeight + rowGap);
+  const measuredRowStarts = Object.values(measuredPanels)
+    .filter((box): box is RegionBox => Boolean(box))
+    .map((box) => box.top - rect.top)
+    .filter((top) => Number.isFinite(top) && top >= 0)
+    .sort((first, second) => first - second)
+    .filter((top, index, values) => index === 0 || top - values[index - 1] > 2);
+  const rowStarts = measuredRowStarts.length > 0 ? measuredRowStarts : [0];
+  while (rowStarts.length <= 12) {
+    const rowIndex = rowStarts.length - 1;
+    const rowHeight = rowHeights[rowIndex] ?? fallbackRowHeight;
+    rowStarts.push(rowStarts[rowIndex] + rowHeight + rowGap);
   }
   const columnStep = columnWidth + columnGap;
   if (!Number.isFinite(columnStep) || columnStep <= 0) return null;
@@ -148,7 +160,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
   const [selected, setSelected] = useState<SelectedTarget>({ kind: 'region', id: 'content' });
   const [boxes, setBoxes] = useState<EditorBoxes>({ regions: {}, panels: {} });
   const drag = useRef<DragState | null>(null);
-  const panelDefinitions = getUiPanels(screen);
+  const panelDefinitions = useMemo(() => getUiPanels(screen), [screen]);
   const panelLayout = useMemo(
     () => layout.screenPanels[screen] ?? EMPTY_PANEL_LAYOUT,
     [layout.screenPanels, screen],
@@ -156,7 +168,15 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
   const screenLabel = screen.charAt(0).toUpperCase() + screen.slice(1);
 
   useEffect(() => {
-    let frame: number | undefined;
+    let frame: number | null = null;
+    const requestFrame = (callback: () => void): number =>
+      window.requestAnimationFrame
+        ? window.requestAnimationFrame(callback)
+        : window.setTimeout(callback, 0);
+    const cancelFrame = (frameId: number): void => {
+      if (window.cancelAnimationFrame) window.cancelAnimationFrame(frameId);
+      else window.clearTimeout(frameId);
+    };
     const measure = () => {
       const regions: Partial<Record<UiRegion, RegionBox>> = {};
       const panels: Partial<Record<UiPanelId, RegionBox>> = {};
@@ -183,27 +203,49 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         };
       }
       setBoxes({ regions, panels });
-      frame = 0;
     };
     const scheduleMeasure = () => {
-      if (frame !== undefined) return;
-      frame = window.setTimeout(() => {
+      if (frame !== null) return;
+      frame = requestFrame(() => {
         measure();
-        frame = undefined;
-      }, 0);
+        frame = null;
+      });
     };
     measure();
     window.addEventListener('resize', scheduleMeasure);
     window.addEventListener('scroll', scheduleMeasure, true);
+    const observedElements = [
+      ...UI_REGIONS.map((region) =>
+        document.querySelector<HTMLElement>(`[data-ui-region="${region.id}"]`),
+      ),
+      ...panelDefinitions.map((panel) =>
+        document.querySelector<HTMLElement>(`[data-ui-panel="${panel.id}"]`),
+      ),
+      document.querySelector<HTMLElement>(`[data-ui-panel-grid="${screen}"]`),
+    ].filter((element): element is HTMLElement => Boolean(element));
+    const observer =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(scheduleMeasure);
+    observedElements.forEach((element) => observer?.observe(element));
     return () => {
       window.removeEventListener('resize', scheduleMeasure);
       window.removeEventListener('scroll', scheduleMeasure, true);
-      if (frame !== undefined) window.clearTimeout(frame);
+      observer?.disconnect();
+      if (frame !== null) cancelFrame(frame);
     };
-  }, [layout, panelDefinitions]);
+  }, [layout, panelDefinitions, screen]);
 
   useEffect(() => {
-    const move = (event: PointerEvent) => {
+    let frame: number | null = null;
+    let latestPointer: { clientX: number; clientY: number } | null = null;
+    const requestFrame = (callback: () => void): number =>
+      window.requestAnimationFrame
+        ? window.requestAnimationFrame(callback)
+        : window.setTimeout(callback, 0);
+    const cancelFrame = (frameId: number): void => {
+      if (window.cancelAnimationFrame) window.cancelAnimationFrame(frameId);
+      else window.clearTimeout(frameId);
+    };
+    const applyMove = (clientX: number, clientY: number) => {
       const active = drag.current;
       if (!active) return;
       if (active.target.kind === 'region' && active.originalOffset) {
@@ -212,8 +254,8 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
           offsets: {
             ...layout.offsets,
             [active.target.id]: {
-              x: clamp(active.originalOffset.x + event.clientX - active.startX, -240, 240),
-              y: clamp(active.originalOffset.y + event.clientY - active.startY, -180, 180),
+              x: clamp(active.originalOffset.x + clientX - active.startX, -80, 80),
+              y: clamp(active.originalOffset.y + clientY - active.startY, -60, 60),
             },
           },
         });
@@ -222,8 +264,8 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       if (active.target.kind !== 'panel' || !active.gridMetrics) return;
       const current = panelLayout[active.target.id];
       if (!current) return;
-      const desiredLeft = event.clientX - (active.grabOffsetX ?? 0);
-      const desiredTop = event.clientY - (active.grabOffsetY ?? 0);
+      const desiredLeft = clientX - (active.grabOffsetX ?? 0);
+      const desiredTop = clientY - (active.grabOffsetY ?? 0);
       const column = clamp(
         Math.round((desiredLeft - active.gridMetrics.left) / active.gridMetrics.columnStep) + 1,
         1,
@@ -247,7 +289,26 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         },
       });
     };
+    const move = (event: PointerEvent) => {
+      latestPointer = { clientX: event.clientX, clientY: event.clientY };
+      if (frame !== null) return;
+      frame = requestFrame(() => {
+        const pointer = latestPointer;
+        latestPointer = null;
+        frame = null;
+        if (pointer) applyMove(pointer.clientX, pointer.clientY);
+      });
+    };
     const stop = () => {
+      const active = drag.current;
+      if (frame !== null) cancelFrame(frame);
+      frame = null;
+      const pointer = latestPointer;
+      latestPointer = null;
+      if (pointer) applyMove(pointer.clientX, pointer.clientY);
+      if (active?.handle.hasPointerCapture?.(active.pointerId)) {
+        active.handle.releasePointerCapture(active.pointerId);
+      }
       drag.current = null;
     };
     window.addEventListener('pointermove', move);
@@ -257,6 +318,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       window.removeEventListener('pointermove', move);
       window.removeEventListener('pointerup', stop);
       window.removeEventListener('pointercancel', stop);
+      if (frame !== null) cancelFrame(frame);
     };
   }, [layout, onChange, panelLayout, screen]);
 
@@ -265,21 +327,27 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     setSelected(target);
     if (target.kind === 'region') {
       const offset = layout.offsets[target.id];
+      event.currentTarget.setPointerCapture?.(event.pointerId);
       drag.current = {
         target,
         startX: event.clientX,
         startY: event.clientY,
+        pointerId: event.pointerId,
+        handle: event.currentTarget,
         originalOffset: offset,
       };
       return;
     }
     const box = boxes.panels[target.id];
-    const gridMetrics = getGridMetrics(screen);
+    const gridMetrics = getGridMetrics(screen, boxes.panels);
     if (!box || !gridMetrics) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
     drag.current = {
       target,
       startX: event.clientX,
       startY: event.clientY,
+      pointerId: event.pointerId,
+      handle: event.currentTarget,
       grabOffsetX: event.clientX - box.left,
       grabOffsetY: event.clientY - box.top,
       gridMetrics,
@@ -383,7 +451,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       : null;
   const selectedOffset = selectedRegion ? layout.offsets[selectedRegion.id] : null;
   const selectedPanelPosition = selectedPanel ? panelLayout[selectedPanel.id] : null;
-  const panelsVisible = panelDefinitions.some((panel) => boxes.panels[panel.id]);
+  const panelsVisible = panelDefinitions.length > 0;
 
   return (
     <div className="ui-editor-layer" aria-label="Visual UI editor">
@@ -469,14 +537,51 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
             ))}
           </div>
           {selectedRegion && selectedOffset && (
-            <div className="ui-editor-nudge-row">
-              <button className="button" onClick={resetRegion}>
-                Reset {selectedRegion.label} position
-              </button>
-              <span className="muted">
-                Offset {selectedOffset.x}px, {selectedOffset.y}px
-              </span>
-            </div>
+            <>
+              <div className="ui-editor-nudge-row">
+                <button className="button" onClick={resetRegion}>
+                  Reset {selectedRegion.label} position
+                </button>
+                <span className="muted">
+                  Offset {selectedOffset.x}px, {selectedOffset.y}px
+                </span>
+              </div>
+              <EditorRange
+                label="Horizontal offset"
+                value={selectedOffset.x}
+                min={-80}
+                max={80}
+                suffix="px"
+                onChange={(value) =>
+                  onChange({
+                    ...layout,
+                    offsets: {
+                      ...layout.offsets,
+                      [selectedRegion.id]: { ...selectedOffset, x: value },
+                    },
+                  })
+                }
+              />
+              <EditorRange
+                label="Vertical offset"
+                value={selectedOffset.y}
+                min={-60}
+                max={60}
+                suffix="px"
+                onChange={(value) =>
+                  onChange({
+                    ...layout,
+                    offsets: {
+                      ...layout.offsets,
+                      [selectedRegion.id]: { ...selectedOffset, y: value },
+                    },
+                  })
+                }
+              />
+              <p className="ui-editor-warning">
+                Region offsets are limited so the interface can always be recovered.
+              </p>
+            </>
           )}
         </div>
 
@@ -545,7 +650,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
                       onChange={(value) => updatePanel('columnSpan', value)}
                     />
                     <EditorRange
-                      label="Panel height"
+                      label="Minimum panel height"
                       value={selectedPanelPosition.height}
                       min={0}
                       max={900}
@@ -657,8 +762,9 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         <button
           className="button danger ui-editor-reset"
           onClick={() => onChange(DEFAULT_UI_LAYOUT)}
+          title="Restore all interface positions and sizes"
         >
-          <RotateCcw size={14} /> Reset entire layout
+          <RotateCcw size={14} /> Emergency reset — entire layout
         </button>
       </aside>
     </div>

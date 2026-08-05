@@ -1620,6 +1620,12 @@ function OfflineModal({ summary, onClose }: { summary: SimulationSummary; onClos
         <div className="eyebrow">Welcome back</div>
         <h2 id="offline-title">Your time away has been counted.</h2>
         <p className="subtle">{Math.round(summary.elapsedMs / 60_000)} minutes simulated safely.</p>
+        {summary.remainingElapsedMs > 0 && (
+          <p className="subtle">
+            {Math.round(summary.remainingElapsedMs / 60_000)} minutes remain queued for a safe
+            follow-up simulation.
+          </p>
+        )}
         <div className="offline-summary">
           <div className="summary-stat">
             <strong>{summary.enemiesDefeated}</strong>

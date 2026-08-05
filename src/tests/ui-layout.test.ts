@@ -72,6 +72,13 @@ describe('visual UI layout', () => {
     expect(layout.screenPanels.combat?.enemy.scale).toBe(1.5);
   });
 
+  it('keeps global region offsets inside the recoverable editor range', () => {
+    const layout = sanitizeUiLayout({
+      offsets: { content: { x: 500, y: -500 } },
+    });
+    expect(layout.offsets.content).toEqual({ x: 80, y: -60 });
+  });
+
   it('keeps the complete default layout valid', () => {
     expect(sanitizeUiLayout(DEFAULT_UI_LAYOUT)).toEqual(DEFAULT_UI_LAYOUT);
   });

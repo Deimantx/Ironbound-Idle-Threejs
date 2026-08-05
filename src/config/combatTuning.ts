@@ -37,8 +37,4 @@ export const COMBAT_TUNING = {
   wealthyGoldMultiplier: 2.5,
   treasureTouchedLootMultiplier: 1.75,
   minimumAttackIntervalMs: 500,
-  threatTrivial: 0.25,
-  threatEasy: 0.6,
-  threatFair: 1,
-  threatDangerous: 1.8,
 } as const;

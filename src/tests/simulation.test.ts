@@ -10,6 +10,11 @@ describe('deterministic action simulation', () => {
   it('mining completes cycles and preserves remainder', () => {
     const state = startMining(createNewGame(0, 'Miner'), 'copper-vein', 0);
     const result = simulateElapsed(state, 7_500);
+    expect(result.summary).toMatchObject({
+      requestedElapsedMs: 7_500,
+      processedElapsedMs: 7_500,
+      remainingElapsedMs: 0,
+    });
     expect(getItemQuantity(result.state.inventory, 'copper-ore')).toBe(2);
     expect(
       result.state.activeAction.type === 'mining' && result.state.activeAction.progressMs,

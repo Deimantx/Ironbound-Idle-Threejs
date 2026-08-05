@@ -21,6 +21,19 @@ export const rollDamage = (effectiveMaxHit: number, random: number): number => {
   return maxHit <= 1 ? 1 : 1 + rollInteger(maxHit - 1, random);
 };
 
+/** Expected damage for a normal 1..maxHit roll after flat reduction. */
+export const getAverageDamageAfterFlatReduction = (
+  effectiveMaxHit: number,
+  flatDamageReduction: number,
+): number => {
+  const maxHit = Math.max(1, Math.floor(effectiveMaxHit));
+  const reduction = Math.max(0, Math.floor(flatDamageReduction));
+  const reducedRolls = Math.min(maxHit, reduction);
+  const unreducedRolls = maxHit - reducedRolls;
+  const totalDamage = reducedRolls + (unreducedRolls * (unreducedRolls + 1)) / 2;
+  return totalDamage / maxHit;
+};
+
 export const clampHitChance = (chance: number): number =>
   Math.min(COMBAT_TUNING.hitChanceMax, Math.max(COMBAT_TUNING.hitChanceMin, chance));
 

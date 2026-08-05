@@ -265,6 +265,9 @@ export interface GameState {
 
 export interface SimulationSummary {
   elapsedMs: number;
+  requestedElapsedMs: number;
+  processedElapsedMs: number;
+  remainingElapsedMs: number;
   completed: Record<string, number>;
   xpGained: Partial<Record<SkillId, number>>;
   levelsGained: Partial<Record<SkillId, number>>;
@@ -388,6 +391,9 @@ export const emptyCombatSession = (
 
 export const emptySummary = (elapsedMs = 0): SimulationSummary => ({
   elapsedMs,
+  requestedElapsedMs: elapsedMs,
+  processedElapsedMs: 0,
+  remainingElapsedMs: elapsedMs,
   completed: {},
   xpGained: {},
   levelsGained: {},

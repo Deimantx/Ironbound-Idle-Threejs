@@ -30,6 +30,8 @@ import type {
 import { emptySummary } from '../types';
 
 const clone = (state: GameState): GameState => structuredClone(state);
+const MAX_COMBAT_SIMULATION_EVENTS = 100_000;
+const MAX_COMBAT_VISUAL_EVENTS = 64;
 const addLog = (
   state: GameState,
   text: string,
@@ -267,6 +269,10 @@ const normalizeCombatAction = (state: GameState): Extract<ActiveAction, { type: 
 
 const combatEventId = (type: string, at: number, cursor: number): string =>
   `${type}-${at}-${cursor}`;
+const pushBoundedEvent = (events: CombatVisualEvent[], event: CombatVisualEvent): void => {
+  if (events.length >= MAX_COMBAT_VISUAL_EVENTS) events.shift();
+  events.push(event);
+};
 const getEliteModifierDisplayName = (modifier: keyof typeof eliteById): string =>
   eliteById[modifier]?.name ?? modifier;
 
@@ -275,19 +281,19 @@ const simulateCombat = (
   elapsedMs: number,
   summary: SimulationSummary,
   events: CombatVisualEvent[],
-): void => {
+): { processedElapsedMs: number; safetyCapReached: boolean } => {
   const normalized = normalizeCombatAction(state);
   if (!normalized) {
     state.activeAction = { type: 'none' };
     summary.stoppedReason = 'That combat target is no longer available.';
-    return;
+    return { processedElapsedMs: elapsedMs, safetyCapReached: false };
   }
   let action = normalized;
   const enemy = enemyById[action.enemyId];
   if (!areaById[action.areaId]) {
     state.activeAction = { type: 'none' };
     summary.stoppedReason = 'That combat target is no longer available.';
-    return;
+    return { processedElapsedMs: elapsedMs, safetyCapReached: false };
   }
   const rng = { rngSeed: action.combatState.rngSeed, rngCursor: action.combatState.rngCursor };
   let left = elapsedMs;
@@ -300,7 +306,7 @@ const simulateCombat = (
     at: number,
   ): void => addLog(state, text, tone, at, combatState.encounterStartedAt);
   const emit = (event: CombatVisualEvent): void => {
-    events.push(event);
+    pushBoundedEvent(events, event);
     if (event.type === 'player-hit' || event.type === 'player-miss') {
       summary.combatStats.playerAttacks += 1;
       if (event.type === 'player-hit') summary.combatStats.playerHits += 1;
@@ -370,7 +376,7 @@ const simulateCombat = (
     });
     combatState.eliteAnnounced = true;
   }
-  while (left > 0 && iterations < 100_000) {
+  while (left > 0 && iterations < MAX_COMBAT_SIMULATION_EVENTS) {
     iterations += 1;
     if (combatState.respawnMs > 0) {
       const step = Math.min(left, combatState.respawnMs);
@@ -577,7 +583,8 @@ const simulateCombat = (
       combatState.enemyAttackMs += getEnemyCombatStats(enemy, combatState.eliteModifier, combatState.enemyHp).attackIntervalMs;
     }
   }
-  if (iterations >= 100_000 && left > 0) summary.stoppedReason = 'Combat event cap reached safely.';
+  const safetyCapReached = iterations >= MAX_COMBAT_SIMULATION_EVENTS && left > 0;
+  if (safetyCapReached) summary.stoppedReason = 'Combat event cap reached safely.';
   if (state.activeAction.type === 'combat') {
     state.activeAction = {
       ...action,
@@ -589,6 +596,10 @@ const simulateCombat = (
       },
     };
   }
+  return {
+    processedElapsedMs: safetyCapReached ? elapsedMs - left : elapsedMs,
+    safetyCapReached,
+  };
 };
 
 export const simulateElapsed = (
@@ -599,7 +610,12 @@ export const simulateElapsed = (
   const state = clone(input);
   const summary = emptySummary(safeElapsed);
   const events: CombatVisualEvent[] = [];
-  if (safeElapsed === 0) return { state, summary, events };
+  if (safeElapsed === 0) {
+    summary.processedElapsedMs = 0;
+    summary.remainingElapsedMs = 0;
+    return { state, summary, events };
+  }
+  let processedElapsedMs = safeElapsed;
   switch (state.activeAction.type) {
     case 'mining':
       simulateMining(state, safeElapsed, summary);
@@ -608,7 +624,7 @@ export const simulateElapsed = (
       simulateSmithing(state, safeElapsed, summary);
       break;
     case 'combat':
-      simulateCombat(state, safeElapsed, summary, events);
+      processedElapsedMs = simulateCombat(state, safeElapsed, summary, events).processedElapsedMs;
       break;
     default:
       if (state.player.currentHp < getDerivedStats(state).maxHealth)
@@ -617,10 +633,13 @@ export const simulateElapsed = (
           state.player.currentHp + Math.floor(safeElapsed / 5000),
         );
   }
+  summary.processedElapsedMs = processedElapsedMs;
+  summary.remainingElapsedMs = Math.max(0, safeElapsed - processedElapsedMs);
+  summary.elapsedMs = processedElapsedMs;
   unlockAreas(state);
-  state.lastSimulatedAt += safeElapsed;
+  state.lastSimulatedAt += processedElapsedMs;
   state.updatedAt = Date.now();
-  return { state, summary, events: events.slice(-64) };
+  return { state, summary, events };
 };
 
 export const progressRatio = (action: ActiveAction, now: number, state: GameState): number => {
