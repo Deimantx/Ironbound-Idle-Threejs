@@ -19,7 +19,8 @@ Core MVP workflow is implemented and verified by the project checks.
 - [x] Responsive semantic interface with locked future-feature screens
 - [x] Procedural Three.js contextual visual layer with quality and reduced-motion settings
 - [x] Universal screen-panel editor foundation with editable Combat, Inventory, Equipment, Mining, and Smithing panels, responsive fallback, and per-panel scaling
-- [x] P2 UI foundation: Inventory, Equipment, Mining, and Smithing are extracted from `App.tsx` and routed through the shared panel system; their final P2 visual redesigns remain future work
+- [x] P2 UI foundation: Inventory, Equipment, Mining, and Smithing are extracted from `App.tsx` and routed through the shared panel system
+- [x] Inventory 2.0: polished stack-based item bank with search, display-group filters, capacity indicator, rarity-aware item cards, persistent desktop details, compact drawer, Equip/Open Equipment, Lock/Unlock, Destroy One confirmation, and Universal UI editor compatibility
 - [x] Development-only item helper
 - [x] Unit and UI integration tests for formulas, inventory, equipment, actions, persistence, and navigation
 - [x] README and content guide

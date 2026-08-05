@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../app/App';
+import { GAME_CONFIG } from '../config/gameConfig';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
 import { UI_LAYOUT_STORAGE_KEY } from '../app/uiLayout';
@@ -48,6 +49,16 @@ const dispatchPointer = (
     Object.defineProperty(event, key, { configurable: true, value }),
   );
   act(() => target.dispatchEvent(event));
+};
+
+const seedInventory = (
+  inventory: Array<{ itemId: string; quantity: number; locked?: boolean }>,
+) => {
+  const game = createNewGame(0, 'Inventory Tester');
+  game.settings.threeQuality = 'off';
+  game.inventory = inventory.map((stack) => ({ locked: false, ...stack }));
+  game.discoveredItems = inventory.map((stack) => stack.itemId);
+  useGameStore.getState().setGame(game);
 };
 
 afterEach(() => {
@@ -171,7 +182,7 @@ describe('navigation integration', () => {
 
     await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
     await user.click(screen.getByRole('button', { name: /View Bronze Sword/ }));
-    expect(screen.getByRole('dialog')).toHaveTextContent('Bronze Sword');
+    expect(screen.getByRole('heading', { name: 'Bronze Sword' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Equip' }));
     expect(useGameStore.getState().game?.equipment.weapon).toBe('bronze-sword');
 
@@ -187,6 +198,169 @@ describe('navigation integration', () => {
     const action = useGameStore.getState().game?.activeAction;
     expect(action?.type).toBe('smithing');
     expect(action?.type === 'smithing' ? action.quantityMode : null).toBe('continuous');
+  });
+
+  it('renders the Inventory 2.0 bank structure and capacity semantics', async () => {
+    const user = userEvent.setup();
+    seedInventory([
+      { itemId: 'copper-ore', quantity: 124 },
+      { itemId: 'iron-sword', quantity: 1 },
+      { itemId: 'rat-tail', quantity: 8, locked: true },
+    ]);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+
+    expect(screen.getByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'Search inventory' })).toBeInTheDocument();
+    for (const label of ['All', 'Materials', 'Equipment', 'Drops', 'Currency'])
+      expect(screen.getByRole('button', { name: new RegExp(`^${label}`) })).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Inventory capacity' })).toHaveAttribute(
+      'aria-valuenow',
+      '3',
+    );
+    expect(document.querySelector('[data-ui-panel="inventoryToolbar"]')).not.toBeNull();
+    expect(document.querySelector('[data-ui-panel="inventoryBank"]')).not.toBeNull();
+    expect(screen.getByRole('heading', { name: 'Item Bank' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Select an item' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /View Iron Sword/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(screen.getByRole('button', { name: /View Rat Tail/ })).toHaveAccessibleName(/locked/i);
+  });
+
+  it('searches, filters, and resets the visible bank without changing query state', async () => {
+    const user = userEvent.setup();
+    seedInventory([
+      { itemId: 'copper-ore', quantity: 4 },
+      { itemId: 'iron-sword', quantity: 1 },
+      { itemId: 'rat-tail', quantity: 2 },
+    ]);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+    const search = screen.getByRole('textbox', { name: 'Search inventory' });
+    await user.type(search, 'iron');
+    expect(screen.getByRole('button', { name: /View Iron Sword/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /View Copper Ore/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /^Materials/ }));
+    expect(screen.queryByRole('button', { name: /View Copper Ore/ })).not.toBeInTheDocument();
+    expect(search).toHaveValue('iron');
+    expect(screen.getByText('No items match these filters')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Reset filters' }));
+    expect(search).toHaveValue('');
+    expect(screen.getByRole('button', { name: /View Copper Ore/ })).toBeInTheDocument();
+
+    await user.type(search, 'ore');
+    await user.click(screen.getByRole('button', { name: 'Clear search' }));
+    expect(search).toHaveValue('');
+  });
+
+  it('keeps desktop selection details live and protects locked stacks', async () => {
+    const user = userEvent.setup();
+    seedInventory([
+      { itemId: 'iron-sword', quantity: 2 },
+      { itemId: 'copper-ore', quantity: 4 },
+    ]);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+    await user.click(screen.getByRole('button', { name: /View Iron Sword/ }));
+    expect(screen.getByRole('heading', { name: 'Iron Sword' })).toBeInTheDocument();
+    expect(screen.getByText('Sundering Strike')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lock' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Lock' }));
+    expect(screen.getByRole('button', { name: /View Iron Sword/ })).toHaveAccessibleName(/locked/i);
+    expect(screen.getByRole('button', { name: 'Unlock' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Destroy One' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Unlock' }));
+    expect(screen.getByRole('button', { name: 'Destroy One' })).toBeEnabled();
+    await user.click(screen.getByRole('button', { name: 'Destroy One' }));
+    const confirmation = screen.getByRole('dialog', { name: 'Destroy one item?' });
+    expect(confirmation).toBeInTheDocument();
+    await user.click(within(confirmation).getByRole('button', { name: 'Destroy One' }));
+    expect(useGameStore.getState().game?.inventory).toContainEqual({
+      itemId: 'iron-sword',
+      quantity: 1,
+      locked: false,
+    });
+    expect(screen.getByRole('heading', { name: 'Iron Sword' })).toBeInTheDocument();
+  });
+
+  it('moves selection after quantity-one destruction and equips through the existing system', async () => {
+    const user = userEvent.setup();
+    seedInventory([
+      { itemId: 'bronze-sword', quantity: 1 },
+      { itemId: 'copper-ore', quantity: 1 },
+    ]);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+    await user.click(screen.getByRole('button', { name: /View Bronze Sword/ }));
+    await user.click(screen.getByRole('button', { name: 'Equip' }));
+    expect(useGameStore.getState().game?.equipment.weapon).toBe('bronze-sword');
+    expect(screen.queryByRole('button', { name: /View Bronze Sword/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Copper Ore' })).toBeInTheDocument();
+  });
+
+  it('opens compact item details as an accessible drawer and closes with Escape', async () => {
+    const originalMatchMedia = window.matchMedia;
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query === '(max-width: 900px)',
+        media: query,
+        onchange: null,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        dispatchEvent: () => false,
+      }),
+    });
+    try {
+      const user = userEvent.setup();
+      seedInventory([{ itemId: 'iron-sword', quantity: 1 }]);
+      render(<App />);
+      await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+      const card = screen.getByRole('button', { name: /View Iron Sword/ });
+      await user.click(card);
+      const drawer = screen.getByRole('dialog', { name: 'Iron Sword' });
+      expect(drawer).toHaveAttribute('aria-modal', 'true');
+      expect(within(drawer).getByRole('button', { name: 'Equip' })).toBeInTheDocument();
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('dialog', { name: 'Iron Sword' })).not.toBeInTheDocument();
+      expect(card).toHaveAttribute('aria-pressed', 'true');
+    } finally {
+      Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        value: originalMatchMedia,
+      });
+    }
+  });
+
+  it('shows navigation actions for a truly empty inventory and a full capacity state', async () => {
+    const user = userEvent.setup();
+    seedInventory([]);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+    expect(screen.getByRole('heading', { name: 'Your inventory is empty' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Mining' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Go to Combat' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Select an item' })).not.toBeInTheDocument();
+
+    const fullInventory = Array.from({ length: GAME_CONFIG.inventorySlots }, (_, index) => ({
+      itemId: `unknown-${index}`,
+      quantity: 1,
+    }));
+    act(() => seedInventory(fullInventory));
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+    expect(screen.getByRole('progressbar', { name: 'Inventory capacity' })).toHaveAttribute(
+      'aria-valuenow',
+      String(GAME_CONFIG.inventorySlots),
+    );
+    expect(
+      screen.getAllByText(`${GAME_CONFIG.inventorySlots} / ${GAME_CONFIG.inventorySlots} slots`)[0],
+    ).toBeInTheDocument();
   });
 
   it('opens and closes the local visual UI editor', async () => {
