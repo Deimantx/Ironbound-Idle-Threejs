@@ -1,4 +1,4 @@
-import type { ItemDefinition, WeaponSpecial } from '../game/types';
+import type { ItemCategory, ItemDefinition, WeaponSpecial } from '../game/types';
 
 const material = (
   id: string,
@@ -34,23 +34,24 @@ const gear = (
   level: string,
   specialAttack?: WeaponSpecial,
   description?: string,
+  categoryOverride?: Extract<ItemCategory, 'weapon' | 'armor' | 'shield' | 'tool'>,
 ): ItemDefinition => ({
   id,
   name,
-  category:
-    slot === 'weapon'
-      ? 'weapon'
-      : slot === 'shield'
-        ? 'shield'
-        : slot === 'tool'
-          ? 'tool'
-          : 'armor',
+  category: categoryOverride ?? (slot === 'weapon' ? 'weapon' : slot === 'tool' ? 'tool' : 'armor'),
   description: description ?? `${level} ${slot} forged for dependable field work.`,
   source: 'Smithing',
   stackable: true,
   rarity: tier === 'steel' ? 'rare' : tier === 'iron' ? 'uncommon' : 'common',
   presentation: {
-    iconKey: slot === 'weapon' ? 'sword' : slot === 'shield' ? 'shield' : 'armor',
+    iconKey:
+      categoryOverride === 'shield'
+        ? 'shield'
+        : categoryOverride === 'tool' || slot === 'tool'
+          ? 'tool'
+          : categoryOverride === 'weapon' || slot === 'weapon'
+            ? 'sword'
+            : 'armor',
     visualCategory: 'equipment',
   },
   slot,
@@ -83,7 +84,7 @@ export const ITEMS: ItemDefinition[] = [
     'Bronze Sword',
     'weapon',
     'bronze',
-    { attack: 8, strength: 5, speed: 0 },
+    { attack: 8, strength: 5, attackSpeed: 0 },
     'Bronze',
     {
       id: 'focused-slash',
@@ -104,14 +105,24 @@ export const ITEMS: ItemDefinition[] = [
     undefined,
     'A complete bronze field harness covering the torso and lower body.',
   ),
-  gear('bronze-shield', 'Bronze Buckler', 'shield', 'bronze', { defence: 10, health: 3 }, 'Bronze'),
-  gear('bronze-pickaxe', 'Bronze Pick', 'tool', 'bronze', { speed: 0.1 }, 'Bronze'),
+  gear(
+    'bronze-shield',
+    'Bronze Buckler',
+    'offhand',
+    'bronze',
+    { defence: 10, health: 3 },
+    'Bronze',
+    undefined,
+    undefined,
+    'shield',
+  ),
+  gear('bronze-pickaxe', 'Bronze Pick', 'tool', 'bronze', { miningSpeed: 0.1 }, 'Bronze'),
   gear(
     'iron-sword',
     'Iron Sword',
     'weapon',
     'iron',
-    { attack: 18, strength: 12, speed: 0.05 },
+    { attack: 18, strength: 12, attackSpeed: 0.05 },
     'Iron',
     {
       id: 'sundering-strike',
@@ -133,14 +144,24 @@ export const ITEMS: ItemDefinition[] = [
     undefined,
     'A complete iron field harness built for sustained combat.',
   ),
-  gear('iron-shield', 'Iron Bulwark', 'shield', 'iron', { defence: 24, health: 8 }, 'Iron'),
-  gear('iron-pickaxe', 'Iron Pick', 'tool', 'iron', { speed: 0.2 }, 'Iron'),
+  gear(
+    'iron-shield',
+    'Iron Bulwark',
+    'offhand',
+    'iron',
+    { defence: 24, health: 8 },
+    'Iron',
+    undefined,
+    undefined,
+    'shield',
+  ),
+  gear('iron-pickaxe', 'Iron Pick', 'tool', 'iron', { miningSpeed: 0.2 }, 'Iron'),
   gear(
     'steel-sword',
     'Steel Sword',
     'weapon',
     'steel',
-    { attack: 32, strength: 24, speed: 0.1 },
+    { attack: 32, strength: 24, attackSpeed: 0.1 },
     'Steel',
     {
       id: 'executioners-cut',
@@ -163,8 +184,18 @@ export const ITEMS: ItemDefinition[] = [
     undefined,
     'A complete steel field harness forged for the harshest frontiers.',
   ),
-  gear('steel-shield', 'Steel Bulwark', 'shield', 'steel', { defence: 42, health: 14 }, 'Steel'),
-  gear('steel-pickaxe', 'Steel Pick', 'tool', 'steel', { speed: 0.3 }, 'Steel'),
+  gear(
+    'steel-shield',
+    'Steel Bulwark',
+    'offhand',
+    'steel',
+    { defence: 42, health: 14 },
+    'Steel',
+    undefined,
+    undefined,
+    'shield',
+  ),
+  gear('steel-pickaxe', 'Steel Pick', 'tool', 'steel', { miningSpeed: 0.3 }, 'Steel'),
   ...[
     ['rat-tail', 'Rat Tail', 'Training Grounds · Forest Rat'],
     ['tattered-hide', 'Tattered Hide', 'Training Grounds · Forest Rat'],

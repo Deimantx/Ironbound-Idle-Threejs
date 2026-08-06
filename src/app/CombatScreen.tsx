@@ -65,7 +65,8 @@ import type {
 import forestRatImage from '../Art/Monsters/ForestRat.png';
 import type { ConfirmDialogOptions } from './ConfirmDialog';
 import { ItemIcon } from './ItemIcon';
-import { COMBAT_EQUIPMENT_SLOTS, getEquipmentSlotLabel } from '../game/equipmentSlots';
+import { getEquipmentSlotLabel } from '../game/equipmentSlots';
+import type { CombatEquipmentSlot } from '../game/equipmentSlots';
 import type { UiLayout } from './uiLayout';
 import { UiPanelSlot } from './UiPanelSlot';
 
@@ -232,20 +233,39 @@ function CombatPortrait({ enemy, large = false }: { enemy: EnemyDefinition; larg
 }
 
 function EquipmentStrip({ game }: { game: GameState }) {
+  const renderSlots = (slots: CombatEquipmentSlot[]) =>
+    slots.map((slot) => {
+      const itemId = game.equipment[slot];
+      const item = itemId ? itemById[itemId] : undefined;
+      const label = getEquipmentSlotLabel(slot);
+      return (
+        <div className={`combat-equip-slot ${item ? 'filled' : ''}`} key={slot}>
+          <span>{label}</span>
+          {item ? <ItemIcon itemId={item.id} size="xs" /> : <b>—</b>}
+          <small title={item?.name} aria-label={`${label}: ${item?.name ?? 'Empty'}`}>
+            {item?.name ?? 'Empty'}
+          </small>
+        </div>
+      );
+    });
   return (
     <div className="combat-equipment-strip" aria-label="Equipped items">
-      {COMBAT_EQUIPMENT_SLOTS.map((slot) => {
-        const itemId = game.equipment[slot];
-        const item = itemId ? itemById[itemId] : undefined;
-        const label = getEquipmentSlotLabel(slot);
-        return (
-          <div className={`combat-equip-slot ${item ? 'filled' : ''}`} key={slot}>
-            <span>{label}</span>
-            {item ? <ItemIcon itemId={item.id} size="xs" /> : <b>—</b>}
-            <small title={item?.name}>{item?.name ?? 'Empty'}</small>
-          </div>
-        );
-      })}
+      <section className="combat-equipment-group" aria-labelledby="combat-gear-summary-title">
+        <div className="combat-equipment-group-title" id="combat-gear-summary-title">
+          Combat Gear
+        </div>
+        <div className="combat-equipment-grid-main">
+          {renderSlots(['weapon', 'head', 'armor', 'offhand', 'gloves', 'boots'])}
+        </div>
+      </section>
+      <section className="combat-equipment-group" aria-labelledby="accessories-summary-title">
+        <div className="combat-equipment-group-title" id="accessories-summary-title">
+          Accessories
+        </div>
+        <div className="combat-equipment-grid-accessories">
+          {renderSlots(['amulet', 'ring', 'cape'])}
+        </div>
+      </section>
     </div>
   );
 }

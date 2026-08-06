@@ -159,6 +159,34 @@ const migrateEquipmentAndClampHealth = (input: GameState): GameState => {
   };
 };
 
+const isValidOffhandItem = (itemId: unknown): itemId is string =>
+  typeof itemId === 'string' && itemById[itemId]?.slot === 'offhand';
+
+const migrateShieldSlot = (input: GameState): GameState => {
+  const legacy = input.equipment as Record<string, unknown>;
+  const inventory = input.inventory.slice();
+  const nextEquipment: GameState['equipment'] = {};
+  const invalidOffhandIds: string[] = [];
+
+  for (const [slot, itemId] of Object.entries(legacy)) {
+    if (slot === 'shield' || slot === 'offhand') continue;
+    if (typeof itemId === 'string') nextEquipment[slot as keyof GameState['equipment']] = itemId;
+  }
+
+  if (isValidOffhandItem(legacy.offhand)) nextEquipment.offhand = legacy.offhand;
+  else if (typeof legacy.offhand === 'string') invalidOffhandIds.push(legacy.offhand);
+
+  if (isValidOffhandItem(legacy.shield)) {
+    if (nextEquipment.offhand) mergeMigratedStack(inventory, legacy.shield, 1, false);
+    else nextEquipment.offhand = legacy.shield;
+  } else if (typeof legacy.shield === 'string') {
+    mergeMigratedStack(inventory, legacy.shield, 1, false);
+  }
+  for (const itemId of invalidOffhandIds) mergeMigratedStack(inventory, itemId, 1, false);
+
+  return { ...input, equipment: nextEquipment, inventory, schemaVersion: 4 };
+};
+
 export const migrations: Record<number, SaveMigration> = {
   1: (input) => ({
     ...input,
@@ -214,6 +242,7 @@ export const migrations: Record<number, SaveMigration> = {
     };
   },
   3: migrateEquipmentAndClampHealth,
+  4: migrateShieldSlot,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {

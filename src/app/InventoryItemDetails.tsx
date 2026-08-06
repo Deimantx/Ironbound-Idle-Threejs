@@ -1,6 +1,8 @@
 import { Lock, ShieldCheck, Sparkles, Unlock } from 'lucide-react';
 import type { InventoryStack, ItemDefinition } from '../game/types';
+import { getEquipmentSlotLabel } from '../game/equipmentSlots';
 import { formatNumber } from './formatters';
+import { formatEquipmentBonus, getEquipmentBonusLabel } from './equipmentView';
 import { getInventoryDisplayGroup, getInventoryValueLabel } from './inventoryView';
 import { ItemIcon } from './ItemIcon';
 
@@ -13,17 +15,6 @@ export interface InventoryItemDetailsProps {
   onToggleLock: () => void;
   onDestroyOne: () => void;
 }
-
-const bonusLabels: Record<string, string> = {
-  attack: 'Attack',
-  strength: 'Strength',
-  defence: 'Defence',
-  health: 'Health',
-  speed: 'Gathering speed',
-};
-
-const formatBonus = (key: string, value: number): string =>
-  key === 'speed' ? `+${Math.round(value * 100)}%` : `+${value}`;
 
 export function InventoryItemDetails({
   stack,
@@ -93,7 +84,7 @@ export function InventoryItemDetails({
         {isEquippable && (
           <div className="stat-line">
             <dt>Slot</dt>
-            <dd>{getInventoryValueLabel(slot ?? 'unknown')}</dd>
+            <dd>{getEquipmentSlotLabel(slot ?? 'unknown')}</dd>
           </div>
         )}
         {item.tier && (
@@ -109,8 +100,8 @@ export function InventoryItemDetails({
           <div className="inventory-bonus-grid">
             {bonuses.map(([key, value]) => (
               <div className="inventory-bonus" key={key}>
-                <span>{bonusLabels[key] ?? getInventoryValueLabel(key)}</span>
-                <strong>{formatBonus(key, value as number)}</strong>
+                <span>{getEquipmentBonusLabel(key)}</span>
+                <strong>{formatEquipmentBonus(key, value as number)}</strong>
               </div>
             ))}
           </div>

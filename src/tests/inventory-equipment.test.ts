@@ -52,6 +52,26 @@ describe('inventory and equipment', () => {
     expect(getItemQuantity(replaced.state.inventory, 'iron-armor')).toBe(1);
   });
 
+  it('equips, replaces, and unequips Shield items through Off-hand', () => {
+    const state = createNewGame(0, 'Off-hand');
+    state.inventory = [
+      { itemId: 'iron-shield', quantity: 1, locked: false },
+      { itemId: 'steel-shield', quantity: 1, locked: false },
+    ];
+    const equipped = equipItem(state, 'iron-shield');
+    expect(equipped.ok).toBe(true);
+    expect(equipped.state.equipment.offhand).toBe('iron-shield');
+    expect((equipped.state.equipment as Record<string, string>).shield).toBeUndefined();
+    const replaced = equipItem(equipped.state, 'steel-shield');
+    expect(replaced.ok).toBe(true);
+    expect(replaced.state.equipment.offhand).toBe('steel-shield');
+    expect(getItemQuantity(replaced.state.inventory, 'iron-shield')).toBe(1);
+    const empty = unequipItem(replaced.state, 'offhand');
+    expect(empty.ok).toBe(true);
+    expect(empty.state.equipment.offhand).toBeUndefined();
+    expect(getItemQuantity(empty.state.inventory, 'steel-shield')).toBe(1);
+  });
+
   it('clamps health when gear lowers the maximum without healing on an increase', () => {
     const state = createNewGame(0, 'Health');
     state.inventory = [

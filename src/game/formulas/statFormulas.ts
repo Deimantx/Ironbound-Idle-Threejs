@@ -19,7 +19,16 @@ export interface DerivedStats {
   combatLevel: number;
 }
 
-export const getEquipmentBonuses = (equipment: EquipmentLoadout) =>
+export interface EquipmentBonuses {
+  attack: number;
+  strength: number;
+  defence: number;
+  health: number;
+  attackSpeed: number;
+  miningSpeed: number;
+}
+
+export const getEquipmentBonuses = (equipment: EquipmentLoadout): EquipmentBonuses =>
   Object.values(equipment).reduce(
     (total, id) => {
       const bonuses = itemById[id ?? '']?.bonuses;
@@ -28,13 +37,17 @@ export const getEquipmentBonuses = (equipment: EquipmentLoadout) =>
       total.strength += bonuses.strength ?? 0;
       total.defence += bonuses.defence ?? 0;
       total.health += bonuses.health ?? 0;
-      total.speed += bonuses.speed ?? 0;
+      total.attackSpeed += bonuses.attackSpeed ?? 0;
+      total.miningSpeed += bonuses.miningSpeed ?? 0;
       return total;
     },
-    { attack: 0, strength: 0, defence: 0, health: 0, speed: 0 },
+    { attack: 0, strength: 0, defence: 0, health: 0, attackSpeed: 0, miningSpeed: 0 },
   );
 
-export const getDerivedStats = (state: GameState, style: CombatStyle = 'accurate'): DerivedStats => {
+export const getDerivedStats = (
+  state: GameState,
+  style: CombatStyle = 'accurate',
+): DerivedStats => {
   const bonuses = getEquipmentBonuses(state.equipment);
   const attack = state.skills.attack.level + bonuses.attack;
   const strength = state.skills.strength.level + bonuses.strength;
@@ -59,8 +72,8 @@ export const getDerivedStats = (state: GameState, style: CombatStyle = 'accurate
     strength,
     defence,
     maxHealth,
-    attackIntervalMs: Math.max(900, 2400 * (1 - bonuses.speed * 0.25)),
-    miningIntervalMultiplier: Math.max(0.55, 1 - bonuses.speed),
+    attackIntervalMs: Math.max(900, 2400 * (1 - bonuses.attackSpeed * 0.25)),
+    miningIntervalMultiplier: Math.max(0.55, 1 - bonuses.miningSpeed),
     maxHit: baseMaxHit,
     baseAccuracyRating,
     effectiveAccuracyRating,

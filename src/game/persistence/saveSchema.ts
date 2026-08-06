@@ -71,7 +71,7 @@ const legacyEquipmentSchema = z.record(z.string(), z.string());
 const currentEquipmentSchema = z
   .record(z.string(), z.string())
   .superRefine((equipment, context) => {
-    for (const slot of ['body', 'legs']) {
+    for (const slot of ['body', 'legs', 'shield']) {
       if (slot in equipment)
         context.addIssue({
           code: z.ZodIssueCode.custom,

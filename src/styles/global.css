@@ -658,16 +658,53 @@ h3 {
   font-weight: 700;
   font-size: 12px;
 }
-.equipment-slot-layout {
+.equipment-combat-section,
+.equipment-accessory-section,
+.equipment-profession-section {
+  margin-top: 18px;
+}
+.equipment-section-heading h3,
+.equipment-accessory-section h3,
+.equipment-profession-section h3 {
+  margin: 3px 0 0;
+  color: #e8ddc4;
+  font-size: 15px;
+}
+.equipment-combat-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   grid-template-areas:
     '. head .'
-    'weapon armor shield'
-    '. tool .';
+    'weapon armor offhand'
+    'gloves . boots';
   gap: 10px;
   max-width: 680px;
-  margin: 16px auto 0;
+  margin: 12px auto 0;
+}
+.equipment-accessory-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.equipment-profession-section {
+  padding-top: 18px;
+  border-top: 1px solid #2c363a;
+}
+.equipment-tool-card {
+  display: grid;
+  gap: 7px;
+  max-width: 235px;
+  margin-top: 12px;
+  padding: 9px;
+  background: rgba(11, 14, 16, 0.27);
+  border: 1px solid #2c363a;
+  border-radius: 8px;
+}
+.equipment-tool-card small {
+  color: #a9b997;
+  font-size: 10px;
+  text-align: center;
 }
 .equipment-slot-card {
   min-width: 0;
@@ -711,11 +748,20 @@ h3 {
 .equipment-slot-card.slot-weapon {
   grid-area: weapon;
 }
-.equipment-slot-card.slot-shield {
-  grid-area: shield;
+.equipment-slot-card.slot-offhand {
+  grid-area: offhand;
 }
-.equipment-slot-card.slot-tool {
-  grid-area: tool;
+.equipment-slot-card.slot-gloves {
+  grid-area: gloves;
+}
+.equipment-slot-card.slot-boots {
+  grid-area: boots;
+}
+.equipment-accessory-grid .equipment-slot-card {
+  min-height: 90px;
+}
+.equipment-tool-card .equipment-slot-card {
+  min-height: 90px;
 }
 .equipment-slot-card > strong {
   display: block;
@@ -740,17 +786,6 @@ h3 {
   color: #667176;
   font-size: 12px;
   padding: 13px 0;
-}
-.equipment-future-slots {
-  margin-top: 18px;
-  padding-top: 14px;
-  border-top: 1px solid #2c363a;
-}
-.equipment-future-slot-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin-top: 8px;
 }
 .equipment-selected-slot,
 .equipment-compatible-bank {
@@ -929,6 +964,65 @@ h3 {
 }
 .equipment-stats-hint {
   margin-top: 22px;
+}
+.equipment-profession-bonuses {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #2c363a;
+}
+.equipment-profession-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 0;
+  color: #e8ddc4;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+  background: transparent;
+  border: 0;
+}
+.equipment-profession-toggle svg {
+  color: var(--gold);
+  transition: transform 140ms ease;
+}
+.equipment-profession-toggle svg.is-expanded {
+  transform: rotate(180deg);
+}
+.equipment-profession-content {
+  margin-top: 9px;
+  padding: 11px;
+  background: rgba(11, 14, 16, 0.28);
+  border: 1px solid #2c363a;
+  border-radius: 7px;
+}
+.equipment-profession-content p {
+  margin: 0;
+}
+.equipment-profession-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid #2c363a;
+  font-size: 11px;
+}
+.equipment-profession-row:last-of-type {
+  border-bottom: 0;
+}
+.equipment-profession-row span {
+  color: var(--muted);
+}
+.equipment-profession-row strong {
+  color: #f2d49a;
+  text-align: right;
+}
+.equipment-profession-improvement {
+  margin-top: 9px;
+  color: var(--green, #79bd91);
+  font-size: 11px;
+  font-weight: 700;
 }
 .stat-line {
   display: flex;
@@ -1256,7 +1350,7 @@ h3 {
   .screen-heading .button-row {
     margin-top: 12px;
   }
-  .equipment-slot-layout {
+  .equipment-combat-grid {
     max-width: 420px;
   }
 }
@@ -1866,8 +1960,26 @@ h3 {
 }
 .combat-equipment-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.combat-equipment-group-title {
+  margin: 7px 0 4px;
+  color: #c3a86e;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.combat-equipment-grid-main,
+.combat-equipment-grid-accessories {
+  display: grid;
   gap: 4px;
+}
+.combat-equipment-grid-main {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.combat-equipment-grid-accessories {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .combat-equip-slot {
   min-width: 0;
@@ -2671,6 +2783,9 @@ h3 {
   }
   .combat-equip-slot small {
     font-size: 7px;
+  }
+  .combat-equipment-grid-main {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 @media (max-width: 900px) {
@@ -4017,7 +4132,6 @@ h3 {
 }
 .combat-equipment-strip {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   margin-top: 7px;
 }
@@ -4854,6 +4968,9 @@ h3 {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
+  }
+  .combat-equipment-grid-main {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .combat-header-stat {
     min-width: 0;
@@ -5845,8 +5962,11 @@ h3 {
   }
 }
 @media (max-width: 900px) {
-  .equipment-slot-layout {
+  .equipment-combat-grid {
     max-width: none;
+  }
+  .equipment-accessory-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
   .equipment-inspection-grid,
   .equipment-comparison-columns {
@@ -5859,10 +5979,16 @@ h3 {
   .equipment-comparison {
     overflow: hidden;
   }
+  .equipment-tool-card {
+    max-width: none;
+  }
 }
 @media (max-width: 520px) {
-  .equipment-slot-layout {
+  .equipment-combat-grid {
     gap: 7px;
+  }
+  .equipment-accessory-grid {
+    grid-template-columns: 1fr;
   }
   .equipment-slot-card {
     min-height: 92px;

@@ -12,14 +12,22 @@ Content is identified by stable string IDs and is kept out of React components.
 
 ## Current equipment content
 
-The active equipment slots are `head`, `armor`, `weapon`, `shield`, and `tool`. `amulet`,
-`ring`, and `cape` remain visible future slots. Body and legs are not current slots.
+The current equipment model includes nine combat slots — `head`, `armor`, `gloves`, `boots`,
+`weapon`, `offhand`, `amulet`, `ring`, and `cape` — plus one profession slot, `tool`. The
+visible label for `offhand` is **Off-hand**. Body, legs, and `shield` are not current slots.
+
+Shield items retain the `shield` item category, IDs, names, and recipes, but occupy the `offhand`
+slot. Off-hand is intentionally broader than Shield for future secondary-hand equipment.
+
+Equipment bonuses use `attackSpeed` for combat attack interval and `miningSpeed` for Mining
+interval. The old generic `speed` bonus is not current content.
 
 Unified Armor item IDs are `bronze-armor`, `iron-armor`, and `steel-armor`. Their forging recipe
 IDs use the same three IDs and output the matching Armor item. New equipment must resolve to a
 current slot, and every recipe output must resolve to an item in `src/content/items.ts`.
 
 Legacy `*-platebody` and `*-platelegs` IDs belong only in the version-3 save migration maps;
-they must not be added back to current item or recipe content.
+legacy `shield` equipment-slot references belong only in the version-4 migration and compatibility
+tests. They must not be added back to current item or recipe content.
 
 The simulation consumes these definitions through `src/game/engine/simulation.ts`; UI screens should only read definitions and call store actions.

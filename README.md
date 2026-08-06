@@ -23,7 +23,7 @@ Three local profile slots are written to localStorage and mirrored to Dexie. Eac
 
 ## Content and post-MVP
 
-The MVP includes six combat enemies across three areas, five mining nodes, seven material/bar definitions, three equipment tiers, five active equipment slots (including unified Armor), item and monster collection tabs, and visible locked future navigation. Ranged/magic combat, food, shops, dungeons, achievements, mastery, cloud accounts, and multiplayer remain post-MVP scope.
+The MVP includes six combat enemies across three areas, five mining nodes, seven material/bar definitions, three equipment tiers, nine combat equipment slots plus one profession Tool slot, item and monster collection tabs, and visible locked future navigation. Ranged/magic combat, food, shops, dungeons, achievements, mastery, cloud accounts, and multiplayer remain post-MVP scope.
 
 ## Built-in visual UI editor
 

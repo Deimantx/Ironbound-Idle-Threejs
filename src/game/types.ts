@@ -11,7 +11,16 @@ export type SkillId = (typeof SKILL_IDS)[number];
 export type ItemCategory =
   'material' | 'bar' | 'weapon' | 'armor' | 'shield' | 'tool' | 'drop' | 'currency';
 export type EquipmentSlot =
-  'head' | 'armor' | 'weapon' | 'shield' | 'tool' | 'amulet' | 'ring' | 'cape';
+  | 'head'
+  | 'armor'
+  | 'gloves'
+  | 'boots'
+  | 'weapon'
+  | 'offhand'
+  | 'amulet'
+  | 'ring'
+  | 'cape'
+  | 'tool';
 export type AreaId = 'training-grounds' | 'copper-hills' | 'ironwood-pass';
 export type EnemyId =
   'forest-rat' | 'goblin-scavenger' | 'cave-bat' | 'stoneback-crab' | 'grey-wolf' | 'road-bandit';
@@ -79,7 +88,8 @@ export interface ItemDefinition {
     strength: number;
     defence: number;
     health: number;
-    speed: number;
+    attackSpeed: number;
+    miningSpeed: number;
   }>;
   specialAttack?: WeaponSpecial;
 }

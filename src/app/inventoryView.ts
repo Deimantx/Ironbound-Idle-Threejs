@@ -1,4 +1,5 @@
 import type { ItemCategory, ItemDefinition, InventoryStack } from '../game/types';
+import { getEquipmentSlotLabel } from '../game/equipmentSlots';
 
 export type InventoryFilter = 'all' | 'materials' | 'equipment' | 'drops' | 'currency';
 export type InventoryDisplayGroup = Exclude<InventoryFilter, 'all'>;
@@ -71,7 +72,7 @@ export const matchesInventorySearch = (
   const searchableFields = [
     item?.name ?? 'Unknown item',
     item?.source ?? '',
-    item?.slot ?? '',
+    item?.slot ? getEquipmentSlotLabel(item.slot) : '',
     item?.tier ?? '',
     item?.category ?? '',
   ];

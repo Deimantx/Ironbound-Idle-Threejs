@@ -83,8 +83,8 @@ const simulateMining = (state: GameState, elapsedMs: number, summary: Simulation
     summary.stoppedReason = 'Mining level is too low for that node.';
     return;
   }
-  const speed = getDerivedStats(state).miningIntervalMultiplier;
-  const interval = Math.max(500, Math.floor(node.intervalMs * speed));
+  const miningIntervalMultiplier = getDerivedStats(state).miningIntervalMultiplier;
+  const interval = Math.max(500, Math.floor(node.intervalMs * miningIntervalMultiplier));
   let remaining = Math.floor(Math.max(0, elapsedMs));
   let progress = action.progressMs;
   let cycles = 0;

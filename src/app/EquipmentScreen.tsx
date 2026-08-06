@@ -1,19 +1,22 @@
-import { Lock, Sparkles } from 'lucide-react';
+import { ChevronDown, Sparkles } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { itemById } from '../content/items';
 import { getDerivedStats } from '../game/formulas/statFormulas';
 import {
+  ACCESSORY_EQUIPMENT_SLOTS,
   ACTIVE_EQUIPMENT_SLOTS,
-  FUTURE_EQUIPMENT_SLOTS,
+  COMBAT_GEAR_MAIN_SLOTS,
   type ActiveEquipmentSlot,
   getEquipmentSlotLabel,
 } from '../game/equipmentSlots';
 import type { GameState, ItemDefinition, ScreenId } from '../game/types';
 import { useGameStore } from '../game/state/gameStore';
 import {
+  formatEquipmentBonus,
   getCompatibleEquipmentStacks,
   getDerivedStatComparison,
   getEquipmentBonusComparison,
+  getEquipmentBonusLabel,
   getEquipmentPreviewState,
 } from './equipmentView';
 import { formatNumber } from './formatters';
@@ -34,27 +37,23 @@ const getDefaultSlot = (game: GameState): ActiveEquipmentSlot => {
   return ACTIVE_EQUIPMENT_SLOTS.find((slot) => game.equipment[slot]) ?? 'weapon';
 };
 
-const formatBonus = (key: string, value: number): string =>
-  key === 'speed'
-    ? `${value >= 0 ? '+' : ''}${Math.round(value * 100)}%`
-    : `${value >= 0 ? '+' : ''}${value}`;
-
-const formatBonusDelta = (key: string, value: number): string =>
-  key === 'speed'
-    ? `${value > 0 ? '+' : ''}${Math.round(value * 100)}%`
-    : `${value > 0 ? '+' : ''}${value}`;
-
 function ItemSummary({
   heading,
   item,
   itemId,
   quantity,
+  scope,
 }: {
   heading: string;
   item?: ItemDefinition;
   itemId?: string;
   quantity?: number;
+  scope: 'combat' | 'profession';
 }) {
+  const bonusEntries = Object.entries(item?.bonuses ?? {}).filter(([key, value]) => {
+    if (value === 0) return false;
+    return scope === 'profession' ? key === 'miningSpeed' : key !== 'miningSpeed';
+  });
   return (
     <div className="equipment-item-summary">
       <div className="equipment-item-summary-heading">
@@ -71,47 +70,69 @@ function ItemSummary({
           )}
         </div>
       </div>
-      {item && (
+      {bonusEntries.length > 0 && (
         <div className="equipment-item-bonus-list">
-          {Object.entries(item.bonuses ?? {})
-            .filter(([, value]) => value !== 0)
-            .map(([key, value]) => (
-              <span key={key}>
-                {getInventoryValueLabel(key)} {formatBonus(key, value as number)}
-              </span>
-            ))}
+          {bonusEntries.map(([key, value]) => (
+            <span key={key}>
+              {getEquipmentBonusLabel(key)} {formatEquipmentBonus(key, value as number)}
+            </span>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
-const formatStatValue = (
-  id: ReturnType<typeof getDerivedStatComparison>[number]['id'],
-  value: number,
-): string => {
-  if (id === 'attackIntervalMs') return `${(value / 1000).toFixed(1)}s`;
-  if (id === 'miningIntervalMultiplier') return `${Math.round((1 - value) * 100)}% faster`;
-  return String(Math.round(value));
-};
+const formatCombatStatValue = (value: number, id: string): string =>
+  id === 'attackIntervalMs' ? `${(value / 1000).toFixed(1)}s` : String(Math.round(value));
 
-const formatStatDelta = (
-  id: ReturnType<typeof getDerivedStatComparison>[number]['id'],
-  current: number,
-  candidate: number,
-): string => {
+const formatCombatStatDelta = (id: string, current: number, candidate: number): string => {
   if (candidate === current) return 'No change';
   if (id === 'attackIntervalMs') {
-    const delta = (candidate - current) / 1000;
-    return `${delta > 0 ? '+' : ''}${delta.toFixed(1)}s`;
+    const seconds = Math.abs(candidate - current) / 1000;
+    return candidate < current ? `${seconds.toFixed(1)}s faster` : `+${seconds.toFixed(1)}s slower`;
   }
-  if (id === 'miningIntervalMultiplier') {
-    const delta = (current - candidate) * 100;
-    return `${delta > 0 ? '+' : ''}${Math.round(delta)}% faster`;
-  }
-  const delta = candidate - current;
-  return `${delta > 0 ? '+' : ''}${Math.round(delta)}`;
+  const delta = Math.round(candidate - current);
+  return `${delta > 0 ? '+' : ''}${delta}`;
 };
+
+function EquipmentSlotCard({
+  game,
+  slot,
+  selected,
+  onSelect,
+}: {
+  game: GameState;
+  slot: ActiveEquipmentSlot;
+  selected: boolean;
+  onSelect: (slot: ActiveEquipmentSlot) => void;
+}) {
+  const itemId = game.equipment[slot];
+  const item = itemId ? itemById[itemId] : undefined;
+  const label = getEquipmentSlotLabel(slot);
+  return (
+    <button
+      type="button"
+      className={`equipment-slot-card slot-${slot} ${selected ? 'equipment-slot-selected' : ''} ${!itemId ? 'equipment-slot-empty' : ''}`}
+      onClick={() => onSelect(slot)}
+      title={`Select ${label}`}
+      aria-label={`${label} slot${item ? `, ${item.name}` : ', empty'}`}
+      aria-pressed={selected}
+    >
+      <strong>{label}</strong>
+      {item ? (
+        <>
+          <span className="equipment-item-icon">
+            <ItemIcon itemId={item.id} size="md" />
+          </span>
+          <small>{item.name}</small>
+        </>
+      ) : (
+        <span className="empty-slot">Empty</span>
+      )}
+    </button>
+  );
+}
 
 function EquipmentStatRows({
   game,
@@ -123,15 +144,16 @@ function EquipmentStatRows({
   candidateId: string | null;
 }) {
   const currentStats = getDerivedStats(game);
-  const previewStats = candidateId
-    ? getDerivedStats(getEquipmentPreviewState(game, selectedSlot, candidateId))
-    : null;
-  const rows = getDerivedStatComparison(currentStats, previewStats ?? currentStats);
+  const previewStats =
+    selectedSlot !== 'tool' && candidateId
+      ? getDerivedStats(getEquipmentPreviewState(game, selectedSlot, candidateId))
+      : currentStats;
+  const rows = getDerivedStatComparison(currentStats, previewStats, 'combat');
+  const hasPreview = selectedSlot !== 'tool' && Boolean(candidateId);
   return (
     <div className="equipment-stat-section">
-      <div className="eyebrow">Combat and gathering</div>
+      <div className="eyebrow">Combat statistics</div>
       {rows.map((row) => {
-        const hasPreview = Boolean(previewStats);
         const deltaClass =
           row.delta === 0
             ? 'equipment-delta-neutral'
@@ -141,16 +163,13 @@ function EquipmentStatRows({
         return (
           <div className="equipment-stat-comparison-row" key={row.id}>
             <span>{row.label}</span>
-            <strong>{formatStatValue(row.id, row.current)}</strong>
+            <strong>{formatCombatStatValue(row.current, row.id)}</strong>
             {hasPreview && (
               <>
                 <span aria-hidden="true">→</span>
-                <strong>{formatStatValue(row.id, row.candidate)}</strong>
-                <span
-                  className={deltaClass}
-                  aria-label={formatStatDelta(row.id, row.current, row.candidate)}
-                >
-                  {formatStatDelta(row.id, row.current, row.candidate)}
+                <strong>{formatCombatStatValue(row.candidate, row.id)}</strong>
+                <span className={deltaClass}>
+                  {formatCombatStatDelta(row.id, row.current, row.candidate)}
                 </span>
               </>
             )}
@@ -161,11 +180,90 @@ function EquipmentStatRows({
   );
 }
 
+const formatMiningBenefit = (multiplier: number): string => {
+  const faster = Math.round((1 - multiplier) * 100);
+  return faster > 0 ? `${faster}% faster` : 'Normal';
+};
+
+function ProfessionBonuses({
+  game,
+  currentTool,
+  candidateItem,
+  expanded,
+  onToggle,
+}: {
+  game: GameState;
+  currentTool?: ItemDefinition;
+  candidateItem?: ItemDefinition;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const currentStats = getDerivedStats(game);
+  const previewStats = candidateItem
+    ? getDerivedStats(getEquipmentPreviewState(game, 'tool', candidateItem.id))
+    : currentStats;
+  const row = getDerivedStatComparison(currentStats, previewStats, 'profession')[0];
+  const currentBenefit = formatMiningBenefit(row.current);
+  const candidateBenefit = formatMiningBenefit(row.candidate);
+  const improvement = Math.round((row.current - row.candidate) * 100);
+  return (
+    <section className="equipment-profession-bonuses" aria-labelledby="profession-bonuses-title">
+      <button
+        type="button"
+        className="equipment-profession-toggle"
+        aria-expanded={expanded}
+        aria-controls="equipment-profession-bonuses"
+        onClick={onToggle}
+      >
+        <span id="profession-bonuses-title">Profession Bonuses</span>
+        <ChevronDown className={expanded ? 'is-expanded' : ''} size={15} aria-hidden="true" />
+      </button>
+      {expanded && (
+        <div id="equipment-profession-bonuses" className="equipment-profession-content">
+          {!currentTool && !candidateItem ? (
+            <p className="subtle">
+              No profession tool equipped.
+              <br />
+              Equip a tool to gain profession-specific bonuses.
+            </p>
+          ) : (
+            <>
+              <div className="eyebrow">Mining</div>
+              <div className="equipment-profession-row">
+                <span>{currentTool ? 'Equipped tool' : 'Current tool'}</span>
+                <strong>{currentTool?.name ?? 'None'}</strong>
+              </div>
+              {candidateItem && (
+                <div className="equipment-profession-row">
+                  <span>Candidate</span>
+                  <strong>{candidateItem.name}</strong>
+                </div>
+              )}
+              <div className="equipment-profession-row">
+                <span>Mining interval</span>
+                <strong>
+                  {candidateItem ? `${currentBenefit} → ${candidateBenefit}` : currentBenefit}
+                </strong>
+              </div>
+              {candidateItem && improvement > 0 && (
+                <div className="equipment-profession-improvement">
+                  Improvement · +{improvement} percentage points
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenProps) {
   const equip = useGameStore((store) => store.equip);
   const unequip = useGameStore((store) => store.unequip);
   const [selectedSlot, setSelectedSlot] = useState<ActiveEquipmentSlot>(() => getDefaultSlot(game));
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
+  const [professionExpanded, setProfessionExpanded] = useState(false);
   const profileIdRef = useRef(game.profileId);
 
   const compatibleStacks = useMemo(
@@ -176,6 +274,7 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
   const currentItem = currentItemId ? itemById[currentItemId] : undefined;
   const selectedCandidate = compatibleStacks.find((stack) => stack.itemId === selectedCandidateId);
   const candidateItem = selectedCandidate ? itemById[selectedCandidate.itemId] : undefined;
+  const scope = selectedSlot === 'tool' ? 'profession' : 'combat';
 
   useEffect(() => {
     if (selectedCandidateId && !selectedCandidate) setSelectedCandidateId(null);
@@ -186,18 +285,20 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
     profileIdRef.current = game.profileId;
     setSelectedSlot(getDefaultSlot(game));
     setSelectedCandidateId(null);
+    setProfessionExpanded(false);
   }, [game]);
-
-  const bonusComparison = candidateItem
-    ? getEquipmentBonusComparison(currentItem, candidateItem)
-    : [];
-  const currentSpecial = selectedSlot === 'weapon' ? currentItem?.specialAttack : undefined;
-  const candidateSpecial = selectedSlot === 'weapon' ? candidateItem?.specialAttack : undefined;
 
   const selectSlot = (slot: ActiveEquipmentSlot): void => {
     setSelectedSlot(slot);
     setSelectedCandidateId(null);
+    if (slot === 'tool') setProfessionExpanded(true);
   };
+
+  const bonusComparison = candidateItem
+    ? getEquipmentBonusComparison(currentItem, candidateItem, scope)
+    : [];
+  const currentSpecial = selectedSlot === 'weapon' ? currentItem?.specialAttack : undefined;
+  const candidateSpecial = selectedSlot === 'weapon' ? candidateItem?.specialAttack : undefined;
 
   return (
     <>
@@ -205,7 +306,7 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
         eyebrow="Character · Loadout"
         title="Equipment"
         description="Equip forged gear, compare upgrades, and shape your combat statistics."
-        trailing={<span className="badge gold">5 active slots</span>}
+        trailing={<span className="badge gold">9 combat slots · 1 tool</span>}
       />
       <div className="ui-panel-grid equipment-panel-grid" data-ui-panel-grid="equipment">
         <UiPanelSlot screen="equipment" id="equipmentLoadout" layout={uiLayout}>
@@ -215,46 +316,62 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
           >
             <div className="eyebrow">Character loadout</div>
             <h2 id="equipment-loadout-title">Active equipment</h2>
-            <div className="equipment-slot-layout">
-              {ACTIVE_EQUIPMENT_SLOTS.map((slot) => {
-                const itemId = game.equipment[slot];
-                const item = itemId ? itemById[itemId] : undefined;
-                const selected = selectedSlot === slot;
-                return (
-                  <button
-                    type="button"
-                    className={`equipment-slot-card slot-${slot} ${selected ? 'equipment-slot-selected' : ''} ${!itemId ? 'equipment-slot-empty' : ''}`}
-                    key={slot}
-                    onClick={() => selectSlot(slot)}
-                    title={`Select ${getEquipmentSlotLabel(slot)}`}
-                    aria-label={`${getEquipmentSlotLabel(slot)} slot${item ? `, ${item.name}` : ', empty'}`}
-                    aria-pressed={selected}
-                  >
-                    <strong>{getEquipmentSlotLabel(slot)}</strong>
-                    {item ? (
-                      <>
-                        <span className="equipment-item-icon">
-                          <ItemIcon itemId={item.id} size="md" />
-                        </span>
-                        <small>{item.name}</small>
-                      </>
-                    ) : (
-                      <span className="empty-slot">Empty</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            <section className="equipment-future-slots" aria-labelledby="future-slots-title">
-              <div className="eyebrow" id="future-slots-title">
-                Future slots
+
+            <section className="equipment-combat-section" aria-labelledby="combat-gear-title">
+              <div className="equipment-section-heading">
+                <div className="eyebrow">Combat Gear</div>
+                <h3 id="combat-gear-title">Combat Gear</h3>
               </div>
-              <div className="equipment-future-slot-list">
-                {FUTURE_EQUIPMENT_SLOTS.map((slot) => (
-                  <span className="badge locked" key={slot} aria-disabled="true">
-                    <Lock size={10} aria-hidden="true" /> {getEquipmentSlotLabel(slot)} · Locked
-                  </span>
+              <div className="equipment-combat-grid">
+                {COMBAT_GEAR_MAIN_SLOTS.map((slot) => (
+                  <EquipmentSlotCard
+                    game={game}
+                    slot={slot}
+                    selected={selectedSlot === slot}
+                    onSelect={selectSlot}
+                    key={slot}
+                  />
                 ))}
+              </div>
+            </section>
+
+            <section className="equipment-accessory-section" aria-labelledby="accessories-title">
+              <div className="eyebrow">Accessories</div>
+              <h3 id="accessories-title">Accessories</h3>
+              <div className="equipment-accessory-grid">
+                {ACCESSORY_EQUIPMENT_SLOTS.map((slot) => (
+                  <EquipmentSlotCard
+                    game={game}
+                    slot={slot}
+                    selected={selectedSlot === slot}
+                    onSelect={selectSlot}
+                    key={slot}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <section
+              className="equipment-profession-section"
+              aria-labelledby="profession-equipment-title"
+            >
+              <div className="eyebrow">Profession Equipment</div>
+              <h3 id="profession-equipment-title">Profession Equipment</h3>
+              <div className="equipment-tool-card">
+                <EquipmentSlotCard
+                  game={game}
+                  slot="tool"
+                  selected={selectedSlot === 'tool'}
+                  onSelect={selectSlot}
+                />
+                {!game.equipment.tool && <small>No profession bonus</small>}
+                {game.equipment.tool && itemById[game.equipment.tool] && (
+                  <small>
+                    Mining actions{' '}
+                    {Math.round((itemById[game.equipment.tool].bonuses?.miningSpeed ?? 0) * 100)}%
+                    faster
+                  </small>
+                )}
               </div>
             </section>
 
@@ -266,12 +383,14 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                   heading="Currently equipped"
                   item={currentItem}
                   itemId={currentItemId}
+                  scope={scope}
                 />
                 {candidateItem && (
                   <ItemSummary
-                    heading="Selected upgrade"
+                    heading="Selected candidate"
                     item={candidateItem}
                     quantity={selectedCandidate?.quantity}
+                    scope={scope}
                   />
                 )}
               </div>
@@ -335,7 +454,7 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                 </div>
               ) : (
                 <div className="equipment-empty-compatible">
-                  <p>No compatible items in Inventory</p>
+                  <p>No compatible {getEquipmentSlotLabel(selectedSlot)} in Inventory</p>
                   <small>
                     Forge or collect equipment for this slot, then return here to compare it.
                   </small>
@@ -361,7 +480,7 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
             <EquipmentStatRows
               game={game}
               selectedSlot={selectedSlot}
-              candidateId={candidateItem?.id ?? null}
+              candidateId={selectedSlot === 'tool' ? null : (candidateItem?.id ?? null)}
             />
 
             {candidateItem && (
@@ -377,15 +496,15 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                         : row.delta > 0
                           ? 'equipment-delta-positive'
                           : 'equipment-delta-negative';
-                    const delta =
-                      row.delta === 0 ? 'No change' : formatBonusDelta(row.id, row.delta);
                     return (
                       <div className="equipment-stat-comparison-row" key={row.id}>
                         <span>{row.label}</span>
-                        <strong>{formatBonus(row.id, row.current)}</strong>
+                        <strong>{formatEquipmentBonus(row.id, row.current)}</strong>
                         <span aria-hidden="true">→</span>
-                        <strong>{formatBonus(row.id, row.candidate)}</strong>
-                        <span className={deltaClass}>{delta}</span>
+                        <strong>{formatEquipmentBonus(row.id, row.candidate)}</strong>
+                        <span className={deltaClass}>
+                          {row.delta === 0 ? 'No change' : formatEquipmentBonus(row.id, row.delta)}
+                        </span>
                       </div>
                     );
                   })
@@ -401,17 +520,17 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                 aria-labelledby="special-comparison-title"
               >
                 <div className="eyebrow" id="special-comparison-title">
-                  <Sparkles size={13} /> Special attacks
+                  <Sparkles size={13} /> Special Attacks
                 </div>
                 <div className="equipment-comparison-columns">
                   <div>
-                    <small>Current Special</small>
+                    <small>Current special</small>
                     <strong>{currentSpecial?.name ?? 'No special attack'}</strong>
                     {currentSpecial && <p>{currentSpecial.description}</p>}
                   </div>
                   {candidateItem && (
                     <div>
-                      <small>Candidate Special</small>
+                      <small>Candidate special</small>
                       <strong>{candidateSpecial?.name ?? 'No special attack'}</strong>
                       {candidateSpecial && <p>{candidateSpecial.description}</p>}
                     </div>
@@ -420,11 +539,13 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
               </section>
             )}
 
-            {!candidateItem && (
-              <p className="subtle equipment-stats-hint">
-                Select compatible inventory gear to preview its bonuses and derived-stat changes.
-              </p>
-            )}
+            <ProfessionBonuses
+              game={game}
+              currentTool={game.equipment.tool ? itemById[game.equipment.tool] : undefined}
+              candidateItem={selectedSlot === 'tool' ? candidateItem : undefined}
+              expanded={professionExpanded}
+              onToggle={() => setProfessionExpanded((value) => !value)}
+            />
           </section>
         </UiPanelSlot>
       </div>

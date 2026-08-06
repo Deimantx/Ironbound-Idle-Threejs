@@ -10,12 +10,14 @@ Core MVP workflow is implemented and verified by the project checks.
 - [x] Mining, smelting, forging, quantity modes, level/material gates
 - [x] Stack inventory, capacity enforcement, search/filter, lock/destroy protection
 - [x] Equipment slots, atomic swap/unequip, derived combat/mining stats
-- [x] Equipment 2.0: unified Armor slot, five active slots, compatible inventory candidates, item/derived-stat previews, and explicit Equip/Replace/Unequip actions
+- [x] Equipment 2.0: unified Armor slot, compatible inventory candidates, item/derived-stat previews, and explicit Equip/Replace/Unequip actions
+- [x] Equipment 2.1: nine combat slots, one profession Tool slot, Shield-to-Off-hand migration, active Gloves/Boots/Amulet/Ring/Cape, separated combat/profession UI, and split attack/Mining speed bonuses
 - [x] Automated interval combat, styles, auto-repeat, loot, gold, XP, deaths
 - [x] Three areas, six enemies, unlock requirements, collection discoveries
 - [x] Persistent action strip and navigation without stopping actions
 - [x] Three profile saves, backup recovery, checksum, Zod validation, migration entry point
 - [x] Save migration v3 for unified Armor inventory, equipped gear, discovery, and active Smithing actions
+- [x] Save migration v4 for legacy Shield-slot equipment to Off-hand with conflict/capacity safety
 - [x] Export/import JSON flow and destructive-action confirmations
 - [x] Offline replay cap and summary modal
 - [x] Responsive semantic interface with locked future-feature screens

@@ -232,6 +232,7 @@ describe('navigation integration', () => {
     game.inventory = [
       { itemId: 'iron-armor', quantity: 1, locked: true },
       { itemId: 'bronze-sword', quantity: 1, locked: false },
+      { itemId: 'iron-shield', quantity: 1, locked: false },
       { itemId: 'iron-pickaxe', quantity: 2, locked: false },
     ];
     game.equipment.armor = 'bronze-armor';
@@ -239,10 +240,24 @@ describe('navigation integration', () => {
     render(<App />);
 
     await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
-    for (const label of ['Helmet', 'Armor', 'Weapon', 'Shield', 'Tool'])
+    expect(screen.getByText('9 combat slots · 1 tool')).toBeInTheDocument();
+    for (const label of [
+      'Helmet',
+      'Armor',
+      'Gloves',
+      'Boots',
+      'Weapon',
+      'Off-hand',
+      'Amulet',
+      'Ring',
+      'Cape',
+      'Tool',
+    ])
       expect(screen.getByRole('button', { name: new RegExp(`${label} slot`) })).toBeInTheDocument();
-    for (const label of ['Amulet', 'Ring', 'Cape'])
-      expect(screen.getByText(new RegExp(`${label} · Locked`))).toBeInTheDocument();
+    expect(screen.queryByText('Future slots')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Amulet · Locked|Ring · Locked|Cape · Locked/),
+    ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Body|Legs/ })).not.toBeInTheDocument();
 
     const armorSlot = screen.getByRole('button', { name: 'Armor slot, Bronze Armor' });
@@ -262,22 +277,67 @@ describe('navigation integration', () => {
       quantity: 1,
       locked: false,
     });
+
+    const offhandSlot = screen.getByRole('button', { name: 'Off-hand slot, empty' });
+    await user.click(offhandSlot);
+    expect(screen.getByRole('button', { name: /Inspect Iron Bulwark/ })).toBeInTheDocument();
+    expect(useGameStore.getState().game?.equipment.offhand).toBeUndefined();
+    await user.click(screen.getByRole('button', { name: /Inspect Iron Bulwark/ }));
+    expect(screen.getByRole('button', { name: 'Equip' })).toBeInTheDocument();
+    expect(useGameStore.getState().game?.equipment.offhand).toBeUndefined();
   });
 
-  it('shows the unified four-slot equipment strip in Combat', async () => {
+  it('separates Tool profession previews and keeps disclosure state local', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Profession Tester');
+    game.settings.threeQuality = 'off';
+    game.inventory = [{ itemId: 'bronze-pickaxe', quantity: 1, locked: false }];
+    useGameStore.getState().setGame(game);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
+
+    const professionToggle = screen.getByRole('button', { name: 'Profession Bonuses' });
+    expect(professionToggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(screen.getByRole('button', { name: 'Tool slot, empty' }));
+    expect(professionToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText(/No profession tool equipped/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Inspect Bronze Pick/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Inspect Bronze Pick/ }));
+    expect(screen.getByText(/Normal → 10% faster/)).toBeInTheDocument();
+    expect(screen.queryByText('Special Attacks')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Gloves slot, empty' }));
+    expect(professionToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('No compatible Gloves in Inventory')).toBeInTheDocument();
+  });
+
+  it('shows the compact nine-slot equipment summary in Combat', async () => {
     const user = userEvent.setup();
     const game = createNewGame(0, 'Combat Armor');
     game.settings.threeQuality = 'off';
     game.equipment.armor = 'iron-armor';
+    game.equipment.offhand = 'iron-shield';
     useGameStore.getState().setGame(game);
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
     const strip = screen.getByLabelText('Equipped items');
-    for (const label of ['Weapon', 'Helmet', 'Armor', 'Shield'])
+    for (const label of [
+      'Weapon',
+      'Helmet',
+      'Armor',
+      'Off-hand',
+      'Gloves',
+      'Boots',
+      'Amulet',
+      'Ring',
+      'Cape',
+    ])
       expect(within(strip).getByText(label)).toBeInTheDocument();
     expect(within(strip).getByText('Iron Armor')).toBeInTheDocument();
+    expect(within(strip).getByText('Iron Bulwark')).toBeInTheDocument();
     expect(within(strip).queryByText('Body')).not.toBeInTheDocument();
     expect(within(strip).queryByText('Legs')).not.toBeInTheDocument();
+    expect(within(strip).queryByText('Shield')).not.toBeInTheDocument();
+    expect(within(strip).queryByText('Tool')).not.toBeInTheDocument();
   });
 
   it('renders the compact Inventory 2.1 bank structure and capacity semantics', async () => {
@@ -637,6 +697,28 @@ describe('navigation integration', () => {
     expect(screen.queryByRole('button', { name: 'Lock' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Destroy One' })).not.toBeInTheDocument();
     expect(details().getByText('3')).toBeInTheDocument();
+  });
+
+  it('uses Off-hand and separated speed labels in Inventory details', async () => {
+    const user = userEvent.setup();
+    seedInventory([
+      { itemId: 'iron-shield', quantity: 1 },
+      { itemId: 'iron-sword', quantity: 1 },
+      { itemId: 'iron-pickaxe', quantity: 1 },
+    ]);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+
+    await user.click(screen.getByRole('button', { name: /View Iron Bulwark/ }));
+    expect(screen.getByText('Off-hand')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /View Iron Sword/ }));
+    expect(screen.getByText('Attack speed')).toBeInTheDocument();
+    expect(screen.queryByText('Mining speed')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /View Iron Pick/ }));
+    expect(screen.getByText('Mining speed')).toBeInTheDocument();
+    expect(screen.queryByText('Attack speed')).not.toBeInTheDocument();
   });
 
   it('opens compact item details as an accessible drawer and closes with Escape', async () => {

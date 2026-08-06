@@ -134,13 +134,13 @@ export const UI_SCREEN_PANELS: Partial<Record<ScreenId, UiPanelDefinition[]>> = 
     {
       id: 'equipmentLoadout',
       label: 'Equipment loadout',
-      description: 'Equipped slots, mannequin, and future-slot indicators',
+      description: 'Combat, accessory, and profession equipment slots',
       defaultPosition: DEFAULT_EQUIPMENT_PANEL_LAYOUT.equipmentLoadout,
     },
     {
       id: 'equipmentStats',
       label: 'Equipment statistics',
-      description: 'Derived combat and gathering statistics',
+      description: 'Combat statistics and profession bonuses',
       defaultPosition: DEFAULT_EQUIPMENT_PANEL_LAYOUT.equipmentStats,
     },
   ],

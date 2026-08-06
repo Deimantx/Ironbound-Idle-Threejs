@@ -4,7 +4,8 @@ import type { GameState, InventoryStack, ItemDefinition } from '../game/types';
 
 export { getEquipmentSlotLabel } from '../game/equipmentSlots';
 
-export type EquipmentBonusId = 'attack' | 'strength' | 'defence' | 'health' | 'speed';
+export type EquipmentBonusId =
+  'attack' | 'strength' | 'defence' | 'health' | 'attackSpeed' | 'miningSpeed';
 
 export interface EquipmentBonusComparisonRow {
   id: EquipmentBonusId;
@@ -25,6 +26,8 @@ export interface DerivedStatComparisonRow {
   delta: number;
   beneficial: boolean;
 }
+
+export type EquipmentComparisonScope = 'combat' | 'profession';
 
 const tierRank: Record<string, number> = { bronze: 1, iron: 2, steel: 3 };
 const rarityRank: Record<string, number> = { common: 1, uncommon: 2, rare: 3, epic: 4 };
@@ -56,24 +59,42 @@ export const getCompatibleEquipmentStacks = (
       return nameDelta || left.itemId.localeCompare(right.itemId);
     });
 
-const BONUS_LABELS: Record<EquipmentBonusId, string> = {
+export const EQUIPMENT_BONUS_LABELS: Record<EquipmentBonusId, string> = {
   attack: 'Attack',
   strength: 'Strength',
   defence: 'Defence',
   health: 'Health',
-  speed: 'Speed bonus',
+  attackSpeed: 'Attack speed',
+  miningSpeed: 'Mining speed',
+};
+
+export const getEquipmentBonusLabel = (key: string): string =>
+  EQUIPMENT_BONUS_LABELS[key as EquipmentBonusId] ??
+  key.replace(/[-_]/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
+
+export const formatEquipmentBonus = (key: string, value: number): string => {
+  const sign = value >= 0 ? '+' : '';
+  if (key === 'attackSpeed') return `${sign}${(value * 25).toFixed(2)}% interval reduction`;
+  if (key === 'miningSpeed') return `${sign}${Math.round(value * 100)}% faster`;
+  return `${sign}${value}`;
 };
 
 export const getEquipmentBonusComparison = (
   currentItem?: ItemDefinition,
   candidateItem?: ItemDefinition,
+  scope: EquipmentComparisonScope = 'combat',
 ): EquipmentBonusComparisonRow[] => {
-  const keys: EquipmentBonusId[] = ['attack', 'strength', 'defence', 'health', 'speed'];
+  const keys: EquipmentBonusId[] =
+    scope === 'profession'
+      ? ['miningSpeed']
+      : ['attack', 'strength', 'defence', 'health', 'attackSpeed'];
   return keys.flatMap((id) => {
     const current = currentItem?.bonuses?.[id] ?? 0;
     const candidate = candidateItem?.bonuses?.[id] ?? 0;
     if (current === 0 && candidate === 0) return [];
-    return [{ id, label: BONUS_LABELS[id], current, candidate, delta: candidate - current }];
+    return [
+      { id, label: EQUIPMENT_BONUS_LABELS[id], current, candidate, delta: candidate - current },
+    ];
   });
 };
 
@@ -89,20 +110,30 @@ export const getEquipmentPreviewState = (
 export const getDerivedStatComparison = (
   currentStats: DerivedStats,
   previewStats: DerivedStats,
+  scope: EquipmentComparisonScope = 'combat',
 ): DerivedStatComparisonRow[] => {
-  const values: Array<[DerivedStatComparisonId, string, number, (delta: number) => boolean]> = [
-    ['accuracy', 'Accuracy rating', currentStats.baseAccuracyRating, (delta) => delta > 0],
-    ['maxHit', 'Maximum hit', currentStats.baseMaxHit, (delta) => delta > 0],
-    ['defence', 'Defence rating', currentStats.baseDefenceRating, (delta) => delta > 0],
-    ['maxHealth', 'Maximum health', currentStats.maxHealth, (delta) => delta > 0],
-    ['attackIntervalMs', 'Attack interval', currentStats.attackIntervalMs, (delta) => delta < 0],
-    [
-      'miningIntervalMultiplier',
-      'Mining interval',
-      currentStats.miningIntervalMultiplier,
-      (delta) => delta < 0,
-    ],
-  ];
+  const values: Array<[DerivedStatComparisonId, string, number, (delta: number) => boolean]> =
+    scope === 'profession'
+      ? [
+          [
+            'miningIntervalMultiplier',
+            'Mining interval',
+            currentStats.miningIntervalMultiplier,
+            (delta) => delta < 0,
+          ],
+        ]
+      : [
+          ['accuracy', 'Accuracy rating', currentStats.baseAccuracyRating, (delta) => delta > 0],
+          ['maxHit', 'Maximum hit', currentStats.baseMaxHit, (delta) => delta > 0],
+          ['defence', 'Defence rating', currentStats.baseDefenceRating, (delta) => delta > 0],
+          ['maxHealth', 'Maximum health', currentStats.maxHealth, (delta) => delta > 0],
+          [
+            'attackIntervalMs',
+            'Attack interval',
+            currentStats.attackIntervalMs,
+            (delta) => delta < 0,
+          ],
+        ];
   return values.map(([id, label, current, improvement]) => {
     const candidate =
       id === 'accuracy'

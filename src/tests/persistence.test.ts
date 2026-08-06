@@ -16,7 +16,7 @@ describe('save validation and migration', () => {
       { ...state, schemaVersion: 0, settings: { ...state.settings, threeQuality: 'low' } },
       0,
     );
-    expect(migrated.schemaVersion).toBe(3);
+    expect(migrated.schemaVersion).toBe(4);
     expect(migrated.unlockedAreas).toContain('training-grounds');
   });
   it('rejects malformed save data', () => {
@@ -47,7 +47,7 @@ describe('save validation and migration', () => {
       },
     } as unknown as GameState['activeAction'];
     const migrated = parseGameState(JSON.stringify(legacy));
-    expect(migrated.schemaVersion).toBe(3);
+    expect(migrated.schemaVersion).toBe(4);
     expect(
       migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.momentum,
     ).toBe(0);

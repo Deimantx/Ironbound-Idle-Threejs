@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { itemById } from '../content/items';
-import { getDerivedStats } from '../game/formulas/statFormulas';
+import { getDerivedStats, getEquipmentBonuses } from '../game/formulas/statFormulas';
 import { createNewGame } from '../game/state/initialState';
 import {
   getCompatibleEquipmentStacks,
@@ -10,7 +10,7 @@ import {
 } from '../app/equipmentView';
 import type { InventoryStack } from '../game/types';
 
-describe('Equipment view helpers', () => {
+describe('Equipment view helpers and separated bonuses', () => {
   it('filters compatible inventory gear without mutating input order', () => {
     const stacks: InventoryStack[] = [
       { itemId: 'bronze-armor', quantity: 1, locked: false },
@@ -26,31 +26,65 @@ describe('Equipment view helpers', () => {
     expect(getCompatibleEquipmentStacks(stacks, itemById, 'armor')[0].locked).toBe(true);
   });
 
-  it('ranks tiers deterministically and compares only meaningful bonuses', () => {
+  it('ranks tiers and compares only meaningful slot-aware bonuses', () => {
     expect(getEquipmentTierRank('steel')).toBeGreaterThan(getEquipmentTierRank('iron'));
-    const rows = getEquipmentBonusComparison(itemById['bronze-armor'], itemById['iron-armor']);
-    expect(rows).toEqual([
+    expect(getEquipmentBonusComparison(itemById['bronze-armor'], itemById['iron-armor'])).toEqual([
       { id: 'defence', label: 'Defence', current: 16, candidate: 38, delta: 22 },
       { id: 'health', label: 'Health', current: 7, candidate: 18, delta: 11 },
     ]);
     expect(
-      getEquipmentBonusComparison(itemById['bronze-sword'], itemById['bronze-sword']),
-    ).not.toContainEqual(expect.objectContaining({ current: 0, candidate: 0 }));
+      getEquipmentBonusComparison(
+        itemById['bronze-pickaxe'],
+        itemById['iron-pickaxe'],
+        'profession',
+      ),
+    ).toEqual([
+      { id: 'miningSpeed', label: 'Mining speed', current: 0.1, candidate: 0.2, delta: 0.1 },
+    ]);
+    expect(
+      getEquipmentBonusComparison(itemById['bronze-pickaxe'], itemById['iron-pickaxe']),
+    ).toEqual([]);
   });
 
-  it('marks lower intervals as beneficial in derived comparisons', () => {
-    const game = createNewGame(0, 'Preview');
-    const current = getDerivedStats(game);
-    const preview = getDerivedStats({
-      ...game,
-      equipment: { weapon: 'steel-sword', tool: 'steel-pickaxe' },
+  it('isolates sword combat speed from pickaxe Mining speed', () => {
+    const base = createNewGame(0, 'Preview');
+    const sword = getDerivedStats({ ...base, equipment: { weapon: 'iron-sword' } });
+    const pick = getDerivedStats({ ...base, equipment: { tool: 'iron-pickaxe' } });
+    const both = getDerivedStats({
+      ...base,
+      equipment: { weapon: 'iron-sword', tool: 'iron-pickaxe' },
     });
-    const rows = getDerivedStatComparison(current, preview);
-    const attackInterval = rows.find((row) => row.id === 'attackIntervalMs');
-    const miningInterval = rows.find((row) => row.id === 'miningIntervalMultiplier');
-    expect(attackInterval?.delta).toBeLessThan(0);
-    expect(attackInterval?.beneficial).toBe(true);
-    expect(miningInterval?.delta).toBeLessThan(0);
-    expect(miningInterval?.beneficial).toBe(true);
+    const baseline = getDerivedStats(base);
+    expect(sword.attackIntervalMs).toBeLessThan(baseline.attackIntervalMs);
+    expect(sword.miningIntervalMultiplier).toBe(baseline.miningIntervalMultiplier);
+    expect(pick.attackIntervalMs).toBe(baseline.attackIntervalMs);
+    expect(pick.miningIntervalMultiplier).toBeLessThan(baseline.miningIntervalMultiplier);
+    expect(both.attackIntervalMs).toBe(sword.attackIntervalMs);
+    expect(both.miningIntervalMultiplier).toBe(pick.miningIntervalMultiplier);
+    expect(getEquipmentBonuses({ weapon: 'iron-sword', tool: 'iron-pickaxe' })).toEqual({
+      attack: 18,
+      strength: 12,
+      defence: 0,
+      health: 0,
+      attackSpeed: 0.05,
+      miningSpeed: 0.2,
+    });
+  });
+
+  it('keeps combat comparisons separate from profession comparisons', () => {
+    const game = createNewGame(0, 'Comparison');
+    const current = getDerivedStats(game);
+    const preview = getDerivedStats({ ...game, equipment: { tool: 'steel-pickaxe' } });
+    expect(getDerivedStatComparison(current, preview).map((row) => row.id)).toEqual([
+      'accuracy',
+      'maxHit',
+      'defence',
+      'maxHealth',
+      'attackIntervalMs',
+    ]);
+    const mining = getDerivedStatComparison(current, preview, 'profession')[0];
+    expect(mining.id).toBe('miningIntervalMultiplier');
+    expect(mining.delta).toBeLessThan(0);
+    expect(mining.beneficial).toBe(true);
   });
 });
