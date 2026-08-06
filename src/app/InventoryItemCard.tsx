@@ -1,5 +1,5 @@
 import { Lock } from 'lucide-react';
-import type { DragEvent } from 'react';
+import type { DragEvent, MouseEvent } from 'react';
 import type { InventoryStack, ItemDefinition } from '../game/types';
 import { formatNumber } from './formatters';
 import type { InventoryDropPosition } from './inventoryOrdering';
@@ -9,7 +9,7 @@ export interface InventoryItemCardProps {
   stack: InventoryStack;
   item?: ItemDefinition;
   selected: boolean;
-  onSelect: (itemId: string) => void;
+  onSelect: (itemId: string, event: MouseEvent<HTMLButtonElement>) => void;
   cardRef?: (element: HTMLButtonElement | null) => void;
   dragEnabled?: boolean;
   isDragSource?: boolean;
@@ -41,7 +41,7 @@ export function InventoryItemCard({
       ref={cardRef}
       type="button"
       className={`item-card inventory-item-card ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''} ${isDragSource ? 'is-drag-source' : ''} ${dropPosition ? `is-drop-${dropPosition}` : ''}`}
-      onClick={() => onSelect(stack.itemId)}
+      onClick={(event) => onSelect(stack.itemId, event)}
       onDragStart={dragEnabled ? (event) => onDragStart?.(event, stack.itemId) : undefined}
       onDragOver={dragEnabled ? (event) => onDragOver?.(event, stack.itemId) : undefined}
       onDrop={dragEnabled ? (event) => onDrop?.(event, stack.itemId) : undefined}

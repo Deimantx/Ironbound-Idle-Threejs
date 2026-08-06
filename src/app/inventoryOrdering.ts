@@ -7,6 +7,16 @@ export type InventoryAutoSortMode = Exclude<InventorySortMode, 'manual'>;
 export type InventorySortDirection = 'asc' | 'desc';
 export type InventoryDropPosition = 'before' | 'after';
 
+export const getInventoryCardDropPosition = (
+  bounds: Pick<DOMRect, 'left' | 'width'>,
+  clientX: number,
+  afterThreshold = 0.8,
+): InventoryDropPosition => {
+  const safeWidth = Math.max(1, bounds.width);
+  const relativeX = (clientX - bounds.left) / safeWidth;
+  return relativeX >= afterThreshold ? 'after' : 'before';
+};
+
 export const INVENTORY_SORT_MODES: Array<{ id: InventorySortMode; label: string }> = [
   { id: 'manual', label: 'Manual' },
   { id: 'name', label: 'Name' },

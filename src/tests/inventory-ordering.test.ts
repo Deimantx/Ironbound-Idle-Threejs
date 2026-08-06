@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { InventoryStack, ItemDefinition } from '../game/types';
 import {
+  getInventoryCardDropPosition,
   reconcileManualOrder,
   reorderVisibleSubset,
   sortInventoryStacks,
@@ -41,6 +42,27 @@ const stacks: InventoryStack[] = [
 ];
 
 describe('inventory ordering helpers', () => {
+  it('uses the horizontal right-edge zone for card drop positions', () => {
+    const bounds = { left: 100, width: 100 };
+    const cases: Array<[number, 'before' | 'after']> = [
+      [0, 'before'],
+      [100, 'before'],
+      [120, 'before'],
+      [150, 'before'],
+      [179, 'before'],
+      [180, 'after'],
+      [199, 'after'],
+      [220, 'after'],
+    ];
+
+    for (const [clientX, expected] of cases) {
+      expect(getInventoryCardDropPosition(bounds, clientX)).toBe(expected);
+    }
+    expect(getInventoryCardDropPosition({ left: 100, width: 0 }, 100)).toBe('before');
+    expect(getInventoryCardDropPosition(bounds, 150, 0.5)).toBe('after');
+    expect(bounds).toEqual({ left: 100, width: 100 });
+  });
+
   it('sorts every required automatic mode with deterministic ties', () => {
     expect(
       sortInventoryStacks(stacks, definitions, 'name', 'asc', []).map((stack) => stack.itemId),
@@ -74,6 +96,31 @@ describe('inventory ordering helpers', () => {
   });
 
   it('reorders only visible IDs while preserving hidden positions', () => {
+    expect(reorderVisibleSubset(['1', '2', '3'], ['1', '2', '3'], '3', '1', 'before')).toEqual([
+      '3',
+      '1',
+      '2',
+    ]);
+    expect(reorderVisibleSubset(['1', '2', '3'], ['1', '2', '3'], '1', '3', 'after')).toEqual([
+      '2',
+      '3',
+      '1',
+    ]);
+    expect(reorderVisibleSubset(['1', '2', '3'], ['1', '2', '3'], '2', '1', 'before')).toEqual([
+      '2',
+      '1',
+      '3',
+    ]);
+    expect(reorderVisibleSubset(['1', '2', '3'], ['1', '2', '3'], '2', '1', 'after')).toEqual([
+      '1',
+      '2',
+      '3',
+    ]);
+    expect(reorderVisibleSubset(['1', '2', '3'], ['1', '2', '3'], '2', '2', 'before')).toEqual([
+      '1',
+      '2',
+      '3',
+    ]);
     expect(reorderVisibleSubset(['a', 'b', 'c', 'd', 'e'], ['b', 'd'], 'd', 'b', 'before')).toEqual(
       ['a', 'd', 'c', 'b', 'e'],
     );

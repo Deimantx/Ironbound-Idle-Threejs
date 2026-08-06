@@ -20,6 +20,29 @@ const rect = (left: number, top: number, width: number, height: number): DOMRect
     toJSON: () => ({}),
   }) as DOMRect;
 
+const mockInventoryCardRect = (element: HTMLElement, left: number, width: number): void => {
+  vi.spyOn(element, 'getBoundingClientRect').mockReturnValue(rect(left, 0, width, 100));
+};
+
+const createDragDataTransfer = (sourceId: string) => ({
+  effectAllowed: '',
+  dropEffect: '',
+  setData: vi.fn(),
+  getData: vi.fn((type: string) => (type === 'text/plain' ? sourceId : '')),
+});
+
+const dispatchDragEvent = (
+  target: EventTarget,
+  type: 'dragstart' | 'dragover' | 'drop' | 'dragend',
+  dataTransfer: ReturnType<typeof createDragDataTransfer>,
+  clientX = 0,
+) => {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'clientX', { configurable: true, value: clientX });
+  Object.defineProperty(event, 'dataTransfer', { configurable: true, value: dataTransfer });
+  act(() => target.dispatchEvent(event));
+};
+
 const mockCombatGeometry = () => {
   const grid = document.querySelector<HTMLElement>('[data-ui-panel-grid="combat"]');
   if (!grid) throw new Error('Combat panel grid was not rendered');
@@ -277,17 +300,13 @@ describe('navigation integration', () => {
 
     const source = screen.getByRole('button', { name: /View Rat Tail/ });
     let target = screen.getByRole('button', { name: /View Copper Ore/ });
-    const dataTransfer = {
-      effectAllowed: '',
-      dropEffect: '',
-      setData: vi.fn(),
-      getData: vi.fn(() => 'copper-ore'),
-    };
-    fireEvent.dragStart(source, { dataTransfer });
+    const dataTransfer = createDragDataTransfer('rat-tail');
+    dispatchDragEvent(source, 'dragstart', dataTransfer);
     await waitFor(() => expect(source).toHaveClass('is-drag-source'));
     target = screen.getByRole('button', { name: /View Copper Ore/ });
-    fireEvent.dragOver(target, { dataTransfer, clientY: 999 });
-    fireEvent.drop(target, { dataTransfer });
+    mockInventoryCardRect(target, 100, 100);
+    dispatchDragEvent(target, 'dragover', dataTransfer, 150);
+    dispatchDragEvent(target, 'drop', dataTransfer, 150);
     await waitFor(() => expect(getCardIds()[0]).toMatch(/Iron Sword/));
 
     await waitFor(() => {
@@ -297,6 +316,121 @@ describe('navigation integration', () => {
       expect(stored.sortMode).toBe('manual');
       expect(stored.manualOrder[0]).toBe('iron-sword');
     });
+  });
+
+  it('uses actual horizontal drop geometry and ignores a stale target position', async () => {
+    const user = userEvent.setup();
+    seedInventory([
+      { itemId: 'copper-ore', quantity: 4 },
+      { itemId: 'tin-ore', quantity: 2 },
+      { itemId: 'rat-tail', quantity: 1 },
+    ]);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort inventory' }), 'manual');
+
+    const getCardIds = () =>
+      within(document.querySelector('.inventory-bank-grid') as HTMLElement)
+        .getAllByRole('button')
+        .map((card) => card.getAttribute('aria-label') ?? '');
+    expect(getCardIds().map((label) => label.match(/View ([^,]+)/)?.[1])).toEqual([
+      'Copper Ore',
+      'Tin Ore',
+      'Rat Tail',
+    ]);
+
+    const source = screen.getByRole('button', { name: /View Rat Tail/ });
+    const staleTarget = screen.getByRole('button', { name: /View Tin Ore/ });
+    const actualTarget = screen.getByRole('button', { name: /View Copper Ore/ });
+    const dataTransfer = createDragDataTransfer('rat-tail');
+    mockInventoryCardRect(staleTarget, 200, 100);
+    mockInventoryCardRect(actualTarget, 100, 100);
+
+    dispatchDragEvent(source, 'dragstart', dataTransfer);
+    await waitFor(() => expect(source).toHaveClass('is-drag-source'));
+    dispatchDragEvent(staleTarget, 'dragover', dataTransfer, 295);
+    expect(staleTarget).toHaveClass('is-drop-after');
+    expect(document.querySelectorAll('.is-drop-before, .is-drop-after')).toHaveLength(1);
+    dispatchDragEvent(actualTarget, 'drop', dataTransfer, 150);
+
+    await waitFor(() =>
+      expect(getCardIds().map((label) => label.match(/View ([^,]+)/)?.[1])).toEqual([
+        'Rat Tail',
+        'Copper Ore',
+        'Tin Ore',
+      ]),
+    );
+    expect(actualTarget).not.toHaveClass('is-drop-before');
+    expect(staleTarget).not.toHaveClass('is-drop-after');
+    expect(useGameStore.getState().game?.inventory.map((stack) => stack.itemId)).toEqual([
+      'copper-ore',
+      'tin-ore',
+      'rat-tail',
+    ]);
+    expect(useGameStore.getState().game?.inventory.map((stack) => stack.quantity)).toEqual([
+      4, 2, 1,
+    ]);
+
+    const rightEdgeSource = screen.getByRole('button', { name: /View Copper Ore/ });
+    const rightEdgeTarget = screen.getByRole('button', { name: /View Tin Ore/ });
+    mockInventoryCardRect(rightEdgeTarget, 300, 100);
+    const rightEdgeDataTransfer = createDragDataTransfer('copper-ore');
+    dispatchDragEvent(rightEdgeSource, 'dragstart', rightEdgeDataTransfer);
+    dispatchDragEvent(rightEdgeTarget, 'drop', rightEdgeDataTransfer, 395);
+    await waitFor(() =>
+      expect(getCardIds().map((label) => label.match(/View ([^,]+)/)?.[1])).toEqual([
+        'Rat Tail',
+        'Tin Ore',
+        'Copper Ore',
+      ]),
+    );
+  });
+
+  it('renders left and right markers, clears drag state, and suppresses only the immediate click', async () => {
+    const user = userEvent.setup();
+    seedInventory([
+      { itemId: 'copper-ore', quantity: 4 },
+      { itemId: 'tin-ore', quantity: 2 },
+      { itemId: 'rat-tail', quantity: 1 },
+    ]);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort inventory' }), 'manual');
+
+    const source = screen.getByRole('button', { name: /View Rat Tail/ });
+    const firstTarget = screen.getByRole('button', { name: /View Copper Ore/ });
+    const secondTarget = screen.getByRole('button', { name: /View Tin Ore/ });
+    const dataTransfer = createDragDataTransfer('rat-tail');
+    mockInventoryCardRect(firstTarget, 100, 100);
+    mockInventoryCardRect(secondTarget, 200, 100);
+
+    dispatchDragEvent(source, 'dragstart', dataTransfer);
+    await waitFor(() => expect(source).toHaveClass('is-drag-source'));
+    dispatchDragEvent(firstTarget, 'dragover', dataTransfer, 150);
+    expect(firstTarget).toHaveClass('is-drop-before');
+    dispatchDragEvent(secondTarget, 'dragover', dataTransfer, 295);
+    expect(firstTarget).not.toHaveClass('is-drop-before');
+    expect(secondTarget).toHaveClass('is-drop-after');
+
+    dispatchDragEvent(source, 'dragend', dataTransfer);
+    expect(document.querySelector('.is-drop-before, .is-drop-after')).toBeNull();
+
+    dispatchDragEvent(source, 'dragstart', dataTransfer);
+    dispatchDragEvent(firstTarget, 'dragover', dataTransfer, 150);
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(document.querySelector('.is-drop-before, .is-drop-after')).toBeNull();
+    dispatchDragEvent(source, 'dragstart', dataTransfer);
+    dispatchDragEvent(firstTarget, 'dragover', dataTransfer, 150);
+    dispatchDragEvent(firstTarget, 'drop', dataTransfer, 150);
+    expect(document.querySelector('.is-drop-before, .is-drop-after')).toBeNull();
+    fireEvent.click(firstTarget, { detail: 1 });
+    expect(firstTarget).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(screen.getByRole('button', { name: /View Rat Tail/ }));
+    expect(screen.getByRole('button', { name: /View Rat Tail/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
   });
 
   it('restores the last automatic mode when Auto Sort is re-enabled', async () => {
@@ -419,6 +553,8 @@ describe('navigation integration', () => {
       const card = screen.getByRole('button', { name: /View Iron Sword/ });
       expect(screen.queryByText('Drag to reorder')).not.toBeInTheDocument();
       expect(card).not.toHaveAttribute('draggable');
+      expect(card).not.toHaveClass('is-drop-before');
+      expect(card).not.toHaveClass('is-drop-after');
       await user.click(card);
       const drawer = screen.getByRole('dialog', { name: 'Iron Sword' });
       expect(drawer).toHaveAttribute('aria-modal', 'true');

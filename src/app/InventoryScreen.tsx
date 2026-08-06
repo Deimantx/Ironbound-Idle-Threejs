@@ -1,6 +1,6 @@
 import { PackageOpen, Search, X } from 'lucide-react';
-import type { DragEvent } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import type { DragEvent, MouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { itemById } from '../content/items';
 import type { GameState, ScreenId } from '../game/types';
@@ -12,6 +12,7 @@ import { InventoryItemCard } from './InventoryItemCard';
 import { InventoryItemDetails } from './InventoryItemDetails';
 import {
   INVENTORY_SORT_MODES,
+  getInventoryCardDropPosition,
   isInventorySortMode,
   reconcileManualOrder,
   reorderVisibleSubset,
@@ -66,11 +67,41 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
   );
   const cardRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const suppressNextCardClickRef = useRef(false);
+  const suppressNextCardClickTimerRef = useRef<number | null>(null);
   const preferenceProfileRef = useRef(game.profileId);
   const skipPreferencePersistRef = useRef(false);
   const equip = useGameStore((store) => store.equip);
   const destroy = useGameStore((store) => store.destroy);
   const toggleLock = useGameStore((store) => store.toggleLock);
+
+  const clearDragState = useCallback(() => {
+    setDraggedItemId(null);
+    setDropTarget(null);
+  }, []);
+
+  const clearClickSuppression = useCallback(() => {
+    suppressNextCardClickRef.current = false;
+    if (suppressNextCardClickTimerRef.current !== null) {
+      if (typeof window !== 'undefined') {
+        window.clearTimeout(suppressNextCardClickTimerRef.current);
+      }
+      suppressNextCardClickTimerRef.current = null;
+    }
+  }, []);
+
+  const markCompletedDrag = useCallback(() => {
+    clearClickSuppression();
+    suppressNextCardClickRef.current = true;
+    if (typeof window !== 'undefined') {
+      suppressNextCardClickTimerRef.current = window.setTimeout(() => {
+        suppressNextCardClickRef.current = false;
+        suppressNextCardClickTimerRef.current = null;
+      }, 0);
+    }
+  }, [clearClickSuppression]);
+
+  useEffect(() => () => clearClickSuppression(), [clearClickSuppression]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
@@ -92,9 +123,9 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
     setViewPreferences(loadInventoryViewPreferences(game.profileId));
     setSelectedItemId(null);
     setMobileDetailsOpen(false);
-    setDraggedItemId(null);
-    setDropTarget(null);
-  }, [game.profileId]);
+    clearDragState();
+    clearClickSuppression();
+  }, [clearClickSuppression, clearDragState, game.profileId]);
 
   useEffect(() => {
     if (skipPreferencePersistRef.current) {
@@ -198,12 +229,16 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
     if (!draggedItemId) return undefined;
     const cancelDrag = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
-      setDraggedItemId(null);
-      setDropTarget(null);
+      clearDragState();
     };
     window.addEventListener('keydown', cancelDrag);
     return () => window.removeEventListener('keydown', cancelDrag);
-  }, [draggedItemId]);
+  }, [clearDragState, draggedItemId]);
+
+  useEffect(() => {
+    if (dragEnabled) return;
+    clearDragState();
+  }, [clearDragState, dragEnabled]);
 
   useEffect(() => {
     if (!selectedItemId || selectedStack) return;
@@ -212,7 +247,11 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
     if (!nextStack) setMobileDetailsOpen(false);
   }, [selectedItemId, selectedStack, visibleStacks]);
 
-  const selectItem = (itemId: string) => {
+  const selectItem = (itemId: string, event: MouseEvent<HTMLButtonElement>) => {
+    if (suppressNextCardClickRef.current && event.detail > 0) {
+      clearClickSuppression();
+      return;
+    }
     returnFocusRef.current = cardRefs.current[itemId];
     setSelectedItemId(itemId);
     setMobileDetailsOpen(true);
@@ -259,6 +298,7 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
 
   const handleDragStart = (event: DragEvent<HTMLButtonElement>, itemId: string) => {
     if (!dragEnabled) return;
+    clearClickSuppression();
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', itemId);
     setDraggedItemId(itemId);
@@ -269,34 +309,35 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
     if (!dragEnabled || !draggedItemId || draggedItemId === itemId) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
-    const bounds = event.currentTarget.getBoundingClientRect();
-    const position: InventoryDropPosition =
-      event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+    const position = getInventoryCardDropPosition(
+      event.currentTarget.getBoundingClientRect(),
+      event.clientX,
+    );
     setDropTarget((current) =>
       current?.itemId === itemId && current.position === position ? current : { itemId, position },
     );
   };
 
-  const clearDragState = () => {
-    setDraggedItemId(null);
-    setDropTarget(null);
-  };
-
   const handleDrop = (event: DragEvent<HTMLButtonElement>, targetId: string) => {
-    event.preventDefault();
     const sourceId = draggedItemId || event.dataTransfer.getData('text/plain');
-    if (!dragEnabled || !sourceId) {
+    if (!dragEnabled || !sourceId || sourceId === targetId) {
       clearDragState();
       return;
     }
+    event.preventDefault();
+    const position = getInventoryCardDropPosition(
+      event.currentTarget.getBoundingClientRect(),
+      event.clientX,
+    );
     const nextOrder = reorderVisibleSubset(
       reconciledManualOrder,
       visibleStacks.map((stack) => stack.itemId),
       sourceId,
       targetId,
-      dropTarget?.position ?? 'before',
+      position,
     );
     updateViewPreferences((current) => ({ ...current, manualOrder: nextOrder }));
+    markCompletedDrag();
     clearDragState();
   };
 

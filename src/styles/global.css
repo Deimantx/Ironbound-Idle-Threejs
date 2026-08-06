@@ -5045,20 +5045,21 @@ h3 {
 }
 .inventory-item-card.is-drop-before::before,
 .inventory-item-card.is-drop-after::after {
+  top: 5px;
+  bottom: 5px;
   position: absolute;
-  right: 5px;
-  left: 5px;
-  height: 2px;
+  width: 3px;
   content: '';
   background: var(--gold);
   border-radius: 99px;
   box-shadow: 0 0 7px color-mix(in srgb, var(--gold) 55%, transparent);
+  pointer-events: none;
 }
 .inventory-item-card.is-drop-before::before {
-  top: -3px;
+  left: -4px;
 }
 .inventory-item-card.is-drop-after::after {
-  bottom: -3px;
+  right: -4px;
 }
 .inventory-card-top {
   display: flex;
