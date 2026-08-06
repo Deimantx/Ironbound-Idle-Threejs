@@ -2,6 +2,13 @@ import type { ItemCategory, ItemDefinition, InventoryStack } from '../game/types
 
 export type InventoryFilter = 'all' | 'materials' | 'equipment' | 'drops' | 'currency';
 export type InventoryDisplayGroup = Exclude<InventoryFilter, 'all'>;
+export type InventoryStackGroupId = InventoryDisplayGroup | 'unknown';
+
+export interface InventoryStackGroup {
+  id: InventoryStackGroupId;
+  label: string;
+  stacks: InventoryStack[];
+}
 
 export const INVENTORY_FILTERS: Array<{ id: InventoryFilter; label: string }> = [
   { id: 'all', label: 'All' },
@@ -10,6 +17,22 @@ export const INVENTORY_FILTERS: Array<{ id: InventoryFilter; label: string }> = 
   { id: 'drops', label: 'Drops' },
   { id: 'currency', label: 'Currency' },
 ];
+
+const INVENTORY_STACK_GROUP_ORDER: InventoryStackGroupId[] = [
+  'materials',
+  'equipment',
+  'drops',
+  'currency',
+  'unknown',
+];
+
+const INVENTORY_STACK_GROUP_LABELS: Record<InventoryStackGroupId, string> = {
+  materials: 'Materials',
+  equipment: 'Equipment',
+  drops: 'Drops',
+  currency: 'Currency',
+  unknown: 'Unknown',
+};
 
 export const getInventoryDisplayGroup = (
   category: ItemCategory | undefined,
@@ -91,4 +114,28 @@ export const getInventoryGroupCounts = (
     if (group) counts[group] += 1;
   }
   return counts;
+};
+
+export const getInventoryStackGroups = (
+  stacks: InventoryStack[],
+  definitions: Record<string, ItemDefinition>,
+): InventoryStackGroup[] => {
+  const groups = new Map<InventoryStackGroupId, InventoryStack[]>();
+
+  for (const stack of stacks) {
+    const id = getInventoryDisplayGroup(definitions[stack.itemId]?.category) ?? 'unknown';
+    const groupStacks = groups.get(id);
+    if (groupStacks) {
+      groupStacks.push(stack);
+    } else {
+      groups.set(id, [stack]);
+    }
+  }
+
+  return INVENTORY_STACK_GROUP_ORDER.flatMap((id) => {
+    const groupStacks = groups.get(id);
+    return groupStacks
+      ? [{ id, label: INVENTORY_STACK_GROUP_LABELS[id], stacks: groupStacks }]
+      : [];
+  });
 };

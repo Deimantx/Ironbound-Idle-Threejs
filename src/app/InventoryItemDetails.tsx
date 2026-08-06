@@ -36,6 +36,8 @@ export function InventoryItemDetails({
 }: InventoryItemDetailsProps) {
   const name = item?.name ?? 'Unknown item';
   const displayGroup = getInventoryDisplayGroup(item?.category);
+  const slot = item?.slot;
+  const isEquippable = Boolean(slot);
   const bonuses = Object.entries(item?.bonuses ?? {}).filter(
     ([, value]) => typeof value === 'number' && value !== 0,
   );
@@ -68,37 +70,39 @@ export function InventoryItemDetails({
         <ItemIcon itemId={item.id} size="md" />
         <div className="inventory-details-title">
           <div className={`inventory-card-rarity rarity-${item.rarity}`}>
-            {getInventoryValueLabel(item.rarity)} ·{' '}
-            {displayGroup ? getInventoryValueLabel(displayGroup) : 'Item'}
+            {getInventoryValueLabel(item.rarity)}
           </div>
           <h2 id={headingId}>{name}</h2>
+          <div className="inventory-details-category">
+            {displayGroup ? getInventoryValueLabel(displayGroup) : 'Item'}
+          </div>
         </div>
       </div>
       <p className="subtle inventory-details-description">{item.description}</p>
-      <div className="inventory-details-metadata">
+      <dl className="inventory-details-metadata">
         <div className="stat-line">
-          <span>Quantity</span>
-          <strong>{formatNumber(stack.quantity)}</strong>
+          <dt>Quantity</dt>
+          <dd>{formatNumber(stack.quantity)}</dd>
         </div>
         {item.source && (
-          <div className="stat-line">
-            <span>Source</span>
-            <strong>{item.source}</strong>
+          <div className="stat-line inventory-source-row">
+            <dt>Source</dt>
+            <dd>{item.source}</dd>
           </div>
         )}
-        {item.slot && (
+        {isEquippable && (
           <div className="stat-line">
-            <span>Slot</span>
-            <strong>{getInventoryValueLabel(item.slot)}</strong>
+            <dt>Slot</dt>
+            <dd>{getInventoryValueLabel(slot ?? 'unknown')}</dd>
           </div>
         )}
         {item.tier && (
           <div className="stat-line">
-            <span>Tier</span>
-            <strong>{getInventoryValueLabel(item.tier)}</strong>
+            <dt>Tier</dt>
+            <dd>{getInventoryValueLabel(item.tier)}</dd>
           </div>
         )}
-      </div>
+      </dl>
       {bonuses.length > 0 && (
         <div className="inventory-detail-group">
           <div className="eyebrow">Bonuses</div>
@@ -135,40 +139,46 @@ export function InventoryItemDetails({
         </div>
       )}
       <div className="inventory-detail-actions">
-        <div className="button-row">
-          {item.slot && (
-            <button type="button" className="button primary" onClick={onEquip}>
-              Equip
+        {isEquippable && (
+          <div className="inventory-detail-action-group">
+            <div className="inventory-detail-action-label">Primary actions</div>
+            <div className="button-row">
+              <button type="button" className="button primary" onClick={onEquip}>
+                Equip
+              </button>
+              <button type="button" className="button ghost" onClick={onOpenEquipment}>
+                View Equipment
+              </button>
+            </div>
+          </div>
+        )}
+        <div className="inventory-detail-action-group">
+          <div className="inventory-detail-action-label">Utility actions</div>
+          <div className="button-row">
+            <button
+              type="button"
+              className="button ghost"
+              onClick={onToggleLock}
+              aria-pressed={stack.locked}
+            >
+              {stack.locked ? (
+                <Unlock size={14} aria-hidden="true" />
+              ) : (
+                <Lock size={14} aria-hidden="true" />
+              )}
+              {stack.locked ? 'Unlock' : 'Lock'}
             </button>
-          )}
-          <button type="button" className="button ghost" onClick={onOpenEquipment}>
-            Open Equipment
-          </button>
-        </div>
-        <div className="button-row">
-          <button
-            type="button"
-            className="button ghost"
-            onClick={onToggleLock}
-            aria-pressed={stack.locked}
-          >
-            {stack.locked ? (
-              <Unlock size={14} aria-hidden="true" />
-            ) : (
-              <Lock size={14} aria-hidden="true" />
-            )}
-            {stack.locked ? 'Unlock' : 'Lock'}
-          </button>
-          <button
-            type="button"
-            className="button danger"
-            onClick={onDestroyOne}
-            disabled={stack.locked}
-            title={stack.locked ? 'Unlock this stack before destroying it' : undefined}
-          >
-            <ShieldCheck size={14} aria-hidden="true" />
-            Destroy One
-          </button>
+            <button
+              type="button"
+              className="button danger"
+              onClick={onDestroyOne}
+              disabled={stack.locked}
+              title={stack.locked ? 'Unlock this stack before destroying it' : undefined}
+            >
+              <ShieldCheck size={14} aria-hidden="true" />
+              Destroy One
+            </button>
+          </div>
         </div>
       </div>
     </section>

@@ -3,7 +3,7 @@ import type { DragEvent, MouseEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { itemById } from '../content/items';
-import type { GameState, ScreenId } from '../game/types';
+import type { GameState, InventoryStack, ScreenId } from '../game/types';
 import { useGameStore } from '../game/state/gameStore';
 import { occupiedSlots } from '../game/systems/inventorySystem';
 import { ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog';
@@ -25,6 +25,7 @@ import {
   getInventoryGroupCounts,
   getInventoryFilterLabel,
   getInventoryResultLabel,
+  getInventoryStackGroups,
   getVisibleInventoryStacks,
   INVENTORY_FILTERS,
   type InventoryFilter,
@@ -199,19 +200,24 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
   const selectedSortLabel =
     INVENTORY_SORT_MODES.find((mode) => mode.id === viewPreferences.sortMode)?.label ?? 'Category';
   const directionLabel =
-    viewPreferences.sortMode === 'manual'
-      ? 'Manual order'
-      : viewPreferences.sortMode === 'quantity'
+    viewPreferences.sortMode === 'quantity'
+      ? viewPreferences.sortDirection === 'asc'
+        ? 'Low-High'
+        : 'High-Low'
+      : viewPreferences.sortMode === 'name'
         ? viewPreferences.sortDirection === 'asc'
-          ? 'Low to high'
-          : 'High to low'
-        : viewPreferences.sortMode === 'name'
-          ? viewPreferences.sortDirection === 'asc'
-            ? 'A to Z'
-            : 'Z to A'
-          : viewPreferences.sortDirection === 'asc'
-            ? 'Ascending'
-            : 'Descending';
+          ? 'A-Z'
+          : 'Z-A'
+        : viewPreferences.sortDirection === 'asc'
+          ? 'Ascending'
+          : 'Descending';
+  const categoryGroups = useMemo(
+    () =>
+      viewPreferences.sortMode === 'category'
+        ? getInventoryStackGroups(visibleStacks, itemById)
+        : [],
+    [viewPreferences.sortMode, visibleStacks],
+  );
 
   useEffect(() => {
     if (viewPreferences.sortMode !== 'manual') return;
@@ -367,6 +373,30 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
       }
     : null;
 
+  const renderInventoryCards = (stacks: InventoryStack[]) => (
+    <div className="inventory-grid inventory-bank-grid" aria-label="Inventory items">
+      {stacks.map((stack) => (
+        <InventoryItemCard
+          key={stack.itemId}
+          stack={stack}
+          item={itemById[stack.itemId]}
+          selected={stack.itemId === selectedItemId}
+          onSelect={selectItem}
+          dragEnabled={dragEnabled}
+          isDragSource={stack.itemId === draggedItemId}
+          dropPosition={dropTarget?.itemId === stack.itemId ? dropTarget.position : undefined}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onDragEnd={clearDragState}
+          cardRef={(element) => {
+            cardRefs.current[stack.itemId] = element;
+          }}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <>
       <ScreenHeading
@@ -380,34 +410,56 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
             className="panel panel-pad inventory-toolbar-panel"
             aria-labelledby="inventory-toolbar-title"
           >
-            <div className="inventory-toolbar-heading">
-              <div>
-                <div className="eyebrow">Storage ledger</div>
-                <h2 id="inventory-toolbar-title">Search and filter</h2>
+            <h2 className="visually-hidden" id="inventory-toolbar-title">
+              Inventory search and filters
+            </h2>
+            <div className="inventory-toolbar-main">
+              <div className="inventory-search-row">
+                <label className="inventory-search-field">
+                  <Search size={16} aria-hidden="true" />
+                  <span className="visually-hidden">Search inventory</span>
+                  <input
+                    className="field"
+                    aria-label="Search inventory"
+                    placeholder="Search items, sources, slots..."
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                  />
+                  {query && (
+                    <button
+                      type="button"
+                      className="inventory-clear-search"
+                      onClick={() => setQuery('')}
+                      aria-label="Clear search"
+                    >
+                      <X size={14} aria-hidden="true" />
+                    </button>
+                  )}
+                </label>
               </div>
-            </div>
-            <div className="inventory-search-row">
-              <label className="inventory-search-field">
-                <Search size={16} aria-hidden="true" />
-                <span className="visually-hidden">Search inventory</span>
-                <input
-                  className="field"
-                  aria-label="Search inventory"
-                  placeholder="Search items, sources, slots..."
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                />
-                {query && (
-                  <button
-                    type="button"
-                    className="inventory-clear-search"
-                    onClick={() => setQuery('')}
-                    aria-label="Clear search"
-                  >
-                    <X size={14} aria-hidden="true" />
-                  </button>
-                )}
-              </label>
+              <div className={`inventory-capacity inventory-capacity-${capacityState}`}>
+                <div className="inventory-capacity-label">
+                  <span>Capacity</span>
+                  <strong>
+                    {occupied} / {GAME_CONFIG.inventorySlots} slots
+                  </strong>
+                </div>
+                <div
+                  className="inventory-capacity-track"
+                  role="progressbar"
+                  aria-label="Inventory capacity"
+                  aria-valuemin={0}
+                  aria-valuemax={GAME_CONFIG.inventorySlots}
+                  aria-valuenow={occupied}
+                  aria-valuetext={`${occupied} of ${GAME_CONFIG.inventorySlots} inventory slots occupied`}
+                >
+                  <span
+                    style={{
+                      width: `${Math.min(100, (occupied / GAME_CONFIG.inventorySlots) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
             </div>
             <div
               className="inventory-filter-row"
@@ -419,39 +471,16 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                 return (
                   <button
                     type="button"
-                    className={`inventory-filter ${filter === option.id ? 'is-active' : ''}`}
+                    className={`inventory-filter ${filter === option.id ? 'is-active' : ''} ${count === 0 ? 'is-empty' : ''}`}
                     key={option.id}
                     aria-pressed={filter === option.id}
                     onClick={() => setFilter(option.id)}
                   >
                     <span>{option.label}</span>
-                    <small>{count}</small>
+                    <small className="inventory-filter-count">{count}</small>
                   </button>
                 );
               })}
-            </div>
-            <div className={`inventory-capacity inventory-capacity-${capacityState}`}>
-              <div className="inventory-capacity-label">
-                <span>Capacity</span>
-                <strong>
-                  {occupied} / {GAME_CONFIG.inventorySlots} slots
-                </strong>
-              </div>
-              <div
-                className="inventory-capacity-track"
-                role="progressbar"
-                aria-label="Inventory capacity"
-                aria-valuemin={0}
-                aria-valuemax={GAME_CONFIG.inventorySlots}
-                aria-valuenow={occupied}
-                aria-valuetext={`${occupied} of ${GAME_CONFIG.inventorySlots} inventory slots occupied`}
-              >
-                <span
-                  style={{
-                    width: `${Math.min(100, (occupied / GAME_CONFIG.inventorySlots) * 100)}%`,
-                  }}
-                />
-              </div>
             </div>
           </section>
         </UiPanelSlot>
@@ -462,7 +491,6 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
           >
             <div className="inventory-bank-heading">
               <div className="inventory-bank-heading-main">
-                <div className="eyebrow">Archive of gathered goods</div>
                 <h2 id="inventory-bank-title">Item Bank</h2>
                 <span className="inventory-bank-count">
                   {hasInventory
@@ -471,9 +499,6 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                 </span>
               </div>
               <div className="inventory-bank-controls" aria-label="Inventory ordering controls">
-                {viewPreferences.sortMode === 'manual' && !compactViewport && (
-                  <span className="inventory-drag-hint">Drag to reorder</span>
-                )}
                 <label className="inventory-sort-control">
                   <span>Sort:</span>
                   <select
@@ -492,21 +517,22 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                     ))}
                   </select>
                 </label>
-                <button
-                  type="button"
-                  className="button ghost inventory-sort-direction"
-                  aria-label={`${selectedSortLabel} ${directionLabel}`}
-                  title={`${selectedSortLabel}: ${directionLabel}`}
-                  disabled={viewPreferences.sortMode === 'manual'}
-                  onClick={() =>
-                    updateViewPreferences((current) => ({
-                      ...current,
-                      sortDirection: current.sortDirection === 'asc' ? 'desc' : 'asc',
-                    }))
-                  }
-                >
-                  {directionLabel}
-                </button>
+                {viewPreferences.sortMode !== 'manual' && (
+                  <button
+                    type="button"
+                    className="button ghost inventory-sort-direction"
+                    aria-label={`${selectedSortLabel} ${directionLabel}`}
+                    title={`${selectedSortLabel}: ${directionLabel}`}
+                    onClick={() =>
+                      updateViewPreferences((current) => ({
+                        ...current,
+                        sortDirection: current.sortDirection === 'asc' ? 'desc' : 'asc',
+                      }))
+                    }
+                  >
+                    {directionLabel}
+                  </button>
+                )}
                 <label className="inventory-auto-sort">
                   <input
                     type="checkbox"
@@ -514,10 +540,18 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                     checked={viewPreferences.sortMode !== 'manual'}
                     onChange={(event) => toggleAutoSort(event.target.checked)}
                   />
+                  <span className="inventory-switch-track" aria-hidden="true">
+                    <span className="inventory-switch-thumb" />
+                  </span>
                   <span>Auto Sort</span>
                 </label>
               </div>
             </div>
+            {viewPreferences.sortMode === 'manual' && !compactViewport && (
+              <p className="inventory-manual-hint">
+                Manual ordering active - drag cards to rearrange.
+              </p>
+            )}
             {!hasInventory ? (
               <div className="inventory-empty-state">
                 <PackageOpen size={30} aria-hidden="true" />
@@ -544,32 +578,21 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
               <div className="inventory-bank-layout">
                 <div className="inventory-items-column">
                   {hasFilteredResults ? (
-                    <div
-                      className="inventory-grid inventory-bank-grid"
-                      aria-label="Inventory items"
-                    >
-                      {visibleStacks.map((stack) => (
-                        <InventoryItemCard
-                          key={stack.itemId}
-                          stack={stack}
-                          item={itemById[stack.itemId]}
-                          selected={stack.itemId === selectedItemId}
-                          onSelect={selectItem}
-                          dragEnabled={dragEnabled}
-                          isDragSource={stack.itemId === draggedItemId}
-                          dropPosition={
-                            dropTarget?.itemId === stack.itemId ? dropTarget.position : undefined
-                          }
-                          onDragStart={handleDragStart}
-                          onDragOver={handleDragOver}
-                          onDrop={handleDrop}
-                          onDragEnd={clearDragState}
-                          cardRef={(element) => {
-                            cardRefs.current[stack.itemId] = element;
-                          }}
-                        />
-                      ))}
-                    </div>
+                    viewPreferences.sortMode === 'category' ? (
+                      <div className="inventory-category-groups">
+                        {categoryGroups.map((group) => (
+                          <section className="inventory-category-group" key={group.id}>
+                            <div className="inventory-category-heading">
+                              <h3>{group.label}</h3>
+                              <span>{group.stacks.length} stacks</span>
+                            </div>
+                            {renderInventoryCards(group.stacks)}
+                          </section>
+                        ))}
+                      </div>
+                    ) : (
+                      renderInventoryCards(visibleStacks)
+                    )
                   ) : (
                     <div className="inventory-filtered-empty">
                       <PackageOpen size={24} aria-hidden="true" />

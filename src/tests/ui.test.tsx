@@ -237,6 +237,10 @@ describe('navigation integration', () => {
     expect(screen.getByRole('textbox', { name: 'Search inventory' })).toBeInTheDocument();
     for (const label of ['All', 'Materials', 'Equipment', 'Drops', 'Currency'])
       expect(screen.getByRole('button', { name: new RegExp(`^${label}`) })).toBeInTheDocument();
+    const currencyFilter = screen.getByRole('button', { name: /^Currency/ });
+    expect(currencyFilter).toHaveAttribute('aria-pressed', 'false');
+    expect(currencyFilter).not.toBeDisabled();
+    expect(within(currencyFilter).getByText('0')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Inventory capacity' })).toHaveAttribute(
       'aria-valuenow',
       '3',
@@ -245,6 +249,11 @@ describe('navigation integration', () => {
     expect(document.querySelector('[data-ui-panel="inventoryBank"]')).not.toBeNull();
     expect(screen.getByRole('heading', { name: 'Item Bank' })).toBeInTheDocument();
     expect(screen.getByText('3 stacks')).toBeInTheDocument();
+    expect(screen.queryByText('Storage ledger')).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Search and filter' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Materials' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Equipment' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Drops' })).toBeInTheDocument();
     expect(screen.queryByText(/Showing 3 of 3 stacks/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Open Equipment' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Select an item' })).toBeInTheDocument();
@@ -284,14 +293,17 @@ describe('navigation integration', () => {
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Sort inventory' }), 'name');
     expect(getCardIds()[0]).toMatch(/Copper Ore/);
-    await user.click(screen.getByRole('button', { name: 'Name A to Z' }));
+    await user.click(screen.getByRole('button', { name: 'Name A-Z' }));
     expect(getCardIds()[0]).toMatch(/Rat Tail/);
     expect(screen.getByRole('checkbox', { name: 'Auto Sort' })).toBeChecked();
 
     await user.selectOptions(screen.getByRole('combobox', { name: 'Sort inventory' }), 'manual');
     expect(screen.getByRole('checkbox', { name: 'Auto Sort' })).not.toBeChecked();
-    expect(screen.getByRole('button', { name: /^Manual/ })).toBeDisabled();
-    expect(screen.getByText('Drag to reorder')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Manual order/ })).not.toBeInTheDocument();
+    expect(screen.getByText(/Manual ordering active/)).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Materials' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Equipment' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Drops' })).not.toBeInTheDocument();
     expect(
       within(document.querySelector('.inventory-bank-grid') as HTMLElement).getAllByRole(
         'button',
@@ -527,6 +539,47 @@ describe('navigation integration', () => {
     expect(useGameStore.getState().game?.equipment.weapon).toBe('bronze-sword');
     expect(screen.queryByRole('button', { name: /View Bronze Sword/ })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Copper Ore' })).toBeInTheDocument();
+  });
+
+  it('shows contextual details actions and preserves safe unknown-item behavior', async () => {
+    const user = userEvent.setup();
+    seedInventory([
+      { itemId: 'iron-sword', quantity: 2 },
+      { itemId: 'rat-tail', quantity: 4 },
+      { itemId: 'unknown-item', quantity: 3 },
+    ]);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+
+    await user.click(screen.getByRole('button', { name: /View Iron Sword/ }));
+    const details = () =>
+      within(document.querySelector('.inventory-details-region') as HTMLElement);
+    expect(screen.getByRole('heading', { name: 'Iron Sword' })).toBeInTheDocument();
+    expect(details().getByText('Equipment')).toBeInTheDocument();
+    expect(details().getByText('Sundering Strike')).toBeInTheDocument();
+    expect(details().getByText(/Training Grounds|Smithing/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Equip' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'View Equipment' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lock' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Destroy One' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /View Rat Tail/ }));
+    expect(screen.getByRole('heading', { name: 'Rat Tail' })).toBeInTheDocument();
+    expect(details().getByText('Drops')).toBeInTheDocument();
+    expect(details().getByText(/Training Grounds/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Equip' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'View Equipment' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Lock' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Destroy One' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /View Unknown item/ }));
+    expect(screen.getByRole('heading', { name: 'Unknown item' })).toBeInTheDocument();
+    expect(screen.getByText(/No actions are available/)).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Equip' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'View Equipment' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Lock' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Destroy One' })).not.toBeInTheDocument();
+    expect(details().getByText('3')).toBeInTheDocument();
   });
 
   it('opens compact item details as an accessible drawer and closes with Escape', async () => {

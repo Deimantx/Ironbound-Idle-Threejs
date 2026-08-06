@@ -5,6 +5,7 @@ import {
   getInventoryDisplayGroup,
   getInventoryGroupCounts,
   getInventoryResultLabel,
+  getInventoryStackGroups,
   getVisibleInventoryStacks,
   matchesInventorySearch,
 } from '../app/inventoryView';
@@ -59,6 +60,29 @@ describe('inventory view helpers', () => {
       drops: 0,
       currency: 0,
     });
+  });
+
+  it('groups visible stacks by display group without mutating order or adding empty groups', () => {
+    const stacks: InventoryStack[] = [
+      { itemId: 'rat-tail', quantity: 3, locked: false },
+      { itemId: 'copper-ore', quantity: 8, locked: false },
+      { itemId: 'iron-sword', quantity: 1, locked: false },
+      { itemId: 'unknown-item', quantity: 2, locked: false },
+    ];
+    const original = structuredClone(stacks);
+    expect(getInventoryStackGroups(stacks, itemById)).toEqual([
+      { id: 'materials', label: 'Materials', stacks: [stacks[1]] },
+      { id: 'equipment', label: 'Equipment', stacks: [stacks[2]] },
+      { id: 'drops', label: 'Drops', stacks: [stacks[0]] },
+      { id: 'unknown', label: 'Unknown', stacks: [stacks[3]] },
+    ]);
+    expect(stacks).toEqual(original);
+    expect(
+      getInventoryStackGroups(
+        getVisibleInventoryStacks(stacks, itemById, 'materials', 'mining'),
+        itemById,
+      ),
+    ).toEqual([{ id: 'materials', label: 'Materials', stacks: [stacks[1]] }]);
   });
 
   it('keeps the result label in the bank header vocabulary', () => {
