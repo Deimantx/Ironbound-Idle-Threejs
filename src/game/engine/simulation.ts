@@ -196,8 +196,12 @@ const simulateSmithing = (
     }
     if (action.remaining !== null) action.remaining -= 1;
   }
-  if (state.activeAction.type === 'smithing')
-    state.activeAction = { ...action, progressMs: progress };
+  if (state.activeAction.type === 'smithing') {
+    state.activeAction =
+      action.remaining !== null && action.remaining <= 0
+        ? { type: 'none' }
+        : { ...action, progressMs: progress };
+  }
 };
 
 const grantLoot = (
@@ -212,8 +216,7 @@ const grantLoot = (
   const items: Array<{ itemId: string; quantity: number }> = [];
   for (const loot of enemy.loot)
     if (nextCombatRandom(rng) <= Math.min(1, loot.chance * lootChanceMultiplier)) {
-      const quantity =
-        loot.min + Math.floor(nextCombatRandom(rng) * (loot.max - loot.min + 1));
+      const quantity = loot.min + Math.floor(nextCombatRandom(rng) * (loot.max - loot.min + 1));
       const added = addItem(state.inventory, loot.itemId, quantity, GAME_CONFIG.inventorySlots);
       if (added.rejected) return { ok: false, items };
       state.inventory = added.inventory;
@@ -224,7 +227,9 @@ const grantLoot = (
   return { ok: true, items };
 };
 
-const normalizeCombatAction = (state: GameState): Extract<ActiveAction, { type: 'combat' }> | null => {
+const normalizeCombatAction = (
+  state: GameState,
+): Extract<ActiveAction, { type: 'combat' }> | null => {
   if (state.activeAction.type !== 'combat') return null;
   const action = state.activeAction;
   const enemy = enemyById[action.enemyId];
@@ -233,7 +238,9 @@ const normalizeCombatAction = (state: GameState): Extract<ActiveAction, { type: 
   const eliteModifier = raw.eliteModifier ?? null;
   const maxHealth = Math.max(
     1,
-    Number.isFinite(raw.enemyMaxHp) ? Number(raw.enemyMaxHp) : getEnemyCombatStats(enemy, eliteModifier).maxHealth,
+    Number.isFinite(raw.enemyMaxHp)
+      ? Number(raw.enemyMaxHp)
+      : getEnemyCombatStats(enemy, eliteModifier).maxHealth,
   );
   return {
     ...action,
@@ -257,7 +264,10 @@ const normalizeCombatAction = (state: GameState): Extract<ActiveAction, { type: 
       traitState: {
         firstAttackPending: raw.traitState?.firstAttackPending ?? enemy.trait.id === 'scurry',
         enemyAttackCount: Math.max(0, Math.floor(raw.traitState?.enemyAttackCount ?? 0)),
-        bleedStacks: Math.max(0, Math.min(COMBAT_TUNING.wolfMaxBleedStacks, Math.floor(raw.traitState?.bleedStacks ?? 0))),
+        bleedStacks: Math.max(
+          0,
+          Math.min(COMBAT_TUNING.wolfMaxBleedStacks, Math.floor(raw.traitState?.bleedStacks ?? 0)),
+        ),
       },
       encounterIndex: Math.max(1, Math.floor(raw.encounterIndex ?? 1)),
       encounterStartedAt: Number.isFinite(raw.encounterStartedAt)
@@ -300,11 +310,8 @@ const simulateCombat = (
   let combatState = action.combatState;
   let clock = state.lastSimulatedAt;
   let iterations = 0;
-  const addCombatLog = (
-    text: string,
-    tone: GameState['log'][number]['tone'],
-    at: number,
-  ): void => addLog(state, text, tone, at, combatState.encounterStartedAt);
+  const addCombatLog = (text: string, tone: GameState['log'][number]['tone'], at: number): void =>
+    addLog(state, text, tone, at, combatState.encounterStartedAt);
   const emit = (event: CombatVisualEvent): void => {
     pushBoundedEvent(events, event);
     if (event.type === 'player-hit' || event.type === 'player-miss') {
@@ -363,7 +370,11 @@ const simulateCombat = (
         modifier: spawn.eliteModifier,
       });
       combatState.eliteAnnounced = true;
-      addCombatLog(`${enemy.name} spawned as a ${getEliteModifierDisplayName(spawn.eliteModifier)} elite.`, 'warning', at);
+      addCombatLog(
+        `${enemy.name} spawned as a ${getEliteModifierDisplayName(spawn.eliteModifier)} elite.`,
+        'warning',
+        at,
+      );
     }
   };
   if (combatState.eliteModifier && !combatState.eliteAnnounced) {
@@ -386,10 +397,17 @@ const simulateCombat = (
       if (combatState.respawnMs <= 0) spawnNextEnemy(clock);
       continue;
     }
-    const currentEnemyStats = getEnemyCombatStats(enemy, combatState.eliteModifier, combatState.enemyHp);
+    const currentEnemyStats = getEnemyCombatStats(
+      enemy,
+      combatState.eliteModifier,
+      combatState.enemyHp,
+    );
     const step = Math.min(
       left,
-      Math.max(1, Math.min(combatState.playerAttackMs || Infinity, combatState.enemyAttackMs || Infinity)),
+      Math.max(
+        1,
+        Math.min(combatState.playerAttackMs || Infinity, combatState.enemyAttackMs || Infinity),
+      ),
     );
     left -= step;
     clock += step;
@@ -401,32 +419,40 @@ const simulateCombat = (
       const special = weapon?.specialAttack;
       const useSpecial = Boolean(
         special &&
-          combatState.momentum >= COMBAT_TUNING.momentumMax &&
-          (action.autoSpecial || action.specialQueued),
+        combatState.momentum >= COMBAT_TUNING.momentumMax &&
+        (action.autoSpecial || action.specialQueued),
       );
       if (useSpecial) {
         combatState.momentum = 0;
         action = { ...action, specialQueued: false };
       }
       const targetHpAtStart = combatState.enemyHp;
-      const attackMaxHit = useSpecial && special
-        ? Math.max(
-            1,
-            Math.round(
-              playerStats.effectiveMaxHit *
-                special.damageMultiplier *
-                (special.executeThreshold !== undefined &&
-                targetHpAtStart / Math.max(1, combatState.enemyMaxHp) <= special.executeThreshold
-                  ? special.executeDamageMultiplier ?? 1
-                  : 1),
-            ),
-          )
-        : playerStats.effectiveMaxHit;
-      const attackAccuracy = playerStats.effectiveAccuracyRating * (useSpecial && special ? special.accuracyMultiplier : 1);
-      const hit = nextCombatRandom(rng) < getHitChance(attackAccuracy, currentEnemyStats.defenceRating);
+      const attackMaxHit =
+        useSpecial && special
+          ? Math.max(
+              1,
+              Math.round(
+                playerStats.effectiveMaxHit *
+                  special.damageMultiplier *
+                  (special.executeThreshold !== undefined &&
+                  targetHpAtStart / Math.max(1, combatState.enemyMaxHp) <= special.executeThreshold
+                    ? (special.executeDamageMultiplier ?? 1)
+                    : 1),
+              ),
+            )
+          : playerStats.effectiveMaxHit;
+      const attackAccuracy =
+        playerStats.effectiveAccuracyRating *
+        (useSpecial && special ? special.accuracyMultiplier : 1);
+      const hit =
+        nextCombatRandom(rng) < getHitChance(attackAccuracy, currentEnemyStats.defenceRating);
       if (!hit) {
         emit({
-          id: combatEventId(useSpecial ? 'player-special-miss' : 'player-miss', clock, rng.rngCursor),
+          id: combatEventId(
+            useSpecial ? 'player-special-miss' : 'player-miss',
+            clock,
+            rng.rngCursor,
+          ),
           type: 'player-miss',
           enemyId: enemy.id,
           damage: 0,
@@ -436,9 +462,10 @@ const simulateCombat = (
         addCombatLog(`You missed ${enemy.name}.`, 'neutral', clock);
       } else {
         const rolled = rollDamage(attackMaxHit, nextCombatRandom(rng));
-        const reduced = special?.ignoresFlatDamageReduction && useSpecial
-          ? rolled
-          : Math.max(1, rolled - currentEnemyStats.flatDamageReduction);
+        const reduced =
+          special?.ignoresFlatDamageReduction && useSpecial
+            ? rolled
+            : Math.max(1, rolled - currentEnemyStats.flatDamageReduction);
         const actualDamage = Math.min(reduced, combatState.enemyHp);
         combatState.enemyHp = Math.max(0, combatState.enemyHp - actualDamage);
         combatState.momentum = Math.min(
@@ -453,7 +480,11 @@ const simulateCombat = (
           at: clock,
           special: useSpecial,
         });
-        addCombatLog(`You hit ${enemy.name} for ${actualDamage}${useSpecial ? ' with a special' : ''}.`, 'neutral', clock);
+        addCombatLog(
+          `You hit ${enemy.name} for ${actualDamage}${useSpecial ? ' with a special' : ''}.`,
+          'neutral',
+          clock,
+        );
         awardXp(state, summary, getCombatStyleSkill(action.style), getCombatDamageXp(actualDamage));
         awardXp(state, summary, 'hitpoints', getHitpointsDamageXp(actualDamage));
       }
@@ -467,7 +498,8 @@ const simulateCombat = (
         state.killCounts[enemy.id] = (state.killCounts[enemy.id] ?? 0) + 1;
         if (!state.discoveredMonsters.includes(enemy.id)) state.discoveredMonsters.push(enemy.id);
         const enemyRewardStats = getEnemyCombatStats(enemy, eliteModifier, 0);
-        const baseGold = enemy.gold[0] + Math.floor(nextCombatRandom(rng) * (enemy.gold[1] - enemy.gold[0] + 1));
+        const baseGold =
+          enemy.gold[0] + Math.floor(nextCombatRandom(rng) * (enemy.gold[1] - enemy.gold[0] + 1));
         const gold = Math.max(0, Math.round(baseGold * enemyRewardStats.goldMultiplier));
         state.gold += gold;
         summary.goldGained += gold;
@@ -479,7 +511,13 @@ const simulateCombat = (
           gold,
           eliteModifier,
         });
-        const loot = grantLoot(state, enemy.id, summary, rng, enemyRewardStats.lootChanceMultiplier);
+        const loot = grantLoot(
+          state,
+          enemy.id,
+          summary,
+          rng,
+          enemyRewardStats.lootChanceMultiplier,
+        );
         emit({
           id: combatEventId('loot', clock, rng.rngCursor),
           type: 'loot',
@@ -498,7 +536,8 @@ const simulateCombat = (
         );
         if (!loot.ok) {
           state.activeAction = { type: 'none' };
-          summary.stoppedReason = 'Inventory is full; combat paused before loot could be collected.';
+          summary.stoppedReason =
+            'Inventory is full; combat paused before loot could be collected.';
           break;
         }
         combatState.traitState = { firstAttackPending: false, enemyAttackCount: 0, bleedStacks: 0 };
@@ -534,10 +573,16 @@ const simulateCombat = (
         }
       }
       combatState.traitState.enemyAttackCount += 1;
-      const heavy = enemy.trait.id === 'heavy-strike' &&
+      const heavy =
+        enemy.trait.id === 'heavy-strike' &&
         combatState.traitState.enemyAttackCount % COMBAT_TUNING.banditHeavyAttackEvery === 0;
       const enemyStats = getEnemyCombatStats(enemy, combatState.eliteModifier, combatState.enemyHp);
-      const hit = nextCombatRandom(rng) < getHitChance(enemyStats.accuracyRating, getDerivedStats(state, action.style).effectiveDefenceRating);
+      const hit =
+        nextCombatRandom(rng) <
+        getHitChance(
+          enemyStats.accuracyRating,
+          getDerivedStats(state, action.style).effectiveDefenceRating,
+        );
       if (!hit) {
         emit({
           id: combatEventId('enemy-miss', clock, rng.rngCursor),
@@ -556,7 +601,8 @@ const simulateCombat = (
         state.player.currentHp = Math.max(0, state.player.currentHp - actualDamage);
         combatState.momentum = Math.min(
           COMBAT_TUNING.momentumMax,
-          combatState.momentum + (actualDamage > 0 ? COMBAT_TUNING.momentumPerDirectDamageTaken : 0),
+          combatState.momentum +
+            (actualDamage > 0 ? COMBAT_TUNING.momentumPerDirectDamageTaken : 0),
         );
         emit({
           id: combatEventId('enemy-hit', clock, rng.rngCursor),
@@ -565,8 +611,15 @@ const simulateCombat = (
           damage: actualDamage,
           at: clock,
         });
-        addCombatLog(`${enemy.name} hit you for ${actualDamage}${heavy ? ' with a heavy strike' : ''}.`, 'danger', clock);
-        if (enemy.trait.id === 'bleeding-bites' && nextCombatRandom(rng) < COMBAT_TUNING.wolfBleedChance)
+        addCombatLog(
+          `${enemy.name} hit you for ${actualDamage}${heavy ? ' with a heavy strike' : ''}.`,
+          'danger',
+          clock,
+        );
+        if (
+          enemy.trait.id === 'bleeding-bites' &&
+          nextCombatRandom(rng) < COMBAT_TUNING.wolfBleedChance
+        )
           combatState.traitState.bleedStacks = Math.min(
             COMBAT_TUNING.wolfMaxBleedStacks,
             combatState.traitState.bleedStacks + 1,
@@ -580,7 +633,11 @@ const simulateCombat = (
         }
       }
       combatState.traitState.firstAttackPending = false;
-      combatState.enemyAttackMs += getEnemyCombatStats(enemy, combatState.eliteModifier, combatState.enemyHp).attackIntervalMs;
+      combatState.enemyAttackMs += getEnemyCombatStats(
+        enemy,
+        combatState.eliteModifier,
+        combatState.enemyHp,
+      ).attackIntervalMs;
     }
   }
   const safetyCapReached = iterations >= MAX_COMBAT_SIMULATION_EVENTS && left > 0;
@@ -656,7 +713,10 @@ export const progressRatio = (action: ActiveAction, now: number, state: GameStat
   }
   if (action.type === 'combat') {
     const enemy = enemyById[action.enemyId];
-    return enemy ? 1 - action.combatState.enemyHp / Math.max(1, action.combatState.enemyMaxHp ?? enemy.maxHealth) : 0;
+    return enemy
+      ? 1 -
+          action.combatState.enemyHp / Math.max(1, action.combatState.enemyMaxHp ?? enemy.maxHealth)
+      : 0;
   }
   void now;
   return 0;

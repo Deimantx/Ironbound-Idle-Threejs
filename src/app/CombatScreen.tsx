@@ -65,6 +65,7 @@ import type {
 import forestRatImage from '../Art/Monsters/ForestRat.png';
 import type { ConfirmDialogOptions } from './ConfirmDialog';
 import { ItemIcon } from './ItemIcon';
+import { COMBAT_EQUIPMENT_SLOTS, getEquipmentSlotLabel } from '../game/equipmentSlots';
 import type { UiLayout } from './uiLayout';
 import { UiPanelSlot } from './UiPanelSlot';
 
@@ -231,13 +232,12 @@ function CombatPortrait({ enemy, large = false }: { enemy: EnemyDefinition; larg
 }
 
 function EquipmentStrip({ game }: { game: GameState }) {
-  const slots = ['weapon', 'head', 'body', 'legs', 'shield'] as const;
   return (
     <div className="combat-equipment-strip" aria-label="Equipped items">
-      {slots.map((slot) => {
+      {COMBAT_EQUIPMENT_SLOTS.map((slot) => {
         const itemId = game.equipment[slot];
         const item = itemId ? itemById[itemId] : undefined;
-        const label = slot === 'head' ? 'Helmet' : slot[0].toUpperCase() + slot.slice(1);
+        const label = getEquipmentSlotLabel(slot);
         return (
           <div className={`combat-equip-slot ${item ? 'filled' : ''}`} key={slot}>
             <span>{label}</span>

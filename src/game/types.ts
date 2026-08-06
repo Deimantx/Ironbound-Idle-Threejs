@@ -11,7 +11,7 @@ export type SkillId = (typeof SKILL_IDS)[number];
 export type ItemCategory =
   'material' | 'bar' | 'weapon' | 'armor' | 'shield' | 'tool' | 'drop' | 'currency';
 export type EquipmentSlot =
-  'head' | 'body' | 'legs' | 'weapon' | 'shield' | 'tool' | 'amulet' | 'ring' | 'cape';
+  'head' | 'armor' | 'weapon' | 'shield' | 'tool' | 'amulet' | 'ring' | 'cape';
 export type AreaId = 'training-grounds' | 'copper-hills' | 'ironwood-pass';
 export type EnemyId =
   'forest-rat' | 'goblin-scavenger' | 'cave-bat' | 'stoneback-crab' | 'grey-wolf' | 'road-bandit';
@@ -32,12 +32,7 @@ export type ScreenId =
 export type QuantityMode = 1 | 10 | 'all' | 'continuous';
 export type CombatStyle = 'accurate' | 'aggressive' | 'defensive';
 export type EnemyTraitId =
-  | 'scurry'
-  | 'desperate-swing'
-  | 'evasive'
-  | 'armoured-shell'
-  | 'bleeding-bites'
-  | 'heavy-strike';
+  'scurry' | 'desperate-swing' | 'evasive' | 'armoured-shell' | 'bleeding-bites' | 'heavy-strike';
 export type EliteModifierId = 'savage' | 'armoured' | 'swift' | 'wealthy' | 'treasure-touched';
 export type WeaponSpecialId = 'focused-slash' | 'sundering-strike' | 'executioners-cut';
 export type EnemyVisualArchetype = 'rat' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';

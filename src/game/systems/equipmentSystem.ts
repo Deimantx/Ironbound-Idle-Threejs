@@ -1,6 +1,7 @@
 import { itemById } from '../../content/items';
 import { GAME_CONFIG } from '../../config/gameConfig';
-import { addItem, canAddItem, removeItem } from './inventorySystem';
+import { getDerivedStats } from '../formulas/statFormulas';
+import { addItem, removeItem } from './inventorySystem';
 import type { EquipmentLoadout, EquipmentSlot, GameState } from '../types';
 
 export interface EquipmentResult {
@@ -14,25 +15,24 @@ export const equipItem = (state: GameState, itemId: string): EquipmentResult => 
   const stack = state.inventory.find((entry) => entry.itemId === itemId);
   if (!stack) return { state, ok: false, message: 'That item is not in your inventory.' };
   const displaced = state.equipment[item.slot];
-  if (
-    displaced &&
-    !canAddItem(
-      state.inventory.filter((entry) => entry.itemId !== itemId),
-      displaced,
-      GAME_CONFIG.inventorySlots,
-    )
-  )
-    return { state, ok: false, message: 'You need an inventory slot for the displaced equipment.' };
-  const nextInventory = removeItem(state.inventory, itemId, 1).inventory;
+  const removed = removeItem(state.inventory, itemId, 1);
+  if (removed.rejected) return { state, ok: false, message: 'That item is not in your inventory.' };
   const withDisplaced = displaced
-    ? addItem(nextInventory, displaced, 1, GAME_CONFIG.inventorySlots).inventory
-    : nextInventory;
+    ? addItem(removed.inventory, displaced, 1, GAME_CONFIG.inventorySlots)
+    : { inventory: removed.inventory, rejected: 0 };
+  if (withDisplaced.rejected)
+    return { state, ok: false, message: 'You need an inventory slot for the displaced equipment.' };
+  const nextEquipment = { ...state.equipment, [item.slot]: itemId };
+  const nextState = {
+    ...state,
+    inventory: withDisplaced.inventory,
+    equipment: nextEquipment,
+  };
+  const maxHealth = getDerivedStats(nextState).maxHealth;
   return {
     state: {
-      ...state,
-      inventory: withDisplaced,
-      equipment: { ...state.equipment, [item.slot]: itemId },
-      player: { ...state.player, currentHp: Math.min(state.player.currentHp, 9999) },
+      ...nextState,
+      player: { ...nextState.player, currentHp: Math.min(nextState.player.currentHp, maxHealth) },
     },
     ok: true,
     message: `${item.name} equipped.`,
@@ -47,8 +47,13 @@ export const unequipItem = (state: GameState, slot: EquipmentSlot): EquipmentRes
     return { state, ok: false, message: 'Make room in your inventory before unequipping.' };
   const nextEquipment: EquipmentLoadout = { ...state.equipment };
   delete nextEquipment[slot];
+  const nextState = { ...state, inventory: result.inventory, equipment: nextEquipment };
+  const maxHealth = getDerivedStats(nextState).maxHealth;
   return {
-    state: { ...state, inventory: result.inventory, equipment: nextEquipment },
+    state: {
+      ...nextState,
+      player: { ...nextState.player, currentHp: Math.min(nextState.player.currentHp, maxHealth) },
+    },
     ok: true,
     message: 'Equipment returned to inventory.',
   };

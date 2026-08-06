@@ -33,6 +33,7 @@ const gear = (
   bonuses: NonNullable<ItemDefinition['bonuses']>,
   level: string,
   specialAttack?: WeaponSpecial,
+  description?: string,
 ): ItemDefinition => ({
   id,
   name,
@@ -44,7 +45,7 @@ const gear = (
         : slot === 'tool'
           ? 'tool'
           : 'armor',
-  description: `${level} ${slot} forged for dependable field work.`,
+  description: description ?? `${level} ${slot} forged for dependable field work.`,
   source: 'Smithing',
   stackable: true,
   rarity: tier === 'steel' ? 'rare' : tier === 'iron' ? 'uncommon' : 'common',
@@ -91,11 +92,18 @@ export const ITEMS: ItemDefinition[] = [
       damageMultiplier: 1.6,
       accuracyMultiplier: 1.25,
     },
-    
   ),
   gear('bronze-helmet', 'Bronze Helm', 'head', 'bronze', { defence: 5, health: 2 }, 'Bronze'),
-  gear('bronze-platebody', 'Bronze Cuirass', 'body', 'bronze', { defence: 9, health: 4 }, 'Bronze'),
-  gear('bronze-platelegs', 'Bronze Greaves', 'legs', 'bronze', { defence: 7, health: 3 }, 'Bronze'),
+  gear(
+    'bronze-armor',
+    'Bronze Armor',
+    'armor',
+    'bronze',
+    { defence: 16, health: 7 },
+    'Bronze',
+    undefined,
+    'A complete bronze field harness covering the torso and lower body.',
+  ),
   gear('bronze-shield', 'Bronze Buckler', 'shield', 'bronze', { defence: 10, health: 3 }, 'Bronze'),
   gear('bronze-pickaxe', 'Bronze Pick', 'tool', 'bronze', { speed: 0.1 }, 'Bronze'),
   gear(
@@ -113,11 +121,18 @@ export const ITEMS: ItemDefinition[] = [
       accuracyMultiplier: 1.15,
       ignoresFlatDamageReduction: true,
     },
-    
   ),
   gear('iron-helmet', 'Iron Helm', 'head', 'iron', { defence: 12, health: 6 }, 'Iron'),
-  gear('iron-platebody', 'Iron Cuirass', 'body', 'iron', { defence: 22, health: 10 }, 'Iron'),
-  gear('iron-platelegs', 'Iron Greaves', 'legs', 'iron', { defence: 16, health: 8 }, 'Iron'),
+  gear(
+    'iron-armor',
+    'Iron Armor',
+    'armor',
+    'iron',
+    { defence: 38, health: 18 },
+    'Iron',
+    undefined,
+    'A complete iron field harness built for sustained combat.',
+  ),
   gear('iron-shield', 'Iron Bulwark', 'shield', 'iron', { defence: 24, health: 8 }, 'Iron'),
   gear('iron-pickaxe', 'Iron Pick', 'tool', 'iron', { speed: 0.2 }, 'Iron'),
   gear(
@@ -136,11 +151,18 @@ export const ITEMS: ItemDefinition[] = [
       executeThreshold: 0.35,
       executeDamageMultiplier: 2.25,
     },
-    
   ),
   gear('steel-helmet', 'Steel Helm', 'head', 'steel', { defence: 21, health: 10 }, 'Steel'),
-  gear('steel-platebody', 'Steel Cuirass', 'body', 'steel', { defence: 38, health: 18 }, 'Steel'),
-  gear('steel-platelegs', 'Steel Greaves', 'legs', 'steel', { defence: 29, health: 14 }, 'Steel'),
+  gear(
+    'steel-armor',
+    'Steel Armor',
+    'armor',
+    'steel',
+    { defence: 67, health: 32 },
+    'Steel',
+    undefined,
+    'A complete steel field harness forged for the harshest frontiers.',
+  ),
   gear('steel-shield', 'Steel Bulwark', 'shield', 'steel', { defence: 42, health: 14 }, 'Steel'),
   gear('steel-pickaxe', 'Steel Pick', 'tool', 'steel', { speed: 0.3 }, 'Steel'),
   ...[

@@ -16,14 +16,21 @@ describe('save validation and migration', () => {
       { ...state, schemaVersion: 0, settings: { ...state.settings, threeQuality: 'low' } },
       0,
     );
-    expect(migrated.schemaVersion).toBe(2);
+    expect(migrated.schemaVersion).toBe(3);
     expect(migrated.unlockedAreas).toContain('training-grounds');
   });
   it('rejects malformed save data', () => {
     expect(() => parseGameState('{"nope":true}')).toThrow();
   });
   it('migrates an old active combat action with safe deterministic defaults', () => {
-    const current = startCombat(createNewGame(0, 'Legacy', 0), 'training-grounds', 'forest-rat', 'accurate', true, 0);
+    const current = startCombat(
+      createNewGame(0, 'Legacy', 0),
+      'training-grounds',
+      'forest-rat',
+      'accurate',
+      true,
+      0,
+    );
     const legacy = structuredClone(current) as GameState;
     legacy.schemaVersion = 1;
     legacy.activeAction = {
@@ -40,9 +47,13 @@ describe('save validation and migration', () => {
       },
     } as unknown as GameState['activeAction'];
     const migrated = parseGameState(JSON.stringify(legacy));
-    expect(migrated.schemaVersion).toBe(2);
-    expect(migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.momentum).toBe(0);
+    expect(migrated.schemaVersion).toBe(3);
+    expect(
+      migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.momentum,
+    ).toBe(0);
     expect(migrated.activeAction.type === 'combat' && migrated.activeAction.autoSpecial).toBe(true);
-    expect(migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.rngCursor).toBe(0);
+    expect(
+      migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.rngCursor,
+    ).toBe(0);
   });
 });

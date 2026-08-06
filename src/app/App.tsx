@@ -1290,6 +1290,12 @@ function DebugPanel({
   const suicidePlayer = () =>
     updateGame((next) => {
       next.player.currentHp = 0;
+      if (next.activeAction.type === 'combat') {
+        next.activeAction = {
+          ...next.activeAction,
+          combatState: { ...next.activeAction.combatState, enemyAttackMs: 0 },
+        };
+      }
     });
   const activeEnemy =
     game.activeAction.type === 'combat' ? enemyById[game.activeAction.enemyId] : null;
@@ -1476,7 +1482,7 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
       case 'inventory':
         return <InventoryScreen game={currentGame} uiLayout={uiLayout} onNavigate={nav} />;
       case 'equipment':
-        return <EquipmentScreen game={currentGame} uiLayout={uiLayout} />;
+        return <EquipmentScreen game={currentGame} uiLayout={uiLayout} onNavigate={nav} />;
       case 'collection':
         return <CollectionScreen game={currentGame} />;
       case 'settings':

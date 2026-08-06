@@ -658,51 +658,78 @@ h3 {
   font-weight: 700;
   font-size: 12px;
 }
-.equipment-grid {
+.equipment-slot-layout {
   display: grid;
-  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-areas:
+    '. head .'
+    'weapon armor shield'
+    '. tool .';
   gap: 10px;
   max-width: 680px;
-  margin: auto;
+  margin: 16px auto 0;
 }
-.equip-slot {
+.equipment-slot-card {
+  min-width: 0;
   min-height: 105px;
   padding: 11px;
   border: 1px dashed #4a5558;
   background: rgba(11, 14, 16, 0.4);
   border-radius: 8px;
+  color: inherit;
   text-align: center;
+  cursor: pointer;
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
 }
-.equip-slot.slot-body {
-  grid-column: 2;
-  grid-row: 2 / 4;
+.equipment-slot-card:hover,
+.equipment-slot-card:focus-visible {
+  border-color: var(--gold);
 }
-.equip-slot.slot-head {
-  grid-column: 2;
+.equipment-slot-card:focus-visible,
+.equipment-candidate-card:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
-.equip-slot.slot-weapon {
-  grid-column: 1;
-  grid-row: 2;
+.equipment-slot-card.equipment-slot-selected {
+  border-style: solid;
+  border-color: var(--gold);
+  background: rgba(213, 170, 98, 0.1);
+  box-shadow: 0 0 0 1px rgba(213, 170, 98, 0.25);
 }
-.equip-slot.slot-shield {
-  grid-column: 3;
-  grid-row: 2;
+.equipment-slot-card.equipment-slot-empty {
+  border-style: dashed;
 }
-.equip-slot.slot-legs {
-  grid-column: 2;
-  grid-row: 4;
+.equipment-slot-card.slot-head {
+  grid-area: head;
 }
-.equip-slot.slot-tool {
-  grid-column: 1;
-  grid-row: 4;
+.equipment-slot-card.slot-armor {
+  grid-area: armor;
 }
-.equip-slot strong {
+.equipment-slot-card.slot-weapon {
+  grid-area: weapon;
+}
+.equipment-slot-card.slot-shield {
+  grid-area: shield;
+}
+.equipment-slot-card.slot-tool {
+  grid-area: tool;
+}
+.equipment-slot-card > strong {
   display: block;
   margin-bottom: 7px;
   font-size: 11px;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
+}
+.equipment-slot-card small {
+  display: block;
+  overflow-wrap: anywhere;
+  color: #d6c18f;
+  font-size: 11px;
 }
 .equipment-item-icon {
   display: grid;
@@ -713,6 +740,195 @@ h3 {
   color: #667176;
   font-size: 12px;
   padding: 13px 0;
+}
+.equipment-future-slots {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #2c363a;
+}
+.equipment-future-slot-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 8px;
+}
+.equipment-selected-slot,
+.equipment-compatible-bank {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #2c363a;
+}
+.equipment-inspection-grid,
+.equipment-comparison-columns {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.equipment-item-summary {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid #2c363a;
+  border-radius: 7px;
+  background: rgba(11, 14, 16, 0.32);
+}
+.equipment-item-summary-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+.equipment-item-summary-title {
+  min-width: 0;
+}
+.equipment-item-summary-title strong,
+.equipment-item-summary-title small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.equipment-item-summary-title small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.equipment-item-bonus-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 10px;
+  color: #d8c28f;
+  font-size: 11px;
+}
+.equipment-action-row {
+  margin-top: 12px;
+}
+.equipment-section-heading {
+  align-items: end;
+}
+.equipment-candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+.equipment-candidate-card {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid #2c363a;
+  border-radius: 7px;
+  background: rgba(11, 14, 16, 0.32);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.equipment-candidate-card:hover {
+  border-color: #76613d;
+}
+.equipment-candidate-card.is-selected {
+  border-color: var(--gold);
+  background: rgba(213, 170, 98, 0.1);
+}
+.equipment-candidate-card > span:last-child {
+  min-width: 0;
+}
+.equipment-candidate-card strong,
+.equipment-candidate-card small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.equipment-candidate-card strong {
+  font-size: 11px;
+}
+.equipment-candidate-card small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.equipment-empty-compatible {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--muted);
+}
+.equipment-empty-compatible p {
+  margin: 0;
+  color: #e5d3a4;
+}
+.equipment-empty-compatible small {
+  max-width: 46ch;
+}
+.equipment-empty-compatible .button {
+  justify-self: start;
+}
+.equipment-stat-section + .equipment-stat-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid #2c363a;
+}
+.equipment-stat-comparison-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 9px 0;
+  border-bottom: 1px solid #2c363a;
+  font-size: 12px;
+}
+.equipment-stat-comparison-row:last-child {
+  border-bottom: 0;
+}
+.equipment-stat-comparison-row > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.equipment-stat-comparison-row strong {
+  color: #f2d49a;
+  white-space: nowrap;
+}
+.equipment-delta-positive,
+.equipment-delta-negative,
+.equipment-delta-neutral {
+  white-space: nowrap;
+  font-weight: 700;
+}
+.equipment-delta-positive {
+  color: var(--green, #79bd91);
+}
+.equipment-delta-negative {
+  color: var(--red, #d87979);
+}
+.equipment-delta-neutral {
+  color: var(--muted);
+}
+.equipment-special-comparison .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.equipment-comparison-columns > div {
+  min-width: 0;
+}
+.equipment-comparison-columns small,
+.equipment-comparison-columns strong {
+  display: block;
+}
+.equipment-comparison-columns small {
+  color: var(--muted);
+}
+.equipment-comparison-columns strong {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+.equipment-comparison-columns p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+.equipment-stats-hint {
+  margin-top: 22px;
 }
 .stat-line {
   display: flex;
@@ -1040,7 +1256,7 @@ h3 {
   .screen-heading .button-row {
     margin-top: 12px;
   }
-  .equipment-grid {
+  .equipment-slot-layout {
     max-width: 420px;
   }
 }
@@ -1650,7 +1866,7 @@ h3 {
 }
 .combat-equipment-strip {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
 }
 .combat-equip-slot {
@@ -3801,7 +4017,7 @@ h3 {
 }
 .combat-equipment-strip {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 4px;
   margin-top: 7px;
 }
@@ -5622,8 +5838,47 @@ h3 {
 @media (prefers-reduced-motion: reduce) {
   .inventory-item-card,
   .inventory-capacity-track span,
-  .inventory-drawer-shell {
+  .inventory-drawer-shell,
+  .equipment-slot-card {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+  }
+}
+@media (max-width: 900px) {
+  .equipment-slot-layout {
+    max-width: none;
+  }
+  .equipment-inspection-grid,
+  .equipment-comparison-columns {
+    grid-template-columns: 1fr;
+  }
+  .equipment-candidate-grid {
+    grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+  }
+  .equipment-loadout-shell,
+  .equipment-comparison {
+    overflow: hidden;
+  }
+}
+@media (max-width: 520px) {
+  .equipment-slot-layout {
+    gap: 7px;
+  }
+  .equipment-slot-card {
+    min-height: 92px;
+    padding: 8px 5px;
+  }
+  .equipment-slot-card > strong {
+    font-size: 10px;
+  }
+  .equipment-candidate-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .equipment-stat-comparison-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  .equipment-stat-comparison-row > span:last-child {
+    grid-column: 2 / -1;
+    justify-self: end;
   }
 }

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { GameState } from '../types';
+import { GAME_CONFIG } from '../../config/gameConfig';
 import { migrateSave } from './migrations';
 
 export const saveRecordSchema = z.object({
@@ -35,21 +36,52 @@ const activeCombatStateSchema = z
   .passthrough();
 const activeActionSchema = z.union([
   z.object({ type: z.literal('none') }).passthrough(),
-  z.object({ type: z.literal('mining'), nodeId: z.string(), startedAt: z.number(), progressMs: z.number() }).passthrough(),
-  z.object({ type: z.literal('smithing'), recipeId: z.string(), quantityMode: z.unknown(), remaining: z.number().nullable(), progressMs: z.number() }).passthrough(),
-  z.object({
-    type: z.literal('combat'),
-    enemyId: z.string(),
-    areaId: z.string(),
-    style: z.enum(['accurate', 'aggressive', 'defensive']),
-    autoRepeat: z.boolean(),
-    pendingStyle: z.enum(['accurate', 'aggressive', 'defensive']).nullable().optional(),
-    autoSpecial: z.boolean().optional(),
-    specialQueued: z.boolean().optional(),
-    combatState: activeCombatStateSchema,
-  }).passthrough(),
+  z
+    .object({
+      type: z.literal('mining'),
+      nodeId: z.string(),
+      startedAt: z.number(),
+      progressMs: z.number(),
+    })
+    .passthrough(),
+  z
+    .object({
+      type: z.literal('smithing'),
+      recipeId: z.string(),
+      quantityMode: z.unknown(),
+      remaining: z.number().nullable(),
+      progressMs: z.number(),
+    })
+    .passthrough(),
+  z
+    .object({
+      type: z.literal('combat'),
+      enemyId: z.string(),
+      areaId: z.string(),
+      style: z.enum(['accurate', 'aggressive', 'defensive']),
+      autoRepeat: z.boolean(),
+      pendingStyle: z.enum(['accurate', 'aggressive', 'defensive']).nullable().optional(),
+      autoSpecial: z.boolean().optional(),
+      specialQueued: z.boolean().optional(),
+      combatState: activeCombatStateSchema,
+    })
+    .passthrough(),
 ]);
-export const savePayloadSchema = z.object({
+const legacyEquipmentSchema = z.record(z.string(), z.string());
+const currentEquipmentSchema = z
+  .record(z.string(), z.string())
+  .superRefine((equipment, context) => {
+    for (const slot of ['body', 'legs']) {
+      if (slot in equipment)
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: [slot],
+          message: 'Legacy equipment slot.',
+        });
+    }
+  });
+
+const savePayloadShape = {
   schemaVersion: z.number().int().positive(),
   profileId: z.string().min(1),
   profileSlot: z.number().int().min(0).max(2),
@@ -61,7 +93,7 @@ export const savePayloadSchema = z.object({
   inventory: z.array(
     z.object({ itemId: z.string(), quantity: z.number().int().nonnegative(), locked: z.boolean() }),
   ),
-  equipment: z.record(z.string(), z.string()),
+  equipment: currentEquipmentSchema,
   discoveredItems: z.array(z.string()),
   discoveredMonsters: z.array(z.string()),
   killCounts: z.record(z.string(), z.number()),
@@ -92,11 +124,29 @@ export const savePayloadSchema = z.object({
       combatEncounterStartedAt: z.number().finite().optional(),
     }),
   ),
+};
+
+export const savePayloadSchema = z.object(savePayloadShape);
+export const legacySavePayloadSchema = z.object({
+  ...savePayloadShape,
+  equipment: legacyEquipmentSchema,
 });
 
 export const parseGameState = (payload: string): GameState => {
   const value: unknown = JSON.parse(payload);
-  const result = savePayloadSchema.safeParse(value);
+  const version =
+    typeof value === 'object' &&
+    value !== null &&
+    'schemaVersion' in value &&
+    typeof value.schemaVersion === 'number'
+      ? value.schemaVersion
+      : Number.NaN;
+  const schema =
+    version < GAME_CONFIG.currentSaveVersion ? legacySavePayloadSchema : savePayloadSchema;
+  const result = schema.safeParse(value);
   if (!result.success) throw new Error('Save payload failed validation.');
-  return migrateSave(result.data as GameState, result.data.schemaVersion);
+  const migrated = migrateSave(result.data as GameState, result.data.schemaVersion);
+  const current = savePayloadSchema.safeParse(migrated);
+  if (!current.success) throw new Error('Migrated save payload failed validation.');
+  return current.data as GameState;
 };

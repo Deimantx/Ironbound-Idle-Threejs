@@ -2,7 +2,7 @@ import { GAME_CONFIG } from '../../config/gameConfig';
 import { simulateElapsed } from '../engine/simulation';
 import type { GameState, SimulationSummary } from '../types';
 import { database } from './database';
-import { parseGameState, savePayloadSchema, saveRecordSchema } from './saveSchema';
+import { parseGameState, saveRecordSchema } from './saveSchema';
 
 export interface SaveRecord {
   schemaVersion: number;
@@ -136,5 +136,11 @@ export const clearProfile = async (slot: number): Promise<void> => {
     /* local storage is authoritative fallback */
   }
 };
-export const isValidPayload = (text: string): boolean =>
-  savePayloadSchema.safeParse(JSON.parse(text)).success;
+export const isValidPayload = (text: string): boolean => {
+  try {
+    parseGameState(text);
+    return true;
+  } catch {
+    return false;
+  }
+};

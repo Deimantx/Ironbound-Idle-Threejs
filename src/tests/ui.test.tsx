@@ -210,7 +210,9 @@ describe('navigation integration', () => {
     expect(useGameStore.getState().game?.equipment.weapon).toBe('bronze-sword');
 
     await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
-    await user.click(screen.getByRole('button', { name: 'Unequip Bronze Sword' }));
+    await user.click(screen.getByRole('button', { name: 'Weapon slot, Bronze Sword' }));
+    expect(useGameStore.getState().game?.equipment.weapon).toBe('bronze-sword');
+    await user.click(screen.getByRole('button', { name: 'Unequip' }));
     expect(useGameStore.getState().game?.equipment.weapon).toBeUndefined();
 
     await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
@@ -221,6 +223,61 @@ describe('navigation integration', () => {
     const action = useGameStore.getState().game?.activeAction;
     expect(action?.type).toBe('smithing');
     expect(action?.type === 'smithing' ? action.quantityMode : null).toBe('continuous');
+  });
+
+  it('selects Armor, previews compatible gear, and requires explicit replacement', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Armor Tester');
+    game.settings.threeQuality = 'off';
+    game.inventory = [
+      { itemId: 'iron-armor', quantity: 1, locked: true },
+      { itemId: 'bronze-sword', quantity: 1, locked: false },
+      { itemId: 'iron-pickaxe', quantity: 2, locked: false },
+    ];
+    game.equipment.armor = 'bronze-armor';
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
+    for (const label of ['Helmet', 'Armor', 'Weapon', 'Shield', 'Tool'])
+      expect(screen.getByRole('button', { name: new RegExp(`${label} slot`) })).toBeInTheDocument();
+    for (const label of ['Amulet', 'Ring', 'Cape'])
+      expect(screen.getByText(new RegExp(`${label} · Locked`))).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Body|Legs/ })).not.toBeInTheDocument();
+
+    const armorSlot = screen.getByRole('button', { name: 'Armor slot, Bronze Armor' });
+    await user.click(armorSlot);
+    expect(armorSlot).toHaveAttribute('aria-pressed', 'true');
+    expect(useGameStore.getState().game?.equipment.armor).toBe('bronze-armor');
+    expect(screen.getByRole('button', { name: /Inspect Iron Armor/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /Inspect Iron Armor/ }));
+    expect(useGameStore.getState().game?.equipment.armor).toBe('bronze-armor');
+    expect(screen.getByRole('button', { name: 'Replace Bronze Armor' })).toBeInTheDocument();
+    expect(screen.getByText('Item bonus comparison')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Replace Bronze Armor' }));
+    expect(useGameStore.getState().game?.equipment.armor).toBe('iron-armor');
+    expect(useGameStore.getState().game?.inventory).toContainEqual({
+      itemId: 'bronze-armor',
+      quantity: 1,
+      locked: false,
+    });
+  });
+
+  it('shows the unified four-slot equipment strip in Combat', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Combat Armor');
+    game.settings.threeQuality = 'off';
+    game.equipment.armor = 'iron-armor';
+    useGameStore.getState().setGame(game);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+    const strip = screen.getByLabelText('Equipped items');
+    for (const label of ['Weapon', 'Helmet', 'Armor', 'Shield'])
+      expect(within(strip).getByText(label)).toBeInTheDocument();
+    expect(within(strip).getByText('Iron Armor')).toBeInTheDocument();
+    expect(within(strip).queryByText('Body')).not.toBeInTheDocument();
+    expect(within(strip).queryByText('Legs')).not.toBeInTheDocument();
   });
 
   it('renders the compact Inventory 2.1 bank structure and capacity semantics', async () => {
