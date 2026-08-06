@@ -240,7 +240,7 @@ describe('navigation integration', () => {
     render(<App />);
 
     await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
-    expect(screen.getByText('9 combat slots · 1 tool')).toBeInTheDocument();
+    expect(screen.queryByText(/9 combat slots/)).not.toBeInTheDocument();
     expect(document.querySelector('.equipment-loadout-workspace')).toBeInTheDocument();
     expect(document.querySelector('.equipment-loadout-inspection')).toBeInTheDocument();
     expect(document.querySelector('.equipment-compatible-bank')).toBeInTheDocument();
