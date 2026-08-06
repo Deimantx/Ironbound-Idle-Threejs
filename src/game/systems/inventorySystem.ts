@@ -9,6 +9,11 @@ export interface InventoryResult {
 export const occupiedSlots = (inventory: InventoryStack[]): number =>
   inventory.filter((stack) => stack.quantity > 0).length;
 
+export const hasDuplicateInventoryItemIds = (inventory: InventoryStack[]): boolean => {
+  const ids = inventory.filter((stack) => stack.quantity > 0).map((stack) => stack.itemId);
+  return new Set(ids).size !== ids.length;
+};
+
 export const addItem = (
   inventory: InventoryStack[],
   itemId: string,

@@ -34,10 +34,24 @@ interface Store {
   toast: string | null;
   offlineSummary: SimulationSummary | null;
   setGame: (game: GameState | null, offlineSummary?: SimulationSummary | null) => void;
+  applyDebugState: (
+    game: GameState,
+    options?: {
+      summary?: SimulationSummary | null;
+      events?: CombatVisualEvent[];
+      replaceCombatSession?: boolean;
+    },
+  ) => void;
   tick: (now: number) => void;
   startMining: (nodeId: MiningNodeId) => void;
   startSmithing: (recipeId: string, mode: QuantityMode) => void;
-  startCombat: (areaId: AreaId, enemyId: EnemyId, style: CombatStyle, autoRepeat: boolean, autoSpecial?: boolean) => void;
+  startCombat: (
+    areaId: AreaId,
+    enemyId: EnemyId,
+    style: CombatStyle,
+    autoRepeat: boolean,
+    autoSpecial?: boolean,
+  ) => void;
   stopAction: () => void;
   equip: (itemId: string) => void;
   unequip: (slot: Parameters<typeof unequipItem>[1]) => void;
@@ -60,7 +74,7 @@ const notify = (message: string): void => {
   useGameStore.setState({ toast: message });
 };
 
-const mergeCombatSession = (
+export const mergeCombatSession = (
   current: CombatSessionStats,
   summary: ReturnType<typeof simulateElapsed>['summary'],
   events: CombatVisualEvent[],
@@ -90,6 +104,25 @@ const mergeCombatSession = (
   return next;
 };
 
+const sessionForState = (game: GameState): CombatSessionStats => {
+  if (game.activeAction.type !== 'combat') return emptyCombatSession();
+  return emptyCombatSession(
+    game.activeAction.enemyId,
+    game.updatedAt,
+    game.activeAction.combatState.encounterStartedAt,
+  );
+};
+
+const hasCombatSimulation = (summary: SimulationSummary): boolean =>
+  summary.enemiesDefeated > 0 ||
+  summary.deaths > 0 ||
+  Object.values(summary.combatStats).some((amount) => amount > 0);
+
+const appendCombatEvents = (
+  current: CombatVisualEvent[],
+  events: CombatVisualEvent[] = [],
+): CombatVisualEvent[] => [...current, ...events].slice(-64);
+
 export const useGameStore = create<Store>((set, get) => ({
   game: null,
   saveStatus: 'saved',
@@ -109,8 +142,27 @@ export const useGameStore = create<Store>((set, get) => ({
       combatSession: emptyCombatSession(
         loadedCombat?.enemyId ?? null,
         loadedCombat && game ? game.updatedAt : null,
-        loadedCombat?.combatState.encounterStartedAt ?? (loadedCombat && game ? game.updatedAt : null),
+        loadedCombat?.combatState.encounterStartedAt ??
+          (loadedCombat && game ? game.updatedAt : null),
       ),
+    });
+  },
+  applyDebugState: (game, options = {}) => {
+    lastTick = Date.now();
+    const replaceCombatSession = options.replaceCombatSession ?? false;
+    const nextSession = replaceCombatSession ? sessionForState(game) : get().combatSession;
+    const session =
+      options.summary && hasCombatSimulation(options.summary)
+        ? mergeCombatSession(nextSession, options.summary, options.events ?? [])
+        : nextSession;
+    if (game.activeAction.type === 'combat')
+      session.encounterStartedAt = game.activeAction.combatState.encounterStartedAt;
+    set({
+      game,
+      combatEvents: replaceCombatSession
+        ? (options.events ?? [])
+        : appendCombatEvents(get().combatEvents, options.events),
+      combatSession: session,
     });
   },
   tick: (now) => {
@@ -125,7 +177,8 @@ export const useGameStore = create<Store>((set, get) => ({
       ? mergeCombatSession(get().combatSession, result.summary, result.events)
       : get().combatSession;
     if (result.state.activeAction.type === 'combat')
-      nextCombatSession.encounterStartedAt = result.state.activeAction.combatState.encounterStartedAt;
+      nextCombatSession.encounterStartedAt =
+        result.state.activeAction.combatState.encounterStartedAt;
     set({
       game: result.state,
       combatEvents: result.events.length
@@ -146,7 +199,15 @@ export const useGameStore = create<Store>((set, get) => ({
     const game = get().game;
     if (game) {
       const startedAt = Date.now();
-      const nextGame = startCombat(game, areaId, enemyId, style, autoRepeat, startedAt, autoSpecial);
+      const nextGame = startCombat(
+        game,
+        areaId,
+        enemyId,
+        style,
+        autoRepeat,
+        startedAt,
+        autoSpecial,
+      );
       nextGame.lastSimulatedAt = startedAt;
       set({
         game: nextGame,

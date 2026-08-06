@@ -55,8 +55,9 @@ export const DEBUG_PRESETS: Array<{
   },
   {
     id: 'full-inventory',
-    label: 'Full Inventory Edge Case',
-    description: 'Fill all occupied slots with current registry IDs.',
+    label: 'Inventory Capacity Testing',
+    description:
+      'Grants all current unique items and prepares one-shot capacity rejection tests without duplicate stacks.',
     destructive: true,
   },
   {
@@ -93,16 +94,6 @@ const strongestEquipment = (): GameState['equipment'] => {
     if (item) equipment[slot] = item.id;
   }
   return equipment;
-};
-
-const fillSlots = (state: GameState): void => {
-  const existing = state.inventory.map((stack) => ({ ...stack }));
-  let cursor = 0;
-  while (existing.length < GAME_CONFIG.inventorySlots) {
-    existing.push({ itemId: ITEMS[cursor % ITEMS.length].id, quantity: 1, locked: false });
-    cursor += 1;
-  }
-  state.inventory = existing;
 };
 
 const maxSkills = (state: GameState): void => {
@@ -193,10 +184,12 @@ export const applyDebugPreset = (input: GameState, preset: DebugPresetId): Debug
       details.push('Current Combat areas were unlocked through useful progression inputs.');
       break;
     case 'full-inventory':
-      fillSlots(state);
+      state.inventory = [];
+      for (const item of ITEMS) add(state, item.id, item.stackable ? 10 : 1);
+      clearAction(state);
       details.push(
-        `Inventory now has ${GAME_CONFIG.inventorySlots} occupied slots.`,
-        'Repeated stacks are intentional edge-case fixtures.',
+        `Inventory now has ${state.inventory.length} of ${GAME_CONFIG.inventorySlots} occupied slots.`,
+        'One-shot capacity rejection tests use an effective capacity override without changing gameplay state.',
       );
       break;
     case 'late-game':

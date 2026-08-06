@@ -6,7 +6,7 @@ import { MINING_NODES, miningNodeById } from '../../content/miningNodes';
 import { RECIPES, recipeById } from '../../content/recipes';
 import { MAX_LEVEL, getLevelFromXp, getXpForLevel } from '../formulas/experienceFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
-import { simulateElapsed } from '../engine/simulation';
+import { getTimeUntilNextCombatEvent, simulateElapsed } from '../engine/simulation';
 import { startCombat, startMining, startSmithing } from '../engine/actionController';
 import { createNewGame } from '../state/initialState';
 import { equipItem, unequipItem } from '../systems/equipmentSystem';
@@ -97,6 +97,44 @@ const mutate = (
   };
 };
 
+const addRecord = (target: Record<string, number>, source: Record<string, number>): void => {
+  for (const [key, value] of Object.entries(source)) target[key] = (target[key] ?? 0) + value;
+};
+
+const combineSimulationResults = (
+  first: ReturnType<typeof simulateElapsed>,
+  second: ReturnType<typeof simulateElapsed>,
+): ReturnType<typeof simulateElapsed> => {
+  const summary = structuredClone(first.summary);
+  summary.elapsedMs += second.summary.elapsedMs;
+  summary.requestedElapsedMs += second.summary.requestedElapsedMs;
+  summary.processedElapsedMs += second.summary.processedElapsedMs;
+  summary.remainingElapsedMs = second.summary.remainingElapsedMs;
+  addRecord(summary.completed, second.summary.completed);
+  addRecord(
+    summary.xpGained as Record<string, number>,
+    second.summary.xpGained as Record<string, number>,
+  );
+  addRecord(
+    summary.levelsGained as Record<string, number>,
+    second.summary.levelsGained as Record<string, number>,
+  );
+  addRecord(summary.itemsGained, second.summary.itemsGained);
+  addRecord(summary.itemsUsed, second.summary.itemsUsed);
+  summary.enemiesDefeated += second.summary.enemiesDefeated;
+  summary.deaths += second.summary.deaths;
+  summary.goldGained += second.summary.goldGained;
+  summary.eliteEnemiesDefeated += second.summary.eliteEnemiesDefeated;
+  for (const key of Object.keys(summary.combatStats) as Array<keyof typeof summary.combatStats>)
+    summary.combatStats[key] += second.summary.combatStats[key];
+  summary.stoppedReason = second.summary.stoppedReason ?? summary.stoppedReason;
+  return {
+    state: second.state,
+    summary,
+    events: [...first.events, ...second.events],
+  };
+};
+
 const withItem = (itemId: string): DebugActionResult | null =>
   itemById[itemId] ? null : failure(`Unknown item ID: ${itemId}.`);
 
@@ -170,32 +208,31 @@ export const debugToggleLock = (state: GameState, itemId: string): DebugMutation
   });
 };
 
-const appendRepeatedValidStacks = (inventory: GameState['inventory']): GameState['inventory'] => {
-  const next = inventory.map((stack) => ({ ...stack }));
-  const fillerItems = ITEMS.filter((item) => !item.slot);
-  let itemIndex = 0;
-  while (occupiedSlots(next) < GAME_CONFIG.inventorySlots) {
-    const item = fillerItems[itemIndex % fillerItems.length] ?? ITEMS[itemIndex % ITEMS.length];
-    next.push({ itemId: item.id, quantity: 1, locked: false });
-    itemIndex += 1;
-  }
-  return next;
-};
-
-export const debugFillInventory = (state: GameState): DebugMutation =>
-  mutate(
-    state,
-    `Filled Inventory to ${GAME_CONFIG.inventorySlots} occupied slots.`,
-    (next) => {
-      next.inventory = appendRepeatedValidStacks(next.inventory);
-    },
-    {
-      details: [
-        'Only current registry item IDs were used.',
-        'Existing stacks and order were preserved.',
-      ],
-    },
+export const debugFillInventory = (state: GameState): DebugMutation => {
+  const missingItems = ITEMS.filter(
+    (item) => !state.inventory.some((stack) => stack.itemId === item.id && stack.quantity > 0),
   );
+  const nextInventory = state.inventory.map((stack) => ({ ...stack }));
+  for (const item of missingItems) {
+    const added = addItem(
+      nextInventory,
+      item.id,
+      item.stackable ? 10 : 1,
+      GAME_CONFIG.inventorySlots,
+    );
+    nextInventory.splice(0, nextInventory.length, ...added.inventory);
+  }
+  return {
+    result: success(
+      `Added ${missingItems.length} unique item stack${missingItems.length === 1 ? '' : 's'}.`,
+      [
+        `Inventory now contains ${occupiedSlots(nextInventory)} of ${GAME_CONFIG.inventorySlots} occupied slots.`,
+        'Existing stacks and order were preserved; no duplicate item IDs were created.',
+      ],
+    ),
+    state: normalizeAfterMutation({ ...state, inventory: nextInventory }),
+  };
+};
 
 export const debugClearInventory = (state: GameState): DebugMutation =>
   mutate(state, 'Cleared all Inventory stacks.', (next) => {
@@ -274,8 +311,32 @@ export const debugForceSetQuantity = (
   );
 };
 
-export const debugForceOneStackOverCapacity = (state: GameState, itemId: string): DebugMutation =>
-  debugForceSetQuantity(state, itemId, GAME_CONFIG.inventorySlots + 1);
+export const debugForceLargeStackQuantity = (
+  state: GameState,
+  itemId: string,
+  quantity = 999_999,
+): DebugMutation => {
+  const itemError = withItem(itemId);
+  if (itemError) return { result: itemError };
+  const amount = parseDebugInteger(quantity, 1);
+  if (amount === null) return { result: failure('Quantity must be a positive integer.') };
+  if (!state.inventory.some((stack) => stack.itemId === itemId && stack.quantity > 0))
+    return { result: failure('That item is not in the inventory.') };
+  return mutate(
+    state,
+    `Force-set ${itemById[itemId].name} to ${amount}.`,
+    (next) => {
+      const existing = next.inventory.find((stack) => stack.itemId === itemId);
+      if (existing) existing.quantity = amount;
+    },
+    {
+      details: [
+        'This tests a large stack quantity only; occupied-slot capacity is unchanged.',
+        'The one-stack-per-item-ID invariant was preserved.',
+      ],
+    },
+  );
+};
 
 export const debugGrantAndEquip = (state: GameState, itemId: string): DebugMutation => {
   const itemError = withItem(itemId);
@@ -309,6 +370,33 @@ export const debugUnequipSlot = (state: GameState, slot: EquipmentSlot): DebugMu
         state: normalizeAfterMutation(result.state),
       }
     : { result: failure(result.message) };
+};
+
+export const debugSimulateFullInventoryUnequip = (
+  state: GameState,
+  slot: EquipmentSlot,
+): DebugMutation => {
+  if (!state.equipment[slot])
+    return {
+      result: failure('That equipment slot is empty.', ['No gameplay state was changed.']),
+      save: false,
+    };
+  const result = unequipItem(state, slot, occupiedSlots(state.inventory));
+  if (result.ok)
+    return {
+      result: failure(
+        'The simulated unequip did not reject because the item could merge into an existing stack.',
+        ['No gameplay state was changed.'],
+      ),
+      save: false,
+    };
+  return {
+    result: success('Unequip correctly rejected because no effective slot was available.', [
+      'No equipment was lost.',
+      'This was a read-only capacity simulation; Inventory and equipment were unchanged.',
+    ]),
+    save: false,
+  };
 };
 
 const tierItemIds = (tier: 'bronze' | 'iron' | 'steel'): string[] =>
@@ -406,24 +494,35 @@ export const debugDamagePlayer = (state: GameState, amount: number): DebugMutati
 };
 
 export const debugKillPlayer = (state: GameState): DebugMutation =>
-  mutate(
-    state,
-    'Set player HP to 0 and queued normal combat death handling.',
-    (next) => {
-      next.player.currentHp = 0;
-      if (next.activeAction.type === 'combat')
-        next.activeAction = {
-          ...next.activeAction,
-          // Let the normal enemy attack/death branch resolve before the player attack branch.
-          combatState: {
-            ...next.activeAction.combatState,
-            playerAttackMs: 999_999,
-            enemyAttackMs: 0,
-          },
-        };
-    },
-    { clampHealth: false },
-  );
+  (() => {
+    if (state.activeAction.type !== 'combat') return { result: failure('Combat is not active.') };
+    const prepared = structuredClone(state);
+    prepared.player.currentHp = 0;
+    if (prepared.activeAction.type !== 'combat')
+      return { result: failure('Combat is not active.') };
+    prepared.activeAction.combatState = {
+      ...prepared.activeAction.combatState,
+      playerAttackMs: 999_999,
+      enemyAttackMs: 0,
+    };
+    let combined = simulateElapsed(prepared, getTimeUntilNextCombatEvent(prepared) ?? 1);
+    for (let attempt = 0; attempt < 20 && combined.summary.deaths === 0; attempt += 1) {
+      if (combined.state.activeAction.type !== 'combat') break;
+      const step = getTimeUntilNextCombatEvent(combined.state) ?? 1;
+      const next = simulateElapsed(combined.state, step);
+      combined = combineSimulationResults(combined, next);
+    }
+    if (combined.summary.deaths === 0)
+      return { result: failure('The normal Combat death pipeline did not resolve.') };
+    return {
+      result: success('Resolved player death through the normal Combat death pipeline.', [
+        'Combat stopped and normal post-death HP was restored.',
+      ]),
+      state: combined.state,
+      summary: combined.summary,
+      events: combined.events,
+    };
+  })();
 
 export const debugSetSkillLevel = (
   state: GameState,
@@ -464,6 +563,44 @@ export const debugAddSkillLevels = (
     const target = Math.min(MAX_LEVEL, next.skills[skillId].level + amount);
     next.skills[skillId] = { level: target, xp: getXpForLevel(target) };
   });
+};
+
+const skillDisplayName = (skill: SkillId): string =>
+  skill === 'hitpoints' ? 'Hitpoints' : `${skill[0].toUpperCase()}${skill.slice(1)}`;
+
+const uniqueSkills = (skills: readonly SkillId[]): SkillId[] => [...new Set(skills)];
+
+export const debugResetSkills = (state: GameState, skills: readonly SkillId[]): DebugMutation => {
+  const targets = uniqueSkills(skills);
+  const invalid = targets.find((skill) => withSkill(skill));
+  if (invalid) return { result: failure(`Unknown skill: ${invalid}.`) };
+  return mutate(state, `Reset ${targets.map(skillDisplayName).join(', ')} to level 1.`, (next) => {
+    for (const skill of targets) next.skills[skill] = { level: 1, xp: 0 };
+  });
+};
+
+export const debugAddLevelsToSkills = (
+  state: GameState,
+  skills: readonly SkillId[],
+  levels: number,
+): DebugMutation => {
+  const targets = uniqueSkills(skills);
+  const invalid = targets.find((skill) => withSkill(skill));
+  if (invalid) return { result: failure(`Unknown skill: ${invalid}.`) };
+  const amount = parseDebugInteger(levels, 1, MAX_LEVEL);
+  if (amount === null) return { result: failure('Level amount must be a positive integer.') };
+  return mutate(
+    state,
+    `Added ${amount} level threshold${amount === 1 ? '' : 's'} to ${targets
+      .map(skillDisplayName)
+      .join(', ')}.`,
+    (next) => {
+      for (const skill of targets) {
+        const target = Math.min(MAX_LEVEL, next.skills[skill].level + amount);
+        next.skills[skill] = { level: target, xp: getXpForLevel(target) };
+      }
+    },
+  );
 };
 
 export const debugMaxAllSkills = (state: GameState): DebugMutation =>
@@ -571,7 +708,11 @@ export const debugStartCombat = (
   if (!areaById[areaId] || !enemy || enemy.areaId !== areaId)
     return { result: failure('Select a current enemy from its registered Combat area.') };
   const next = startCombat(state, areaId, enemy.id, style, autoRepeat, Date.now(), true);
-  return { result: success(`Started combat against ${enemy.name}.`), state: next };
+  return {
+    result: success(`Started combat against ${enemy.name}.`),
+    state: next,
+    replaceCombatSession: true,
+  };
 };
 
 export const debugStopAction = (state: GameState): DebugMutation =>
@@ -592,6 +733,7 @@ export const debugAdvanceElapsed = (state: GameState, elapsedMs: number): DebugM
     ]),
     state: result.state,
     summary: result.summary,
+    events: result.events,
   };
 };
 
@@ -610,7 +752,8 @@ export const debugAdvanceOneCycle = (state: GameState): DebugMutation => {
       ? debugAdvanceElapsed(state, Math.max(1, recipe.intervalMs - state.activeAction.progressMs))
       : { result: failure('Unknown Smithing recipe.') };
   }
-  if (state.activeAction.type === 'combat') return debugAdvanceElapsed(state, 1000);
+  if (state.activeAction.type === 'combat')
+    return debugAdvanceElapsed(state, getTimeUntilNextCombatEvent(state) ?? 1);
   return { result: failure('No active action to advance.') };
 };
 
@@ -627,6 +770,7 @@ export const debugOfflineSimulation = (state: GameState, elapsedMs: number): Deb
     ]),
     state: result.state,
     summary: result.summary,
+    events: result.events,
   };
 };
 
@@ -700,19 +844,24 @@ export const debugResetCurrentEnemy = (state: GameState): DebugMutation => {
 
 export const debugKillCurrentEnemy = (state: GameState): DebugMutation => {
   if (state.activeAction.type !== 'combat') return { result: failure('Combat is not active.') };
+  if (state.player.currentHp <= 0)
+    return { result: failure('The player has no HP and cannot kill the current enemy.') };
   const prepared = structuredClone(state);
   const combatAction = prepared.activeAction;
   if (combatAction.type !== 'combat') return { result: failure('Combat is not active.') };
-  prepared.player.currentHp = getDerivedStats(prepared, combatAction.style).maxHealth;
+  combatAction.autoRepeat = false;
   combatAction.combatState = {
     ...combatAction.combatState,
     enemyHp: 1,
     playerAttackMs: 0,
     enemyAttackMs: 999_999,
   };
-  let result = simulateElapsed(prepared, 1);
-  for (let attempt = 0; attempt < 10 && result.summary.enemiesDefeated === 0; attempt += 1)
-    result = simulateElapsed(result.state, 3_000);
+  let result = simulateElapsed(prepared, getTimeUntilNextCombatEvent(prepared) ?? 1);
+  for (let attempt = 0; attempt < 20 && result.summary.enemiesDefeated === 0; attempt += 1) {
+    if (result.state.activeAction.type !== 'combat') break;
+    const next = simulateElapsed(result.state, getTimeUntilNextCombatEvent(result.state) ?? 1);
+    result = combineSimulationResults(result, next);
+  }
   if (result.summary.enemiesDefeated === 0)
     return { result: failure('The normal combat pipeline did not defeat the current enemy.') };
   return {
@@ -722,6 +871,7 @@ export const debugKillCurrentEnemy = (state: GameState): DebugMutation => {
     ),
     state: result.state,
     summary: result.summary,
+    events: result.events,
   };
 };
 
@@ -730,6 +880,7 @@ export const debugApplyPreset = (state: GameState, preset: DebugPresetId): Debug
   return {
     result: success(result.message, result.details),
     state: normalizeAfterMutation(result.state, true),
+    replaceCombatSession: true,
   };
 };
 
@@ -746,7 +897,19 @@ export const debugMigrateFixture = (state: GameState, fixture: GameState): Debug
       'Profile identity and name were preserved.',
     ]),
     state: normalizeAfterMutation(next),
+    replaceCombatSession: true,
   };
+};
+
+let debugSaveQueue: Promise<unknown> = Promise.resolve();
+
+export const enqueueDebugSave = (save: () => Promise<boolean>): Promise<boolean> => {
+  const queued = debugSaveQueue.then(save, save);
+  debugSaveQueue = queued.then(
+    () => undefined,
+    () => undefined,
+  );
+  return queued;
 };
 
 export const createDebugController = (runtime: DebugRuntime) => ({
@@ -754,12 +917,16 @@ export const createDebugController = (runtime: DebugRuntime) => ({
     const game = runtime.getGame();
     const outcome = withGame(game, operation);
     if (!outcome.result.ok || !outcome.state) return outcome.result;
-    runtime.setGame(outcome.state, outcome.summary);
-    if (outcome.save !== false) void runtime.saveNow();
+    runtime.applyMutation(outcome.state, {
+      summary: outcome.summary,
+      events: outcome.events,
+      replaceCombatSession: outcome.replaceCombatSession,
+    });
+    if (outcome.save !== false) void enqueueDebugSave(() => runtime.saveNow());
     return outcome.result;
   },
   save(): Promise<boolean> {
-    return runtime.saveNow();
+    return enqueueDebugSave(() => runtime.saveNow());
   },
 });
 

@@ -699,6 +699,16 @@ export const simulateElapsed = (
   return { state, summary, events };
 };
 
+export const getTimeUntilNextCombatEvent = (state: GameState): number | null => {
+  if (state.activeAction.type !== 'combat') return null;
+  const combatState = state.activeAction.combatState;
+  if (combatState.respawnMs > 0) return Math.max(1, combatState.respawnMs);
+  const timers = [combatState.playerAttackMs, combatState.enemyAttackMs];
+  if (timers.some((timer) => timer <= 0)) return 1;
+  const next = Math.min(...timers.filter((timer) => Number.isFinite(timer) && timer > 0));
+  return Number.isFinite(next) ? Math.max(1, next) : 1;
+};
+
 export const progressRatio = (action: ActiveAction, now: number, state: GameState): number => {
   if (action.type === 'mining') {
     const node = miningNodeById[action.nodeId];

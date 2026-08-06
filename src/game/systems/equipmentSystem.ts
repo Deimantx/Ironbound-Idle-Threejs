@@ -39,10 +39,14 @@ export const equipItem = (state: GameState, itemId: string): EquipmentResult => 
   };
 };
 
-export const unequipItem = (state: GameState, slot: EquipmentSlot): EquipmentResult => {
+export const unequipItem = (
+  state: GameState,
+  slot: EquipmentSlot,
+  inventoryCapacity: number = GAME_CONFIG.inventorySlots,
+): EquipmentResult => {
   const itemId = state.equipment[slot];
   if (!itemId) return { state, ok: false, message: 'That slot is already empty.' };
-  const result = addItem(state.inventory, itemId, 1, GAME_CONFIG.inventorySlots);
+  const result = addItem(state.inventory, itemId, 1, inventoryCapacity);
   if (result.rejected)
     return { state, ok: false, message: 'Make room in your inventory before unequipping.' };
   const nextEquipment: EquipmentLoadout = { ...state.equipment };

@@ -34,6 +34,7 @@ Core MVP workflow is implemented and verified by the project checks.
 - [x] Debug Tools 2.0: authoritative Equipment controls and Bronze/Iron/Steel presets, exact skill XP/level and Gold controls, Combat HP/enemy/kill/unlock tools, and profession cycles
 - [x] Debug Tools 2.0: deterministic active-action advancement, capped offline replay, save/UI preference actions, current-schema validation, and fresh legacy Armor/Shield migration fixtures
 - [x] Debug Tools 2.0: centralized debug mutation boundary, destructive confirmations, responsive accessible overlay, focused action/preset/fixture/UI tests, and production-bundle absence check
+- [x] Debug Tools 2.0.1: one-stack Inventory invariant, truthful current-item fill and capacity simulation, large-stack quantity testing, preserved Combat sessions with merged simulation events, serialized and batched debug mutations, next-event Combat stepping, low-HP enemy kills, immediate Combat death resolution, live Inventory preference reset, and modular debug panel files
 - [x] Unit and UI integration tests for formulas, inventory, equipment, actions, persistence, and navigation
 - [x] README and content guide
 

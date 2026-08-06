@@ -18,11 +18,17 @@ import {
   debugStartCombat,
   debugStartMining,
   debugStartSmithing,
+  debugSimulateFullInventoryUnequip,
+  debugForceLargeStackQuantity,
   debugUnequipSlot,
 } from '../game/debug/debugActions';
 import { DEBUG_PRESETS } from '../game/debug/debugPresets';
 import { createNewGame } from '../game/state/initialState';
-import { getItemQuantity } from '../game/systems/inventorySystem';
+import {
+  getItemQuantity,
+  hasDuplicateInventoryItemIds,
+  occupiedSlots,
+} from '../game/systems/inventorySystem';
 import { savePayloadSchema } from '../game/persistence/saveSchema';
 import type { GameState } from '../game/types';
 
@@ -38,7 +44,8 @@ describe('Debug Tools action boundary', () => {
     state = second.state!;
     expect(getItemQuantity(state.inventory, 'iron-sword')).toBe(3);
     const full = debugFillInventory(state);
-    expect(full.state?.inventory).toHaveLength(GAME_CONFIG.inventorySlots);
+    expect(full.state?.inventory.length).toBeLessThan(GAME_CONFIG.inventorySlots);
+    expect(hasDuplicateInventoryItemIds(full.state?.inventory ?? [])).toBe(false);
     expect(full.state?.inventory.every((stack) => itemById[stack.itemId])).toBe(true);
   });
 
@@ -50,14 +57,35 @@ describe('Debug Tools action boundary', () => {
   });
 
   it('grants and equips through the authoritative equipment system', () => {
-    const result = debugGrantAndEquip(fresh(), 'iron-sword');
-    expect(result.result.ok).toBe(true);
-    expect(result.state?.equipment.weapon).toBe('iron-sword');
-    expect(getItemQuantity(result.state?.inventory ?? [], 'iron-sword')).toBe(0);
-    const filled = debugFillInventory(result.state!).state!;
-    const rejected = debugUnequipSlot(filled, 'weapon');
-    expect(rejected.result.ok).toBe(false);
-    expect(rejected.state).toBeUndefined();
+    const equipped = debugGrantAndEquip(fresh(), 'iron-sword');
+    expect(equipped.result.ok).toBe(true);
+    expect(equipped.state?.equipment.weapon).toBe('iron-sword');
+    expect(getItemQuantity(equipped.state?.inventory ?? [], 'iron-sword')).toBe(0);
+    const inventoryBeforeSimulation = structuredClone(equipped.state!.inventory);
+    const equipmentBeforeSimulation = structuredClone(equipped.state!.equipment);
+    const simulated = debugSimulateFullInventoryUnequip(equipped.state!, 'weapon');
+    expect(simulated.result).toEqual({
+      ok: true,
+      message: 'Unequip correctly rejected because no effective slot was available.',
+      details: [
+        'No equipment was lost.',
+        'This was a read-only capacity simulation; Inventory and equipment were unchanged.',
+      ],
+    });
+    expect(simulated.save).toBe(false);
+    expect(simulated.state).toBeUndefined();
+    expect(equipped.state?.inventory).toEqual(inventoryBeforeSimulation);
+    expect(equipped.state?.equipment).toEqual(equipmentBeforeSimulation);
+    const normal = debugUnequipSlot(equipped.state!, 'weapon');
+    expect(normal.result.ok).toBe(true);
+  });
+
+  it('forces large quantities without changing occupied-slot capacity', () => {
+    const added = debugAddItem(fresh(), 'iron-ore', 1).state!;
+    const state = debugForceLargeStackQuantity(added, 'iron-ore').state!;
+    expect(getItemQuantity(state.inventory, 'iron-ore')).toBe(999_999);
+    expect(occupiedSlots(state.inventory)).toBe(1);
+    expect(hasDuplicateInventoryItemIds(state.inventory)).toBe(false);
   });
 
   it('sets exact XP through thresholds and clamps gold and HP safely', () => {
@@ -98,6 +126,8 @@ describe('Debug Tools action boundary', () => {
       expect(result.state?.player.currentHp).toBeLessThanOrEqual(
         getDerivedStats(result.state!).maxHealth,
       );
+      expect(hasDuplicateInventoryItemIds(result.state?.inventory ?? [])).toBe(false);
+      expect(result.state?.inventory.every((stack) => itemById[stack.itemId])).toBe(true);
       expect(savePayloadSchema.safeParse(result.state).success).toBe(true);
     }
   });

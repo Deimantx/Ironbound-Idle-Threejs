@@ -1030,7 +1030,7 @@ describe('navigation integration', () => {
     await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
     await user.click(screen.getByRole('button', { name: 'Fight' }));
     await user.click(screen.getByRole('button', { name: 'Open debug menu' }));
-    await user.click(screen.getByRole('button', { name: 'Suicide player' }));
+    await user.click(screen.getByRole('button', { name: 'Kill Player' }));
 
     await waitFor(
       () => expect(screen.getByRole('dialog', { name: 'You died' })).toBeInTheDocument(),

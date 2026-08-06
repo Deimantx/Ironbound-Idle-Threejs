@@ -20,7 +20,11 @@ import {
   type InventoryDropPosition,
   type InventorySortMode,
 } from './inventoryOrdering';
-import { loadInventoryViewPreferences, saveInventoryViewPreferences } from './inventoryPreferences';
+import {
+  INVENTORY_PREFERENCES_RESET_EVENT,
+  loadInventoryViewPreferences,
+  saveInventoryViewPreferences,
+} from './inventoryPreferences';
 import {
   getInventoryGroupCounts,
   getInventoryFilterLabel,
@@ -126,6 +130,21 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
     setMobileDetailsOpen(false);
     clearDragState();
     clearClickSuppression();
+  }, [clearClickSuppression, clearDragState, game.profileId]);
+
+  useEffect(() => {
+    const resetPreferences = (event: Event) => {
+      const profileId = (event as CustomEvent<{ profileId?: string }>).detail?.profileId;
+      if (profileId !== game.profileId) return;
+      skipPreferencePersistRef.current = true;
+      setViewPreferences(loadInventoryViewPreferences(game.profileId));
+      setSelectedItemId(null);
+      setMobileDetailsOpen(false);
+      clearDragState();
+      clearClickSuppression();
+    };
+    window.addEventListener(INVENTORY_PREFERENCES_RESET_EVENT, resetPreferences);
+    return () => window.removeEventListener(INVENTORY_PREFERENCES_RESET_EVENT, resetPreferences);
   }, [clearClickSuppression, clearDragState, game.profileId]);
 
   useEffect(() => {
