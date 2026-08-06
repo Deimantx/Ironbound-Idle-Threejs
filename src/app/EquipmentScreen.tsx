@@ -1,4 +1,18 @@
-import { ChevronDown, Sparkles } from 'lucide-react';
+import {
+  Circle,
+  ChevronDown,
+  Flag,
+  Footprints,
+  Gem,
+  Hand,
+  HardHat,
+  Pickaxe,
+  Shirt,
+  Shield,
+  Sparkles,
+  Sword,
+  type LucideIcon,
+} from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { itemById } from '../content/items';
 import { getDerivedStats } from '../game/formulas/statFormulas';
@@ -17,6 +31,7 @@ import {
   getDerivedStatComparison,
   getEquipmentBonusComparison,
   getEquipmentBonusLabel,
+  getEquipmentEmptyState,
   getEquipmentPreviewState,
 } from './equipmentView';
 import { formatNumber } from './formatters';
@@ -96,6 +111,27 @@ const formatCombatStatDelta = (id: string, current: number, candidate: number): 
   return `${delta > 0 ? '+' : ''}${delta}`;
 };
 
+const EMPTY_SLOT_ICONS: Record<ActiveEquipmentSlot, LucideIcon> = {
+  head: HardHat,
+  armor: Shirt,
+  gloves: Hand,
+  boots: Footprints,
+  weapon: Sword,
+  offhand: Shield,
+  amulet: Gem,
+  ring: Circle,
+  cape: Flag,
+  tool: Pickaxe,
+};
+
+const CONTENT_BEARING_SLOTS = new Set<ActiveEquipmentSlot>([
+  'head',
+  'armor',
+  'weapon',
+  'offhand',
+  'tool',
+]);
+
 function EquipmentSlotCard({
   game,
   slot,
@@ -128,7 +164,15 @@ function EquipmentSlotCard({
           <small>{item.name}</small>
         </>
       ) : (
-        <span className="empty-slot">Empty</span>
+        <>
+          <span className="equipment-empty-slot-icon">
+            {(() => {
+              const Icon = EMPTY_SLOT_ICONS[slot];
+              return <Icon size={18} aria-hidden="true" />;
+            })()}
+          </span>
+          <span className="empty-slot">Empty</span>
+        </>
       )}
     </button>
   );
@@ -206,6 +250,11 @@ function ProfessionBonuses({
   const currentBenefit = formatMiningBenefit(row.current);
   const candidateBenefit = formatMiningBenefit(row.candidate);
   const improvement = Math.round((row.current - row.candidate) * 100);
+  const summary = candidateItem
+    ? `Preview ${candidateBenefit}`
+    : currentTool
+      ? `Mining ${currentBenefit}`
+      : 'No tool equipped';
   return (
     <section className="equipment-profession-bonuses" aria-labelledby="profession-bonuses-title">
       <button
@@ -216,6 +265,7 @@ function ProfessionBonuses({
         onClick={onToggle}
       >
         <span id="profession-bonuses-title">Profession Bonuses</span>
+        <span className="equipment-profession-toggle-summary">{summary}</span>
         <ChevronDown className={expanded ? 'is-expanded' : ''} size={15} aria-hidden="true" />
       </button>
       {expanded && (
@@ -263,8 +313,11 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
   const unequip = useGameStore((store) => store.unequip);
   const [selectedSlot, setSelectedSlot] = useState<ActiveEquipmentSlot>(() => getDefaultSlot(game));
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
-  const [professionExpanded, setProfessionExpanded] = useState(false);
+  const [professionExpanded, setProfessionExpanded] = useState(
+    () => getDefaultSlot(game) === 'tool',
+  );
   const profileIdRef = useRef(game.profileId);
+  const statsPanelScale = uiLayout.screenPanels.equipment?.equipmentStats?.scale ?? 1;
 
   const compatibleStacks = useMemo(
     () => getCompatibleEquipmentStacks(game.inventory, itemById, selectedSlot),
@@ -281,11 +334,16 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
   }, [selectedCandidate, selectedCandidateId]);
 
   useEffect(() => {
+    if (selectedSlot !== 'tool' && !game.equipment.tool) setProfessionExpanded(false);
+  }, [game.equipment.tool, selectedSlot]);
+
+  useEffect(() => {
     if (profileIdRef.current === game.profileId) return;
     profileIdRef.current = game.profileId;
-    setSelectedSlot(getDefaultSlot(game));
+    const nextSlot = getDefaultSlot(game);
+    setSelectedSlot(nextSlot);
     setSelectedCandidateId(null);
-    setProfessionExpanded(false);
+    setProfessionExpanded(nextSlot === 'tool');
   }, [game]);
 
   const selectSlot = (slot: ActiveEquipmentSlot): void => {
@@ -306,7 +364,6 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
         eyebrow="Character · Loadout"
         title="Equipment"
         description="Equip forged gear, compare upgrades, and shape your combat statistics."
-        trailing={<span className="badge gold">9 combat slots · 1 tool</span>}
       />
       <div className="ui-panel-grid equipment-panel-grid" data-ui-panel-grid="equipment">
         <UiPanelSlot screen="equipment" id="equipmentLoadout" layout={uiLayout}>
@@ -320,7 +377,9 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
             <section className="equipment-combat-section" aria-labelledby="combat-gear-title">
               <div className="equipment-section-heading">
                 <div className="eyebrow">Combat Gear</div>
-                <h3 id="combat-gear-title">Combat Gear</h3>
+                <h3 id="combat-gear-title" className="visually-hidden">
+                  Combat Gear
+                </h3>
               </div>
               <div className="equipment-combat-grid">
                 {COMBAT_GEAR_MAIN_SLOTS.map((slot) => (
@@ -337,7 +396,9 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
 
             <section className="equipment-accessory-section" aria-labelledby="accessories-title">
               <div className="eyebrow">Accessories</div>
-              <h3 id="accessories-title">Accessories</h3>
+              <h3 id="accessories-title" className="visually-hidden">
+                Accessories
+              </h3>
               <div className="equipment-accessory-grid">
                 {ACCESSORY_EQUIPMENT_SLOTS.map((slot) => (
                   <EquipmentSlotCard
@@ -356,123 +417,152 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
               aria-labelledby="profession-equipment-title"
             >
               <div className="eyebrow">Profession Equipment</div>
-              <h3 id="profession-equipment-title">Profession Equipment</h3>
-              <div className="equipment-tool-card">
-                <EquipmentSlotCard
-                  game={game}
-                  slot="tool"
-                  selected={selectedSlot === 'tool'}
-                  onSelect={selectSlot}
-                />
-                {!game.equipment.tool && <small>No profession bonus</small>}
-                {game.equipment.tool && itemById[game.equipment.tool] && (
-                  <small>
-                    Mining actions{' '}
-                    {Math.round((itemById[game.equipment.tool].bonuses?.miningSpeed ?? 0) * 100)}%
-                    faster
-                  </small>
-                )}
+              <h3 id="profession-equipment-title" className="visually-hidden">
+                Profession Equipment
+              </h3>
+              <div className="equipment-tool-grid">
+                <div className="equipment-tool-card">
+                  <EquipmentSlotCard
+                    game={game}
+                    slot="tool"
+                    selected={selectedSlot === 'tool'}
+                    onSelect={selectSlot}
+                  />
+                  {!game.equipment.tool && <small>No profession bonus</small>}
+                  {game.equipment.tool && itemById[game.equipment.tool] && (
+                    <small>
+                      Mining actions{' '}
+                      {Math.round((itemById[game.equipment.tool].bonuses?.miningSpeed ?? 0) * 100)}%
+                      faster
+                    </small>
+                  )}
+                </div>
               </div>
             </section>
 
-            <section className="equipment-selected-slot" aria-labelledby="selected-slot-title">
-              <div className="eyebrow">Selected slot</div>
-              <h2 id="selected-slot-title">{getEquipmentSlotLabel(selectedSlot)}</h2>
-              <div className="equipment-inspection-grid">
-                <ItemSummary
-                  heading="Currently equipped"
-                  item={currentItem}
-                  itemId={currentItemId}
-                  scope={scope}
-                />
-                {candidateItem && (
+            <div className="equipment-loadout-workspace">
+              <section
+                className="equipment-selected-slot equipment-loadout-inspection"
+                aria-labelledby="selected-slot-title"
+              >
+                <div className="eyebrow">Selected slot</div>
+                <h2 id="selected-slot-title">{getEquipmentSlotLabel(selectedSlot)}</h2>
+                <div className="equipment-inspection-grid">
                   <ItemSummary
-                    heading="Selected candidate"
-                    item={candidateItem}
-                    quantity={selectedCandidate?.quantity}
+                    heading="Currently equipped"
+                    item={currentItem}
+                    itemId={currentItemId}
                     scope={scope}
                   />
-                )}
-              </div>
-              <div className="button-row equipment-action-row">
-                {candidateItem && (
-                  <button
-                    type="button"
-                    className="button primary"
-                    onClick={() => equip(candidateItem.id)}
-                  >
-                    {currentItem ? `Replace ${currentItem.name}` : 'Equip'}
-                  </button>
-                )}
-                {currentItemId && (
-                  <button
-                    type="button"
-                    className="button ghost"
-                    onClick={() => unequip(selectedSlot)}
-                  >
-                    Unequip
-                  </button>
-                )}
-              </div>
-            </section>
+                  {candidateItem && (
+                    <ItemSummary
+                      heading="Selected candidate"
+                      item={candidateItem}
+                      quantity={selectedCandidate?.quantity}
+                      scope={scope}
+                    />
+                  )}
+                </div>
+                <div className="button-row equipment-action-row">
+                  {candidateItem && (
+                    <button
+                      type="button"
+                      className="button primary"
+                      onClick={() => equip(candidateItem.id)}
+                    >
+                      {currentItem ? `Replace ${currentItem.name}` : 'Equip'}
+                    </button>
+                  )}
+                  {currentItemId && (
+                    <button
+                      type="button"
+                      className="button ghost"
+                      onClick={() => unequip(selectedSlot)}
+                    >
+                      Unequip
+                    </button>
+                  )}
+                </div>
+              </section>
 
-            <section className="equipment-compatible-bank" aria-labelledby="compatible-gear-title">
-              <div className="split equipment-section-heading">
-                <div>
-                  <div className="eyebrow">Compatible inventory</div>
-                  <h2 id="compatible-gear-title">Choose gear to inspect</h2>
+              <section
+                className="equipment-compatible-bank"
+                aria-labelledby="compatible-gear-title"
+              >
+                <div className="equipment-compatible-heading">
+                  <div>
+                    <div className="eyebrow">Compatible inventory</div>
+                    <h2 id="compatible-gear-title" className="visually-hidden">
+                      Compatible inventory
+                    </h2>
+                  </div>
+                  <span className="muted">
+                    {compatibleStacks.length} stack{compatibleStacks.length === 1 ? '' : 's'}
+                  </span>
                 </div>
-                <span className="muted">
-                  {compatibleStacks.length} stack{compatibleStacks.length === 1 ? '' : 's'}
-                </span>
-              </div>
-              {compatibleStacks.length > 0 ? (
-                <div className="equipment-candidate-grid">
-                  {compatibleStacks.map((stack) => {
-                    const item = itemById[stack.itemId];
-                    const selected = selectedCandidateId === stack.itemId;
-                    return (
-                      <button
-                        type="button"
-                        className={`equipment-candidate-card ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''}`}
-                        key={stack.itemId}
-                        onClick={() => setSelectedCandidateId(stack.itemId)}
-                        aria-pressed={selected}
-                        aria-label={`Inspect ${item?.name ?? 'Unknown item'}, quantity ${stack.quantity}${stack.locked ? ', locked' : ''}`}
-                      >
-                        <ItemIcon itemId={stack.itemId} size="sm" />
-                        <span>
-                          <strong>{item?.name ?? 'Unknown item'}</strong>
-                          <small>
-                            ×{formatNumber(stack.quantity)}
-                            {stack.locked ? ' · Locked' : ''}
-                          </small>
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="equipment-empty-compatible">
-                  <p>No compatible {getEquipmentSlotLabel(selectedSlot)} in Inventory</p>
-                  <small>
-                    Forge or collect equipment for this slot, then return here to compare it.
-                  </small>
-                  <button
-                    type="button"
-                    className="button ghost"
-                    onClick={() => onNavigate('inventory')}
-                  >
-                    Open Inventory
-                  </button>
-                </div>
-              )}
-            </section>
+                {compatibleStacks.length > 0 ? (
+                  <>
+                    <p className="equipment-compatible-subtitle">
+                      Select an item to preview its effects.
+                    </p>
+                    <div className="equipment-candidate-grid">
+                      {compatibleStacks.map((stack) => {
+                        const item = itemById[stack.itemId];
+                        const selected = selectedCandidateId === stack.itemId;
+                        return (
+                          <button
+                            type="button"
+                            className={`equipment-candidate-card ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''}`}
+                            key={stack.itemId}
+                            onClick={() => setSelectedCandidateId(stack.itemId)}
+                            aria-pressed={selected}
+                            aria-label={`Inspect ${item?.name ?? 'Unknown item'}, quantity ${stack.quantity}${stack.locked ? ', locked' : ''}`}
+                          >
+                            <ItemIcon itemId={stack.itemId} size="sm" />
+                            <span>
+                              <strong>{item?.name ?? 'Unknown item'}</strong>
+                              <small>
+                                ×{formatNumber(stack.quantity)}
+                                {stack.locked ? ' · Locked' : ''}
+                              </small>
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <div className="equipment-empty-compatible">
+                    {(() => {
+                      const emptyState = getEquipmentEmptyState(
+                        selectedSlot,
+                        CONTENT_BEARING_SLOTS.has(selectedSlot),
+                      );
+                      return (
+                        <>
+                          <p>{emptyState.message}</p>
+                          {emptyState.secondary && <small>{emptyState.secondary}</small>}
+                          {emptyState.showOpenInventory && (
+                            <button
+                              type="button"
+                              className="button ghost"
+                              onClick={() => onNavigate('inventory')}
+                            >
+                              Open Inventory
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
+              </section>
+            </div>
           </section>
         </UiPanelSlot>
         <UiPanelSlot screen="equipment" id="equipmentStats" layout={uiLayout}>
           <section
-            className="panel panel-pad equipment-comparison"
+            className={`panel panel-pad equipment-comparison equipment-stats-shell ${statsPanelScale === 1 ? 'equipment-stats-sticky-safe' : ''}`}
             aria-labelledby="equipment-stats-title"
           >
             <div className="eyebrow">Character statistics</div>
@@ -514,7 +604,7 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
               </section>
             )}
 
-            {selectedSlot === 'weapon' && (
+            {selectedSlot === 'weapon' && (currentSpecial || candidateSpecial) && (
               <section
                 className="equipment-stat-section equipment-special-comparison"
                 aria-labelledby="special-comparison-title"

@@ -47,6 +47,14 @@ describe('visual UI layout', () => {
     expect(layout.screenPanels.combat).toEqual(DEFAULT_COMBAT_PANEL_LAYOUT);
     expect(layout.screenPanels.inventory).toEqual(DEFAULT_INVENTORY_PANEL_LAYOUT);
     expect(layout.screenPanels.equipment).toEqual(DEFAULT_EQUIPMENT_PANEL_LAYOUT);
+    expect(layout.screenPanels.equipment?.equipmentLoadout).toMatchObject({
+      column: 1,
+      columnSpan: 7,
+    });
+    expect(layout.screenPanels.equipment?.equipmentStats).toMatchObject({
+      column: 8,
+      columnSpan: 5,
+    });
     expect(layout.screenPanels.mining).toEqual(DEFAULT_MINING_PANEL_LAYOUT);
     expect(layout.screenPanels.smithing).toEqual(DEFAULT_SMITHING_PANEL_LAYOUT);
   });
@@ -94,6 +102,22 @@ describe('visual UI layout', () => {
       columnSpan: 1,
       height: 0,
       scale: 1.5,
+    });
+  });
+
+  it('preserves an older saved six-six Equipment split', () => {
+    const layout = sanitizeUiLayout({
+      screenPanels: {
+        equipment: {
+          equipmentLoadout: { column: 1, row: 1, columnSpan: 6, scale: 1 },
+          equipmentStats: { column: 7, row: 1, columnSpan: 6, scale: 1 },
+        },
+      },
+    });
+
+    expect(layout.screenPanels.equipment).toMatchObject({
+      equipmentLoadout: { column: 1, columnSpan: 6 },
+      equipmentStats: { column: 7, columnSpan: 6 },
     });
   });
 

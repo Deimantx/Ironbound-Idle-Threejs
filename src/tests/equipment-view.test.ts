@@ -6,6 +6,7 @@ import {
   getCompatibleEquipmentStacks,
   getDerivedStatComparison,
   getEquipmentBonusComparison,
+  getEquipmentEmptyState,
   getEquipmentTierRank,
 } from '../app/equipmentView';
 import type { InventoryStack } from '../game/types';
@@ -86,5 +87,21 @@ describe('Equipment view helpers and separated bonuses', () => {
     expect(mining.id).toBe('miningIntervalMultiplier');
     expect(mining.delta).toBeLessThan(0);
     expect(mining.beneficial).toBe(true);
+  });
+
+  it('keeps content-bearing and no-content empty states honest', () => {
+    expect(getEquipmentEmptyState('weapon', true)).toEqual({
+      message: 'No compatible Weapons in Inventory.',
+      secondary: 'Forge or collect gear for this slot.',
+      showOpenInventory: true,
+    });
+    expect(getEquipmentEmptyState('offhand', true).message).toBe(
+      'No compatible Off-hand items in Inventory.',
+    );
+    expect(getEquipmentEmptyState('gloves', false)).toEqual({
+      message: 'No Gloves are currently available.',
+      showOpenInventory: false,
+    });
+    expect(getEquipmentEmptyState('cape', false).message).toBe('No Capes are currently available.');
   });
 });

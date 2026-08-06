@@ -241,6 +241,19 @@ describe('navigation integration', () => {
 
     await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
     expect(screen.getByText('9 combat slots · 1 tool')).toBeInTheDocument();
+    expect(document.querySelector('.equipment-loadout-workspace')).toBeInTheDocument();
+    expect(document.querySelector('.equipment-loadout-inspection')).toBeInTheDocument();
+    expect(document.querySelector('.equipment-compatible-bank')).toBeInTheDocument();
+    expect(document.querySelector('.equipment-stats-shell')).toHaveClass(
+      'equipment-stats-sticky-safe',
+    );
+    for (const heading of ['Combat Gear', 'Accessories', 'Profession Equipment']) {
+      expect(
+        screen
+          .getAllByText(heading, { exact: true })
+          .filter((element) => !element.classList.contains('visually-hidden')),
+      ).toHaveLength(1);
+    }
     for (const label of [
       'Helmet',
       'Armor',
@@ -259,6 +272,17 @@ describe('navigation integration', () => {
       screen.queryByText(/Amulet · Locked|Ring · Locked|Cape · Locked/),
     ).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Body|Legs/ })).not.toBeInTheDocument();
+    expect(
+      screen
+        .getByRole('button', { name: 'Gloves slot, empty' })
+        .querySelector('.equipment-empty-slot-icon'),
+    ).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole('button', { name: 'Armor slot, Bronze Armor' })
+        .querySelector('.equipment-empty-slot-icon'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Special Attacks')).not.toBeInTheDocument();
 
     const armorSlot = screen.getByRole('button', { name: 'Armor slot, Bronze Armor' });
     await user.click(armorSlot);
@@ -296,18 +320,71 @@ describe('navigation integration', () => {
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
 
-    const professionToggle = screen.getByRole('button', { name: 'Profession Bonuses' });
+    const professionToggle = screen.getByRole('button', { name: /Profession Bonuses/ });
     expect(professionToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(professionToggle).toHaveTextContent('No tool equipped');
+    expect(screen.getByText('No compatible Weapons in Inventory.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open Inventory' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Tool slot, empty' }));
     expect(professionToggle).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByText(/No profession tool equipped/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Inspect Bronze Pick/ })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Inspect Bronze Pick/ }));
+    expect(professionToggle).toHaveTextContent('Preview 10% faster');
     expect(screen.getByText(/Normal → 10% faster/)).toBeInTheDocument();
     expect(screen.queryByText('Special Attacks')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Gloves slot, empty' }));
+    expect(professionToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('No Gloves are currently available.')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Inventory' })).not.toBeInTheDocument();
+    for (const [slot, message] of [
+      ['Boots', 'No Boots are currently available.'],
+      ['Amulet', 'No Amulets are currently available.'],
+      ['Ring', 'No Rings are currently available.'],
+      ['Cape', 'No Capes are currently available.'],
+    ] as const) {
+      await user.click(screen.getByRole('button', { name: `${slot} slot, empty` }));
+      expect(screen.getByText(message)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Open Inventory' })).not.toBeInTheDocument();
+    }
+  });
+
+  it('shows Special Attacks only for a relevant weapon selection', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Special Tester');
+    game.settings.threeQuality = 'off';
+    game.equipment.weapon = 'bronze-sword';
+    game.inventory = [{ itemId: 'iron-sword', quantity: 1, locked: false }];
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
+    expect(screen.getByText('Special Attacks')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Weapon slot, Bronze Sword' }));
+    await user.click(screen.getByRole('button', { name: /Inspect Iron Sword/ }));
+    expect(screen.getByText('Candidate special')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Armor slot, empty' }));
+    expect(screen.queryByText('Special Attacks')).not.toBeInTheDocument();
+  });
+
+  it('preserves a manually expanded profession disclosure while a tool is equipped', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Equipped Tool Tester');
+    game.settings.threeQuality = 'off';
+    game.equipment.tool = 'bronze-pickaxe';
+    useGameStore.getState().setGame(game);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
+
+    const professionToggle = screen.getByRole('button', { name: /Profession Bonuses/ });
     expect(professionToggle).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByText('No compatible Gloves in Inventory')).toBeInTheDocument();
+    await user.click(professionToggle);
+    expect(professionToggle).toHaveAttribute('aria-expanded', 'false');
+    await user.click(professionToggle);
+    expect(professionToggle).toHaveAttribute('aria-expanded', 'true');
+    await user.click(screen.getByRole('button', { name: 'Weapon slot, empty' }));
+    expect(professionToggle).toHaveAttribute('aria-expanded', 'true');
+    expect(professionToggle).toHaveTextContent('Mining 10% faster');
   });
 
   it('shows the compact nine-slot equipment summary in Combat', async () => {

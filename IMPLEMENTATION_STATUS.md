@@ -12,6 +12,7 @@ Core MVP workflow is implemented and verified by the project checks.
 - [x] Equipment slots, atomic swap/unequip, derived combat/mining stats
 - [x] Equipment 2.0: unified Armor slot, compatible inventory candidates, item/derived-stat previews, and explicit Equip/Replace/Unequip actions
 - [x] Equipment 2.1: nine combat slots, one profession Tool slot, Shield-to-Off-hand migration, active Gloves/Boots/Amulet/Ring/Cape, separated combat/profession UI, and split attack/Mining speed bonuses
+- [x] Equipment 2.2: centered Armor loadout, tighter Gloves/Boots layout, compact slot cards with empty icons, 7/5 default panel split, responsive Selected/Compatible workspace, safe desktop sticky statistics, contextual Special Attacks, improved Profession Bonuses disclosure, concise empty states, and left-aligned Tool layout
 - [x] Automated interval combat, styles, auto-repeat, loot, gold, XP, deaths
 - [x] Three areas, six enemies, unlock requirements, collection discoveries
 - [x] Persistent action strip and navigation without stopping actions

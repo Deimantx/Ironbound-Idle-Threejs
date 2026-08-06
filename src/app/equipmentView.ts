@@ -29,6 +29,43 @@ export interface DerivedStatComparisonRow {
 
 export type EquipmentComparisonScope = 'combat' | 'profession';
 
+export interface EquipmentEmptyState {
+  message: string;
+  secondary?: string;
+  showOpenInventory: boolean;
+}
+
+const EQUIPMENT_EMPTY_LABELS: Record<ActiveEquipmentSlot, string> = {
+  head: 'Helmets',
+  armor: 'Armor',
+  gloves: 'Gloves',
+  boots: 'Boots',
+  weapon: 'Weapons',
+  offhand: 'Off-hand items',
+  amulet: 'Amulets',
+  ring: 'Rings',
+  cape: 'Capes',
+  tool: 'Tools',
+};
+
+export const getEquipmentEmptyState = (
+  slot: ActiveEquipmentSlot,
+  hasKnownContent: boolean,
+): EquipmentEmptyState => {
+  const label = EQUIPMENT_EMPTY_LABELS[slot];
+  if (!hasKnownContent) {
+    return {
+      message: `No ${label} are currently available.`,
+      showOpenInventory: false,
+    };
+  }
+  return {
+    message: `No compatible ${label} in Inventory.`,
+    secondary: 'Forge or collect gear for this slot.',
+    showOpenInventory: true,
+  };
+};
+
 const tierRank: Record<string, number> = { bronze: 1, iron: 2, steel: 3 };
 const rarityRank: Record<string, number> = { common: 1, uncommon: 2, rare: 3, epic: 4 };
 

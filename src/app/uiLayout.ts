@@ -63,8 +63,8 @@ export const DEFAULT_INVENTORY_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
 };
 
 export const DEFAULT_EQUIPMENT_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
-  equipmentLoadout: { column: 1, row: 1, columnSpan: 6, height: 0, scale: 1 },
-  equipmentStats: { column: 7, row: 1, columnSpan: 6, height: 0, scale: 1 },
+  equipmentLoadout: { column: 1, row: 1, columnSpan: 7, height: 0, scale: 1 },
+  equipmentStats: { column: 8, row: 1, columnSpan: 5, height: 0, scale: 1 },
 };
 
 export const DEFAULT_MINING_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
