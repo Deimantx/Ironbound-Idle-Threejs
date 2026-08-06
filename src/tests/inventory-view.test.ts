@@ -4,6 +4,7 @@ import type { InventoryStack } from '../game/types';
 import {
   getInventoryDisplayGroup,
   getInventoryGroupCounts,
+  getInventoryResultLabel,
   getVisibleInventoryStacks,
   matchesInventorySearch,
 } from '../app/inventoryView';
@@ -58,5 +59,11 @@ describe('inventory view helpers', () => {
       drops: 0,
       currency: 0,
     });
+  });
+
+  it('keeps the result label in the bank header vocabulary', () => {
+    expect(getInventoryResultLabel(3, 'all', '')).toBe('3 stacks');
+    expect(getInventoryResultLabel(8, 'equipment', '')).toBe('8 equipment stacks');
+    expect(getInventoryResultLabel(3, 'all', ' iron ')).toBe('3 results for "iron"');
   });
 });

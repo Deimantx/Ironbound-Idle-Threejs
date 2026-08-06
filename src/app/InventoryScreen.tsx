@@ -1,4 +1,5 @@
 import { PackageOpen, Search, X } from 'lucide-react';
+import type { DragEvent } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { itemById } from '../content/items';
@@ -10,12 +11,24 @@ import { InventoryDetailsDrawer } from './InventoryDetailsDrawer';
 import { InventoryItemCard } from './InventoryItemCard';
 import { InventoryItemDetails } from './InventoryItemDetails';
 import {
-  getInventoryFilterLabel,
+  INVENTORY_SORT_MODES,
+  isInventorySortMode,
+  reconcileManualOrder,
+  reorderVisibleSubset,
+  sortInventoryStacks,
+  type InventoryDropPosition,
+  type InventorySortMode,
+} from './inventoryOrdering';
+import { loadInventoryViewPreferences, saveInventoryViewPreferences } from './inventoryPreferences';
+import {
   getInventoryGroupCounts,
+  getInventoryFilterLabel,
+  getInventoryResultLabel,
   getVisibleInventoryStacks,
   INVENTORY_FILTERS,
   type InventoryFilter,
 } from './inventoryView';
+import type { InventoryViewPreferences } from './inventoryOrderingPreferences';
 import { ScreenHeading } from './ScreenHeading';
 import { UI_EDITOR_COMPACT_QUERY, type UiLayout } from './uiLayout';
 import { UiPanelSlot } from './UiPanelSlot';
@@ -38,6 +51,14 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [mobileDetailsOpen, setMobileDetailsOpen] = useState(false);
   const [confirmation, setConfirmation] = useState<ConfirmDialogOptions | null>(null);
+  const [viewPreferences, setViewPreferences] = useState<InventoryViewPreferences>(() =>
+    loadInventoryViewPreferences(game.profileId),
+  );
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{
+    itemId: string;
+    position: InventoryDropPosition;
+  } | null>(null);
   const [compactViewport, setCompactViewport] = useState(() =>
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       ? window.matchMedia(UI_EDITOR_COMPACT_QUERY).matches
@@ -45,6 +66,8 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
   );
   const cardRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const returnFocusRef = useRef<HTMLElement | null>(null);
+  const preferenceProfileRef = useRef(game.profileId);
+  const skipPreferencePersistRef = useRef(false);
   const equip = useGameStore((store) => store.equip);
   const destroy = useGameStore((store) => store.destroy);
   const toggleLock = useGameStore((store) => store.toggleLock);
@@ -62,13 +85,73 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
     };
   }, []);
 
+  useEffect(() => {
+    if (preferenceProfileRef.current === game.profileId) return;
+    preferenceProfileRef.current = game.profileId;
+    skipPreferencePersistRef.current = true;
+    setViewPreferences(loadInventoryViewPreferences(game.profileId));
+    setSelectedItemId(null);
+    setMobileDetailsOpen(false);
+    setDraggedItemId(null);
+    setDropTarget(null);
+  }, [game.profileId]);
+
+  useEffect(() => {
+    if (skipPreferencePersistRef.current) {
+      skipPreferencePersistRef.current = false;
+      return;
+    }
+    if (preferenceProfileRef.current === game.profileId) {
+      saveInventoryViewPreferences(game.profileId, viewPreferences);
+    }
+  }, [game.profileId, viewPreferences]);
+
+  const updateViewPreferences = (
+    update: (current: InventoryViewPreferences) => InventoryViewPreferences,
+  ) => {
+    setViewPreferences((current) => {
+      const next = update(current);
+      const unchanged =
+        next.sortMode === current.sortMode &&
+        next.sortDirection === current.sortDirection &&
+        next.lastAutoSortMode === current.lastAutoSortMode &&
+        next.manualOrder.length === current.manualOrder.length &&
+        next.manualOrder.every((itemId, index) => itemId === current.manualOrder[index]);
+      return unchanged ? current : next;
+    });
+  };
+
   const groupCounts = useMemo(
     () => getInventoryGroupCounts(game.inventory, itemById),
     [game.inventory],
   );
+  const currentInventoryIds = useMemo(
+    () => game.inventory.filter((stack) => stack.quantity > 0).map((stack) => stack.itemId),
+    [game.inventory],
+  );
+  const reconciledManualOrder = useMemo(
+    () => reconcileManualOrder(viewPreferences.manualOrder, currentInventoryIds),
+    [currentInventoryIds, viewPreferences.manualOrder],
+  );
+  const orderedStacks = useMemo(
+    () =>
+      sortInventoryStacks(
+        game.inventory,
+        itemById,
+        viewPreferences.sortMode,
+        viewPreferences.sortDirection,
+        reconciledManualOrder,
+      ),
+    [
+      game.inventory,
+      reconciledManualOrder,
+      viewPreferences.sortDirection,
+      viewPreferences.sortMode,
+    ],
+  );
   const visibleStacks = useMemo(
-    () => getVisibleInventoryStacks(game.inventory, itemById, filter, query),
-    [filter, game.inventory, query],
+    () => getVisibleInventoryStacks(orderedStacks, itemById, filter, query),
+    [filter, orderedStacks, query],
   );
   const occupied = useMemo(() => occupiedSlots(game.inventory), [game.inventory]);
   const capacityState = getCapacityState(occupied, GAME_CONFIG.inventorySlots);
@@ -81,6 +164,46 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
   const hasFilteredResults = visibleStacks.length > 0;
   const detailsHeadingId = 'inventory-selected-item-title';
   const drawerHeadingId = 'inventory-drawer-item-title';
+  const dragEnabled = !compactViewport && viewPreferences.sortMode === 'manual' && !confirmation;
+  const selectedSortLabel =
+    INVENTORY_SORT_MODES.find((mode) => mode.id === viewPreferences.sortMode)?.label ?? 'Category';
+  const directionLabel =
+    viewPreferences.sortMode === 'manual'
+      ? 'Manual order'
+      : viewPreferences.sortMode === 'quantity'
+        ? viewPreferences.sortDirection === 'asc'
+          ? 'Low to high'
+          : 'High to low'
+        : viewPreferences.sortMode === 'name'
+          ? viewPreferences.sortDirection === 'asc'
+            ? 'A to Z'
+            : 'Z to A'
+          : viewPreferences.sortDirection === 'asc'
+            ? 'Ascending'
+            : 'Descending';
+
+  useEffect(() => {
+    if (viewPreferences.sortMode !== 'manual') return;
+    if (
+      reconciledManualOrder.every(
+        (itemId, index) => itemId === viewPreferences.manualOrder[index],
+      ) &&
+      reconciledManualOrder.length === viewPreferences.manualOrder.length
+    )
+      return;
+    updateViewPreferences((current) => ({ ...current, manualOrder: reconciledManualOrder }));
+  }, [reconciledManualOrder, viewPreferences.manualOrder, viewPreferences.sortMode]);
+
+  useEffect(() => {
+    if (!draggedItemId) return undefined;
+    const cancelDrag = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape') return;
+      setDraggedItemId(null);
+      setDropTarget(null);
+    };
+    window.addEventListener('keydown', cancelDrag);
+    return () => window.removeEventListener('keydown', cancelDrag);
+  }, [draggedItemId]);
 
   useEffect(() => {
     if (!selectedItemId || selectedStack) return;
@@ -98,6 +221,83 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
   const resetFilters = () => {
     setQuery('');
     setFilter('all');
+  };
+
+  const snapshotDisplayedOrder = () =>
+    orderedStacks.filter((stack) => stack.quantity > 0).map((stack) => stack.itemId);
+
+  const selectSortMode = (mode: InventorySortMode) => {
+    if (mode === 'manual') {
+      updateViewPreferences((current) => ({
+        ...current,
+        sortMode: 'manual',
+        manualOrder: snapshotDisplayedOrder(),
+      }));
+      return;
+    }
+    updateViewPreferences((current) => ({
+      ...current,
+      sortMode: mode,
+      lastAutoSortMode: mode,
+    }));
+  };
+
+  const toggleAutoSort = (enabled: boolean) => {
+    if (enabled && viewPreferences.sortMode === 'manual') {
+      const mode = viewPreferences.lastAutoSortMode ?? 'category';
+      updateViewPreferences((current) => ({ ...current, sortMode: mode, lastAutoSortMode: mode }));
+      return;
+    }
+    if (!enabled && viewPreferences.sortMode !== 'manual') {
+      updateViewPreferences((current) => ({
+        ...current,
+        sortMode: 'manual',
+        manualOrder: snapshotDisplayedOrder(),
+      }));
+    }
+  };
+
+  const handleDragStart = (event: DragEvent<HTMLButtonElement>, itemId: string) => {
+    if (!dragEnabled) return;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', itemId);
+    setDraggedItemId(itemId);
+    setDropTarget(null);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLButtonElement>, itemId: string) => {
+    if (!dragEnabled || !draggedItemId || draggedItemId === itemId) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const position: InventoryDropPosition =
+      event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after';
+    setDropTarget((current) =>
+      current?.itemId === itemId && current.position === position ? current : { itemId, position },
+    );
+  };
+
+  const clearDragState = () => {
+    setDraggedItemId(null);
+    setDropTarget(null);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLButtonElement>, targetId: string) => {
+    event.preventDefault();
+    const sourceId = draggedItemId || event.dataTransfer.getData('text/plain');
+    if (!dragEnabled || !sourceId) {
+      clearDragState();
+      return;
+    }
+    const nextOrder = reorderVisibleSubset(
+      reconciledManualOrder,
+      visibleStacks.map((stack) => stack.itemId),
+      sourceId,
+      targetId,
+      dropTarget?.position ?? 'before',
+    );
+    updateViewPreferences((current) => ({ ...current, manualOrder: nextOrder }));
+    clearDragState();
   };
 
   const requestDestroyOne = () => {
@@ -132,11 +332,6 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
         eyebrow="Character · Storage"
         title="Inventory"
         description="Materials, equipment, and trophies gathered across the frontier."
-        trailing={
-          <span className="badge gold inventory-heading-capacity">
-            {occupied} / {GAME_CONFIG.inventorySlots} slots
-          </span>
-        }
       />
       <div className="ui-panel-grid inventory-panel-grid" data-ui-panel-grid="inventory">
         <UiPanelSlot screen="inventory" id="inventoryToolbar" layout={uiLayout}>
@@ -149,9 +344,6 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                 <div className="eyebrow">Storage ledger</div>
                 <h2 id="inventory-toolbar-title">Search and filter</h2>
               </div>
-              <span className="inventory-result-summary">
-                Showing {visibleStacks.length} of {occupied} stacks
-              </span>
             </div>
             <div className="inventory-search-row">
               <label className="inventory-search-field">
@@ -175,13 +367,6 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                   </button>
                 )}
               </label>
-              <button
-                type="button"
-                className="button ghost inventory-open-equipment"
-                onClick={() => onNavigate('equipment')}
-              >
-                Open Equipment
-              </button>
             </div>
             <div
               className="inventory-filter-row"
@@ -235,13 +420,62 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
             aria-labelledby="inventory-bank-title"
           >
             <div className="inventory-bank-heading">
-              <div>
+              <div className="inventory-bank-heading-main">
                 <div className="eyebrow">Archive of gathered goods</div>
                 <h2 id="inventory-bank-title">Item Bank</h2>
+                <span className="inventory-bank-count">
+                  {hasInventory
+                    ? getInventoryResultLabel(visibleStacks.length, filter, query)
+                    : 'No occupied stacks'}
+                </span>
               </div>
-              <span className="inventory-bank-count">
-                {hasInventory ? `${visibleStacks.length} visible` : 'No occupied stacks'}
-              </span>
+              <div className="inventory-bank-controls" aria-label="Inventory ordering controls">
+                {viewPreferences.sortMode === 'manual' && !compactViewport && (
+                  <span className="inventory-drag-hint">Drag to reorder</span>
+                )}
+                <label className="inventory-sort-control">
+                  <span>Sort:</span>
+                  <select
+                    className="field"
+                    aria-label="Sort inventory"
+                    value={viewPreferences.sortMode}
+                    onChange={(event) => {
+                      const mode = event.target.value;
+                      if (isInventorySortMode(mode)) selectSortMode(mode);
+                    }}
+                  >
+                    {INVENTORY_SORT_MODES.map((mode) => (
+                      <option value={mode.id} key={mode.id}>
+                        {mode.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="button ghost inventory-sort-direction"
+                  aria-label={`${selectedSortLabel} ${directionLabel}`}
+                  title={`${selectedSortLabel}: ${directionLabel}`}
+                  disabled={viewPreferences.sortMode === 'manual'}
+                  onClick={() =>
+                    updateViewPreferences((current) => ({
+                      ...current,
+                      sortDirection: current.sortDirection === 'asc' ? 'desc' : 'asc',
+                    }))
+                  }
+                >
+                  {directionLabel}
+                </button>
+                <label className="inventory-auto-sort">
+                  <input
+                    type="checkbox"
+                    aria-label="Auto Sort"
+                    checked={viewPreferences.sortMode !== 'manual'}
+                    onChange={(event) => toggleAutoSort(event.target.checked)}
+                  />
+                  <span>Auto Sort</span>
+                </label>
+              </div>
             </div>
             {!hasInventory ? (
               <div className="inventory-empty-state">
@@ -280,6 +514,15 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                           item={itemById[stack.itemId]}
                           selected={stack.itemId === selectedItemId}
                           onSelect={selectItem}
+                          dragEnabled={dragEnabled}
+                          isDragSource={stack.itemId === draggedItemId}
+                          dropPosition={
+                            dropTarget?.itemId === stack.itemId ? dropTarget.position : undefined
+                          }
+                          onDragStart={handleDragStart}
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                          onDragEnd={clearDragState}
                           cardRef={(element) => {
                             cardRefs.current[stack.itemId] = element;
                           }}

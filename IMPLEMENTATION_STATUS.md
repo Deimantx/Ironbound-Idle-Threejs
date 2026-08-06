@@ -21,8 +21,9 @@ Core MVP workflow is implemented and verified by the project checks.
 - [x] Universal screen-panel editor foundation with editable Combat, Inventory, Equipment, Mining, and Smithing panels, responsive fallback, and per-panel scaling
 - [x] P2 UI foundation: Inventory, Equipment, Mining, and Smithing are extracted from `App.tsx` and routed through the shared panel system
 - [x] Inventory 2.0: polished stack-based item bank with search, display-group filters, capacity indicator, rarity-aware item cards, persistent desktop details, compact drawer, Equip/Open Equipment, Lock/Unlock, Destroy One confirmation, and Universal UI editor compatibility
+- [x] Inventory 2.1: compact cards, single accent selection state, bank-header sorting and direction controls, Auto Sort/manual snapshots, profile-scoped view preferences, desktop-only native drag reorder, filtered-order preservation, and responsive natural-height details behavior
 - [x] Development-only item helper
 - [x] Unit and UI integration tests for formulas, inventory, equipment, actions, persistence, and navigation
 - [x] README and content guide
 
-Known non-blocking limitations: inventory is intentionally a stack-based bank rather than a drag-and-drop grid; WebGL gracefully falls back to an empty CSS scene on devices without a context; import is intentionally slot-targeted from the current profile/settings flow.
+Known non-blocking limitations: inventory remains intentionally a stack-based bank rather than a spatial drag-and-drop grid; manual drag reorder is desktop-only above the existing 900px compact breakpoint; WebGL gracefully falls back to an empty CSS scene on devices without a context; import is intentionally slot-targeted from the current profile/settings flow.

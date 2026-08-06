@@ -25,6 +25,17 @@ export const getInventoryDisplayGroup = (
 export const getInventoryFilterLabel = (filter: InventoryFilter): string =>
   INVENTORY_FILTERS.find((option) => option.id === filter)?.label ?? 'All';
 
+export const getInventoryResultLabel = (
+  visibleCount: number,
+  filter: InventoryFilter,
+  rawQuery: string,
+): string => {
+  const query = rawQuery.trim();
+  if (query) return `${visibleCount} results for "${query}"`;
+  if (filter === 'all') return `${visibleCount} stacks`;
+  return `${visibleCount} ${getInventoryFilterLabel(filter).toLowerCase()} stacks`;
+};
+
 export const getInventoryValueLabel = (value: string): string =>
   value.replace(/[-_]/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
 

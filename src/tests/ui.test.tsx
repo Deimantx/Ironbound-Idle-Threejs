@@ -200,7 +200,7 @@ describe('navigation integration', () => {
     expect(action?.type === 'smithing' ? action.quantityMode : null).toBe('continuous');
   });
 
-  it('renders the Inventory 2.0 bank structure and capacity semantics', async () => {
+  it('renders the compact Inventory 2.1 bank structure and capacity semantics', async () => {
     const user = userEvent.setup();
     seedInventory([
       { itemId: 'copper-ore', quantity: 124 },
@@ -221,12 +221,104 @@ describe('navigation integration', () => {
     expect(document.querySelector('[data-ui-panel="inventoryToolbar"]')).not.toBeNull();
     expect(document.querySelector('[data-ui-panel="inventoryBank"]')).not.toBeNull();
     expect(screen.getByRole('heading', { name: 'Item Bank' })).toBeInTheDocument();
+    expect(screen.getByText('3 stacks')).toBeInTheDocument();
+    expect(screen.queryByText(/Showing 3 of 3 stacks/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open Equipment' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Select an item' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /View Iron Sword/ })).toHaveAttribute(
       'aria-pressed',
       'false',
     );
     expect(screen.getByRole('button', { name: /View Rat Tail/ })).toHaveAccessibleName(/locked/i);
+
+    const bankGrid = document.querySelector<HTMLElement>('.inventory-bank-grid');
+    expect(bankGrid).not.toBeNull();
+    const cards = within(bankGrid as HTMLElement).getAllByRole('button');
+    expect(cards[0]).toHaveTextContent(/×/);
+    expect(cards[0]).not.toHaveTextContent(
+      /Materials|Equipment|Drops|Common|Uncommon|Rare|Epic|Tier/,
+    );
+    expect(cards[0]).toHaveAttribute('title');
+    expect(screen.getByRole('combobox', { name: 'Sort inventory' })).toHaveValue('category');
+    expect(screen.getByRole('checkbox', { name: 'Auto Sort' })).toBeChecked();
+  });
+
+  it('sorts, snapshots, persists, and manually reorders desktop card order', async () => {
+    const user = userEvent.setup();
+    seedInventory([
+      { itemId: 'rat-tail', quantity: 2 },
+      { itemId: 'iron-sword', quantity: 1 },
+      { itemId: 'copper-ore', quantity: 8 },
+    ]);
+    const profileId = useGameStore.getState().game?.profileId;
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+
+    const getCardIds = () =>
+      within(document.querySelector('.inventory-bank-grid') as HTMLElement)
+        .getAllByRole('button')
+        .map((card) => card.getAttribute('aria-label') ?? '');
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort inventory' }), 'name');
+    expect(getCardIds()[0]).toMatch(/Copper Ore/);
+    await user.click(screen.getByRole('button', { name: 'Name A to Z' }));
+    expect(getCardIds()[0]).toMatch(/Rat Tail/);
+    expect(screen.getByRole('checkbox', { name: 'Auto Sort' })).toBeChecked();
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Sort inventory' }), 'manual');
+    expect(screen.getByRole('checkbox', { name: 'Auto Sort' })).not.toBeChecked();
+    expect(screen.getByRole('button', { name: /^Manual/ })).toBeDisabled();
+    expect(screen.getByText('Drag to reorder')).toBeInTheDocument();
+    expect(
+      within(document.querySelector('.inventory-bank-grid') as HTMLElement).getAllByRole(
+        'button',
+      )[0],
+    ).toHaveAttribute('draggable', 'true');
+
+    const source = screen.getByRole('button', { name: /View Rat Tail/ });
+    let target = screen.getByRole('button', { name: /View Copper Ore/ });
+    const dataTransfer = {
+      effectAllowed: '',
+      dropEffect: '',
+      setData: vi.fn(),
+      getData: vi.fn(() => 'copper-ore'),
+    };
+    fireEvent.dragStart(source, { dataTransfer });
+    await waitFor(() => expect(source).toHaveClass('is-drag-source'));
+    target = screen.getByRole('button', { name: /View Copper Ore/ });
+    fireEvent.dragOver(target, { dataTransfer, clientY: 999 });
+    fireEvent.drop(target, { dataTransfer });
+    await waitFor(() => expect(getCardIds()[0]).toMatch(/Iron Sword/));
+
+    await waitFor(() => {
+      const stored = JSON.parse(
+        window.localStorage.getItem(`ironbound-idle-inventory-view:${profileId}`) ?? '{}',
+      );
+      expect(stored.sortMode).toBe('manual');
+      expect(stored.manualOrder[0]).toBe('iron-sword');
+    });
+  });
+
+  it('restores the last automatic mode when Auto Sort is re-enabled', async () => {
+    const user = userEvent.setup();
+    seedInventory([
+      { itemId: 'rat-tail', quantity: 2 },
+      { itemId: 'iron-sword', quantity: 1 },
+      { itemId: 'copper-ore', quantity: 8 },
+    ]);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+    const sort = screen.getByRole('combobox', { name: 'Sort inventory' });
+    const autoSort = screen.getByRole('checkbox', { name: 'Auto Sort' });
+    await user.selectOptions(sort, 'rarity');
+    await user.selectOptions(sort, 'manual');
+    expect(autoSort).not.toBeChecked();
+    await user.click(autoSort);
+    expect(autoSort).toBeChecked();
+    expect(sort).toHaveValue('rarity');
+    await user.click(autoSort);
+    expect(autoSort).not.toBeChecked();
+    expect(sort).toHaveValue('manual');
   });
 
   it('searches, filters, and resets the visible bank without changing query state', async () => {
@@ -241,6 +333,7 @@ describe('navigation integration', () => {
     const search = screen.getByRole('textbox', { name: 'Search inventory' });
     await user.type(search, 'iron');
     expect(screen.getByRole('button', { name: /View Iron Sword/ })).toBeInTheDocument();
+    expect(screen.getByText('1 results for "iron"')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /View Copper Ore/ })).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^Materials/ }));
@@ -322,7 +415,10 @@ describe('navigation integration', () => {
       seedInventory([{ itemId: 'iron-sword', quantity: 1 }]);
       render(<App />);
       await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+      await user.selectOptions(screen.getByRole('combobox', { name: 'Sort inventory' }), 'manual');
       const card = screen.getByRole('button', { name: /View Iron Sword/ });
+      expect(screen.queryByText('Drag to reorder')).not.toBeInTheDocument();
+      expect(card).not.toHaveAttribute('draggable');
       await user.click(card);
       const drawer = screen.getByRole('dialog', { name: 'Iron Sword' });
       expect(drawer).toHaveAttribute('aria-modal', 'true');

@@ -1,11 +1,8 @@
 import { Lock } from 'lucide-react';
+import type { DragEvent } from 'react';
 import type { InventoryStack, ItemDefinition } from '../game/types';
 import { formatNumber } from './formatters';
-import {
-  getInventoryDisplayGroup,
-  getInventoryFilterLabel,
-  getInventoryValueLabel,
-} from './inventoryView';
+import type { InventoryDropPosition } from './inventoryOrdering';
 import { ItemIcon } from './ItemIcon';
 
 export interface InventoryItemCardProps {
@@ -14,6 +11,13 @@ export interface InventoryItemCardProps {
   selected: boolean;
   onSelect: (itemId: string) => void;
   cardRef?: (element: HTMLButtonElement | null) => void;
+  dragEnabled?: boolean;
+  isDragSource?: boolean;
+  dropPosition?: InventoryDropPosition;
+  onDragStart?: (event: DragEvent<HTMLButtonElement>, itemId: string) => void;
+  onDragOver?: (event: DragEvent<HTMLButtonElement>, itemId: string) => void;
+  onDrop?: (event: DragEvent<HTMLButtonElement>, itemId: string) => void;
+  onDragEnd?: () => void;
 }
 
 export function InventoryItemCard({
@@ -22,25 +26,29 @@ export function InventoryItemCard({
   selected,
   onSelect,
   cardRef,
+  dragEnabled = false,
+  isDragSource = false,
+  dropPosition,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
 }: InventoryItemCardProps) {
   const name = item?.name ?? 'Unknown item';
-  const group = getInventoryDisplayGroup(item?.category);
-  const context = item
-    ? [
-        group ? getInventoryFilterLabel(group) : null,
-        item.slot ? `Slot ${getInventoryValueLabel(item.slot)}` : null,
-        item.tier ? `Tier ${getInventoryValueLabel(item.tier)}` : null,
-      ].filter(Boolean)
-    : ['Unknown item'];
-  const accessibleContext = context.join(', ');
 
   return (
     <button
       ref={cardRef}
       type="button"
-      className={`item-card inventory-item-card inventory-rarity-${item?.rarity ?? 'unknown'} ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''}`}
+      className={`item-card inventory-item-card ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''} ${isDragSource ? 'is-drag-source' : ''} ${dropPosition ? `is-drop-${dropPosition}` : ''}`}
       onClick={() => onSelect(stack.itemId)}
-      aria-label={`View ${name}, ${accessibleContext}, quantity ${formatNumber(stack.quantity)}${stack.locked ? ', locked' : ''}`}
+      onDragStart={dragEnabled ? (event) => onDragStart?.(event, stack.itemId) : undefined}
+      onDragOver={dragEnabled ? (event) => onDragOver?.(event, stack.itemId) : undefined}
+      onDrop={dragEnabled ? (event) => onDrop?.(event, stack.itemId) : undefined}
+      onDragEnd={dragEnabled ? onDragEnd : undefined}
+      draggable={dragEnabled ? true : undefined}
+      title={name}
+      aria-label={`View ${name}, quantity ${formatNumber(stack.quantity)}${stack.locked ? ', locked' : ''}`}
       aria-pressed={selected}
     >
       <span className="inventory-card-top">
@@ -48,10 +56,6 @@ export function InventoryItemCard({
         <span className="quantity inventory-card-quantity">×{formatNumber(stack.quantity)}</span>
       </span>
       <strong>{name}</strong>
-      <span className="inventory-card-context">{context.join(' · ')}</span>
-      <span className={`inventory-card-rarity rarity-${item?.rarity ?? 'unknown'}`}>
-        {item ? getInventoryValueLabel(item.rarity) : 'Unknown'}
-      </span>
       {stack.locked && (
         <span className="item-card-lock" title="Locked stack" aria-label="Locked stack">
           <Lock size={14} aria-hidden="true" />
