@@ -34,3 +34,10 @@ global or per-panel reset buttons, including individual panel scaling from 50% t
 Inventory, Equipment, Mining, and Smithing use the same `UiPanelSlot` wrapper. Layout changes are
 saved in the current browser and do not affect gameplay code. Desktop panel placements fall back
 to a single-column stack on smaller screens.
+
+## Development tools
+
+Development builds expose one **Development Tools** panel from the header. It provides searchable current-content
+item spawning, Inventory and Equipment edge cases, exact progression and Gold controls, Combat and profession
+simulation helpers, offline replay, save/UI validation, and migration fixtures. Production builds omit the entry
+point, shortcut, and development panel entirely; debug state is session-only and is never written to gameplay saves.

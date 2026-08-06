@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   Bug,
   Hammer,
@@ -20,7 +20,7 @@ import { ITEMS } from '../content/items';
 import { miningNodeById } from '../content/miningNodes';
 import { recipeById } from '../content/recipes';
 import { GAME_CONFIG } from '../config/gameConfig';
-import { getLevelProgress, getXpForLevel } from '../game/formulas/experienceFormulas';
+import { getLevelProgress } from '../game/formulas/experienceFormulas';
 import { getDerivedStats } from '../game/formulas/statFormulas';
 import { progressRatio } from '../game/engine/simulation';
 import { createNewGame } from '../game/state/initialState';
@@ -42,9 +42,7 @@ import type {
   GameState,
   ScreenId,
   SimulationSummary,
-  SkillId,
 } from '../game/types';
-import { SKILL_IDS } from '../game/types';
 import { NAVIGATION } from '../content/navigation';
 import { ThreeScene } from '../three/ThreeScene';
 import { UiEditor } from './UIEditor';
@@ -54,9 +52,17 @@ import { MiningScreen } from './MiningScreen';
 import { SmithingScreen } from './SmithingScreen';
 import { formatNumber } from './formatters';
 import { ItemIcon } from './ItemIcon';
-import { loadUiLayout, sanitizeUiLayout, saveUiLayout, type UiLayout } from './uiLayout';
+import {
+  DEFAULT_UI_LAYOUT,
+  loadUiLayout,
+  sanitizeUiLayout,
+  saveUiLayout,
+  type UiLayout,
+} from './uiLayout';
 import { CombatScreen as RealtimeCombatScreen } from './CombatScreen';
 import { ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog';
+
+const DebugMenu = import.meta.env.DEV ? lazy(() => import('./debug/DebugMenu')) : null;
 
 const formatFightDuration = (startedAt: number | null, now = Date.now()): string => {
   if (startedAt === null) return '0:00';
@@ -331,11 +337,13 @@ function Header({
   onSettings,
   onEditUi,
   onDebug,
+  debugButtonRef,
 }: {
   game: GameState;
   onSettings: () => void;
   onEditUi: () => void;
   onDebug: () => void;
+  debugButtonRef?: { current: HTMLButtonElement | null };
 }) {
   const stats = getDerivedStats(game);
   const saveStatus = useGameStore((store) => store.saveStatus);
@@ -383,6 +391,7 @@ function Header({
         </button>
         {import.meta.env.DEV && (
           <button
+            ref={debugButtonRef}
             className="button ghost debug-header-button"
             onClick={onDebug}
             aria-label="Open debug menu"
@@ -1236,6 +1245,7 @@ function DeathModal({
   );
 }
 
+/*
 function DebugPanel({
   game,
   open,
@@ -1367,11 +1377,13 @@ function DebugPanel({
   );
 }
 
+*/
 function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
   const [screen, setScreen] = useState<ScreenId>('home');
   const [lockedFeature, setLockedFeature] = useState({ name: '', description: '' });
   const [editingUi, setEditingUi] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
+  const debugButtonRef = useRef<HTMLButtonElement>(null);
   const [confirmation, setConfirmation] = useState<ConfirmDialogOptions | null>(null);
   const [uiLayout, setUiLayout] = useState<UiLayout>(() => loadUiLayout());
   const uiSaveTimer = useRef<number | null>(null);
@@ -1395,6 +1407,21 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
       saveUiLayout(pendingUiLayout.current);
       uiSaveTimer.current = null;
     }, 180);
+  };
+  const resetAllUiLayouts = () => {
+    if (uiSaveTimer.current !== null) window.clearTimeout(uiSaveTimer.current);
+    const defaults = sanitizeUiLayout(DEFAULT_UI_LAYOUT);
+    pendingUiLayout.current = defaults;
+    setUiLayout(defaults);
+    saveUiLayout(defaults);
+  };
+  const resetCurrentScreenLayout = (target: ScreenId) => {
+    const defaults = DEFAULT_UI_LAYOUT.screenPanels[target];
+    if (!defaults) return;
+    updateUiLayout({
+      ...uiLayout,
+      screenPanels: { ...uiLayout.screenPanels, [target]: structuredClone(defaults) },
+    });
   };
   useEffect(() => {
     return () => {
@@ -1457,6 +1484,10 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
     setScreen(target);
   };
   const nav = (target: ScreenId) => setScreen(target);
+  const closeDebug = () => {
+    setDebugOpen(false);
+    window.setTimeout(() => debugButtonRef.current?.focus(), 0);
+  };
   const render = () => {
     switch (screen) {
       case 'home':
@@ -1521,6 +1552,7 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
       onSettings={() => setScreen('settings')}
       onEditUi={() => setEditingUi(true)}
       onDebug={() => setDebugOpen((open) => !open)}
+      debugButtonRef={debugButtonRef}
     />
   );
   const content = (
@@ -1561,7 +1593,18 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
           onClose={() => setDeathNotice(null)}
         />
       )}
-      <DebugPanel game={currentGame} open={debugOpen} onClose={() => setDebugOpen(false)} />
+      {DebugMenu && (
+        <Suspense fallback={null}>
+          <DebugMenu
+            game={currentGame}
+            open={debugOpen}
+            onClose={closeDebug}
+            screen={screen}
+            onResetAllLayouts={resetAllUiLayouts}
+            onResetCurrentScreenLayout={resetCurrentScreenLayout}
+          />
+        </Suspense>
+      )}
       {editingUi && (
         <UiEditor
           screen={screen}

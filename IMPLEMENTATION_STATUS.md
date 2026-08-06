@@ -29,6 +29,11 @@ Core MVP workflow is implemented and verified by the project checks.
 - [x] Inventory 2.1: compact cards, single accent selection state, bank-header sorting and direction controls, Auto Sort/manual snapshots, profile-scoped view preferences, desktop-only native drag reorder, filtered-order preservation, and responsive natural-height details behavior
 - [x] Inventory 2.2: compressed search/filter/capacity toolbar, readable filter counts, accessible Auto Sort switch, integrated bank/details composition, contextual item actions, refined details hierarchy, Category-sort group headers, and preserved compact cards/desktop drag behavior
 - [x] Development-only item helper
+- [x] Debug Tools 2.0: one development-only lazy-loaded panel with Overview, Inventory, Equipment, Progression, Combat, Professions, Simulation, and Saves & UI categories
+- [x] Debug Tools 2.0: registry-driven searchable item spawner with category/tier/slot/rarity filters, quantity validation, capacity/lock/edge actions, and session action history
+- [x] Debug Tools 2.0: authoritative Equipment controls and Bronze/Iron/Steel presets, exact skill XP/level and Gold controls, Combat HP/enemy/kill/unlock tools, and profession cycles
+- [x] Debug Tools 2.0: deterministic active-action advancement, capped offline replay, save/UI preference actions, current-schema validation, and fresh legacy Armor/Shield migration fixtures
+- [x] Debug Tools 2.0: centralized debug mutation boundary, destructive confirmations, responsive accessible overlay, focused action/preset/fixture/UI tests, and production-bundle absence check
 - [x] Unit and UI integration tests for formulas, inventory, equipment, actions, persistence, and navigation
 - [x] README and content guide
 

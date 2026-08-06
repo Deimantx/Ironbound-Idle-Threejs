@@ -3,6 +3,7 @@
 Content is identified by stable string IDs and is kept out of React components.
 
 - Add an item in `src/content/items.ts`. Give it an ID, category, source, stacking rule, and optional equipment slot/bonuses.
+- Registered items automatically appear in the development-only Debug Tools item spawner and inherit its current category, tier, slot, rarity, source, and search filters.
 - Add a mining node in `src/content/miningNodes.ts`, then point `rewardItemId` to an item. The mining engine reads its level, interval, and XP directly.
 - Add a smithing recipe in `src/content/recipes.ts` with input IDs, output ID, level, interval, and XP. Use `smelting` or `forging` to select the UI tab and statistic bucket.
 - Add an enemy in `src/content/enemies.ts`, including the area, combat ratings, loot entries, gold range, and visual theme. Add its ID to the relevant area in `src/content/areas.ts`.

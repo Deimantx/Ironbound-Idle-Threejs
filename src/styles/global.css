@@ -2819,6 +2819,488 @@ h3 {
 .debug-header-button {
   color: #edbd75;
 }
+.debug-tools-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow: auto;
+  background: rgba(5, 8, 9, 0.78);
+}
+.debug-tools-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(1180px, 100%);
+  height: min(840px, calc(100vh - 48px));
+  min-height: 0;
+  overflow: hidden;
+  color: var(--text);
+  background: #13191b;
+  border: 1px solid #8b6b42;
+  border-radius: 14px;
+  box-shadow: 0 26px 90px rgba(0, 0, 0, 0.68);
+}
+.debug-tools-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 24px 17px;
+  background: linear-gradient(100deg, rgba(123, 91, 54, 0.22), transparent 65%);
+  border-bottom: 1px solid #344044;
+}
+.debug-tools-header .eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #dfb979;
+}
+.debug-tools-header h2 {
+  margin: 3px 0 4px;
+  letter-spacing: 0.08em;
+}
+.debug-tools-warning {
+  margin: 0;
+  color: #d8c2a0;
+  font-size: 12px;
+}
+.debug-tools-close {
+  flex: 0 0 auto;
+}
+.debug-tools-body {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  min-height: 0;
+  flex: 1;
+}
+.debug-tools-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 15px 10px;
+  overflow-y: auto;
+  background: #101516;
+  border-right: 1px solid #303b3e;
+}
+.debug-tools-nav-button {
+  width: 100%;
+  padding: 10px 12px;
+  color: #aebbb7;
+  text-align: left;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  cursor: pointer;
+}
+.debug-tools-nav-button:hover,
+.debug-tools-nav-button:focus-visible,
+.debug-tools-nav-button.active {
+  color: #f3d49d;
+  background: #252b2b;
+  border-color: #705837;
+}
+.debug-tools-content {
+  min-width: 0;
+  padding: 17px 20px 30px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.debug-tools-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 13px;
+}
+.debug-tools-summary span,
+.debug-tools-stat-grid > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+  padding: 8px 9px;
+  color: #bbc5c1;
+  background: #182022;
+  border: 1px solid #2f3b3d;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.debug-tools-summary b,
+.debug-tools-stat-grid span {
+  color: #82908d;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.debug-tools-summary span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.debug-tools-section {
+  margin-top: 14px;
+  padding: 15px;
+  background: rgba(25, 32, 34, 0.86);
+  border: 1px solid #303c3e;
+  border-radius: 9px;
+}
+.debug-tools-section:first-child {
+  margin-top: 0;
+}
+.debug-tools-section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.debug-tools-section h3 {
+  margin: 0;
+  color: #e7c88e;
+  font-size: 14px;
+}
+.debug-tools-section-heading p,
+.debug-tools-section > p {
+  margin: 4px 0 0;
+  color: #879491;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.debug-tools-grid,
+.debug-tools-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+.debug-tools-filter-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 10px;
+}
+.debug-tools-field {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  color: #b9c4c0;
+  font-size: 10px;
+}
+.debug-tools-field input,
+.debug-tools-field select,
+.debug-tools-search input {
+  width: 100%;
+  min-height: 34px;
+  padding: 7px 9px;
+  color: var(--text);
+  background: #101718;
+  border: 1px solid #455357;
+  border-radius: 5px;
+}
+.debug-tools-field input:focus-visible,
+.debug-tools-field select:focus-visible,
+.debug-tools-search input:focus-visible,
+.debug-tools-nav-button:focus-visible,
+.debug-tools-item-row:focus-visible,
+.debug-tools-disclosure:focus-visible {
+  outline: 2px solid #d7ab65;
+  outline-offset: 2px;
+}
+.debug-tools-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.debug-tools-stat-grid strong {
+  overflow: hidden;
+  color: #e3e8df;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.debug-tools-search {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 9px;
+  background: #101718;
+  border: 1px solid #455357;
+  border-radius: 5px;
+}
+.debug-tools-search input {
+  min-height: 35px;
+  padding-left: 0;
+  border: 0;
+  outline: 0;
+}
+.debug-tools-item-workspace {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(260px, 0.9fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+.debug-tools-item-list {
+  display: grid;
+  align-content: start;
+  max-height: 390px;
+  overflow: auto;
+  border: 1px solid #303c3e;
+  border-radius: 6px;
+}
+.debug-tools-item-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  color: #c5cfca;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #283335;
+  cursor: pointer;
+}
+.debug-tools-item-row:last-child {
+  border-bottom: 0;
+}
+.debug-tools-item-row:hover,
+.debug-tools-item-row.selected {
+  color: #f1d49d;
+  background: #252c2c;
+}
+.debug-tools-item-row span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.debug-tools-item-row strong,
+.debug-tools-item-row small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.debug-tools-item-row small,
+.debug-tools-item-details small {
+  color: #7e8b88;
+  font-size: 9px;
+}
+.debug-tools-item-details {
+  min-width: 0;
+  padding: 13px;
+  background: #151d1f;
+  border: 1px solid #303c3e;
+  border-radius: 6px;
+}
+.debug-tools-item-title {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 13px;
+}
+.debug-tools-item-title h4 {
+  margin: 0 0 2px;
+  color: #e8cc93;
+}
+.debug-tools-definition-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  margin: 0 0 13px;
+}
+.debug-tools-definition-list div {
+  padding: 7px;
+  background: #1d2729;
+  border-radius: 4px;
+}
+.debug-tools-definition-list dt {
+  color: #7f8d89;
+  font-size: 9px;
+}
+.debug-tools-definition-list dd {
+  margin: 2px 0 0;
+  color: #d4ddd5;
+  font-size: 11px;
+}
+.debug-tools-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.debug-tools-preset {
+  display: grid;
+  gap: 5px;
+  padding: 10px;
+  background: #1b2426;
+  border: 1px solid #334043;
+  border-radius: 5px;
+}
+.debug-tools-preset p {
+  min-height: 29px;
+  margin: 0;
+  color: #8e9b96;
+  font-size: 10px;
+  line-height: 1.35;
+}
+.debug-tools-equipment-slots {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+.debug-tools-equipment-slot {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px;
+  background: #1b2426;
+  border: 1px solid #334043;
+  border-radius: 5px;
+}
+.debug-tools-equipment-slot span,
+.debug-tools-equipment-slot small {
+  color: #83918d;
+  font-size: 9px;
+}
+.debug-tools-equipment-slot strong {
+  overflow: hidden;
+  color: #d5ded6;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.debug-tools-button-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.debug-tools-result {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-left: 3px solid #8d9a95;
+  background: #1c2526;
+  font-size: 11px;
+}
+.debug-tools-result.success {
+  border-color: #a8a36a;
+}
+.debug-tools-result.failure {
+  border-color: #bd765f;
+}
+.debug-tools-result strong {
+  color: #e6c78d;
+  font-size: 10px;
+  text-transform: uppercase;
+}
+.debug-tools-result-details,
+.debug-tools-preview {
+  margin: 4px 0 0;
+  padding-left: 18px;
+  color: #9ca9a4;
+  font-size: 10px;
+}
+.debug-tools-preview {
+  display: grid;
+  gap: 4px;
+  padding: 9px 11px;
+  background: #151e20;
+  border: 1px solid #303c3e;
+  border-radius: 5px;
+}
+.debug-tools-preview p {
+  margin: 0 0 3px;
+  color: #d6bc86;
+}
+.debug-tools-danger-zone {
+  border-color: #684b41;
+}
+.debug-tools-disclosure {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+  padding: 7px 0;
+  color: #e1bd80;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+.debug-tools-edge-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-top: 7px;
+}
+.debug-tools-inline-note,
+.debug-tools-active-action {
+  color: #9ba8a3;
+  font-size: 10px;
+}
+.debug-tools-action-log {
+  display: grid;
+  gap: 5px;
+  max-height: 150px;
+  overflow: auto;
+  color: #aab6b0;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+}
+@media (max-width: 900px) {
+  .debug-tools-backdrop {
+    padding: 0;
+  }
+  .debug-tools-dialog {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+  }
+  .debug-tools-header {
+    padding: 14px 15px;
+  }
+  .debug-tools-body {
+    display: flex;
+    flex-direction: column;
+  }
+  .debug-tools-nav {
+    flex-direction: row;
+    flex: 0 0 auto;
+    gap: 4px;
+    padding: 8px;
+    overflow-x: auto;
+    border-right: 0;
+    border-bottom: 1px solid #303b3e;
+  }
+  .debug-tools-nav-button {
+    flex: 0 0 auto;
+    width: auto;
+    padding: 8px 10px;
+    white-space: nowrap;
+  }
+  .debug-tools-content {
+    padding: 12px 10px 24px;
+  }
+  .debug-tools-summary,
+  .debug-tools-stat-grid,
+  .debug-tools-equipment-slots {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .debug-tools-grid,
+  .debug-tools-filter-grid,
+  .debug-tools-item-workspace {
+    grid-template-columns: 1fr;
+  }
+  .debug-tools-item-list {
+    max-height: 260px;
+  }
+  .debug-tools-preset-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .debug-tools-dialog,
+  .debug-tools-dialog * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .combat-screen *,
   .combat-screen *::before,
