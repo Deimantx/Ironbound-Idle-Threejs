@@ -290,7 +290,7 @@ const SmithingActivityStrip = ({
         ? `All · ${action.remaining ?? 0} left`
         : action.quantityMode === 1
           ? '1'
-          : `10 Â· ${action.remaining ?? 0} left`;
+          : `10 · ${action.remaining ?? 0} left`;
   return (
     <div className="action-strip activity-strip-smithing" data-ui-region="actionStrip">
       <div className="action-icon" aria-hidden="true">

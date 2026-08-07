@@ -4,7 +4,11 @@ import { parseGameState } from '../game/persistence/saveSchema';
 import { migrateSave } from '../game/persistence/migrations';
 import { startCombat, startSmithing } from '../game/engine/actionController';
 import { getDerivedStats } from '../game/formulas/statFormulas';
-import { getLevelProgress, getXpForLevel } from '../game/formulas/experienceFormulas';
+import {
+  getLevelFromXp,
+  getLevelProgress,
+  getXpForLevel,
+} from '../game/formulas/experienceFormulas';
 import type { GameState, SkillId } from '../game/types';
 
 const legacyXpForLevel = (level: number): number =>
@@ -29,6 +33,12 @@ describe('save validation and migration', () => {
   it('round trips a representative current payload through Zod', () => {
     const state = createNewGame(0, 'Archivist');
     expect(parseGameState(JSON.stringify(state)).profileId).toBe(state.profileId);
+  });
+  it('normalizes a current save with stale skill levels during parse', () => {
+    const state = createNewGame(0, 'Consistent Archivist');
+    state.skills.smithing = { level: 3, xp: 220 };
+    const parsed = parseGameState(JSON.stringify(state));
+    expect(parsed.skills.smithing).toEqual({ level: getLevelFromXp(220), xp: 220 });
   });
   it('applies the sequential migration entry point to an older fixture', () => {
     const state = createNewGame(0, 'Older');

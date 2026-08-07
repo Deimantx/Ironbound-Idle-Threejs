@@ -410,6 +410,70 @@ describe('navigation integration', () => {
     expect(screen.getByRole('button', { name: 'Stop smithing' })).toBeInTheDocument();
   });
 
+  it('renders Smithing with compact facility-specific recipe presentations', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Smithing Layout Tester');
+    game.settings.threeQuality = 'off';
+    game.inventory = [{ itemId: 'iron-ore', quantity: 1, locked: false }];
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
+    expect(screen.getByRole('heading', { name: 'Smithing idle' })).toBeInTheDocument();
+    expect(screen.getAllByText('Quantity:', { selector: 'span' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Continuous' })).toHaveLength(1);
+    expect(document.querySelectorAll('.smithing-forge-card')).toHaveLength(2);
+    expect(document.querySelectorAll('.smithing-anvil-row').length).toBeGreaterThan(0);
+    expect(
+      screen.getByText('IRON', { selector: '.smithing-tier-heading span' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('STEEL', { selector: '.smithing-tier-heading span' }),
+    ).toBeInTheDocument();
+    expect(document.querySelector('.smithing-recipe-row')).toBeNull();
+    expect(document.querySelector('.smithing-hammer-summary')).toBeNull();
+    expect(screen.queryByText('Coal owned')).not.toBeInTheDocument();
+    expect(screen.queryByText('Profession tool')).not.toBeInTheDocument();
+    const smithingText =
+      document.querySelector('[data-ui-panel-grid="smithing"]')?.textContent ?? '';
+    expect(smithingText).not.toContain(String.fromCharCode(195, 130));
+    expect(smithingText).not.toContain(String.fromCharCode(195, 151));
+    expect(smithingText).not.toContain(String.fromCharCode(194, 183));
+    expect(screen.getByRole('button', { name: 'Missing Coal fuel' })).toBeDisabled();
+    expect(screen.getAllByRole('button', { name: 'Requires level 30' })).toHaveLength(2);
+    expect(
+      screen
+        .getAllByRole('button', { name: 'Requires level 30' })
+        .every((button) => button.hasAttribute('disabled')),
+    ).toBe(true);
+
+    const forgeHeader = screen.getByRole('button', { name: /Forge Smelt ore/ });
+    expect(forgeHeader).toHaveAttribute('aria-expanded', 'true');
+    await user.click(forgeHeader);
+    expect(forgeHeader).toHaveAttribute('aria-expanded', 'false');
+    expect(document.querySelectorAll('.smithing-forge-card')).toHaveLength(0);
+    await user.click(forgeHeader);
+    expect(document.querySelectorAll('.smithing-forge-card')).toHaveLength(2);
+  });
+
+  it('shows the consolidated Anvil hammer status without copying it into the overview', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Smithing Hammer Tester');
+    game.settings.threeQuality = 'off';
+    game.skills.smithing.level = 15;
+    game.skills.smithing.xp = getXpForLevel(15);
+    game.equipment.tool = 'iron-smithing-hammer';
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
+    expect(screen.getAllByText(/Iron Smithing Hammer · 8% faster · 3% preservation/)).toHaveLength(
+      1,
+    );
+    expect(screen.queryByText('No Smithing Hammer')).not.toBeInTheDocument();
+    expect(screen.queryByText(/XP\/hr/)).not.toBeInTheDocument();
+  });
+
   it('selects Armor, previews compatible gear, and requires explicit replacement', async () => {
     const user = userEvent.setup();
     const game = createNewGame(0, 'Armor Tester');

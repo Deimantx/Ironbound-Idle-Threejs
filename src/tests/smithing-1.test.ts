@@ -6,13 +6,14 @@ import { equipItem } from '../game/systems/equipmentSystem';
 import { getItemQuantity, addItem } from '../game/systems/inventorySystem';
 import { createNewGame } from '../game/state/initialState';
 import { startSmithing } from '../game/engine/actionController';
+import { recipeCanStart } from '../game/engine/actionController';
 import { simulateElapsed } from '../game/engine/simulation';
 import {
   getSmithingEffectiveInterval,
   getSmithingMaxCraftable,
   getSmithingPreservationChance,
 } from '../game/formulas/smithingFormulas';
-import { getXpForLevel } from '../game/formulas/experienceFormulas';
+import { getLevelFromXp, getXpForLevel } from '../game/formulas/experienceFormulas';
 import { migrateSave } from '../game/persistence/migrations';
 import type { GameState } from '../game/types';
 
@@ -54,6 +55,18 @@ describe('Smithing 1.0 content and formulas', () => {
     ]);
     expect(getSmithingMaxCraftable(state, recipeById['iron-bar'])).toBe(2);
     expect(getSmithingMaxCraftable(state, recipeById['steel-bar'])).toBe(1);
+  });
+
+  it('requires Forge fuel in recipeCanStart while keeping Anvil recipes material-gated', () => {
+    const state = withItems(createNewGame(0, 'Start Gate'), [['iron-ore', 1]]);
+    expect(recipeCanStart(state, 'iron-bar')).toBe(false);
+    state.inventory = addItem(state.inventory, 'coal', 1, 60).inventory;
+    expect(recipeCanStart(state, 'iron-bar')).toBe(true);
+    state.inventory = [];
+    expect(recipeCanStart(state, 'iron-sword')).toBe(false);
+    state.inventory = addItem(state.inventory, 'iron-bar', 4, 60).inventory;
+    levelSmithing(state, 15);
+    expect(recipeCanStart(state, 'iron-sword')).toBe(true);
   });
 
   it('smelts Iron Bar from level 1 and awards the authored XP', () => {
@@ -205,5 +218,12 @@ describe('Smithing schema 7 migration', () => {
     expect(migrated.inventory).toEqual(state.inventory);
     expect(migrated.equipment).toEqual(state.equipment);
     expect(migrated.activeAction).toMatchObject({ recipeId: 'bronze-armor' });
+  });
+
+  it('repairs a current-save Smithing level that disagrees with its XP', () => {
+    const state = createNewGame(0, 'Stale Smithing');
+    state.skills.smithing = { level: 3, xp: 220 };
+    const migrated = migrateSave(state, 7);
+    expect(migrated.skills.smithing).toEqual({ level: getLevelFromXp(220), xp: 220 });
   });
 });

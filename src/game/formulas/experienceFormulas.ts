@@ -34,6 +34,12 @@ const normalizeXp = (xp: number): number => {
   return Math.max(0, Math.floor(xp));
 };
 
+export const normalizeSkillState = (input: unknown): SkillState => {
+  const value = input && typeof input === 'object' ? (input as Partial<SkillState>) : {};
+  const xp = normalizeXp(Number(value.xp));
+  return { xp, level: getLevelFromXp(xp) };
+};
+
 export const getLevelFromXp = (xp: number): number => {
   const safeXp = normalizeXp(xp);
   let low = 1;

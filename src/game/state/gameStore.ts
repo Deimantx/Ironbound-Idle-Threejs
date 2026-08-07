@@ -15,6 +15,7 @@ import {
 import { destroyItem, toggleItemLock } from '../systems/inventorySystem';
 import { equipItem, unequipItem } from '../systems/equipmentSystem';
 import { emptyCombatSession } from '../types';
+import { normalizeSkillState } from '../formulas/experienceFormulas';
 import type {
   AreaId,
   CombatStyle,
@@ -27,6 +28,7 @@ import type {
   QuantityMode,
   SimulationSummary,
 } from '../types';
+import { SKILL_IDS } from '../types';
 
 type SaveStatus = 'saved' | 'saving' | 'failed';
 interface Store {
@@ -125,6 +127,13 @@ const appendCombatEvents = (
   events: CombatVisualEvent[] = [],
 ): CombatVisualEvent[] => [...current, ...events].slice(-64);
 
+const normalizeGameSkills = (game: GameState): GameState => ({
+  ...game,
+  skills: Object.fromEntries(
+    SKILL_IDS.map((skillId) => [skillId, normalizeSkillState(game.skills[skillId])]),
+  ) as GameState['skills'],
+});
+
 export const getMiningFeedbackMessage = (summary: SimulationSummary): string | null => {
   const context = summary.offlineContext;
   if (context?.activity !== 'mining' || !context.miningNodeId) return null;
@@ -154,33 +163,38 @@ export const useGameStore = create<Store>((set, get) => ({
   combatEvents: [],
   combatSession: emptyCombatSession(),
   setGame: (game, offlineSummary = null) => {
+    const normalizedGame = game ? normalizeGameSkills(game) : null;
     lastTick = Date.now();
-    const loadedCombat = game?.activeAction.type === 'combat' ? game.activeAction : null;
+    const loadedCombat =
+      normalizedGame?.activeAction.type === 'combat' ? normalizedGame.activeAction : null;
     set({
-      game,
+      game: normalizedGame,
       offlineSummary,
       saveStatus: 'saved',
       combatEvents: [],
       combatSession: emptyCombatSession(
         loadedCombat?.enemyId ?? null,
-        loadedCombat && game ? game.updatedAt : null,
+        loadedCombat && normalizedGame ? normalizedGame.updatedAt : null,
         loadedCombat?.combatState.encounterStartedAt ??
-          (loadedCombat && game ? game.updatedAt : null),
+          (loadedCombat && normalizedGame ? normalizedGame.updatedAt : null),
       ),
     });
   },
   applyDebugState: (game, options = {}) => {
+    const normalizedGame = normalizeGameSkills(game);
     lastTick = Date.now();
     const replaceCombatSession = options.replaceCombatSession ?? false;
-    const nextSession = replaceCombatSession ? sessionForState(game) : get().combatSession;
+    const nextSession = replaceCombatSession
+      ? sessionForState(normalizedGame)
+      : get().combatSession;
     const session =
       options.summary && hasCombatSimulation(options.summary)
         ? mergeCombatSession(nextSession, options.summary, options.events ?? [])
         : nextSession;
-    if (game.activeAction.type === 'combat')
-      session.encounterStartedAt = game.activeAction.combatState.encounterStartedAt;
+    if (normalizedGame.activeAction.type === 'combat')
+      session.encounterStartedAt = normalizedGame.activeAction.combatState.encounterStartedAt;
     set({
-      game,
+      game: normalizedGame,
       combatEvents: replaceCombatSession
         ? (options.events ?? [])
         : appendCombatEvents(get().combatEvents, options.events),

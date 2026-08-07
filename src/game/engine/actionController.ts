@@ -5,9 +5,8 @@ import { createCombatRngForStart, initializeEnemySpawn } from './combatEncounter
 import { getDerivedStats } from '../formulas/statFormulas';
 import { miningNodeById } from '../../content/miningNodes';
 import { createMiningRuntimeState, normalizeMiningState } from '../formulas/miningFormulas';
-import { getSmithingMaxCraftable } from '../formulas/smithingFormulas';
+import { getSmithingMaxCraftable, getSmithingStartBlockReason } from '../formulas/smithingFormulas';
 import type { AreaId, CombatStyle, EnemyId, GameState, MiningNodeId, QuantityMode } from '../types';
-import { getItemQuantity } from '../systems/inventorySystem';
 
 export const startMining = (
   state: GameState,
@@ -123,11 +122,5 @@ export const queueCombatSpecial = (state: GameState): GameState => {
 
 export const recipeCanStart = (state: GameState, recipeId: string): boolean => {
   const recipe = recipeById[recipeId];
-  return Boolean(
-    recipe &&
-    state.skills.smithing.level >= recipe.level &&
-    recipe.inputs.every(
-      (input) => getItemQuantity(state.inventory, input.itemId) >= input.quantity,
-    ),
-  );
+  return getSmithingStartBlockReason(state, recipe) === null;
 };

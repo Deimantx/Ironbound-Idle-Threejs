@@ -15,7 +15,12 @@ import {
   getSmithingMaxCraftable,
   normalizeSmithingState,
 } from '../formulas/smithingFormulas';
-import { getXpForLevel, getLevelFromXp, MAX_LEVEL } from '../formulas/experienceFormulas';
+import {
+  getXpForLevel,
+  getLevelFromXp,
+  normalizeSkillState,
+  MAX_LEVEL,
+} from '../formulas/experienceFormulas';
 import { miningNodeById } from '../../content/miningNodes';
 import { SKILL_IDS } from '../types';
 import type { GameState, InventoryStack, SkillId } from '../types';
@@ -392,6 +397,13 @@ const migrateSmithing = (input: GameState): GameState => {
   return { ...input, smithing, activeAction, schemaVersion: 7 };
 };
 
+const normalizeSkillStates = (input: GameState): GameState => {
+  const skills = { ...input.skills };
+  for (const skillId of EXPERIENCE_SKILLS)
+    skills[skillId] = normalizeSkillState(input.skills[skillId]);
+  return { ...input, skills };
+};
+
 export const migrations: Record<number, SaveMigration> = {
   1: (input) => ({
     ...input,
@@ -463,6 +475,7 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
     current = migrateMining(current);
     current = migrateSmithing(current);
   }
+  current = normalizeSkillStates(current);
   current.schemaVersion = GAME_CONFIG.currentSaveVersion;
   return current;
 };

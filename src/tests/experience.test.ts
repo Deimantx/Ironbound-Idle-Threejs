@@ -5,6 +5,7 @@ import {
   getLevelProgress,
   getXpForLevel,
   MAX_LEVEL,
+  normalizeSkillState,
   XP_THRESHOLDS,
 } from '../game/formulas/experienceFormulas';
 import type { SkillId, SkillState } from '../game/types';
@@ -83,5 +84,14 @@ describe('experience formulas', () => {
     skills.mining = { level: 90, xp: getXpForLevel(90) };
     expect(addSkillXp(skills, 'mining', getXpForLevel(92) - getXpForLevel(90))).toBe(2);
     expect(skills.mining).toEqual({ level: 92, xp: getXpForLevel(92) });
+  });
+
+  it('normalizes stale levels from preserved XP without changing the XP curve', () => {
+    expect(normalizeSkillState({ level: 3, xp: 220 })).toEqual({ level: 2, xp: 220 });
+    expect(normalizeSkillState({ level: 99, xp: getXpForLevel(100) })).toEqual({
+      level: 100,
+      xp: getXpForLevel(100),
+    });
+    expect(normalizeSkillState(undefined)).toEqual({ level: 1, xp: 0 });
   });
 });

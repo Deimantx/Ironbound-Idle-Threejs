@@ -100,6 +100,25 @@ export const getSmithingCycleRequirements = (
   ];
 };
 
+export type SmithingStartBlockReason = 'level' | 'materials' | 'fuel' | null;
+
+export const getSmithingStartBlockReason = (
+  state: GameState,
+  recipe: RecipeDefinition | undefined,
+): SmithingStartBlockReason => {
+  if (!recipe || state.skills.smithing.level < recipe.level) return 'level';
+  if (
+    recipe.inputs.some((input) => getItemQuantity(state.inventory, input.itemId) < input.quantity)
+  )
+    return 'materials';
+  if (recipe.fuel && getItemQuantity(state.inventory, recipe.fuel.itemId) < recipe.fuel.quantity)
+    return 'fuel';
+  return null;
+};
+
+export const recipeCanStart = (state: GameState, recipe: RecipeDefinition | undefined): boolean =>
+  getSmithingStartBlockReason(state, recipe) === null;
+
 export interface SmithingRateEstimate {
   intervalMs: number;
   cyclesPerHour: number;
