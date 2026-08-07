@@ -1,28 +1,38 @@
 import { ChevronDown, Flame, Hammer, Lock } from 'lucide-react';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { SMITHING_BAR_BY_TIER, type SmithingTier } from '../config/smithingTuning';
 import {
   ACTIVE_SMITHING_RECIPES,
   getSmithingRecipesForCategory,
   recipeById,
 } from '../content/recipes';
 import { SMITHING_FUELS } from '../content/smithingFuels';
+import { SMITHING_TOOLS } from '../content/smithingTools';
 import { itemById } from '../content/items';
 import { getLevelProgress } from '../game/formulas/experienceFormulas';
 import {
   getForgeFuelCapacity,
+  getForgeFuelItemsRequired,
   getForgeFuelTimeEstimate,
   getSelectedForgeFuel,
   getSmithingCycleRequirements,
   getSmithingEffectiveInterval,
   getSmithingHammer,
+  getSmithingHammerDefinitionByItemId,
   getSmithingProductionEstimate,
   getSmithingStartBlockReason,
 } from '../game/formulas/smithingFormulas';
 import { progressRatio } from '../game/engine/simulation';
 import { useGameStore } from '../game/state/gameStore';
-import type { GameState, QuantityMode, RecipeDefinition, ScreenId } from '../game/types';
+import type {
+  GameState,
+  QuantityMode,
+  RecipeDefinition,
+  ScreenId,
+  SmithingToolDefinition,
+} from '../game/types';
 import { getItemQuantity } from '../game/systems/inventorySystem';
-import { formatNumber, formatRatePerHour } from './formatters';
+import { formatHoursMinutes, formatNumber, formatRatePerHour } from './formatters';
 import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
@@ -37,7 +47,7 @@ export interface SmithingScreenProps {
 const quantityOptions: QuantityMode[] = [1, 10, 'all', 'continuous'];
 const outputGroups = ['all', 'weapon', 'armor', 'shield', 'tool'] as const;
 type OutputGroup = (typeof outputGroups)[number];
-type MetalFilter = 'all' | 'iron' | 'steel';
+type MetalFilter = 'all' | SmithingTier;
 
 const formatSeconds = (milliseconds: number): string => `${(milliseconds / 1000).toFixed(1)}s`;
 const itemName = (itemId: string): string => itemById[itemId]?.name ?? itemId;
@@ -60,7 +70,7 @@ const formatEstimateTitle = (
   mode: QuantityMode,
 ): string => {
   const estimate = getSmithingProductionEstimate(game, recipe, mode);
-  return `Base available: ${estimate.baseCraftsAvailable} crafts · ~${formatSeconds(estimate.totalBaseTimeMs)} · ${formatNumber(estimate.totalBaseXp)} XP`;
+  return `Base available: ${estimate.baseCraftsAvailable} crafts · ${formatHoursMinutes(estimate.totalBaseTimeMs)} · ${formatNumber(estimate.totalBaseXp)} XP`;
 };
 
 function SmithingMaterials({ game, recipe }: { game: GameState; recipe: RecipeDefinition }) {
@@ -157,6 +167,8 @@ function ForgeRecipeCard({
   const active = game.activeAction.type === 'smithing' && game.activeAction.recipeId === recipe.id;
   const locked = game.skills.smithing.level < recipe.level;
   const fuelUnits = recipe.forgeFuelUnits ?? 0;
+  const selectedFuel = getSelectedForgeFuel(game);
+  const physicalFuelQuantity = getForgeFuelItemsRequired(game, recipe);
   return (
     <article
       className={`smithing-forge-card ${locked ? 'locked-card' : ''} ${active ? 'active' : ''}`}
@@ -187,7 +199,8 @@ function ForgeRecipeCard({
           <span className="smithing-fuel-cost">
             Fuel{' '}
             <strong>
-              {fuelUnits} unit{fuelUnits === 1 ? '' : 's'} / craft
+              {physicalFuelQuantity}{' '}
+              {selectedFuel?.name ?? `unit${physicalFuelQuantity === 1 ? '' : 's'}`} / craft
             </strong>
           </span>
         )}
@@ -210,7 +223,6 @@ function AnvilRecipeRow({
   const active = game.activeAction.type === 'smithing' && game.activeAction.recipeId === recipe.id;
   const locked = game.skills.smithing.level < recipe.level;
   const interval = getSmithingEffectiveInterval(game, recipe);
-  const improved = interval !== recipe.intervalMs;
   return (
     <article
       className={`smithing-anvil-row ${locked ? 'locked-card' : ''} ${active ? 'active' : ''}`}
@@ -225,11 +237,7 @@ function AnvilRecipeRow({
           XP <strong>{recipe.xp}</strong>
         </span>
         <span>
-          Time{' '}
-          <strong>
-            {formatSeconds(recipe.intervalMs)}
-            {improved && <em className="smithing-improved-time"> → {formatSeconds(interval)}</em>}
-          </strong>
+          Time <strong>{formatSeconds(interval)}</strong>
         </span>
       </div>
       <SmithingMaterials game={game} recipe={recipe} />
@@ -400,14 +408,133 @@ function QuantitySelector({
   );
 }
 
-function HammerSummary({ game }: { game: GameState }) {
+const formatHammerStats = (hammer: SmithingToolDefinition): string =>
+  `${Math.round(hammer.speedBonus * 100)}% faster · ${Math.round(hammer.materialPreservationChance * 100)}% preservation`;
+
+function AnvilToolControl({ game }: { game: GameState }) {
+  const [open, setOpen] = useState(false);
+  const equip = useGameStore((store) => store.equip);
+  const unequip = useGameStore((store) => store.unequip);
   const hammer = getSmithingHammer(game);
+  const equippedToolId = game.equipment.tool;
+  const equippedTool = equippedToolId ? itemById[equippedToolId] : undefined;
+  const equippedHammer = getSmithingHammerDefinitionByItemId(equippedToolId);
+  const activeAnvil =
+    game.activeAction.type === 'smithing' &&
+    recipeById[game.activeAction.recipeId]?.category === 'forging';
+  const toolLabel = hammer ? itemName(hammer.itemId) : 'No Smithing Hammer';
+  const toolDetail = hammer
+    ? formatHammerStats(hammer)
+    : equippedTool && !equippedHammer
+      ? `${equippedTool.name} currently equipped`
+      : equippedHammer && game.skills.smithing.level < equippedHammer.requiredSmithingLevel
+        ? `Requires Smithing ${equippedHammer.requiredSmithingLevel}`
+        : 'Base speed · 0% preservation';
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [open]);
+
   return (
-    <span className="smithing-tool-summary">
-      {hammer
-        ? `${itemName(hammer.itemId)} · ${Math.round(hammer.speedBonus * 100)}% faster · ${Math.round(hammer.materialPreservationChance * 100)}% preservation`
-        : 'No Smithing Hammer · Base speed · 0% preservation'}
-    </span>
+    <div className="smithing-tool-control">
+      <button
+        type="button"
+        className="smithing-tool-trigger"
+        aria-label={`Anvil tool: ${toolLabel}`}
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
+        <span>
+          <strong>Tool: {toolLabel}</strong>
+          <small>{toolDetail}</small>
+        </span>
+        <ChevronDown size={14} className={open ? 'rotated' : ''} />
+      </button>
+      {open && (
+        <div className="smithing-tool-popover" role="dialog" aria-label="Anvil tool selector">
+          <div className="eyebrow">Anvil tool</div>
+          <div className="smithing-tool-equipped">
+            <span>Equipped</span>
+            <strong>{toolLabel}</strong>
+            <small>{toolDetail}</small>
+          </div>
+          <div className="smithing-tool-options">
+            <span className="eyebrow">Available hammers</span>
+            {SMITHING_TOOLS.map((definition) => {
+              const item = itemById[definition.itemId];
+              const owned = getItemQuantity(game.inventory, definition.itemId);
+              const isEquipped = equippedToolId === definition.itemId;
+              const levelLocked = game.skills.smithing.level < definition.requiredSmithingLevel;
+              const notOwned = owned <= 0;
+              const disabled = activeAnvil || isEquipped || levelLocked || notOwned;
+              const reason = activeAnvil
+                ? 'Stop the current Anvil order to change tools.'
+                : isEquipped
+                  ? 'Currently equipped.'
+                  : levelLocked
+                    ? `Requires Smithing ${definition.requiredSmithingLevel}.`
+                    : notOwned
+                      ? 'Not owned.'
+                      : undefined;
+              return (
+                <div className="smithing-tool-option" key={definition.itemId}>
+                  <div>
+                    <strong>{item?.name ?? definition.itemId}</strong>
+                    <small>
+                      Owned: {formatNumber(owned)} · Requires Smithing{' '}
+                      {definition.requiredSmithingLevel}
+                    </small>
+                    <small>{formatHammerStats(definition)}</small>
+                  </div>
+                  <button
+                    type="button"
+                    className="button ghost"
+                    disabled={disabled}
+                    title={reason}
+                    onClick={() => {
+                      equip(definition.itemId);
+                      setOpen(false);
+                    }}
+                  >
+                    {isEquipped
+                      ? 'Equipped'
+                      : levelLocked
+                        ? 'Locked'
+                        : notOwned
+                          ? 'Not owned'
+                          : 'Equip'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+          {equippedHammer && (
+            <button
+              type="button"
+              className="button danger"
+              disabled={activeAnvil}
+              title={activeAnvil ? 'Stop the current Anvil order to change tools.' : undefined}
+              onClick={() => {
+                unequip('tool');
+                setOpen(false);
+              }}
+            >
+              Unequip Hammer
+            </button>
+          )}
+          {activeAnvil && (
+            <small className="smithing-tool-blocked">
+              Stop the current Anvil order to change tools.
+            </small>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -441,9 +568,7 @@ function ActiveOrder({
       <div className="smithing-active-heading">
         <div>
           <div className="eyebrow">Active Order</div>
-          <h2>
-            {isForge ? 'Smelting' : 'Forging'} {recipe.name}
-          </h2>
+          <h2>{recipe.name}</h2>
           <span className="smithing-active-facility">
             {isForge ? 'Forge' : 'Anvil'} · {formatQuantity(action.quantityMode, action.remaining)}
           </span>
@@ -454,7 +579,7 @@ function ActiveOrder({
       </div>
       <div className="smithing-active-progress">
         <div className="split">
-          <span>Next {itemName(recipe.outputItemId)}</span>
+          <span>{itemName(recipe.outputItemId)}</span>
           <strong>{formatSeconds(remainingMs)}</strong>
         </div>
         <div className="bar">
@@ -484,7 +609,7 @@ function ActiveOrder({
         <strong>{available}</strong>
         <small>
           {estimate.totalBaseXp > 0
-            ? `Base output: ${formatNumber(estimate.totalBaseXp)} XP · ${formatSeconds(estimate.totalBaseTimeMs)}`
+            ? `Base output: ${formatNumber(estimate.totalBaseXp)} XP · ${formatHoursMinutes(estimate.totalBaseTimeMs)}`
             : 'No base crafts available'}
         </small>
       </div>
@@ -496,16 +621,11 @@ function ActiveOrder({
             {getForgeFuelCapacity(game)} loaded · Auto-refuel {fuelState.autoRefuel ? 'ON' : 'OFF'}
           </strong>
           <small>
-            Estimated fuel time: ~{formatSeconds(loadedFuelTime)} · {estimate.baseCraftsAvailable}{' '}
-            base crafts from current resources
+            Estimated fuel time: ~{formatHoursMinutes(loadedFuelTime)} ·{' '}
+            {estimate.baseCraftsAvailable} base crafts from current resources
           </small>
         </div>
-      ) : (
-        <div className="smithing-order-detail">
-          <span className="eyebrow">TOOL</span>
-          <HammerSummary game={game} />
-        </div>
-      )}
+      ) : null}
     </div>
   );
 }
@@ -514,6 +634,10 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
   const [mode, setMode] = useState<QuantityMode>(1);
   const [forgeCollapsed, setForgeCollapsed] = useState(false);
   const [anvilCollapsed, setAnvilCollapsed] = useState(false);
+  const [collapsedTiers, setCollapsedTiers] = useState<Record<SmithingTier, boolean>>({
+    iron: false,
+    steel: false,
+  });
   const [filter, setFilter] = useState<OutputGroup>('all');
   const [metalFilter, setMetalFilter] = useState<MetalFilter>('all');
   const stopAction = useGameStore((store) => store.stopAction);
@@ -543,8 +667,10 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
     [filter, metalFilter],
   );
   const tierGroups = useMemo(() => {
-    const tiers =
-      metalFilter === 'all' ? metalOptions.filter((tier) => tier !== 'all') : [metalFilter];
+    const tiers: SmithingTier[] =
+      metalFilter === 'all'
+        ? metalOptions.filter((tier): tier is SmithingTier => tier !== 'all')
+        : [metalFilter];
     return tiers
       .map((tier) => ({
         tier,
@@ -638,7 +764,7 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
               title="Anvil"
               subtitle="Forge bars into equipment and profession tools."
               summary=""
-              accessory={<HammerSummary game={game} />}
+              accessory={<AnvilToolControl game={game} />}
               collapsed={anvilCollapsed}
               onToggle={() => setAnvilCollapsed((value) => !value)}
             />
@@ -680,21 +806,43 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
                 <div className="smithing-recipe-list smithing-anvil-list">
                   {tierGroups.map(({ tier, recipes }) => (
                     <section className="smithing-tier-group" key={tier}>
-                      <div className="smithing-tier-heading">
+                      <button
+                        type="button"
+                        className="smithing-tier-heading"
+                        aria-expanded={!(metalFilter === 'all' && collapsedTiers[tier])}
+                        aria-controls={`smithing-tier-${tier}-recipes`}
+                        aria-label={`${metalFilter === 'all' && collapsedTiers[tier] ? 'Expand' : 'Collapse'} ${tier} recipes`}
+                        onClick={() =>
+                          setCollapsedTiers((current) => ({ ...current, [tier]: !current[tier] }))
+                        }
+                      >
                         <span>{tier.toUpperCase()}</span>
+                        <small>
+                          ·{' '}
+                          {formatNumber(
+                            getItemQuantity(game.inventory, SMITHING_BAR_BY_TIER[tier]),
+                          )}{' '}
+                          bars
+                        </small>
                         <i />
-                      </div>
-                      <div className="smithing-tier-recipes">
-                        {recipes.map((recipe) => (
-                          <AnvilRecipeRow
-                            key={recipe.id}
-                            game={game}
-                            recipe={recipe}
-                            mode={mode}
-                            requestAction={requestAction}
-                          />
-                        ))}
-                      </div>
+                        <ChevronDown
+                          size={15}
+                          className={metalFilter === 'all' && collapsedTiers[tier] ? '' : 'rotated'}
+                        />
+                      </button>
+                      {!(metalFilter === 'all' && collapsedTiers[tier]) && (
+                        <div className="smithing-tier-recipes" id={`smithing-tier-${tier}-recipes`}>
+                          {recipes.map((recipe) => (
+                            <AnvilRecipeRow
+                              key={recipe.id}
+                              game={game}
+                              recipe={recipe}
+                              mode={mode}
+                              requestAction={requestAction}
+                            />
+                          ))}
+                        </div>
+                      )}
                     </section>
                   ))}
                 </div>

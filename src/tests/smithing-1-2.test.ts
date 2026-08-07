@@ -122,7 +122,7 @@ describe('Smithing 1.2 Forge fuel', () => {
     expect(result.summary.itemsUsed).toEqual({ 'iron-ore': 1, coal: 1 });
 
     const partial = withItems(createNewGame(0, 'Partial Fuel'), [
-      ['iron-ore', 1],
+      ['iron-ore', 2],
       ['coal', 2],
     ]);
     partial.smithing.forgeFuel.loadedFuelItemId = 'coal';
@@ -213,8 +213,8 @@ describe('Smithing 1.2 Forge fuel', () => {
     expect(estimate).toMatchObject({
       baseCraftsAvailable: 3,
       intervalMs: 3800,
-      xpPerCraft: 12,
-      totalBaseXp: 36,
+      xpPerCraft: 20,
+      totalBaseXp: 60,
       totalBaseTimeMs: 11_400,
     });
     expect(getForgeFuelTimeEstimate(state, recipe)).toBe(0);

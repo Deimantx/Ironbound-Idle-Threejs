@@ -306,9 +306,7 @@ const SmithingActivityStrip = ({
         onClick={() => onNavigate('smithing')}
         aria-label={`Open Smithing: ${recipe.name}`}
       >
-        <strong>
-          {recipe.category === 'smelting' ? 'Smelting' : 'Forging'} {recipe.name}
-        </strong>
+        <strong>{recipe.name}</strong>
         <small>
           {recipe.category === 'smelting' ? 'Forge' : 'Anvil'} · {quantity}
         </small>
@@ -327,7 +325,7 @@ const SmithingActivityStrip = ({
           {recipe.category === 'smelting'
             ? fuelStatus
             : hammer
-              ? `${itemById[hammer.itemId]?.name} equipped`
+              ? (itemById[hammer.itemId]?.name ?? 'Hammer')
               : 'No hammer'}
         </small>
       </div>
@@ -342,7 +340,7 @@ const SmithingActivityStrip = ({
         </div>
       )}
       <ActivityPhaseProgress
-        label={`Next ${itemById[recipe.outputItemId]?.name ?? recipe.name}`}
+        label={itemById[recipe.outputItemId]?.name ?? recipe.name}
         ratio={progressRatio(action, now, game)}
         remainingMs={remainingMs}
       />

@@ -1,4 +1,5 @@
 import { itemById } from '../../content/items';
+import { recipeById } from '../../content/recipes';
 import { GAME_CONFIG } from '../../config/gameConfig';
 import { getDerivedStats } from '../formulas/statFormulas';
 import { getMiningToolDefinition } from '../../content/miningTools';
@@ -11,9 +12,16 @@ export interface EquipmentResult {
   ok: boolean;
   message: string;
 }
+
+export const isAnvilOrderActive = (state: GameState): boolean =>
+  state.activeAction.type === 'smithing' &&
+  recipeById[state.activeAction.recipeId]?.category === 'forging';
+
 export const equipItem = (state: GameState, itemId: string): EquipmentResult => {
   const item = itemById[itemId];
   if (!item?.slot) return { state, ok: false, message: 'That item cannot be equipped.' };
+  if (item.slot === 'tool' && isAnvilOrderActive(state))
+    return { state, ok: false, message: 'Stop the current Anvil order to change tools.' };
   const miningTool = item.slot === 'tool' ? getMiningToolDefinition(itemId) : null;
   if (miningTool && state.skills.mining.level < miningTool.requiredMiningLevel)
     return {
@@ -62,6 +70,8 @@ export const unequipItem = (
 ): EquipmentResult => {
   const itemId = state.equipment[slot];
   if (!itemId) return { state, ok: false, message: 'That slot is already empty.' };
+  if (slot === 'tool' && isAnvilOrderActive(state))
+    return { state, ok: false, message: 'Stop the current Anvil order to change tools.' };
   const result = addItem(state.inventory, itemId, 1, inventoryCapacity);
   if (result.rejected)
     return { state, ok: false, message: 'Make room in your inventory before unequipping.' };

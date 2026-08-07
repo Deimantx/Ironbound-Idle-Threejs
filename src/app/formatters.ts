@@ -15,3 +15,13 @@ export const formatRatePerHour = (value: number): string =>
   new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(
     Math.round(Math.max(0, value)),
   );
+
+export const formatHoursMinutes = (milliseconds: number): string => {
+  const totalMinutes = Math.max(
+    0,
+    Math.round((Number.isFinite(milliseconds) ? milliseconds : 0) / 60_000),
+  );
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};

@@ -94,6 +94,17 @@ export const getForgeLoadedFuelValue = (state: GameState): number => {
 export const getForgeFuelUnitsRequired = (recipe: RecipeDefinition | undefined): number =>
   recipe?.category === 'smelting' ? Math.max(0, Math.floor(recipe.forgeFuelUnits ?? 0)) : 0;
 
+export const getForgeFuelItemsRequired = (
+  state: GameState,
+  recipe: RecipeDefinition | undefined,
+): number => {
+  const unitsRequired = getForgeFuelUnitsRequired(recipe);
+  const selected = getSelectedForgeFuel(state);
+  return selected && selected.fuelValue > 0
+    ? Math.ceil(unitsRequired / selected.fuelValue)
+    : unitsRequired;
+};
+
 const getUnlockedInventoryQuantity = (state: GameState, itemId: string): number => {
   const stack = state.inventory.find((entry) => entry.itemId === itemId);
   return stack && !stack.locked ? Math.max(0, Math.floor(stack.quantity)) : 0;

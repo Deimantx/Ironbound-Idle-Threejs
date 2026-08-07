@@ -32,13 +32,13 @@ describe('Smithing 1.0 content and formulas', () => {
   it('keeps active Iron/Steel progression separate from legacy Bronze', () => {
     expect(recipeById['iron-bar']).toMatchObject({
       level: 1,
-      xp: 12,
+      xp: 20,
       forgeFuelUnits: 1,
       fuel: { itemId: 'coal', quantity: 1 },
     });
     expect(recipeById['steel-bar']).toMatchObject({
       level: 30,
-      xp: 20,
+      xp: 40,
       forgeFuelUnits: 2,
       fuel: { itemId: 'coal', quantity: 2 },
     });
@@ -80,7 +80,7 @@ describe('Smithing 1.0 content and formulas', () => {
     expect(getItemQuantity(result.state.inventory, 'iron-ore')).toBe(0);
     expect(getItemQuantity(result.state.inventory, 'coal')).toBe(0);
     expect(getItemQuantity(result.state.inventory, 'iron-bar')).toBe(1);
-    expect(result.summary.xpGained.smithing).toBe(12);
+    expect(result.summary.xpGained.smithing).toBe(20);
     expect(result.state.statistics.smelted).toBe(1);
   });
 
@@ -130,7 +130,7 @@ describe('Smithing 1.0 atomic cycles and quantity modes', () => {
     expect(getItemQuantity(result.state.inventory, 'iron-sword')).toBe(1);
     expect(getItemQuantity(result.state.inventory, 'iron-bar')).toBe(3);
     expect(result.summary.itemsUsed['iron-bar']).toBe(1);
-    expect(result.summary.xpGained.smithing).toBe(55);
+    expect(result.summary.xpGained.smithing).toBe(80);
     expect(result.state.smithing.rngCursor).toBe(4);
 
     const rejected = withItems(createNewGame(0, 'Rejected'), [['iron-bar', 5]]);

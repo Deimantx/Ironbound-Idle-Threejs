@@ -409,10 +409,11 @@ describe('navigation integration', () => {
     expect(screen.getByRole('button', { name: 'Open Smithing: Iron Bar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Stop smithing' })).toBeInTheDocument();
     expect(screen.getByText('Active Order')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Smelting Iron Bar' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Iron Bar' })).toBeInTheDocument();
     expect(screen.getByText(/^XP to next:/)).toBeInTheDocument();
     expect(screen.getByText(/^ETA:/)).toBeInTheDocument();
-    expect(screen.getAllByText('Next Iron Bar')).toHaveLength(2);
+    expect(screen.queryByText('Next Iron Bar')).not.toBeInTheDocument();
+    expect(screen.queryByText('Smelting Iron Bar')).not.toBeInTheDocument();
     expect(screen.queryByText('Quantity:')).not.toBeInTheDocument();
   });
 
@@ -475,6 +476,84 @@ describe('navigation integration', () => {
     expect(document.querySelectorAll('.smithing-forge-card')).toHaveLength(2);
   });
 
+  it('collapses metal tiers while explicit metal filters force their tier visible', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Smithing Tier Tester');
+    game.settings.threeQuality = 'off';
+    game.inventory = [
+      { itemId: 'iron-bar', quantity: 3840, locked: false },
+      { itemId: 'steel-bar', quantity: 12, locked: false },
+    ];
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
+    expect(document.querySelector('.smithing-tier-heading small')).toHaveTextContent('3,840');
+    expect(screen.getByText('Iron Sword')).toBeInTheDocument();
+    expect(screen.getByText('Steel Sword')).toBeInTheDocument();
+
+    const ironHeading = screen.getByRole('button', { name: 'Collapse iron recipes' });
+    await user.click(ironHeading);
+    expect(ironHeading).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Iron Sword')).not.toBeInTheDocument();
+    expect(screen.getByText('Steel Sword')).toBeInTheDocument();
+    expect(useGameStore.getState().game?.inventory).toEqual(game.inventory);
+
+    await user.click(screen.getByRole('button', { name: 'Iron' }));
+    expect(screen.getByText('Iron Sword')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Collapse iron recipes' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await user.click(screen.getByRole('button', { name: 'All Metals' }));
+    expect(screen.queryByText('Iron Sword')).not.toBeInTheDocument();
+  });
+
+  it('equips Smithing hammers through the Anvil selector and reflects the generic tool slot', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Smithing Tool Selector');
+    game.settings.threeQuality = 'off';
+    game.skills.smithing = { level: 15, xp: getXpForLevel(15) };
+    game.inventory = [{ itemId: 'iron-smithing-hammer', quantity: 1, locked: false }];
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
+    await user.click(screen.getByRole('button', { name: 'Anvil tool: No Smithing Hammer' }));
+    expect(screen.getByRole('dialog', { name: 'Anvil tool selector' })).toBeInTheDocument();
+    expect(screen.getByText(/Requires Smithing 15/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Equip' }));
+    expect(useGameStore.getState().game?.equipment.tool).toBe('iron-smithing-hammer');
+    expect(useGameStore.getState().game?.inventory).toContainEqual({
+      itemId: 'worn-pickaxe',
+      quantity: 1,
+      locked: false,
+    });
+    expect(
+      screen.getByRole('button', { name: 'Anvil tool: Iron Smithing Hammer' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
+    expect(
+      screen.getByRole('button', { name: 'Tool slot, Iron Smithing Hammer' }),
+    ).toBeInTheDocument();
+  });
+
+  it('reports a Mining pickaxe instead of pretending it is a Smithing hammer', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Pickaxe Selector');
+    game.settings.threeQuality = 'off';
+    game.equipment.tool = 'iron-pickaxe';
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
+    expect(
+      screen.getByRole('button', { name: 'Anvil tool: No Smithing Hammer' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText('Iron Pick currently equipped')).toHaveLength(1);
+  });
+
   it('shows the consolidated Anvil hammer status without copying it into the overview', async () => {
     const user = userEvent.setup();
     const game = createNewGame(0, 'Smithing Hammer Tester');
@@ -486,9 +565,11 @@ describe('navigation integration', () => {
     render(<App />);
 
     await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
-    expect(screen.getAllByText(/Iron Smithing Hammer · 8% faster · 3% preservation/)).toHaveLength(
-      1,
-    );
+    expect(
+      screen.getByRole('button', { name: 'Anvil tool: Iron Smithing Hammer' }),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/8% faster · 3% preservation/)).toHaveLength(1);
+    expect(screen.queryByText('TOOL')).not.toBeInTheDocument();
     expect(screen.queryByText('No Smithing Hammer')).not.toBeInTheDocument();
     expect(screen.queryByText(/XP\/hr/)).not.toBeInTheDocument();
   });

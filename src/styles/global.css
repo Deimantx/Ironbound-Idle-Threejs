@@ -746,6 +746,11 @@ h3 {
   flex: 0 1 270px;
   min-width: 210px;
 }
+.smithing-tool-control {
+  position: relative;
+  flex: 0 1 300px;
+  min-width: 230px;
+}
 .smithing-fuel-trigger {
   display: flex;
   width: 100%;
@@ -763,6 +768,42 @@ h3 {
   display: grid;
   min-width: 0;
   gap: 2px;
+}
+.smithing-tool-trigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid #5c4d35;
+  border-radius: 7px;
+  background: rgba(40, 35, 27, 0.72);
+  color: var(--text);
+  text-align: left;
+}
+.smithing-tool-trigger > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.smithing-tool-trigger strong,
+.smithing-tool-trigger small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.smithing-tool-trigger strong {
+  color: #e8d39f;
+  font-size: 11px;
+}
+.smithing-tool-trigger small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.smithing-tool-trigger:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
 }
 .smithing-fuel-trigger strong,
 .smithing-fuel-trigger small {
@@ -791,6 +832,60 @@ h3 {
   border-radius: 8px;
   background: #171b1d;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
+.smithing-tool-popover {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  width: min(360px, calc(100vw - 32px));
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid #5c4d35;
+  border-radius: 8px;
+  background: #171b1d;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
+.smithing-tool-equipped,
+.smithing-tool-options {
+  display: grid;
+  gap: 5px;
+}
+.smithing-tool-equipped {
+  padding: 8px;
+  border: 1px solid #3b4649;
+  border-radius: 6px;
+  background: rgba(12, 15, 17, 0.45);
+}
+.smithing-tool-equipped span,
+.smithing-tool-option small,
+.smithing-tool-blocked {
+  color: var(--muted);
+  font-size: 10px;
+}
+.smithing-tool-equipped strong,
+.smithing-tool-option strong {
+  color: var(--text);
+  font-size: 11px;
+}
+.smithing-tool-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid rgba(59, 70, 73, 0.55);
+}
+.smithing-tool-option > div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.smithing-tool-option .button {
+  flex: 0 0 auto;
+  padding: 5px 8px;
+  font-size: 10px;
 }
 .smithing-fuel-popover label {
   display: grid;
@@ -845,13 +940,6 @@ h3 {
   flex: 1 1 auto;
   padding-inline: 7px;
   font-size: 10px;
-}
-.smithing-tool-summary {
-  flex: 0 1 300px;
-  min-width: 0;
-  color: #d7bd88;
-  font-size: 10px;
-  text-align: right;
 }
 .smithing-recipe-list {
   display: grid;
@@ -949,17 +1037,44 @@ h3 {
 }
 .smithing-tier-heading {
   display: flex;
+  width: 100%;
   align-items: center;
   gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--muted);
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.12em;
+  text-align: left;
+}
+.smithing-tier-heading:hover {
+  color: var(--text);
+}
+.smithing-tier-heading:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+.smithing-tier-heading small {
+  color: #d7bd88;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
 }
 .smithing-tier-heading i {
+  display: block;
   height: 1px;
   flex: 1;
   background: var(--line);
+}
+.smithing-tier-heading svg {
+  flex: 0 0 auto;
+  transition: transform 0.2s ease;
+}
+.smithing-tier-heading svg.rotated {
+  transform: rotate(180deg);
 }
 .smithing-tier-recipes {
   display: grid;
@@ -985,11 +1100,6 @@ h3 {
 }
 .smithing-anvil-row > .button,
 .smithing-forge-card-top > .button {
-  white-space: nowrap;
-}
-.smithing-improved-time {
-  color: var(--gold);
-  font-style: normal;
   white-space: nowrap;
 }
 .smithing-filterbar {
@@ -1043,9 +1153,6 @@ h3 {
 .smithing-order-detail small {
   color: var(--muted);
   font-size: 10px;
-}
-.smithing-order-detail .smithing-tool-summary {
-  text-align: left;
 }
 .smithing-order-detail + .smithing-order-detail {
   margin-top: -7px;
@@ -1104,13 +1211,17 @@ h3 {
     flex-wrap: wrap;
   }
   .smithing-fuel-control,
-  .smithing-tool-summary {
+  .smithing-tool-control {
     flex-basis: 100%;
     max-width: none;
     margin-left: 44px;
     text-align: left;
   }
   .smithing-fuel-popover {
+    left: 0;
+    right: auto;
+  }
+  .smithing-tool-popover {
     left: 0;
     right: auto;
   }

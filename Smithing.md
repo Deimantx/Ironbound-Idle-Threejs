@@ -1,106 +1,93 @@
-# Smithing 1.2
+# Smithing 1.25
 
-Smithing is the Phase One production skill. It has one global action and two facilities: the Forge smelts ore into bars, while the Anvil turns bars into equipment and profession tools. Forge and Anvil never run simultaneously.
-
-## Progression
-
-Normal Smithing content progresses from Iron to Steel. Iron Bar is available at Smithing level 1 so a player who has Iron Ore and Coal can train the skill. Bronze items, bars, and recipe IDs remain valid legacy content for old inventories and saves, but Bronze recipes are hidden from the normal Smithing screen.
+Smithing has two facilities: the Forge smelts ore into bars, while the Anvil turns bars into equipment and profession tools. Forge and Anvil never run simultaneously. Bronze content remains valid legacy content for old inventories and saves, but Bronze recipes are hidden from normal progression.
 
 ## Forge
 
-Forge recipes consume their authored ore inputs and abstract Forge fuel units atomically, create one bar, award Smithing XP, and increment `statistics.smelted`. Coal is the only active fuel and remains a normal stackable inventory item. Forge recipes do not use hammer speed or preservation.
+Forge recipes consume authored ore inputs and abstract fuel units atomically. Coal is the active fuel and remains a normal stackable inventory item. Forge recipes ignore Smithing hammers and use their authored intervals.
 
-| Recipe                  | Level | Inputs     | Fuel units | Time |  XP |
-| ----------------------- | ----: | ---------- | ---------- | ---: | --: |
-| Iron Bar (`iron-bar`)   |     1 | 1 Iron Ore | 1 Coal     | 3.8s |  12 |
-| Steel Bar (`steel-bar`) |    30 | 1 Iron Ore | 2 Coal     | 5.2s |  20 |
+| Recipe    | Level | Inputs     |   Fuel | Time |  XP |
+| --------- | ----: | ---------- | -----: | ---: | --: |
+| Iron Bar  |     1 | 1 Iron Ore | 1 Coal | 3.8s |  20 |
+| Steel Bar |    30 | 2 Iron Ore | 2 Coal | 5.2s |  40 |
 
-Legacy Bronze Bar retains its old Copper Ore + Tin Ore requirements, 2.4s interval, and 24 XP without Forge fuel.
+Steel Bar now requires two Iron Ore and two abstract fuel units for one bar. The Forge card converts abstract units into the physical selected fuel using that fuel definition's `fuelValue`.
 
-## Forge fuel hopper
+The persistent Forge hopper has a base capacity of 20 physical fuel items. The Forge header owns fuel selection, loaded quantity, estimated loaded-fuel time, Auto-refuel, Load 1/5/10/Fill, and Unload. Fuel staging, craft consumption, inventory, XP, statistics, discovery, and deterministic RNG commit atomically.
 
-Coal moves through the persistent Forge hopper rather than being consumed directly from the inventory:
-
-```text
-Inventory Coal -> Forge Fuel Hopper -> successful Forge craft
-```
-
-The hopper has a base capacity of 20 physical fuel items. The Forge header owns fuel selection, loaded quantity, estimated loaded-fuel time, Auto-refuel, Load 1/5/10/Fill, and Unload. Locked Coal stacks cannot be loaded. Unload is transactional and reports when inventory has no room.
-
-Auto-refuel defaults ON. During a Forge cycle it stages selected unlocked fuel toward hopper capacity, then consumes only the physical fuel needed by the successful recipe. Staged loading and the craft commit together, so an output-capacity failure rolls back ore, fuel, inventory, XP, statistics, discovery, and RNG. Manual loading is an immediate preparation action and is not reported in `summary.itemsUsed`; successful fuel consumption is.
+Legacy Bronze Bar retains its historical Copper Ore + Tin Ore requirements, 2.4s interval, and 24 XP without Forge fuel.
 
 ## Anvil
 
-Anvil recipes consume authored bar inputs, create one output, award Smithing XP, and increment `statistics.forged`.
+Active Iron and Steel forging XP is derived from bars consumed and the tier tuning:
 
-| Output                | Recipe ID               | Level |          Bars |  Time |  XP |
-| --------------------- | ----------------------- | ----: | ------------: | ----: | --: |
-| Iron Sword            | `iron-sword`            |    15 |   4 Iron Bars |  4.2s |  55 |
-| Iron Helm             | `iron-helmet`           |    17 |   3 Iron Bars |  4.2s |  59 |
-| Iron Bulwark          | `iron-shield`           |    18 |   5 Iron Bars |  4.2s |  63 |
-| Iron Armor            | `iron-armor`            |    20 |  11 Iron Bars |  8.4s | 128 |
-| Iron Pick             | `iron-pickaxe`          |    22 |   5 Iron Bars |  4.2s |  67 |
-| Iron Smithing Hammer  | `iron-smithing-hammer`  |    15 |   3 Iron Bars |  4.2s |  45 |
-| Steel Sword           | `steel-sword`           |    30 |  5 Steel Bars |  6.0s |  90 |
-| Steel Helm            | `steel-helmet`          |    32 |  4 Steel Bars |  6.0s |  94 |
-| Steel Smithing Hammer | `steel-smithing-hammer` |    32 |  4 Steel Bars |  6.0s |  90 |
-| Steel Bulwark         | `steel-shield`          |    33 |  6 Steel Bars |  6.0s |  98 |
-| Steel Armor           | `steel-armor`           |    35 | 13 Steel Bars | 12.0s | 198 |
-| Steel Pick            | `steel-pickaxe`         |    37 |  6 Steel Bars |  6.0s | 102 |
+```text
+Iron tier: 20 XP per bar
+Steel tier: 40 XP per bar
+```
 
-## Smithing hammers
+| Output                | Level | Bars |  Time |  XP |
+| --------------------- | ----: | ---: | ----: | --: |
+| Iron Sword            |    15 |    4 |  4.2s |  80 |
+| Iron Helm             |    17 |    3 |  4.2s |  60 |
+| Iron Bulwark          |    18 |    5 |  4.2s | 100 |
+| Iron Armor            |    20 |   11 |  8.4s | 220 |
+| Iron Pick             |    22 |    5 |  4.2s | 100 |
+| Iron Smithing Hammer  |    15 |    3 |  4.2s |  60 |
+| Steel Sword           |    30 |    5 |  6.0s | 200 |
+| Steel Helm            |    32 |    4 |  6.0s | 160 |
+| Steel Smithing Hammer |    32 |    4 |  6.0s | 160 |
+| Steel Bulwark         |    33 |    6 |  6.0s | 240 |
+| Steel Armor           |    35 |   13 | 12.0s | 520 |
+| Steel Pick            |    37 |    6 |  6.0s | 240 |
 
-Hammers use the existing generic `tool` equipment slot. Equipping one displaces the current pickaxe through normal equipment flow, so the active profession tool is a deliberate Mining/Smithing tradeoff.
+Recipe rows show only the effective Anvil time. The hammer selector owns the speed explanation; Forge rows continue to show authored base time. The effective formula remains `max(250ms, floor(baseInterval * (1 - speedBonus)))`.
 
-| Hammer                | Required Smithing | Anvil speed | Material preservation |
-| --------------------- | ----------------: | ----------: | --------------------: |
-| Iron Smithing Hammer  |                15 |   8% faster |     3% per input unit |
-| Steel Smithing Hammer |                32 |  15% faster |     6% per input unit |
+## Smithing hammers and the generic tool slot
 
-Without a valid equipped hammer, Anvil work uses its base interval and 0% preservation. Effective Anvil time is `max(250ms, floor(baseInterval × (1 - speedBonus)))`. Forge time is always the authored base interval.
+Hammers use the existing `equipment.tool` slot. The Anvil header has an accessible Tool selector driven by the registered definitions in `src/content/smithingTools.ts`. It shows owned quantity, Smithing requirement, speed, preservation, equipped state, and unavailable reasons. Equipping a hammer uses the normal equipment flow, so a pickaxe is returned to inventory when displaced. Unequip uses the same inventory-capacity validation.
+
+The Equipment screen remains authoritative and reflects selections made in Smithing. If a pickaxe occupies the generic tool slot, Smithing reports `No Smithing Hammer` and identifies the equipped pickaxe rather than treating it as a hammer.
+
+Hammer changes are blocked while an Anvil order is active with the message `Stop the current Anvil order to change tools.` This keeps the effective interval and progress deterministic and avoids tool-switch acceleration exploits. Forge work can continue to ignore hammers.
+
+## Tier sections and filters
+
+The Anvil keeps All Metals, Iron, and Steel filters. Iron and Steel sections have keyboard-accessible full-width collapse buttons. Each heading displays live bar stock, for example `IRON - 3,840 bars`. Collapse state is local React UI state only; it is not stored in `GameState` or the save.
+
+All Metals respects each section's local collapse state. Selecting an explicit Iron or Steel filter temporarily forces that tier visible, and returning to All Metals restores the previous collapse state. Bronze remains hidden from active tier headings.
+
+## Active Order and activity strip
+
+Active Order uses the simple item name, followed by the facility and quantity mode, and no longer repeats `Forging`, `Smelting`, `Next`, or a detailed Anvil Tool block. Forge Active Order retains compact fuel context. The bottom activity strip uses the item name and `Forge` or `Anvil` context; its phase label has no `Next` prefix, and its hammer label remains compact.
+
+Aggregate estimates use `formatHoursMinutes()` with nearest-minute rounding and no 24-hour wrap. For example, 3,527.8 seconds displays as `00:59`; individual live craft countdowns remain in seconds such as `0.8s`.
 
 ## Preservation and transactions
 
-Preservation applies only to Anvil recipe material inputs. A cycle must first own the full authored requirement; preservation cannot make an under-supplied recipe start. Each required material unit is rolled independently. Preserved units remain in inventory, but the craft still creates its full output and awards full XP.
+Preservation applies only to Anvil material inputs. A cycle first requires the full authored cost; preserved units remain in inventory while the craft still creates its full output and awards full XP. Smithing stages inventory and RNG, then commits successful material/fuel consumption, output, XP, statistics, discovery, and RNG together. Rejected cycles consume nothing.
 
-Smithing stages a clone of inventory and RNG state, removes actual consumed materials and fuel, checks output capacity after those removals, and commits all results together. A rejected cycle consumes nothing, awards nothing, increments no statistics, and advances no RNG. This allows a full inventory to craft when removing the final input stack frees the output slot.
-
-Smithing RNG is deterministic and persisted as `smithing.rngSeed` and `smithing.rngCursor`; `Math.random()` is not used.
-
-## Quantity modes
+## Quantity modes and runtime
 
 - `1`: exactly one cycle.
 - `10`: up to ten cycles.
-- `all`: snapshots the maximum number of complete cycles, including ore and either hopper fuel or eligible inventory fuel when Auto-refuel is ON, when the action starts. Preservation cannot extend that target.
-- `continuous`: stores `remaining: null` and continues until the next cycle cannot resolve, the recipe becomes invalid, or the player stops/replaces the action.
+- `all`: snapshots complete cycles from the authored requirements when the action starts.
+- `continuous`: continues until the next cycle cannot resolve or the player stops/replaces the action.
 
-Max craftable ignores expected preservation and checks the full authored requirements.
-
-## Runtime and offline behavior
-
-Smithing uses the shared action controller, simulation loop, inventory, XP, discovery, statistics, save, and offline report systems. Anvil hammer interval and preservation apply identically online and offline. Summaries report `itemsUsed`, `itemsGained`, `xpGained`, completion keys such as `smelting:iron-bar` and `forging:iron-sword`, and normal stop reasons such as `Materials ran out.`, `Forge fuel ran out.`, and `Inventory is full.`
-
-## UI
-
-The Smithing screen contains an Active Order overview plus collapsible Forge and Anvil panels. Forge shows owned/required ore, abstract fuel units per craft, time, XP, and level locks; recipe-local Coal controls are intentionally absent. Anvil has independent type and metal filters driven by authored item tiers, with Bronze excluded from normal lists. While active, the overview shows the current mode, cost, output, XP, rate, base crafts, and Forge fuel or Anvil hammer context; the quantity selector returns when idle. The dedicated activity strip uses “Smelting/Forging <recipe>” and “Next <output>”.
-
-## Save schema
-
-Smithing 1.2 uses save schema 8. Migration 7 -> 8 preserves Smithing XP/level, RNG, active actions, inventory, equipment, Mining, Combat, and legacy Bronze data while adding the default empty Coal hopper with Auto-refuel enabled. It does not remove Coal from old inventories. UI collapse state remains local UI state and is not stored in the game save.
-
-## Smithing 1.3 direction
-
-The capacity helper and tuning boundary are prepared for future facility upgrades, but no upgrade state or controls are implemented yet. Possible later facilities are Basic -> Reinforced -> High-Heat -> Master Forge and Basic -> Reinforced -> Tempered -> Master Anvil. New fuels, queues, parallel actions, quality rolls, heat simulation, and hammer durability remain out of scope.
+The shared online and offline simulation uses the same effective interval, preservation, fuel, XP, and atomic transaction rules. `XP_CURVE_MULTIPLIER`, `MAX_LEVEL`, save schema 8, Forge hopper persistence, Auto-refuel, and deterministic Smithing RNG are unchanged.
 
 ## Authoritative source files
 
-- `src/content/recipes.ts` — recipe IDs, levels, intervals, XP, fuel, and legacy flags.
-- `src/content/smithingFuels.ts` — active fuel definitions and fuel values.
-- `src/config/smithingTuning.ts` — base Forge hopper capacity and future tuning boundary.
-- `src/content/items.ts` — bars, equipment, picks, and Smithing hammers.
-- `src/content/smithingTools.ts` — hammer requirements and bonuses.
-- `src/game/formulas/smithingFormulas.ts` — fuel helpers, hopper mutations, RNG, hammer resolution, rates, intervals, preservation, estimates, and max craftable.
-- `src/game/engine/actionController.ts` — action start and quantity snapshots.
-- `src/game/engine/simulation.ts` — atomic online/offline cycle resolution.
-- `src/game/persistence/migrations.ts` and `src/game/persistence/saveSchema.ts` — schema 8 persistence and migration.
-- `src/app/SmithingScreen.tsx` and `src/app/ActivityStrip.tsx` — Smithing UI and activity strip.
+- `src/content/recipes.ts` - recipe IDs, levels, intervals, authored inputs, and outputs.
+- `src/content/smithingFuels.ts` - active fuel definitions and fuel values.
+- `src/config/smithingTuning.ts` - hopper capacity, tier bar mapping, and XP-per-bar tuning.
+- `src/content/items.ts` - bars, equipment, picks, and Smithing hammers.
+- `src/content/smithingTools.ts` - registered hammer requirements and bonuses.
+- `src/game/formulas/smithingFormulas.ts` - fuel helpers, hammer resolution, rates, intervals, preservation, estimates, and max craftable.
+- `src/game/systems/equipmentSystem.ts` - authoritative generic tool equip/unequip flow and active-Anvil guard.
+- `src/app/SmithingScreen.tsx` and `src/app/ActivityStrip.tsx` - Smithing UI and activity strip.
+- `src/app/formatters.ts` - shared aggregate duration formatting.
+
+## Smithing 1.3 direction
+
+Facility upgrade levels, new fuels, queues, parallel actions, quality rolls, mastery, and hammer durability remain out of scope. The existing `baseForgeFuelCapacity` tuning boundary remains available for a later Basic -> Reinforced -> High-Heat -> Master facility pass.

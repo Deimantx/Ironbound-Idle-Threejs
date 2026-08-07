@@ -89,8 +89,8 @@ describe('Equipment 2.1 content', () => {
       outputItemId: 'bronze-armor',
       xp: 78,
     });
-    expect(recipeById['iron-armor']).toMatchObject({ level: 20, intervalMs: 8400, xp: 128 });
-    expect(recipeById['steel-armor']).toMatchObject({ level: 35, intervalMs: 12000, xp: 198 });
+    expect(recipeById['iron-armor']).toMatchObject({ level: 20, intervalMs: 8400, xp: 220 });
+    expect(recipeById['steel-armor']).toMatchObject({ level: 35, intervalMs: 12000, xp: 520 });
     expect(
       RECIPES.some((recipe) => /platebody|platelegs|Cuirass|Greaves/.test(recipe.id + recipe.name)),
     ).toBe(false);
