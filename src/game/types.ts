@@ -109,12 +109,61 @@ export interface MiningNodeDefinition {
   id: MiningNodeId;
   name: string;
   level: number;
-  intervalMs: number;
-  rewardItemId: string;
-  xp: number;
+  requiredPenetration: number;
+  damagePerPrimaryReward: number;
+  xpPerSwing: number;
+  primaryRewardItemId: string;
+  respawnMs: number;
+  stages: MiningStageDefinition[];
+  bonusDrops: MiningBonusDrop[];
   description: string;
   theme: string;
+  /** @deprecated Kept for old content consumers; Mining uses explicit tool stats. */
+  intervalMs?: number;
+  /** @deprecated Kept for old save/UI consumers. */
+  rewardItemId?: string;
+  /** @deprecated Kept for old save/UI consumers. */
+  xp?: number;
 }
+
+export interface MiningToolDefinition {
+  itemId: string;
+  requiredMiningLevel: number;
+  rockDamage: number;
+  penetration: number;
+  swingIntervalMs: number;
+  staminaCost: number;
+}
+
+export interface MiningBonusDrop {
+  itemId: string;
+  chance: number;
+  minQuantity: number;
+  maxQuantity: number;
+}
+
+export interface MiningStageDefinition {
+  id: string;
+  name: string;
+  durability: number;
+  bonusChanceMultiplier: number;
+}
+
+export interface MiningNodeRuntimeState {
+  stageIndex: number;
+  stageDurability: number;
+  primaryYieldProgress: number;
+  respawnRemainingMs: number;
+  rngSeed: number;
+  rngCursor: number;
+}
+
+export interface MiningState {
+  stamina: number;
+  nodeStates: Partial<Record<MiningNodeId, MiningNodeRuntimeState>>;
+}
+
+export type MiningPhase = 'swing' | 'rest' | 'respawn';
 
 export interface RecipeDefinition {
   id: RecipeId;
@@ -203,7 +252,13 @@ export interface ActiveCombatState {
 
 export type ActiveAction =
   | { type: 'none' }
-  | { type: 'mining'; nodeId: MiningNodeId; startedAt: number; progressMs: number }
+  | {
+      type: 'mining';
+      nodeId: MiningNodeId;
+      startedAt: number;
+      phase: MiningPhase;
+      progressMs: number;
+    }
   | {
       type: 'smithing';
       recipeId: RecipeId;
@@ -255,13 +310,18 @@ export interface GameState {
   discoveredMonsters: EnemyId[];
   killCounts: Partial<Record<EnemyId, number>>;
   statistics: {
+    /** @deprecated Use miningSwings. */
     mined: number;
+    miningSwings: number;
+    miningStagesDepleted: number;
+    miningRocksDepleted: number;
     smelted: number;
     forged: number;
     deaths: number;
     totalKills: number;
   };
   gold: number;
+  mining: MiningState;
   activeAction: ActiveAction;
   unlockedAreas: AreaId[];
   settings: GameSettings;

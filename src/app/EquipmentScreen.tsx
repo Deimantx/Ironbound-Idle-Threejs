@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { itemById } from '../content/items';
+import { MINING_TUNING } from '../config/miningTuning';
+import { getMiningToolDefinition } from '../content/miningTools';
 import { getDerivedStats } from '../game/formulas/statFormulas';
 import {
   ACCESSORY_EQUIPMENT_SLOTS,
@@ -23,7 +25,7 @@ import {
   type ActiveEquipmentSlot,
   getEquipmentSlotLabel,
 } from '../game/equipmentSlots';
-import type { GameState, ItemDefinition, ScreenId } from '../game/types';
+import type { GameState, ItemDefinition, MiningToolDefinition, ScreenId } from '../game/types';
 import { useGameStore } from '../game/state/gameStore';
 import {
   formatEquipmentBonus,
@@ -67,7 +69,7 @@ function ItemSummary({
 }) {
   const bonusEntries = Object.entries(item?.bonuses ?? {}).filter(([key, value]) => {
     if (value === 0) return false;
-    return scope === 'profession' ? key === 'miningSpeed' : key !== 'miningSpeed';
+    return scope === 'profession' ? false : key !== 'miningSpeed';
   });
   return (
     <div className="equipment-item-summary">
@@ -224,37 +226,29 @@ function EquipmentStatRows({
   );
 }
 
-const formatMiningBenefit = (multiplier: number): string => {
-  const faster = Math.round((1 - multiplier) * 100);
-  return faster > 0 ? `${faster}% faster` : 'Normal';
-};
+const formatMiningToolStats = (definition: MiningToolDefinition): string =>
+  `${definition.rockDamage} damage · ${definition.penetration} pen · ${(definition.swingIntervalMs / 1000).toFixed(1)}s · ${definition.staminaCost} stamina`;
 
 function ProfessionBonuses({
-  game,
   currentTool,
   candidateItem,
   expanded,
   onToggle,
 }: {
-  game: GameState;
   currentTool?: ItemDefinition;
   candidateItem?: ItemDefinition;
   expanded: boolean;
   onToggle: () => void;
 }) {
-  const currentStats = getDerivedStats(game);
-  const previewStats = candidateItem
-    ? getDerivedStats(getEquipmentPreviewState(game, 'tool', candidateItem.id))
-    : currentStats;
-  const row = getDerivedStatComparison(currentStats, previewStats, 'profession')[0];
-  const currentBenefit = formatMiningBenefit(row.current);
-  const candidateBenefit = formatMiningBenefit(row.candidate);
-  const improvement = Math.round((row.current - row.candidate) * 100);
+  const currentDefinition = getMiningToolDefinition(currentTool?.id) ?? MINING_TUNING.noTool;
+  const candidateDefinition = candidateItem
+    ? getMiningToolDefinition(candidateItem.id) ?? MINING_TUNING.noTool
+    : null;
   const summary = candidateItem
-    ? `Preview ${candidateBenefit}`
+    ? `Preview ${formatMiningToolStats(candidateDefinition ?? MINING_TUNING.noTool)}`
     : currentTool
-      ? `Mining ${currentBenefit}`
-      : 'No tool equipped';
+      ? formatMiningToolStats(currentDefinition)
+      : 'No pickaxe equipped';
   return (
     <section className="equipment-profession-bonuses" aria-labelledby="profession-bonuses-title">
       <button
@@ -290,14 +284,18 @@ function ProfessionBonuses({
                 </div>
               )}
               <div className="equipment-profession-row">
-                <span>Mining interval</span>
+                <span>Mining stats</span>
                 <strong>
-                  {candidateItem ? `${currentBenefit} → ${candidateBenefit}` : currentBenefit}
+                  {formatMiningToolStats(currentDefinition)}
                 </strong>
               </div>
-              {candidateItem && improvement > 0 && (
+              <div className="equipment-profession-row">
+                <span>Required Mining level</span>
+                <strong>{currentDefinition.requiredMiningLevel}</strong>
+              </div>
+              {candidateItem && candidateDefinition && (
                 <div className="equipment-profession-improvement">
-                  Improvement · +{improvement} percentage points
+                  Candidate · {formatMiningToolStats(candidateDefinition)} · level {candidateDefinition.requiredMiningLevel}
                 </div>
               )}
             </>
@@ -428,13 +426,9 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                     selected={selectedSlot === 'tool'}
                     onSelect={selectSlot}
                   />
-                  {!game.equipment.tool && <small>No profession bonus</small>}
+                  {!game.equipment.tool && <small>No pickaxe equipped</small>}
                   {game.equipment.tool && itemById[game.equipment.tool] && (
-                    <small>
-                      Mining actions{' '}
-                      {Math.round((itemById[game.equipment.tool].bonuses?.miningSpeed ?? 0) * 100)}%
-                      faster
-                    </small>
+                    <small>Explicit Mining stats shown below</small>
                   )}
                 </div>
               </div>
@@ -573,7 +567,7 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
               candidateId={selectedSlot === 'tool' ? null : (candidateItem?.id ?? null)}
             />
 
-            {candidateItem && (
+            {candidateItem && selectedSlot !== 'tool' && (
               <section className="equipment-stat-section" aria-labelledby="bonus-comparison-title">
                 <div className="eyebrow" id="bonus-comparison-title">
                   Item bonus comparison
@@ -630,7 +624,6 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
             )}
 
             <ProfessionBonuses
-              game={game}
               currentTool={game.equipment.tool ? itemById[game.equipment.tool] : undefined}
               candidateItem={selectedSlot === 'tool' ? candidateItem : undefined}
               expanded={professionExpanded}

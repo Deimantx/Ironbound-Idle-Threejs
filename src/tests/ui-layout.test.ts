@@ -16,7 +16,7 @@ describe('visual UI layout', () => {
     expect(getUiPanels('combat')).toHaveLength(6);
     expect(getUiPanels('inventory')).toHaveLength(2);
     expect(getUiPanels('equipment')).toHaveLength(2);
-    expect(getUiPanels('mining')).toHaveLength(2);
+    expect(getUiPanels('mining')).toHaveLength(3);
     expect(getUiPanels('smithing')).toHaveLength(2);
     expect(getUiPanels('inventory').map((panel) => panel.id)).toEqual([
       'inventoryToolbar',
@@ -29,6 +29,7 @@ describe('visual UI layout', () => {
     expect(getUiPanels('mining').map((panel) => panel.id)).toEqual([
       'miningOverview',
       'miningNodes',
+      'miningDetails',
     ]);
     expect(getUiPanels('smithing').map((panel) => panel.id)).toEqual([
       'smithingControls',

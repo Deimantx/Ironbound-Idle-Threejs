@@ -315,6 +315,7 @@ describe('navigation integration', () => {
     const user = userEvent.setup();
     const game = createNewGame(0, 'Profession Tester');
     game.settings.threeQuality = 'off';
+    game.equipment = {};
     game.inventory = [{ itemId: 'bronze-pickaxe', quantity: 1, locked: false }];
     useGameStore.getState().setGame(game);
     render(<App />);
@@ -322,7 +323,7 @@ describe('navigation integration', () => {
 
     const professionToggle = screen.getByRole('button', { name: /Profession Bonuses/ });
     expect(professionToggle).toHaveAttribute('aria-expanded', 'false');
-    expect(professionToggle).toHaveTextContent('No tool equipped');
+    expect(professionToggle).toHaveTextContent('No pickaxe equipped');
     expect(screen.getByText('No compatible Weapons in Inventory.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open Inventory' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Tool slot, empty' }));
@@ -330,8 +331,8 @@ describe('navigation integration', () => {
     expect(screen.getByText(/No profession tool equipped/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Inspect Bronze Pick/ })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Inspect Bronze Pick/ }));
-    expect(professionToggle).toHaveTextContent('Preview 10% faster');
-    expect(screen.getByText(/Normal → 10% faster/)).toBeInTheDocument();
+    expect(professionToggle).toHaveTextContent('Preview 16 damage');
+    expect(screen.getByText(/1 damage · 0 pen/)).toBeInTheDocument();
     expect(screen.queryByText('Special Attacks')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Gloves slot, empty' }));
     expect(professionToggle).toHaveAttribute('aria-expanded', 'false');
@@ -384,7 +385,7 @@ describe('navigation integration', () => {
     expect(professionToggle).toHaveAttribute('aria-expanded', 'true');
     await user.click(screen.getByRole('button', { name: 'Weapon slot, empty' }));
     expect(professionToggle).toHaveAttribute('aria-expanded', 'true');
-    expect(professionToggle).toHaveTextContent('Mining 10% faster');
+    expect(professionToggle).toHaveTextContent('16 damage · 25 pen');
   });
 
   it('shows the compact nine-slot equipment summary in Combat', async () => {

@@ -10,6 +10,7 @@ import { getDerivedStats } from '../game/formulas/statFormulas';
 import { startCombat, queueCombatSpecial, setCombatAutoSpecial } from '../game/engine/actionController';
 import { simulateElapsed } from '../game/engine/simulation';
 import { GAME_CONFIG } from '../config/gameConfig';
+import { COMBAT_TUNING } from '../config/combatTuning';
 import { enemyById } from '../content/enemies';
 import { createNewGame } from '../game/state/initialState';
 import {
@@ -30,6 +31,14 @@ const configuredCombat = (enemyId: 'forest-rat' | 'goblin-scavenger' | 'grey-wol
     state.activeAction.combatState.eliteAnnounced = true;
     state.activeAction.combatState.enemyMaxHp = enemyById[enemyId].maxHealth;
     state.activeAction.combatState.enemyHp = enemyById[enemyId].maxHealth;
+    const enemyStats = getEnemyCombatStats(enemyById[enemyId], null);
+    state.activeAction.combatState.enemyAttackMs =
+      enemyById[enemyId].trait.id === 'scurry'
+        ? Math.max(
+            COMBAT_TUNING.minimumAttackIntervalMs,
+            Math.round(enemyStats.attackIntervalMs * COMBAT_TUNING.ratFirstAttackMultiplier),
+          )
+        : enemyStats.attackIntervalMs;
   }
   return state;
 };

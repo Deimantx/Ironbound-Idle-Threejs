@@ -18,6 +18,7 @@ const iconByKey: Record<string, LucideIcon> = {
   bar: Hexagon,
   'creature-part': Bone,
   gold: Coins,
+  gem: Gem,
   ore: Gem,
   relic: Sparkles,
   shield: Shield,

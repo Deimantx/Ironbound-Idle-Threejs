@@ -1,6 +1,7 @@
 import { itemById } from '../../content/items';
 import { GAME_CONFIG } from '../../config/gameConfig';
 import { getDerivedStats } from '../formulas/statFormulas';
+import { getMiningToolDefinition } from '../../content/miningTools';
 import { addItem, removeItem } from './inventorySystem';
 import type { EquipmentLoadout, EquipmentSlot, GameState } from '../types';
 
@@ -12,6 +13,13 @@ export interface EquipmentResult {
 export const equipItem = (state: GameState, itemId: string): EquipmentResult => {
   const item = itemById[itemId];
   if (!item?.slot) return { state, ok: false, message: 'That item cannot be equipped.' };
+  const miningTool = item.slot === 'tool' ? getMiningToolDefinition(itemId) : null;
+  if (miningTool && state.skills.mining.level < miningTool.requiredMiningLevel)
+    return {
+      state,
+      ok: false,
+      message: `Mining level ${miningTool.requiredMiningLevel} is required for ${item.name}.`,
+    };
   const stack = state.inventory.find((entry) => entry.itemId === itemId);
   if (!stack) return { state, ok: false, message: 'That item is not in your inventory.' };
   const displaced = state.equipment[item.slot];

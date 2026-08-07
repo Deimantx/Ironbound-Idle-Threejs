@@ -6588,3 +6588,156 @@ h3 {
     grid-area: auto;
   }
 }
+
+.mining-overview-content {
+  position: relative;
+  padding: 20px;
+}
+.mining-overview-status,
+.mining-stamina-block {
+  display: grid;
+  gap: 7px;
+  margin-top: 18px;
+}
+.mining-phase-row {
+  margin-top: 13px;
+}
+.mining-progress-bar {
+  margin-top: 0;
+}
+.mining-empty-state {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 22px;
+  color: var(--muted);
+}
+.mining-node-list {
+  margin-top: 12px;
+}
+.mining-node-card {
+  align-items: center;
+  gap: 16px;
+}
+.mining-node-card small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mining-node-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-top: 7px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.mining-details-panel {
+  container-type: inline-size;
+}
+.mining-details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 30px;
+}
+.mining-tool-summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 14px;
+}
+.mining-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 18px;
+  width: 100%;
+}
+.mining-stat-grid span,
+.mining-reward-summary span {
+  display: grid;
+  gap: 2px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.mining-stat-grid strong,
+.mining-reward-summary strong {
+  color: var(--text);
+  font-size: 13px;
+}
+.mining-warning {
+  margin: 14px 0 0;
+  color: var(--gold);
+  font-size: 12px;
+}
+.mining-stage-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin: 14px 0;
+}
+.mining-stage {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.mining-stage.active {
+  border-color: var(--gold);
+  color: var(--text);
+}
+.mining-stage span {
+  color: var(--gold);
+  font-weight: 700;
+}
+.mining-stage strong,
+.mining-stage small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mining-stage small {
+  color: var(--muted);
+}
+.mining-reward-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.mining-loot-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.mining-loot-list span {
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+@container (max-width: 760px) {
+  .mining-details-grid {
+    grid-template-columns: 1fr;
+  }
+  .mining-stage-list {
+    grid-template-columns: repeat(5, minmax(90px, 1fr));
+    overflow-x: auto;
+  }
+}
+@media (max-width: 650px) {
+  .mining-node-card {
+    align-items: flex-start;
+  }
+  .mining-node-card > button {
+    align-self: center;
+  }
+  .mining-stat-grid,
+  .mining-reward-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -18,12 +18,32 @@ import { getEnemyCombatStats } from '../formulas/combatStats';
 import { initializeEnemySpawn } from './combatEncounter';
 import { addSkillXp } from '../formulas/experienceFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
-import { addItem, canAddItem, getItemQuantity, removeItem } from '../systems/inventorySystem';
+import {
+  addItem,
+  addItemBundle,
+  canAddItem,
+  canAddItemBundle,
+  getItemQuantity,
+  removeItem,
+} from '../systems/inventorySystem';
+import { MINING_TUNING } from '../../config/miningTuning';
+import {
+  getMiningEffectiveness,
+  getMiningRuntimeState,
+  getMiningSwingDamage,
+  getMiningSwingXp,
+  getMiningTool,
+  getMiningPrimaryYield,
+  getMiningStageBonusChance,
+  nextMiningRandom,
+  normalizeMiningState,
+} from '../formulas/miningFormulas';
 import type {
   ActiveAction,
   ActiveCombatState,
   CombatVisualEvent,
   GameState,
+  MiningNodeDefinition,
   SkillId,
   SimulationSummary,
 } from '../types';
@@ -74,52 +94,202 @@ const unlockAreas = (state: GameState): void => {
     }
 };
 
-const simulateMining = (state: GameState, elapsedMs: number, summary: SimulationSummary): void => {
-  if (state.activeAction.type !== 'mining') return;
+const MAX_MINING_SIMULATION_EVENTS = 100_000;
+
+const advanceMiningRockDamage = (
+  runtime: ReturnType<typeof getMiningRuntimeState>,
+  node: MiningNodeDefinition,
+  damage: number,
+): { stagesDepleted: number; rockDepleted: boolean; depletedStageIndices: number[] } => {
+  let remainingDamage = damage;
+  let stagesDepleted = 0;
+  const depletedStageIndices: number[] = [];
+  let rockDepleted = false;
+  while (remainingDamage > 0 && !rockDepleted) {
+    const dealt = Math.min(remainingDamage, Math.max(0, runtime.stageDurability));
+    runtime.stageDurability -= dealt;
+    remainingDamage -= dealt;
+    if (runtime.stageDurability > 0) break;
+    stagesDepleted += 1;
+    depletedStageIndices.push(runtime.stageIndex);
+    if (runtime.stageIndex >= node.stages.length - 1) {
+      runtime.stageDurability = 0;
+      runtime.respawnRemainingMs = node.respawnMs;
+      rockDepleted = true;
+      break;
+    }
+    runtime.stageIndex += 1;
+    runtime.stageDurability = node.stages[runtime.stageIndex].durability;
+  }
+  return { stagesDepleted, rockDepleted, depletedStageIndices };
+};
+
+const resolveMiningSwing = (
+  state: GameState,
+  node: MiningNodeDefinition,
+  summary: SimulationSummary,
+): { ok: boolean; phase: 'swing' | 'rest' | 'respawn' } => {
+  const runtime = getMiningRuntimeState(state.mining, node.id);
+  const tool = getMiningTool(state);
+  const effectiveness = getMiningEffectiveness(tool, node);
+  const damage = getMiningSwingDamage(tool, node);
+  const yieldResult = getMiningPrimaryYield(damage, node, runtime.primaryYieldProgress);
+  const nextRuntime = structuredClone(runtime);
+  const rng = { rngSeed: nextRuntime.rngSeed, rngCursor: nextRuntime.rngCursor };
+  const startingStage = node.stages[runtime.stageIndex] ?? node.stages[0];
+  const bundle: Array<{ itemId: string; quantity: number }> = [];
+  if (yieldResult.quantity > 0)
+    bundle.push({ itemId: node.primaryRewardItemId, quantity: yieldResult.quantity });
+  for (const drop of node.bonusDrops) {
+    if (nextMiningRandom(rng) > getMiningStageBonusChance(drop, startingStage)) continue;
+    const quantity =
+      drop.minQuantity +
+      Math.floor(nextMiningRandom(rng) * (drop.maxQuantity - drop.minQuantity + 1));
+    if (quantity > 0) bundle.push({ itemId: drop.itemId, quantity });
+  }
+  if (!canAddItemBundle(state.inventory, bundle, GAME_CONFIG.inventorySlots)) {
+    state.activeAction = { type: 'none' };
+    summary.stoppedReason = 'Inventory is full.';
+    return { ok: false, phase: 'swing' };
+  }
+  const transition = advanceMiningRockDamage(nextRuntime, node, damage);
+  nextRuntime.primaryYieldProgress = yieldResult.remainingProgress;
+  nextRuntime.rngSeed = rng.rngSeed;
+  nextRuntime.rngCursor = rng.rngCursor;
+  const added = addItemBundle(state.inventory, bundle, GAME_CONFIG.inventorySlots);
+  if (added.rejected) {
+    state.activeAction = { type: 'none' };
+    summary.stoppedReason = 'Inventory is full.';
+    return { ok: false, phase: 'swing' };
+  }
+  state.inventory = added.inventory;
+  state.mining.nodeStates[node.id] = nextRuntime;
+  state.mining.stamina = Math.max(0, state.mining.stamina - tool.staminaCost);
+  state.statistics.mined += 1;
+  state.statistics.miningSwings += 1;
+  state.statistics.miningStagesDepleted += transition.stagesDepleted;
+  if (transition.rockDepleted) state.statistics.miningRocksDepleted += 1;
+  addSummaryNumber(summary.completed, `mine-swing:${node.id}`, 1);
+  addSummaryNumber(summary.completed, `mine:${node.id}`, 1);
+  for (const stageIndex of transition.depletedStageIndices)
+    addSummaryNumber(summary.completed, `mine-stage:${node.id}:${stageIndex}`, 1);
+  if (transition.rockDepleted) addSummaryNumber(summary.completed, `mine-rock:${node.id}`, 1);
+  for (const reward of bundle) {
+    addSummaryNumber(summary.itemsGained, reward.itemId, reward.quantity);
+    if (!state.discoveredItems.includes(reward.itemId)) {
+      state.discoveredItems.push(reward.itemId);
+      addLog(state, `${itemById[reward.itemId]?.name ?? reward.itemId} discovered.`, 'success');
+    }
+  }
+  awardXp(state, summary, 'mining', getMiningSwingXp(node, effectiveness));
+  if (transition.rockDepleted) return { ok: true, phase: 'respawn' };
+  return { ok: true, phase: state.mining.stamina <= 0 ? 'rest' : 'swing' };
+};
+
+const simulateMining = (
+  state: GameState,
+  elapsedMs: number,
+  summary: SimulationSummary,
+  ignoreLevelRequirement = false,
+): number => {
+  if (state.activeAction.type !== 'mining') return elapsedMs;
   const action = state.activeAction;
   const node = miningNodeById[action.nodeId];
-  if (!node || state.skills.mining.level < node.level) {
+  if (!node || (!ignoreLevelRequirement && state.skills.mining.level < node.level)) {
     state.activeAction = { type: 'none' };
     summary.stoppedReason = 'Mining level is too low for that node.';
-    return;
+    return elapsedMs;
   }
-  const miningIntervalMultiplier = getDerivedStats(state).miningIntervalMultiplier;
-  const interval = Math.max(500, Math.floor(node.intervalMs * miningIntervalMultiplier));
+  state.mining = normalizeMiningState(state.mining);
+  state.statistics = {
+    ...state.statistics,
+    mined: state.statistics?.mined ?? 0,
+    miningSwings: state.statistics?.miningSwings ?? state.statistics?.mined ?? 0,
+    miningStagesDepleted: state.statistics?.miningStagesDepleted ?? 0,
+    miningRocksDepleted: state.statistics?.miningRocksDepleted ?? 0,
+  };
+  if (!state.mining.nodeStates[node.id])
+    state.mining.nodeStates[node.id] = getMiningRuntimeState(state.mining, node.id);
+  const currentAction: Extract<GameState['activeAction'], { type: 'mining' }> = {
+    ...action,
+    phase:
+      action.phase === 'respawn' || action.phase === 'rest' || action.phase === 'swing'
+        ? action.phase
+        : 'swing',
+    progressMs: Math.max(0, action.progressMs),
+  };
+  if (state.mining.stamina <= 0 && currentAction.phase === 'swing') {
+    currentAction.phase = 'rest';
+    currentAction.progressMs = 0;
+  }
   let remaining = Math.floor(Math.max(0, elapsedMs));
-  let progress = action.progressMs;
-  let cycles = 0;
-  while (remaining > 0 && cycles < 100_000) {
-    const needed = interval - progress;
+  let processed = 0;
+  let events = 0;
+  while (
+    remaining > 0 &&
+    events < MAX_MINING_SIMULATION_EVENTS &&
+    state.activeAction.type === 'mining'
+  ) {
+    const runtime = state.mining.nodeStates[node.id]!;
+    if (currentAction.phase === 'respawn') {
+      const needed = Math.max(1, runtime.respawnRemainingMs);
+      if (remaining < needed) {
+        runtime.respawnRemainingMs -= remaining;
+        currentAction.progressMs = node.respawnMs - runtime.respawnRemainingMs;
+        processed += remaining;
+        remaining = 0;
+        break;
+      }
+      remaining -= needed;
+      processed += needed;
+      runtime.respawnRemainingMs = 0;
+      runtime.stageIndex = 0;
+      runtime.stageDurability = node.stages[0].durability;
+      currentAction.phase = state.mining.stamina <= 0 ? 'rest' : 'swing';
+      currentAction.progressMs = 0;
+      events += 1;
+      continue;
+    }
+    if (currentAction.phase === 'rest') {
+      const progress = Math.min(MINING_TUNING.restDurationMs, currentAction.progressMs);
+      const needed = Math.max(1, MINING_TUNING.restDurationMs - progress);
+      if (remaining < needed) {
+        currentAction.progressMs = progress + remaining;
+        processed += remaining;
+        remaining = 0;
+        break;
+      }
+      remaining -= needed;
+      processed += needed;
+      state.mining.stamina = MINING_TUNING.maxStamina;
+      currentAction.phase = 'swing';
+      currentAction.progressMs = 0;
+      events += 1;
+      continue;
+    }
+    const tool = getMiningTool(state);
+    const interval = Math.max(1, tool.swingIntervalMs);
+    const progress = Math.min(interval, Math.max(0, currentAction.progressMs));
+    const needed = Math.max(1, interval - progress);
     if (remaining < needed) {
-      progress += remaining;
+      currentAction.progressMs = progress + remaining;
+      processed += remaining;
       remaining = 0;
       break;
     }
     remaining -= needed;
-    progress = 0;
-    const result = addItem(state.inventory, node.rewardItemId, 1, GAME_CONFIG.inventorySlots);
-    if (result.rejected) {
-      state.activeAction = { type: 'none' };
-      summary.stoppedReason = 'Inventory is full.';
-      break;
-    }
-    state.inventory = result.inventory;
-    state.statistics.mined += 1;
-    cycles += 1;
-    addSummaryNumber(summary.completed, `mine:${node.id}`, 1);
-    addSummaryNumber(summary.itemsGained, node.rewardItemId, 1);
-    awardXp(state, summary, 'mining', node.xp);
-    if (!state.discoveredItems.includes(node.rewardItemId)) {
-      state.discoveredItems.push(node.rewardItemId);
-      addLog(
-        state,
-        `${itemById[node.rewardItemId]?.name ?? node.rewardItemId} discovered.`,
-        'success',
-      );
-    }
+    processed += needed;
+    currentAction.progressMs = 0;
+    const result = resolveMiningSwing(state, node, summary);
+    events += 1;
+    if (!result.ok) break;
+    currentAction.phase = result.phase;
+    currentAction.progressMs = 0;
   }
-  if (state.activeAction.type === 'mining')
-    state.activeAction = { ...action, progressMs: progress };
+  if (events >= MAX_MINING_SIMULATION_EVENTS && remaining > 0)
+    summary.stoppedReason = 'Mining event cap reached safely.';
+  if (state.activeAction.type === 'mining') state.activeAction = currentAction;
+  return processed;
 };
 
 const maxCraftable = (state: GameState, recipe: (typeof recipeById)[string]): number =>
@@ -662,6 +832,7 @@ const simulateCombat = (
 export const simulateElapsed = (
   input: GameState,
   elapsedMs: number,
+  options: { ignoreMiningLevel?: boolean } = {},
 ): { state: GameState; summary: SimulationSummary; events: CombatVisualEvent[] } => {
   const safeElapsed = Math.max(0, Math.min(GAME_CONFIG.offlineCapMs, Math.floor(elapsedMs)));
   const state = clone(input);
@@ -675,7 +846,12 @@ export const simulateElapsed = (
   let processedElapsedMs = safeElapsed;
   switch (state.activeAction.type) {
     case 'mining':
-      simulateMining(state, safeElapsed, summary);
+      processedElapsedMs = simulateMining(
+        state,
+        safeElapsed,
+        summary,
+        options.ignoreMiningLevel ?? false,
+      );
       break;
     case 'smithing':
       simulateSmithing(state, safeElapsed, summary);
@@ -712,10 +888,14 @@ export const getTimeUntilNextCombatEvent = (state: GameState): number | null => 
 export const progressRatio = (action: ActiveAction, now: number, state: GameState): number => {
   if (action.type === 'mining') {
     const node = miningNodeById[action.nodeId];
-    return node
-      ? action.progressMs /
-          Math.max(1, node.intervalMs * getDerivedStats(state).miningIntervalMultiplier)
-      : 0;
+    if (!node) return 0;
+    if (action.phase === 'rest')
+      return action.progressMs / Math.max(1, MINING_TUNING.restDurationMs);
+    if (action.phase === 'respawn') {
+      const runtime = state.mining.nodeStates[action.nodeId];
+      return runtime ? 1 - runtime.respawnRemainingMs / Math.max(1, node.respawnMs) : 0;
+    }
+    return action.progressMs / Math.max(1, getMiningTool(state).swingIntervalMs);
   }
   if (action.type === 'smithing') {
     const recipe = recipeById[action.recipeId];

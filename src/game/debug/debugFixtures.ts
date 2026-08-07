@@ -40,6 +40,7 @@ export const createLegacyShieldFixture = (): LegacyFixture => {
     type: 'mining',
     nodeId: 'iron-vein',
     startedAt: state.updatedAt,
+    phase: 'swing',
     progressMs: 300,
   };
   return state;

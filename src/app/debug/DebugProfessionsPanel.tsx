@@ -2,16 +2,33 @@ import { useState } from 'react';
 import { MINING_NODES, miningNodeById } from '../../content/miningNodes';
 import { RECIPES, recipeById } from '../../content/recipes';
 import { itemById } from '../../content/items';
-import { getDerivedStats } from '../../game/formulas/statFormulas';
+import {
+  getMiningEffectiveness,
+  getMiningRuntimeState,
+  getMiningSwingDamage,
+  getMiningTool,
+} from '../../game/formulas/miningFormulas';
 import { GAME_CONFIG } from '../../config/gameConfig';
 import {
   debugAdvanceElapsed,
   debugAdvanceOneCycle,
-  debugCompleteMiningCycle,
+  debugAdvanceMiningPhase,
+  debugCompleteMiningRespawn,
+  debugCompleteMiningRest,
+  debugCompleteMiningSwing,
+  debugDepleteMiningRock,
+  debugDepleteMiningStage,
   debugCompleteSmithingCycle,
   debugGrantMiningOutput,
   debugGrantRecipeMaterials,
   debugGrantRecipeOutput,
+  debugDrainMiningStamina,
+  debugRefillMiningStamina,
+  debugResetAllMining,
+  debugResetMiningNode,
+  debugSetMiningDurability,
+  debugSetMiningStage,
+  debugSetMiningStamina,
   debugStartMining,
   debugStartSmithing,
   debugStopAction,
@@ -24,10 +41,15 @@ export function ProfessionsPanel({ game, run }: { game: GameState; run: PanelPro
   const [nodeId, setNodeId] = useState<MiningNodeId>(MINING_NODES[0].id);
   const [recipeId, setRecipeId] = useState(RECIPES[0].id);
   const [mode, setMode] = useState<QuantityMode>(1);
+  const [stage, setStage] = useState(1);
+  const [durability, setDurability] = useState(10);
+  const [stamina, setStamina] = useState(100);
   const activeMining = game.activeAction.type === 'mining' ? game.activeAction : null;
   const activeSmithing = game.activeAction.type === 'smithing' ? game.activeAction : null;
   const node = miningNodeById[nodeId];
   const recipe = recipeById[recipeId];
+  const miningTool = getMiningTool(game);
+  const selectedRuntime = getMiningRuntimeState(game.mining, nodeId);
   return (
     <>
       <Section
@@ -38,7 +60,16 @@ export function ProfessionsPanel({ game, run }: { game: GameState; run: PanelPro
           {[
             ['Mining level', game.skills.mining.level],
             ['Active node', activeMining ? miningNodeById[activeMining.nodeId]?.name : 'None'],
+            ['Phase', activeMining?.phase ?? 'Stopped'],
             ['Progress', activeMining ? `${activeMining.progressMs} ms` : '—'],
+            ['Stage', `${selectedRuntime.stageIndex + 1}/${node.stages.length}`],
+            [
+              'Durability',
+              `${Math.ceil(selectedRuntime.stageDurability)}/${node.stages[selectedRuntime.stageIndex]?.durability ?? 0}`,
+            ],
+            ['Stamina', `${Math.round(game.mining.stamina)}/100`],
+            ['Yield progress', selectedRuntime.primaryYieldProgress.toFixed(3)],
+            ['RNG', `${selectedRuntime.rngSeed}:${selectedRuntime.rngCursor}`],
             [
               'Tool',
               game.equipment.tool
@@ -46,8 +77,8 @@ export function ProfessionsPanel({ game, run }: { game: GameState; run: PanelPro
                 : 'None',
             ],
             [
-              'Effective interval',
-              `${node ? Math.round(node.intervalMs * getDerivedStats(game).miningIntervalMultiplier) : 0} ms`,
+              'Damage / effectiveness',
+              `${getMiningSwingDamage(miningTool, node)} / ${Math.round(getMiningEffectiveness(miningTool, node) * 100)}%`,
             ],
             ['Capacity', `${game.inventory.length}/${GAME_CONFIG.inventorySlots}`],
           ].map(([label, value]) => (
@@ -75,12 +106,72 @@ export function ProfessionsPanel({ game, run }: { game: GameState; run: PanelPro
             Start Mining
           </ActionButton>
           <ActionButton onClick={() => run(debugStopAction)}>Stop Mining</ActionButton>
-          <ActionButton onClick={() => run(debugCompleteMiningCycle)}>
-            Complete One Mining Cycle
+          <ActionButton onClick={() => run(debugCompleteMiningSwing)}>
+            Complete One Swing
+          </ActionButton>
+          <ActionButton onClick={() => run(debugAdvanceMiningPhase)}>
+            Advance Mining Phase
+          </ActionButton>
+          <ActionButton onClick={() => run(debugCompleteMiningRest)}>Complete Rest</ActionButton>
+          <ActionButton onClick={() => run(debugCompleteMiningRespawn)}>
+            Complete Respawn
           </ActionButton>
           <ActionButton onClick={() => run((state) => debugGrantMiningOutput(state, nodeId))}>
             Grant Node Output Without Simulation
           </ActionButton>
+        </div>
+        <div className="debug-tools-grid">
+          <Field label="Stamina (0–100)">
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={stamina}
+              onChange={(event) => setStamina(Number(event.target.value))}
+            />
+          </Field>
+          <Field label="Stage">
+            <input
+              type="number"
+              min="1"
+              max={node.stages.length}
+              value={stage}
+              onChange={(event) => setStage(Number(event.target.value))}
+            />
+          </Field>
+          <Field label="Durability">
+            <input
+              type="number"
+              min="0"
+              value={durability}
+              onChange={(event) => setDurability(Number(event.target.value))}
+            />
+          </Field>
+        </div>
+        <div className="button-row">
+          <ActionButton onClick={() => run((state) => debugSetMiningStamina(state, stamina))}>
+            Set Stamina
+          </ActionButton>
+          <ActionButton onClick={() => run(debugRefillMiningStamina)}>Refill Stamina</ActionButton>
+          <ActionButton onClick={() => run(debugDrainMiningStamina)}>Drain Stamina</ActionButton>
+          <ActionButton onClick={() => run((state) => debugSetMiningStage(state, nodeId, stage))}>
+            Set Stage
+          </ActionButton>
+          <ActionButton
+            onClick={() => run((state) => debugSetMiningDurability(state, nodeId, durability))}
+          >
+            Set Durability
+          </ActionButton>
+          <ActionButton onClick={() => run((state) => debugDepleteMiningStage(state, nodeId))}>
+            Deplete Stage
+          </ActionButton>
+          <ActionButton onClick={() => run((state) => debugDepleteMiningRock(state, nodeId))}>
+            Deplete Rock
+          </ActionButton>
+          <ActionButton onClick={() => run((state) => debugResetMiningNode(state, nodeId))}>
+            Reset Node
+          </ActionButton>
+          <ActionButton onClick={() => run(debugResetAllMining)}>Reset All Mining</ActionButton>
         </div>
       </Section>
       <Section

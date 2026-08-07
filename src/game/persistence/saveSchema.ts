@@ -41,6 +41,41 @@ const activeActionSchema = z.union([
       type: z.literal('mining'),
       nodeId: z.string(),
       startedAt: z.number(),
+      phase: z.enum(['swing', 'rest', 'respawn']),
+      progressMs: z.number(),
+    })
+    .passthrough(),
+  z
+    .object({
+      type: z.literal('smithing'),
+      recipeId: z.string(),
+      quantityMode: z.unknown(),
+      remaining: z.number().nullable(),
+      progressMs: z.number(),
+    })
+    .passthrough(),
+  z
+    .object({
+      type: z.literal('combat'),
+      enemyId: z.string(),
+      areaId: z.string(),
+      style: z.enum(['accurate', 'aggressive', 'defensive']),
+      autoRepeat: z.boolean(),
+      pendingStyle: z.enum(['accurate', 'aggressive', 'defensive']).nullable().optional(),
+      autoSpecial: z.boolean().optional(),
+      specialQueued: z.boolean().optional(),
+      combatState: activeCombatStateSchema,
+    })
+    .passthrough(),
+]);
+const legacyActiveActionSchema = z.union([
+  z.object({ type: z.literal('none') }).passthrough(),
+  z
+    .object({
+      type: z.literal('mining'),
+      nodeId: z.string(),
+      startedAt: z.number(),
+      phase: z.enum(['swing', 'rest', 'respawn']).optional(),
       progressMs: z.number(),
     })
     .passthrough(),
@@ -99,12 +134,28 @@ const savePayloadShape = {
   killCounts: z.record(z.string(), z.number()),
   statistics: z.object({
     mined: z.number(),
+    miningSwings: z.number(),
+    miningStagesDepleted: z.number(),
+    miningRocksDepleted: z.number(),
     smelted: z.number(),
     forged: z.number(),
     deaths: z.number(),
     totalKills: z.number(),
   }),
   gold: z.number().nonnegative(),
+  mining: z.object({
+    stamina: z.number().finite(),
+    nodeStates: z.record(
+      z.object({
+        stageIndex: z.number().int().nonnegative(),
+        stageDurability: z.number().finite().nonnegative(),
+        primaryYieldProgress: z.number().finite().nonnegative(),
+        respawnRemainingMs: z.number().finite().nonnegative(),
+        rngSeed: z.number().finite(),
+        rngCursor: z.number().int().nonnegative(),
+      }),
+    ),
+  }),
   activeAction: activeActionSchema,
   unlockedAreas: z.array(z.string()),
   settings: z.object({
@@ -129,6 +180,18 @@ const savePayloadShape = {
 export const savePayloadSchema = z.object(savePayloadShape);
 export const legacySavePayloadSchema = z.object({
   ...savePayloadShape,
+  statistics: z.object({
+    mined: z.number(),
+    miningSwings: z.number().optional(),
+    miningStagesDepleted: z.number().optional(),
+    miningRocksDepleted: z.number().optional(),
+    smelted: z.number(),
+    forged: z.number(),
+    deaths: z.number(),
+    totalKills: z.number(),
+  }),
+  mining: savePayloadShape.mining.optional(),
+  activeAction: legacyActiveActionSchema,
   equipment: legacyEquipmentSchema,
 });
 

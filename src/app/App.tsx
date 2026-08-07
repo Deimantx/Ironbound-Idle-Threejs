@@ -23,6 +23,8 @@ import { GAME_CONFIG } from '../config/gameConfig';
 import { getLevelProgress } from '../game/formulas/experienceFormulas';
 import { getDerivedStats } from '../game/formulas/statFormulas';
 import { progressRatio } from '../game/engine/simulation';
+import { getMiningRuntimeState, getMiningTool } from '../game/formulas/miningFormulas';
+import { MINING_TUNING } from '../config/miningTuning';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
 import { getItemQuantity } from '../game/systems/inventorySystem';
@@ -423,7 +425,7 @@ function ActionStrip({
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, []);
-  const ratio = progressRatio(action, Date.now(), game);
+  const ratio = progressRatio(action, now, game);
   if (action.type === 'none') return null;
   const screen: ScreenId =
     action.type === 'mining' ? 'mining' : action.type === 'smithing' ? 'smithing' : 'combat';
@@ -458,6 +460,19 @@ function ActionStrip({
       </div>
     );
   }
+  const miningNode = action.type === 'mining' ? miningNodeById[action.nodeId] : undefined;
+  const miningRuntime = action.type === 'mining'
+    ? getMiningRuntimeState(game.mining, action.nodeId)
+    : undefined;
+  const miningRemainingMs = action.type !== 'mining'
+    ? 0
+    : action.phase === 'respawn'
+      ? miningRuntime?.respawnRemainingMs ?? 0
+      : Math.max(
+          0,
+          (action.phase === 'rest' ? MINING_TUNING.restDurationMs : getMiningTool(game).swingIntervalMs) -
+            action.progressMs,
+        );
   return (
     <div className="action-strip" data-ui-region="actionStrip">
       <div className="action-icon">
@@ -471,7 +486,11 @@ function ActionStrip({
       </div>
       <button className="action-main button ghost" onClick={() => onNavigate(screen)}>
         <strong>{actionLabel(game)}</strong>
-        <small>Active in background</small>
+        <small>
+          {action.type === 'mining'
+            ? `${action.phase === 'rest' ? 'Resting' : action.phase === 'respawn' ? 'Respawning' : 'Swinging'} · Stage ${miningRuntime?.stageIndex ? miningRuntime.stageIndex + 1 : 1}/${miningNode?.stages.length ?? 0}`
+            : 'Active in background'}
+        </small>
       </button>
       <div className="progress-track">
         <div
@@ -479,7 +498,11 @@ function ActionStrip({
           style={{ width: `${Math.max(4, Math.min(100, ratio * 100))}%` }}
         />
       </div>
-      <div className="action-meta">Cycle in progress</div>
+      <div className="action-meta">
+        {action.type === 'mining'
+          ? `Stamina ${Math.round(game.mining.stamina)} · ${Math.ceil(miningRemainingMs / 1000)}s`
+          : 'Cycle in progress'}
+      </div>
       <button className="button danger" onClick={stopAction}>
         Stop
       </button>

@@ -16,7 +16,7 @@ describe('save validation and migration', () => {
       { ...state, schemaVersion: 0, settings: { ...state.settings, threeQuality: 'low' } },
       0,
     );
-    expect(migrated.schemaVersion).toBe(4);
+    expect(migrated.schemaVersion).toBe(5);
     expect(migrated.unlockedAreas).toContain('training-grounds');
   });
   it('rejects malformed save data', () => {
@@ -47,7 +47,7 @@ describe('save validation and migration', () => {
       },
     } as unknown as GameState['activeAction'];
     const migrated = parseGameState(JSON.stringify(legacy));
-    expect(migrated.schemaVersion).toBe(4);
+    expect(migrated.schemaVersion).toBe(5);
     expect(
       migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.momentum,
     ).toBe(0);
@@ -55,5 +55,45 @@ describe('save validation and migration', () => {
     expect(
       migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.rngCursor,
     ).toBe(0);
+  });
+
+  it('adds Mining runtime state and converts legacy Mining actions', () => {
+    const legacy = structuredClone(createNewGame(0, 'Legacy Miner')) as unknown as Record<
+      string,
+      unknown
+    >;
+    legacy.schemaVersion = 4;
+    delete legacy.mining;
+    legacy.activeAction = {
+      type: 'mining',
+      nodeId: 'copper-vein',
+      startedAt: 10,
+      progressMs: 999_999,
+    };
+    const migrated = parseGameState(JSON.stringify(legacy));
+    expect(migrated.mining.stamina).toBe(100);
+    expect(migrated.mining.nodeStates['copper-vein']?.stageIndex).toBe(0);
+    expect(migrated.mining.nodeStates['copper-vein']?.stageDurability).toBe(100);
+    expect(migrated.activeAction).toMatchObject({
+      type: 'mining',
+      phase: 'swing',
+      progressMs: 2_999,
+    });
+  });
+
+  it('stops a save whose active Mining node no longer exists', () => {
+    const invalid = structuredClone(createNewGame(0, 'Invalid Miner')) as unknown as Record<
+      string,
+      unknown
+    >;
+    invalid.activeAction = {
+      type: 'mining',
+      nodeId: 'removed-node',
+      startedAt: 0,
+      phase: 'swing',
+      progressMs: 10,
+    };
+    const migrated = parseGameState(JSON.stringify(invalid));
+    expect(migrated.activeAction).toEqual({ type: 'none' });
   });
 });

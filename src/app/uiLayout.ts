@@ -70,6 +70,7 @@ export const DEFAULT_EQUIPMENT_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
 export const DEFAULT_MINING_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
   miningOverview: { column: 1, row: 1, columnSpan: 5, height: 0, scale: 1 },
   miningNodes: { column: 6, row: 1, columnSpan: 7, height: 0, scale: 1 },
+  miningDetails: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1 },
 };
 
 export const DEFAULT_SMITHING_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
@@ -156,6 +157,12 @@ export const UI_SCREEN_PANELS: Partial<Record<ScreenId, UiPanelDefinition[]>> = 
       label: 'Mining nodes',
       description: 'Available nodes, requirements, outputs, and action controls',
       defaultPosition: DEFAULT_MINING_PANEL_LAYOUT.miningNodes,
+    },
+    {
+      id: 'miningDetails',
+      label: 'Mining details',
+      description: 'Tool stats, rock stages, stamina, and rewards',
+      defaultPosition: DEFAULT_MINING_PANEL_LAYOUT.miningDetails,
     },
   ],
   smithing: [

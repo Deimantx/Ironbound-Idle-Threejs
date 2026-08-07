@@ -61,6 +61,36 @@ const gear = (
 });
 
 export const ITEMS: ItemDefinition[] = [
+  {
+    id: 'stone-fragment',
+    name: 'Stone Fragment',
+    category: 'material',
+    description: 'Common chips shaken loose from worked rock.',
+    source: 'Mining',
+    stackable: true,
+    rarity: 'common',
+    presentation: { iconKey: 'ore', visualCategory: 'material' },
+  },
+  {
+    id: 'sharpening-grit',
+    name: 'Sharpening Grit',
+    category: 'material',
+    description: 'Abrasive mineral reserved for future tool work.',
+    source: 'Mining',
+    stackable: true,
+    rarity: 'uncommon',
+    presentation: { iconKey: 'ore', visualCategory: 'material' },
+  },
+  {
+    id: 'rough-gem',
+    name: 'Rough Gem',
+    category: 'material',
+    description: 'A raw stone with a glint worth saving.',
+    source: 'Mining',
+    stackable: true,
+    rarity: 'rare',
+    presentation: { iconKey: 'gem', visualCategory: 'material' },
+  },
   material(
     'copper-ore',
     'Copper Ore',
@@ -116,6 +146,18 @@ export const ITEMS: ItemDefinition[] = [
     undefined,
     'shield',
   ),
+  {
+    id: 'worn-pickaxe',
+    name: 'Worn Pickaxe',
+    category: 'tool',
+    description: 'A serviceable starter pick with a blunt but honest edge.',
+    source: 'Mining',
+    stackable: true,
+    rarity: 'common',
+    presentation: { iconKey: 'tool', visualCategory: 'equipment' },
+    slot: 'tool',
+    bonuses: { miningSpeed: 0 },
+  },
   gear('bronze-pickaxe', 'Bronze Pick', 'tool', 'bronze', { miningSpeed: 0.1 }, 'Bronze'),
   gear(
     'iron-sword',

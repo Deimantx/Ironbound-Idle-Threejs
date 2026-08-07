@@ -12,6 +12,10 @@ export const skillLabel = (skill: string): string =>
 
 export const activeActionLabel = (game: GameState): string => {
   if (game.activeAction.type === 'none') return 'None';
+  if (game.activeAction.type === 'mining') {
+    const phase = game.activeAction.phase === 'rest' ? 'Resting' : 'Respawning';
+    if (game.activeAction.phase !== 'swing') return `Mining · ${phase}`;
+  }
   if (game.activeAction.type === 'mining')
     return `Mining · ${miningNodeById[game.activeAction.nodeId]?.name ?? game.activeAction.nodeId}`;
   if (game.activeAction.type === 'smithing')

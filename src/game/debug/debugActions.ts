@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from '../../config/gameConfig';
+import { MINING_TUNING } from '../../config/miningTuning';
 import { AREAS, areaById } from '../../content/areas';
 import { ENEMIES, enemyById } from '../../content/enemies';
 import { ITEMS, itemById } from '../../content/items';
@@ -6,6 +7,12 @@ import { MINING_NODES, miningNodeById } from '../../content/miningNodes';
 import { RECIPES, recipeById } from '../../content/recipes';
 import { MAX_LEVEL, getLevelFromXp, getXpForLevel } from '../formulas/experienceFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
+import {
+  createMiningRuntimeState,
+  getMiningRuntimeState,
+  getMiningTool,
+  normalizeMiningState,
+} from '../formulas/miningFormulas';
 import { getTimeUntilNextCombatEvent, simulateElapsed } from '../engine/simulation';
 import { startCombat, startMining, startSmithing } from '../engine/actionController';
 import { createNewGame } from '../state/initialState';
@@ -681,9 +688,128 @@ export const debugStartMining = (state: GameState, nodeId: MiningNodeId): DebugM
   miningNodeById[nodeId]
     ? {
         result: success(`Started mining ${miningNodeById[nodeId].name}.`),
-        state: startMining(state, nodeId, Date.now()),
+        state: startMining(state, nodeId, Date.now(), true),
       }
     : { result: failure(`Unknown Mining node: ${nodeId}.`) };
+
+export const debugSetMiningStamina = (state: GameState, stamina: number): DebugMutation => {
+  const parsed = Number(stamina);
+  if (!Number.isFinite(parsed) || parsed < 0 || parsed > MINING_TUNING.maxStamina)
+    return { result: failure(`Stamina must be between 0 and ${MINING_TUNING.maxStamina}.`) };
+  return mutate(state, `Set Mining stamina to ${Math.floor(parsed)}.`, (next) => {
+    next.mining = normalizeMiningState(next.mining);
+    next.mining.stamina = Math.floor(parsed);
+    if (next.activeAction.type === 'mining' && next.mining.stamina === 0) {
+      next.activeAction.phase = 'rest';
+      next.activeAction.progressMs = 0;
+    }
+  });
+};
+
+export const debugRefillMiningStamina = (state: GameState): DebugMutation =>
+  debugSetMiningStamina(state, MINING_TUNING.maxStamina);
+
+export const debugDrainMiningStamina = (state: GameState): DebugMutation =>
+  debugSetMiningStamina(state, 0);
+
+export const debugSetMiningStage = (
+  state: GameState,
+  nodeId: MiningNodeId,
+  stage: number,
+): DebugMutation => {
+  const node = miningNodeById[nodeId];
+  const parsed = parseDebugInteger(stage, 1, node?.stages.length ?? 1);
+  if (!node) return { result: failure(`Unknown Mining node: ${nodeId}.`) };
+  if (parsed === null) return { result: failure(`Stage must be between 1 and ${node.stages.length}.`) };
+  return mutate(state, `Set ${node.name} to stage ${parsed}.`, (next) => {
+    next.mining = normalizeMiningState(next.mining);
+    const runtime = getMiningRuntimeState(next.mining, nodeId);
+    runtime.stageIndex = parsed - 1;
+    runtime.stageDurability = node.stages[runtime.stageIndex].durability;
+    runtime.respawnRemainingMs = 0;
+    next.mining.nodeStates[nodeId] = runtime;
+    if (next.activeAction.type === 'mining' && next.activeAction.nodeId === nodeId) {
+      next.activeAction.phase = 'swing';
+      next.activeAction.progressMs = 0;
+    }
+  });
+};
+
+export const debugSetMiningDurability = (
+  state: GameState,
+  nodeId: MiningNodeId,
+  durability: number,
+): DebugMutation => {
+  const node = miningNodeById[nodeId];
+  if (!node) return { result: failure(`Unknown Mining node: ${nodeId}.`) };
+  const parsed = Number(durability);
+  if (!Number.isFinite(parsed) || parsed < 0) return { result: failure('Durability must be non-negative.') };
+  return mutate(state, `Set ${node.name} durability.`, (next) => {
+    next.mining = normalizeMiningState(next.mining);
+    const runtime = getMiningRuntimeState(next.mining, nodeId);
+    runtime.stageDurability = Math.min(node.stages[runtime.stageIndex].durability, Math.floor(parsed));
+    next.mining.nodeStates[nodeId] = runtime;
+  });
+};
+
+export const debugDepleteMiningStage = (state: GameState, nodeId: MiningNodeId): DebugMutation => {
+  const node = miningNodeById[nodeId];
+  if (!node) return { result: failure(`Unknown Mining node: ${nodeId}.`) };
+  return mutate(state, `Depleted the current stage of ${node.name}.`, (next) => {
+    next.mining = normalizeMiningState(next.mining);
+    const runtime = getMiningRuntimeState(next.mining, nodeId);
+    if (runtime.stageIndex >= node.stages.length - 1) {
+      runtime.stageDurability = 0;
+      runtime.respawnRemainingMs = node.respawnMs;
+      if (next.activeAction.type === 'mining' && next.activeAction.nodeId === nodeId) {
+        next.activeAction.phase = 'respawn';
+        next.activeAction.progressMs = 0;
+      }
+    } else {
+      runtime.stageIndex += 1;
+      runtime.stageDurability = node.stages[runtime.stageIndex].durability;
+    }
+    next.mining.nodeStates[nodeId] = runtime;
+  });
+};
+
+export const debugDepleteMiningRock = (state: GameState, nodeId: MiningNodeId): DebugMutation => {
+  const node = miningNodeById[nodeId];
+  if (!node) return { result: failure(`Unknown Mining node: ${nodeId}.`) };
+  return mutate(state, `Depleted ${node.name}; respawn started.`, (next) => {
+    next.mining = normalizeMiningState(next.mining);
+    const runtime = getMiningRuntimeState(next.mining, nodeId);
+    runtime.stageIndex = node.stages.length - 1;
+    runtime.stageDurability = 0;
+    runtime.respawnRemainingMs = node.respawnMs;
+    next.mining.nodeStates[nodeId] = runtime;
+    if (next.activeAction.type === 'mining' && next.activeAction.nodeId === nodeId) {
+      next.activeAction.phase = 'respawn';
+      next.activeAction.progressMs = 0;
+    }
+  });
+};
+
+export const debugResetMiningNode = (state: GameState, nodeId: MiningNodeId): DebugMutation => {
+  if (!miningNodeById[nodeId]) return { result: failure(`Unknown Mining node: ${nodeId}.`) };
+  return mutate(state, `Reset ${miningNodeById[nodeId].name} runtime state.`, (next) => {
+    next.mining = normalizeMiningState(next.mining);
+    next.mining.nodeStates[nodeId] = createMiningRuntimeState(nodeId);
+    if (next.activeAction.type === 'mining' && next.activeAction.nodeId === nodeId) {
+      next.activeAction.phase = next.mining.stamina <= 0 ? 'rest' : 'swing';
+      next.activeAction.progressMs = 0;
+    }
+  });
+};
+
+export const debugResetAllMining = (state: GameState): DebugMutation =>
+  mutate(state, 'Reset all Mining runtime state.', (next) => {
+    next.mining = { stamina: MINING_TUNING.maxStamina, nodeStates: {} };
+    if (next.activeAction.type === 'mining') {
+      next.activeAction.phase = 'swing';
+      next.activeAction.progressMs = 0;
+    }
+  });
 
 export const debugStartSmithing = (
   state: GameState,
@@ -726,7 +852,7 @@ export const debugAdvanceElapsed = (state: GameState, elapsedMs: number): DebugM
     return { result: failure('Duration must be a positive integer within the offline cap.') };
   if (state.activeAction.type === 'none')
     return { result: failure('No active action to advance.') };
-  const result = simulateElapsed(state, amount);
+  const result = simulateElapsed(state, amount, { ignoreMiningLevel: true });
   return {
     result: success(`Advanced the active action by ${Math.round(amount / 1000)} second(s).`, [
       result.summary.stoppedReason ?? 'Simulation completed.',
@@ -740,11 +866,18 @@ export const debugAdvanceElapsed = (state: GameState, elapsedMs: number): DebugM
 export const debugAdvanceOneCycle = (state: GameState): DebugMutation => {
   if (state.activeAction.type === 'mining') {
     const node = miningNodeById[state.activeAction.nodeId];
-    const interval = Math.max(
-      500,
-      Math.floor(node.intervalMs * getDerivedStats(state).miningIntervalMultiplier),
-    );
-    return debugAdvanceElapsed(state, Math.max(1, interval - state.activeAction.progressMs));
+    if (!node) return { result: failure('Unknown Mining node.') };
+    const duration =
+      state.activeAction.phase === 'rest'
+          ? 10_000
+          : state.activeAction.phase === 'respawn'
+            ? getMiningRuntimeState(state.mining, node.id).respawnRemainingMs
+            : getMiningTool(state).swingIntervalMs;
+    const remaining =
+      state.activeAction.phase === 'respawn'
+        ? duration
+        : Math.max(1, duration - state.activeAction.progressMs);
+    return debugAdvanceElapsed(state, Math.max(1, remaining));
   }
   if (state.activeAction.type === 'smithing') {
     const recipe = recipeById[state.activeAction.recipeId];
@@ -757,13 +890,31 @@ export const debugAdvanceOneCycle = (state: GameState): DebugMutation => {
   return { result: failure('No active action to advance.') };
 };
 
+export const debugCompleteMiningSwing = (state: GameState): DebugMutation =>
+  state.activeAction.type === 'mining' && state.activeAction.phase === 'swing'
+    ? debugAdvanceOneCycle(state)
+    : { result: failure('Mining is not currently in the Swinging phase.') };
+
+export const debugAdvanceMiningPhase = debugAdvanceOneCycle;
+
+export const debugCompleteMiningRest = (state: GameState): DebugMutation =>
+  state.activeAction.type === 'mining' && state.activeAction.phase === 'rest'
+    ? debugAdvanceOneCycle(state)
+    : { result: failure('Mining is not currently resting.') };
+
+export const debugCompleteMiningRespawn = (state: GameState): DebugMutation =>
+  state.activeAction.type === 'mining' && state.activeAction.phase === 'respawn'
+    ? debugAdvanceOneCycle(state)
+    : { result: failure('Mining is not currently respawning a rock.') };
+
+
 export const debugOfflineSimulation = (state: GameState, elapsedMs: number): DebugMutation => {
   const amount = parseDebugInteger(elapsedMs, 1, GAME_CONFIG.offlineCapMs);
   if (amount === null)
     return {
       result: failure('Offline duration must be a positive integer within the 24-hour cap.'),
     };
-  const result = simulateElapsed(state, amount);
+  const result = simulateElapsed(state, amount, { ignoreMiningLevel: true });
   return {
     result: success(`Simulated ${Math.round((amount / 3_600_000) * 10) / 10} offline hour(s).`, [
       result.summary.stoppedReason ?? 'Offline replay completed.',
@@ -780,15 +931,15 @@ export const debugCompleteSmithingCycle = debugAdvanceOneCycle;
 export const debugGrantMiningOutput = (state: GameState, nodeId: MiningNodeId): DebugMutation => {
   const node = miningNodeById[nodeId];
   if (!node) return { result: failure(`Unknown Mining node: ${nodeId}.`) };
-  const amount = addItem(state.inventory, node.rewardItemId, 1, GAME_CONFIG.inventorySlots);
+  const amount = addItem(state.inventory, node.primaryRewardItemId, 1, GAME_CONFIG.inventorySlots);
   if (amount.rejected) return { result: failure('Inventory is full.') };
   return mutate(
     state,
-    `Granted one ${itemById[node.rewardItemId]?.name ?? node.rewardItemId}.`,
+    `Granted one ${itemById[node.primaryRewardItemId]?.name ?? node.primaryRewardItemId}.`,
     (next) => {
       next.inventory = amount.inventory;
-      if (!next.discoveredItems.includes(node.rewardItemId))
-        next.discoveredItems.push(node.rewardItemId);
+      if (!next.discoveredItems.includes(node.primaryRewardItemId))
+        next.discoveredItems.push(node.primaryRewardItemId);
     },
   );
 };

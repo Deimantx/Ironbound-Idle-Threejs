@@ -4,6 +4,12 @@ import { itemById } from '../../content/items';
 import { recipeById } from '../../content/recipes';
 import { createCombatRng } from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
+import {
+  createMiningRuntimeState,
+  getMiningTool,
+  normalizeMiningState,
+} from '../formulas/miningFormulas';
+import { miningNodeById } from '../../content/miningNodes';
 import type { GameState, InventoryStack } from '../types';
 
 export type SaveMigration = (input: GameState) => GameState;
@@ -187,6 +193,74 @@ const migrateShieldSlot = (input: GameState): GameState => {
   return { ...input, equipment: nextEquipment, inventory, schemaVersion: 4 };
 };
 
+const migrateMining = (input: GameState): GameState => {
+  const raw = input as unknown as Record<string, unknown>;
+  const hadMiningState = raw.mining !== undefined;
+  const mining = normalizeMiningState(raw.mining);
+  const oldStatistics = input.statistics as GameState['statistics'] & {
+    miningSwings?: number;
+    miningStagesDepleted?: number;
+    miningRocksDepleted?: number;
+  };
+  const statistics = {
+    ...oldStatistics,
+    mined: Number.isFinite(oldStatistics.mined) ? oldStatistics.mined : 0,
+    miningSwings: Number.isFinite(oldStatistics.miningSwings)
+      ? oldStatistics.miningSwings
+      : Math.max(0, oldStatistics.mined ?? 0),
+    miningStagesDepleted: Number.isFinite(oldStatistics.miningStagesDepleted)
+      ? oldStatistics.miningStagesDepleted
+      : 0,
+    miningRocksDepleted: Number.isFinite(oldStatistics.miningRocksDepleted)
+      ? oldStatistics.miningRocksDepleted
+      : 0,
+  };
+  let activeAction = input.activeAction;
+  if (activeAction.type === 'mining') {
+    const node = miningNodeById[activeAction.nodeId];
+    if (!node || input.skills.mining.level < node.level) {
+      activeAction = { type: 'none' };
+    } else {
+      if (!hadMiningState || !mining.nodeStates[activeAction.nodeId])
+        mining.nodeStates[activeAction.nodeId] = createMiningRuntimeState(activeAction.nodeId);
+      const runtime = mining.nodeStates[activeAction.nodeId]!;
+      const phase =
+        'phase' in activeAction && activeAction.phase
+          ? activeAction.phase
+          : runtime.respawnRemainingMs > 0
+            ? 'respawn'
+            : mining.stamina <= 0
+              ? 'rest'
+              : 'swing';
+      const phaseDuration =
+        phase === 'respawn'
+          ? node.respawnMs
+          : phase === 'rest'
+            ? 10_000
+            : getMiningTool(input).swingIntervalMs;
+      const progressMs = Number.isFinite(activeAction.progressMs)
+        ? Math.max(0, Math.min(Math.max(0, phaseDuration - 1), activeAction.progressMs))
+        : 0;
+      activeAction = {
+        type: 'mining',
+        nodeId: activeAction.nodeId,
+        startedAt: Number.isFinite(activeAction.startedAt)
+          ? activeAction.startedAt
+          : input.lastSimulatedAt,
+        phase,
+        progressMs,
+      };
+    }
+  }
+  return {
+    ...input,
+    mining,
+    statistics,
+    activeAction,
+    schemaVersion: 5,
+  };
+};
+
 export const migrations: Record<number, SaveMigration> = {
   1: (input) => ({
     ...input,
@@ -243,6 +317,7 @@ export const migrations: Record<number, SaveMigration> = {
   },
   3: migrateEquipmentAndClampHealth,
   4: migrateShieldSlot,
+  5: migrateMining,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {
@@ -251,6 +326,7 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
     const migration = migrations[version];
     if (migration) current = migration(current);
   }
+  if (fromVersion >= GAME_CONFIG.currentSaveVersion) current = migrateMining(current);
   current.schemaVersion = GAME_CONFIG.currentSaveVersion;
   return current;
 };

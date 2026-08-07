@@ -86,6 +86,8 @@ describe('deterministic action simulation', () => {
     if (state.activeAction.type === 'combat') {
       state.activeAction.combatState.playerAttackMs = 100_000;
       state.activeAction.combatState.enemyAttackMs = 0;
+      state.activeAction.combatState.rngSeed = 2;
+      state.activeAction.combatState.rngCursor = 0;
     }
     const result = simulateElapsed(state, 20_000);
     expect(result.state.activeAction.type).toBe('none');

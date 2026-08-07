@@ -3,6 +3,8 @@ import { itemById } from '../../content/items';
 import { recipeById } from '../../content/recipes';
 import { createCombatRngForStart, initializeEnemySpawn } from './combatEncounter';
 import { getDerivedStats } from '../formulas/statFormulas';
+import { miningNodeById } from '../../content/miningNodes';
+import { createMiningRuntimeState, normalizeMiningState } from '../formulas/miningFormulas';
 import type { AreaId, CombatStyle, EnemyId, GameState, MiningNodeId, QuantityMode } from '../types';
 import { getItemQuantity } from '../systems/inventorySystem';
 
@@ -10,10 +12,33 @@ export const startMining = (
   state: GameState,
   nodeId: MiningNodeId,
   now = Date.now(),
-): GameState => ({
-  ...state,
-  activeAction: { type: 'mining', nodeId, startedAt: now, progressMs: 0 },
-});
+  ignoreRequirements = false,
+): GameState => {
+  const node = miningNodeById[nodeId];
+  if (!node || (!ignoreRequirements && state.skills.mining.level < node.level))
+    return { ...state, activeAction: { type: 'none' }, updatedAt: now };
+  const mining = normalizeMiningState(state.mining);
+  const runtime = mining.nodeStates[nodeId];
+  if (!runtime) mining.nodeStates[nodeId] = createMiningRuntimeState(nodeId);
+  const selected = mining.nodeStates[nodeId]!;
+  const phase =
+    selected.respawnRemainingMs > 0
+      ? 'respawn'
+      : mining.stamina <= 0
+        ? 'rest'
+        : 'swing';
+  const progressMs =
+    phase === 'respawn'
+      ? Math.max(0, node.respawnMs - selected.respawnRemainingMs)
+      : 0;
+  return {
+    ...state,
+    mining,
+    activeAction: { type: 'mining', nodeId, startedAt: now, phase, progressMs },
+    updatedAt: now,
+    lastSimulatedAt: now,
+  };
+};
 
 export const startSmithing = (
   state: GameState,
