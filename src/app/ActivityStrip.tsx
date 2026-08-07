@@ -282,6 +282,7 @@ const SmithingActivityStrip = ({
   const interval = getSmithingEffectiveInterval(game, recipe);
   const rates = getSmithingEstimatedRates(game, recipe);
   const levelProgress = getLevelProgress(game.skills.smithing);
+  const xpToNextLevel = Math.max(0, levelProgress.next - levelProgress.current);
   const hammer = getSmithingHammer(game);
   const forgeFuel = game.smithing.forgeFuel;
   const fuelName = itemById[forgeFuel.selectedFuelItemId ?? '']?.name ?? 'Fuel';
@@ -330,6 +331,16 @@ const SmithingActivityStrip = ({
               : 'No hammer'}
         </small>
       </div>
+      {levelProgress.next > 0 && (
+        <div className="activity-next-column" aria-label="Smithing level estimate">
+          <span className="activity-xp-next" title="XP remaining until the next Smithing level">
+            XP to next: {formatRatePerHour(xpToNextLevel)}
+          </span>
+          <span className="activity-eta" title="Estimated time until the next Smithing level">
+            ETA: {formatLevelEta(xpToNextLevel, rates.xpPerHour)}
+          </span>
+        </div>
+      )}
       <ActivityPhaseProgress
         label={`Next ${itemById[recipe.outputItemId]?.name ?? recipe.name}`}
         ratio={progressRatio(action, now, game)}

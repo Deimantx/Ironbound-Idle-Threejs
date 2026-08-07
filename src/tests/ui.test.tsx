@@ -410,6 +410,8 @@ describe('navigation integration', () => {
     expect(screen.getByRole('button', { name: 'Stop smithing' })).toBeInTheDocument();
     expect(screen.getByText('Active Order')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Smelting Iron Bar' })).toBeInTheDocument();
+    expect(screen.getByText(/^XP to next:/)).toBeInTheDocument();
+    expect(screen.getByText(/^ETA:/)).toBeInTheDocument();
     expect(screen.getAllByText('Next Iron Bar')).toHaveLength(2);
     expect(screen.queryByText('Quantity:')).not.toBeInTheDocument();
   });
