@@ -6,9 +6,11 @@ import {
   getMiningEffectiveness,
   getMiningPrimaryYield,
   getMiningStageBonusChance,
+  getMiningSwingsBeforeRest,
   getMiningSwingDamage,
   getMiningSwingXp,
   getMiningTool,
+  getRecommendedMiningToolForNode,
   nextMiningRandom,
 } from '../game/formulas/miningFormulas';
 import { startMining } from '../game/engine/actionController';
@@ -16,6 +18,7 @@ import { simulateElapsed } from '../game/engine/simulation';
 import { createNewGame } from '../game/state/initialState';
 import { getItemQuantity } from '../game/systems/inventorySystem';
 import type { GameState } from '../game/types';
+import { formatDropChance } from '../app/formatters';
 
 describe('Mining 1.1 formulas and simulation', () => {
   it('authored Phase One content is exactly Stone, Iron, and Coal', () => {
@@ -62,6 +65,31 @@ describe('Mining 1.1 formulas and simulation', () => {
     expect(getMiningSwingXp(node, 0.5)).toBe(4);
     expect(getMiningPrimaryYield(5, node, 0.5)).toEqual({ quantity: 1, remainingProgress: 0 });
     expect(getMiningPrimaryYield(1, node, 0)).toEqual({ quantity: 0, remainingProgress: 0.1 });
+  });
+
+  it('counts the final swing before rest correctly', () => {
+    expect(getMiningSwingsBeforeRest(100, 20)).toBe(5);
+    expect(getMiningSwingsBeforeRest(80, 20)).toBe(4);
+    expect(getMiningSwingsBeforeRest(20, 20)).toBe(1);
+    expect(getMiningSwingsBeforeRest(10, 20)).toBe(1);
+    expect(getMiningSwingsBeforeRest(0, 20)).toBe(0);
+  });
+
+  it('recommends the lowest full-penetration pickaxe and formats drop chances compactly', () => {
+    expect(getRecommendedMiningToolForNode(miningNodeById['stone-outcrop'])?.itemId).toBe(
+      'worn-pickaxe',
+    );
+    expect(getRecommendedMiningToolForNode(miningNodeById['iron-vein'])?.itemId).toBe(
+      'iron-pickaxe',
+    );
+    expect(getRecommendedMiningToolForNode(miningNodeById['coal-seam'])?.itemId).toBe(
+      'iron-pickaxe',
+    );
+    expect(formatDropChance(0.144)).toBe('14%');
+    expect(formatDropChance(0.08)).toBe('8%');
+    expect(formatDropChance(0.0126)).toBe('1.3%');
+    expect(formatDropChance(0.0072)).toBe('0.72%');
+    expect(formatDropChance(0.003)).toBe('0.30%');
   });
 
   it('completes a Stone swing with primary rewards, stage damage, XP, and stamina cost', () => {

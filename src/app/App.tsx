@@ -63,6 +63,7 @@ import {
 } from './uiLayout';
 import { CombatScreen as RealtimeCombatScreen } from './CombatScreen';
 import { ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog';
+import { OfflineModal as OfflineReportModal } from './OfflineReport';
 
 const DebugMenu = import.meta.env.DEV ? lazy(() => import('./debug/DebugMenu')) : null;
 
@@ -499,11 +500,6 @@ function ActionStrip({
       </div>
       <button className="action-main button ghost" onClick={() => onNavigate(screen)}>
         <strong>{actionLabel(game)}</strong>
-        <small className="mining-activity-legacy-label" aria-hidden="true">
-          {action.type === 'mining'
-            ? `${action.phase === 'rest' ? 'Resting' : action.phase === 'respawn' ? 'Respawning' : 'Swinging'} · Stage ${miningRuntime?.stageIndex ? miningRuntime.stageIndex + 1 : 1}/${miningNode?.stages.length ?? 0}`
-            : 'Active in background'}
-        </small>
         <small className="mining-activity-label">
           {action.type === 'mining'
             ? `${miningPhaseText} · ${miningStageText}`
@@ -1167,7 +1163,13 @@ function HelpScreen() {
   );
 }
 
-function OfflineModal({ summary, onClose }: { summary: SimulationSummary; onClose: () => void }) {
+function _LegacyOfflineModal({
+  summary,
+  onClose,
+}: {
+  summary: SimulationSummary;
+  onClose: () => void;
+}) {
   const entries = Object.entries(summary.completed);
   return (
     <div className="modal-backdrop">
@@ -1491,7 +1493,13 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
           }}
         />
       )}
-      {offlineSummary && <OfflineModal summary={offlineSummary} onClose={clearOfflineSummary} />}
+      {offlineSummary && (
+        <OfflineReportModal
+          game={currentGame}
+          summary={offlineSummary}
+          onClose={clearOfflineSummary}
+        />
+      )}
       {deathNotice && (
         <DeathModal
           game={currentGame}

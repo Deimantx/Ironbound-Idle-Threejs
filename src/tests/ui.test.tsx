@@ -219,6 +219,10 @@ describe('navigation integration', () => {
       type: 'mining',
       nodeId: 'iron-vein',
     });
+    expect(document.querySelector('.mining-selected-rock h2')?.textContent).toBe('Iron Vein');
+    await user.click(screen.getByRole('button', { name: 'Stop Mining' }));
+    expect(useGameStore.getState().game?.activeAction.type).toBe('none');
+    expect(document.querySelector('.mining-selected-rock h2')?.textContent).toBe('Iron Vein');
   });
 
   it('allows locked Coal inspection without allowing it to start', async () => {
@@ -233,6 +237,31 @@ describe('navigation integration', () => {
     expect(screen.getAllByRole('heading', { name: 'Coal Seam' }).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'Level 30 Required' })).toBeDisabled();
     expect(useGameStore.getState().game?.activeAction.type).toBe('none');
+  });
+
+  it('presents Mining details as player-facing guidance', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Mining Copy Tester');
+    game.settings.threeQuality = 'off';
+    game.skills.mining.level = 15;
+    game.mining.stamina = 10;
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Mining/ })[0]);
+    expect(screen.getByText('Available Deposits')).toBeInTheDocument();
+    expect(screen.getByText(/Owned: 0/)).toBeInTheDocument();
+    expect(screen.getByText(/Mining XP \/ Swing/)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Inspect Iron Vein' }));
+    expect(screen.getByText('Iron Pick')).toBeInTheDocument();
+    expect(screen.queryByText('Resource progress')).not.toBeInTheDocument();
+    expect(screen.queryByText('Phase One resources')).not.toBeInTheDocument();
+    expect(screen.queryByText('Selected')).not.toBeInTheDocument();
+    expect(screen.queryByText(/0\.75x|1\.80x/)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Mine Stone Outcrop' }));
+    expect(screen.getByText('Before rest')).toBeInTheDocument();
+    expect(screen.getByText('1 swing', { exact: true })).toBeInTheDocument();
   });
 
   it('keeps extracted Inventory, Equipment, and Smithing interactions working', async () => {

@@ -3416,6 +3416,145 @@ h3 {
     z-index: 3;
   }
 }
+
+/* Mining 1.2 presentation polish. */
+.mining-active-panel {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.65fr) minmax(0, 1.35fr);
+  min-height: 520px;
+}
+.mining-active-panel > .scene-frame {
+  position: relative;
+  inset: auto;
+  grid-column: 1;
+  min-height: 520px;
+  opacity: 0.92;
+}
+.mining-overview-content {
+  grid-column: 2;
+  z-index: auto;
+  min-height: 0;
+  padding: 24px 26px 24px 18px;
+  background: none;
+}
+.mining-selected-stage-heading {
+  display: block;
+}
+.mining-selected-stage-heading > div {
+  display: grid;
+  gap: 4px;
+}
+.mining-selected-stage-heading span,
+.mining-selected-stage-heading small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.mining-selected-stage-heading strong {
+  color: var(--text);
+}
+.mining-section-label {
+  margin-top: 18px;
+}
+.mining-recommendation {
+  display: grid;
+  gap: 4px;
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.mining-recommendation span,
+.mining-recommendation small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.mining-recommendation strong {
+  color: var(--text);
+  font-size: 12px;
+}
+.offline-report {
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(720px, calc(100vh - 32px));
+  overflow-y: auto;
+}
+.offline-report-away {
+  margin: 16px 0 2px;
+  color: var(--text);
+  font-size: 24px;
+  font-weight: 700;
+}
+.offline-activity {
+  margin: 22px 0 0;
+  color: var(--gold);
+  font-size: 18px;
+}
+.offline-report-section {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.offline-gain-list,
+.offline-progress-list {
+  display: grid;
+  gap: 5px;
+  margin-top: 9px;
+}
+.offline-gain-row,
+.offline-progress-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 30px;
+}
+.offline-gain-row span,
+.offline-progress-row span {
+  flex: 1;
+  color: var(--text);
+  font-size: 12px;
+}
+.offline-gain-row strong,
+.offline-progress-row strong {
+  color: var(--gold);
+  font-size: 12px;
+}
+.offline-progress-row {
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(115, 132, 132, 0.14);
+}
+.offline-status {
+  margin: 22px 0 0;
+  color: var(--green);
+  font-size: 12px;
+}
+.offline-status.is-stopped {
+  color: var(--gold);
+}
+.offline-cap-note {
+  margin-top: 18px;
+}
+.offline-continue {
+  margin-top: 20px;
+}
+@media (max-width: 900px) {
+  .mining-active-panel {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+  .mining-active-panel > .scene-frame {
+    grid-column: 1;
+    min-height: 230px;
+  }
+  .mining-overview-content {
+    grid-column: 1;
+    min-height: 0;
+    padding: 20px;
+  }
+}
+@media (max-width: 650px) {
+  .mining-active-panel > .scene-frame {
+    min-height: 190px;
+  }
+}
 @media (max-width: 760px) {
   .combat-strip {
     flex-wrap: wrap;
@@ -6750,9 +6889,6 @@ h3 {
   color: var(--muted);
   font-size: 11px;
 }
-.mining-activity-legacy-label {
-  display: none;
-}
 .mining-level-header strong {
   color: var(--text);
   font-size: 15px;
@@ -6962,10 +7098,6 @@ h3 {
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-.selected-pill {
-  background: rgba(213, 170, 98, 0.16);
-  color: var(--gold);
-}
 .active-pill {
   background: rgba(79, 145, 112, 0.18);
   color: var(--green);
@@ -7055,33 +7187,6 @@ h3 {
 }
 .mining-selected-stage-heading strong {
   color: var(--text);
-}
-.mining-stage-table {
-  display: grid;
-  gap: 3px;
-}
-.mining-stage-table-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 45px 75px;
-  gap: 8px;
-  align-items: center;
-  padding: 6px 8px;
-  border-left: 2px solid transparent;
-  color: var(--muted);
-  font-size: 11px;
-}
-.mining-stage-table-row.is-current {
-  border-left-color: var(--gold);
-  background: rgba(213, 170, 98, 0.08);
-  color: var(--text);
-}
-.mining-stage-table-row strong {
-  color: inherit;
-  text-align: right;
-}
-.mining-stage-table-row small {
-  color: inherit;
-  text-align: right;
 }
 .mining-rate-summary {
   display: flex;
@@ -7251,8 +7356,5 @@ h3 {
   .mining-comparison-highlight .mining-effectiveness {
     grid-column: 1 / -1;
     justify-self: start;
-  }
-  .mining-stage-table-row {
-    grid-template-columns: minmax(0, 1fr) 40px 68px;
   }
 }

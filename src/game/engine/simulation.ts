@@ -837,6 +837,14 @@ export const simulateElapsed = (
   const safeElapsed = Math.max(0, Math.min(GAME_CONFIG.offlineCapMs, Math.floor(elapsedMs)));
   const state = clone(input);
   const summary = emptySummary(safeElapsed);
+  summary.offlineContext =
+    state.activeAction.type === 'mining'
+      ? { activity: 'mining', miningNodeId: state.activeAction.nodeId }
+      : state.activeAction.type === 'smithing'
+        ? { activity: 'smithing', recipeId: state.activeAction.recipeId }
+        : state.activeAction.type === 'combat'
+          ? { activity: 'combat', enemyId: state.activeAction.enemyId }
+          : { activity: 'idle' };
   const events: CombatVisualEvent[] = [];
   if (safeElapsed === 0) {
     summary.processedElapsedMs = 0;

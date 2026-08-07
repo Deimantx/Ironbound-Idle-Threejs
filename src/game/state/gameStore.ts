@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 import { saveProfile } from '../persistence/saveManager';
 import { simulateElapsed } from '../engine/simulation';
+import { itemById } from '../../content/items';
+import { miningNodeById } from '../../content/miningNodes';
 import {
   setCombatAutoRepeat,
   setCombatAutoSpecial,
@@ -123,6 +125,26 @@ const appendCombatEvents = (
   events: CombatVisualEvent[] = [],
 ): CombatVisualEvent[] => [...current, ...events].slice(-64);
 
+const getMiningFeedbackMessage = (summary: SimulationSummary): string | null => {
+  const context = summary.offlineContext;
+  if (context?.activity !== 'mining' || !context.miningNodeId) return null;
+  const node = miningNodeById[context.miningNodeId];
+  const roughGem = summary.itemsGained['rough-gem'] ?? 0;
+  if (roughGem > 0) return `${itemById['rough-gem']?.name ?? 'Rough Gem'} found! +${roughGem}`;
+  const traceIron =
+    context.miningNodeId === 'stone-outcrop' ? (summary.itemsGained['iron-ore'] ?? 0) : 0;
+  if (traceIron > 0) return `Iron Ore trace uncovered. +${traceIron}`;
+  if (!node) return null;
+  const stageEntry = Object.entries(summary.completed)
+    .filter(([key, amount]) => key.startsWith(`mine-stage:${node.id}:`) && amount > 0)
+    .sort((left, right) => left[0].localeCompare(right[0]))
+    .at(-1);
+  if (!stageEntry) return null;
+  const index = Number(stageEntry[0].split(':').at(-1));
+  const nextStage = Number.isInteger(index) ? node.stages[index + 1] : undefined;
+  return nextStage ? `${nextStage.name} exposed.` : `${node.name} fully mined.`;
+};
+
 export const useGameStore = create<Store>((set, get) => ({
   game: null,
   saveStatus: 'saved',
@@ -176,6 +198,7 @@ export const useGameStore = create<Store>((set, get) => ({
     const nextCombatSession = isCombat
       ? mergeCombatSession(get().combatSession, result.summary, result.events)
       : get().combatSession;
+    const miningFeedback = getMiningFeedbackMessage(result.summary);
     if (result.state.activeAction.type === 'combat')
       nextCombatSession.encounterStartedAt =
         result.state.activeAction.combatState.encounterStartedAt;
@@ -185,6 +208,7 @@ export const useGameStore = create<Store>((set, get) => ({
         ? [...get().combatEvents, ...result.events].slice(-64)
         : get().combatEvents,
       combatSession: nextCombatSession,
+      toast: miningFeedback ?? get().toast,
     });
   },
   startMining: (nodeId) => {

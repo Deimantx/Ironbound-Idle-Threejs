@@ -327,6 +327,8 @@ export interface SimulationSummary {
   requestedElapsedMs: number;
   processedElapsedMs: number;
   remainingElapsedMs: number;
+  offlineCapped?: boolean;
+  offlineContext?: SimulationContext;
   completed: Record<string, number>;
   xpGained: Partial<Record<SkillId, number>>;
   levelsGained: Partial<Record<SkillId, number>>;
@@ -347,6 +349,13 @@ export interface SimulationSummary {
     damageTaken: number;
   };
   stoppedReason?: string;
+}
+
+export interface SimulationContext {
+  activity: 'mining' | 'smithing' | 'combat' | 'idle';
+  miningNodeId?: MiningNodeId;
+  recipeId?: RecipeId;
+  enemyId?: EnemyId;
 }
 
 export type CombatVisualEvent =

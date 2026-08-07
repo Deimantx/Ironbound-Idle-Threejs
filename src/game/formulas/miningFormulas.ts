@@ -1,6 +1,6 @@
 import { MINING_TUNING } from '../../config/miningTuning';
 import { miningNodeById } from '../../content/miningNodes';
-import { getMiningToolDefinition } from '../../content/miningTools';
+import { getMiningToolDefinition, MINING_TOOLS } from '../../content/miningTools';
 import type {
   GameState,
   MiningBonusDrop,
@@ -48,6 +48,18 @@ export const getMiningSwingDamage = (
 
 export const getMiningSwingXp = (node: MiningNodeDefinition, effectiveness: number): number =>
   Math.max(1, Math.floor(node.xpPerSwing * clamp(effectiveness, 0, 1)));
+
+export const getMiningSwingsBeforeRest = (stamina: number, staminaCost: number): number => {
+  if (stamina <= 0) return 0;
+  return Math.ceil(stamina / Math.max(1, staminaCost));
+};
+
+export const getRecommendedMiningToolForNode = (
+  node: MiningNodeDefinition,
+): MiningToolDefinition | null =>
+  MINING_TOOLS.find(
+    (tool) => tool.penetration >= node.requiredPenetration && getMiningToolDefinition(tool.itemId),
+  ) ?? null;
 
 export const getMiningPrimaryYield = (
   damage: number,
