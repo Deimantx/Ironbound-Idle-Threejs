@@ -1,16 +1,28 @@
-import { Lock, Pickaxe } from 'lucide-react';
+import { Lock } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { MINING_TUNING } from '../config/miningTuning';
 import { itemById } from '../content/items';
 import { MINING_NODES, miningNodeById } from '../content/miningNodes';
 import {
   getMiningEffectiveness,
+  getMiningEffectivenessLabel,
   getMiningEstimatedRates,
   getMiningRuntimeState,
+  getMiningStageBonusChance,
+  getMiningSwingDamage,
+  getMiningSwingXp,
   getMiningTool,
 } from '../game/formulas/miningFormulas';
+import { getLevelProgress } from '../game/formulas/experienceFormulas';
 import { useGameStore } from '../game/state/gameStore';
-import type { GameState, MiningNodeDefinition, ScreenId } from '../game/types';
+import type {
+  GameState,
+  MiningNodeDefinition,
+  MiningNodeId,
+  MiningPhase,
+  ScreenId,
+} from '../game/types';
 import { occupiedSlots } from '../game/systems/inventorySystem';
 import { ThreeScene } from '../three/ThreeScene';
 import { formatNumber } from './formatters';
@@ -25,11 +37,16 @@ export interface MiningScreenProps {
   requestAction: (screen: ScreenId, action: () => void) => void;
 }
 
-const phaseLabel = (phase: 'swing' | 'rest' | 'respawn' | 'stopped'): string => {
+const phaseLabel = (phase: MiningPhase): string => {
   if (phase === 'swing') return 'Swinging';
   if (phase === 'rest') return 'Resting';
-  if (phase === 'respawn') return 'Rock Respawning';
-  return 'Stopped';
+  return 'Rock reforming';
+};
+
+const phaseTitle = (phase: MiningPhase): string => {
+  if (phase === 'swing') return 'Next swing';
+  if (phase === 'rest') return 'Miner resting';
+  return 'Rock reforming';
 };
 
 const formatDuration = (milliseconds: number): string => {
@@ -37,51 +54,184 @@ const formatDuration = (milliseconds: number): string => {
   return seconds >= 10 ? `${Math.ceil(seconds)}s` : `${seconds.toFixed(1)}s`;
 };
 
+const formatRate = (value: number): string =>
+  new Intl.NumberFormat('en-US', {
+    notation: 'compact',
+    maximumFractionDigits: 1,
+  }).format(Math.max(0, value));
+
+const effectivenessClass = (label: string): string =>
+  `mining-effectiveness-${label.toLowerCase().replaceAll(' ', '-')}`;
+
+const initialSelectedNode = (game: GameState): MiningNodeId => {
+  if (game.activeAction.type === 'mining' && miningNodeById[game.activeAction.nodeId])
+    return game.activeAction.nodeId;
+  return (
+    MINING_NODES.find((node) => game.skills.mining.level >= node.level)?.id ?? MINING_NODES[0].id
+  );
+};
+
 const phaseProgress = (game: GameState, node: MiningNodeDefinition | undefined): number => {
   if (game.activeAction.type !== 'mining' || !node) return 0;
   if (game.activeAction.phase === 'rest')
-    return game.activeAction.progressMs / MINING_TUNING.restDurationMs;
+    return Math.min(1, game.activeAction.progressMs / MINING_TUNING.restDurationMs);
   if (game.activeAction.phase === 'respawn') {
     const runtime = getMiningRuntimeState(game.mining, node.id);
-    return 1 - runtime.respawnRemainingMs / node.respawnMs;
+    return Math.min(1, Math.max(0, 1 - runtime.respawnRemainingMs / node.respawnMs));
   }
-  return game.activeAction.progressMs / getMiningTool(game).swingIntervalMs;
+  return Math.min(1, game.activeAction.progressMs / getMiningTool(game).swingIntervalMs);
 };
+
+const phaseRemaining = (game: GameState, node: MiningNodeDefinition | undefined): number => {
+  if (game.activeAction.type !== 'mining' || !node) return 0;
+  if (game.activeAction.phase === 'respawn')
+    return getMiningRuntimeState(game.mining, node.id).respawnRemainingMs;
+  const duration =
+    game.activeAction.phase === 'rest'
+      ? MINING_TUNING.restDurationMs
+      : getMiningTool(game).swingIntervalMs;
+  return Math.max(0, duration - game.activeAction.progressMs);
+};
+
+const ProgressBar = ({
+  value,
+  max,
+  label,
+  className = '',
+}: {
+  value: number;
+  max: number;
+  label: string;
+  className?: string;
+}) => (
+  <div
+    className={`bar mining-progress-bar ${className}`}
+    role="progressbar"
+    aria-label={label}
+    aria-valuemin={0}
+    aria-valuemax={max}
+    aria-valuenow={Math.round(Math.max(0, Math.min(max, value)))}
+  >
+    <i style={{ width: `${Math.max(0, Math.min(1, value / Math.max(1, max))) * 100}%` }} />
+  </div>
+);
 
 const StaminaBar = ({ stamina }: { stamina: number }) => (
   <div className="mining-stamina-block">
     <div className="split">
-      <span>Mining stamina</span>
+      <span>Stamina</span>
       <strong>
         {Math.round(stamina)} / {MINING_TUNING.maxStamina}
       </strong>
     </div>
-    <div
-      className="bar mining-progress-bar"
-      role="progressbar"
-      aria-label="Mining stamina"
-      aria-valuemin={0}
-      aria-valuemax={MINING_TUNING.maxStamina}
-      aria-valuenow={Math.round(stamina)}
-    >
-      <i style={{ width: `${(stamina / MINING_TUNING.maxStamina) * 100}%` }} />
-    </div>
+    <ProgressBar
+      value={stamina}
+      max={MINING_TUNING.maxStamina}
+      label="Mining stamina"
+      className={stamina <= 0 ? 'is-empty' : ''}
+    />
   </div>
 );
 
-const StageList = ({
+const StageTrack = ({
+  node,
+  currentStage,
+  preview = false,
+}: {
+  node: MiningNodeDefinition;
+  currentStage: number;
+  preview?: boolean;
+}) => (
+  <div className="mining-stage-track" aria-label={`${node.name} stage progression`}>
+    {node.stages.map((stage, index) => {
+      const state = preview
+        ? index === currentStage
+          ? 'current'
+          : 'future'
+        : index < currentStage
+          ? 'complete'
+          : index === currentStage
+            ? 'current'
+            : 'future';
+      return (
+        <div
+          className={`mining-stage-step mining-stage-step-${state}`}
+          key={stage.id}
+          title={`${stage.name}: ${stage.durability} durability, ${stage.bonusChanceMultiplier.toFixed(2)}x bonus chance`}
+          aria-current={state === 'current' ? 'step' : undefined}
+        >
+          <span className="mining-stage-marker">{state === 'complete' ? '✓' : index + 1}</span>
+          <strong>{stage.name}</strong>
+          <small>{stage.durability} durability</small>
+        </div>
+      );
+    })}
+  </div>
+);
+
+const EffectivenessBadge = ({ effectiveness }: { effectiveness: number }) => {
+  const label = getMiningEffectivenessLabel(effectiveness);
+  return (
+    <span className={`mining-effectiveness ${effectivenessClass(label)}`}>
+      {label} · {Math.round(effectiveness * 100)}%
+    </span>
+  );
+};
+
+const RateSummary = ({ game, node }: { game: GameState; node: MiningNodeDefinition }) => {
+  const rates = getMiningEstimatedRates(game, node);
+  const primaryName = itemById[node.primaryRewardItemId]?.name ?? node.primaryRewardItemId;
+  return (
+    <div className="mining-rate-summary">
+      <span>
+        ~{formatRate(rates.primaryOrePerHour)} {primaryName}/hr
+      </span>
+      <span>~{formatRate(rates.xpPerHour)} XP/hr</span>
+    </div>
+  );
+};
+
+const ByproductRows = ({ node, stage }: { node: MiningNodeDefinition; stage: number }) => (
+  <div className="mining-reward-rows">
+    {node.bonusDrops.map((drop) => {
+      const item = itemById[drop.itemId];
+      const currentChance = getMiningStageBonusChance(drop, node.stages[stage] ?? node.stages[0]);
+      return (
+        <div className="mining-reward-row" key={drop.itemId}>
+          <ItemIcon itemId={drop.itemId} size="md" />
+          <div>
+            <strong>{item?.name ?? drop.itemId}</strong>
+            <small>
+              Base {(drop.chance * 100).toFixed(2)}% → Current {(currentChance * 100).toFixed(3)}% ·{' '}
+              {drop.minQuantity === drop.maxQuantity
+                ? `x${drop.minQuantity}`
+                : `x${drop.minQuantity}-${drop.maxQuantity}`}
+            </small>
+          </div>
+        </div>
+      );
+    })}
+  </div>
+);
+
+const StageRows = ({
   node,
   currentStage,
 }: {
   node: MiningNodeDefinition;
   currentStage: number;
 }) => (
-  <div className="mining-stage-list" aria-label={`${node.name} rock stages`}>
+  <div className="mining-stage-table" aria-label={`${node.name} stage details`}>
     {node.stages.map((stage, index) => (
-      <div className={`mining-stage ${index === currentStage ? 'active' : ''}`} key={stage.id}>
-        <span>{index + 1}</span>
-        <strong>{stage.name}</strong>
-        <small>{stage.bonusChanceMultiplier.toFixed(2)}× bonus chance</small>
+      <div
+        className={`mining-stage-table-row ${index === currentStage ? 'is-current' : ''}`}
+        key={stage.id}
+      >
+        <span>
+          {index + 1}. {stage.name}
+        </span>
+        <strong>{stage.durability}</strong>
+        <small>{stage.bonusChanceMultiplier.toFixed(2)}x bonus</small>
       </div>
     ))}
   </div>
@@ -90,93 +240,138 @@ const StageList = ({
 export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProps) {
   const startMining = useGameStore((store) => store.startMining);
   const stopAction = useGameStore((store) => store.stopAction);
-  const active = game.activeAction.type === 'mining' ? game.activeAction.nodeId : null;
-  const activeNode = active ? miningNodeById[active] : undefined;
-  const tool = getMiningTool(game);
+  const activeNodeId = game.activeAction.type === 'mining' ? game.activeAction.nodeId : null;
+  const activeNode = activeNodeId ? miningNodeById[activeNodeId] : undefined;
+  const [selectedNodeId, setSelectedNodeId] = useState<MiningNodeId>(() =>
+    initialSelectedNode(game),
+  );
+  const profileId = game.profileId;
+
+  useEffect(() => {
+    const currentGame = useGameStore.getState().game;
+    if (currentGame) setSelectedNodeId(initialSelectedNode(currentGame));
+  }, [profileId]);
+
+  const selectedNode = miningNodeById[selectedNodeId] ?? MINING_NODES[0];
+  const selectedHasRuntime = game.mining.nodeStates[selectedNode.id] !== undefined;
+  const selectedRuntime = getMiningRuntimeState(game.mining, selectedNode.id);
+  const selectedStage = selectedNode.stages[selectedRuntime.stageIndex] ?? selectedNode.stages[0];
   const activeRuntime = activeNode ? getMiningRuntimeState(game.mining, activeNode.id) : undefined;
-  const activeStage = activeNode?.stages[activeRuntime?.stageIndex ?? 0];
-  const activePhase = game.activeAction.type === 'mining' ? game.activeAction.phase : 'stopped';
-  const progress = phaseProgress(game, activeNode);
-  const phaseDuration =
-    activePhase === 'rest'
-      ? MINING_TUNING.restDurationMs
-      : activePhase === 'respawn'
-        ? (activeNode?.respawnMs ?? 0)
-        : tool.swingIntervalMs;
-  const phaseRemaining = Math.max(0, phaseDuration - (progress * phaseDuration || 0));
+  const activeStage = activeNode
+    ? (activeNode.stages[activeRuntime?.stageIndex ?? 0] ?? activeNode.stages[0])
+    : undefined;
+  const activeTool = getMiningTool(game);
+  const selectedEffectiveness = getMiningEffectiveness(activeTool, selectedNode);
+  const selectedRates = getMiningEstimatedRates(game, selectedNode);
+  const miningProgress = getLevelProgress(game.skills.mining);
+  const activeDisplayNode = activeNode ?? selectedNode;
+  const activeDisplayStage = activeNode ? (activeStage ?? selectedStage) : selectedStage;
+  const activeDisplayRuntime = activeNode ? (activeRuntime ?? selectedRuntime) : selectedRuntime;
+  const activeProgress = phaseProgress(game, activeNode);
+  const activeRemaining = phaseRemaining(game, activeNode);
+  const swingsBeforeRest = Math.floor(game.mining.stamina / Math.max(1, activeTool.staminaCost));
 
   return (
     <>
       <ScreenHeading
         eyebrow="Skill · Gathering"
         title="Mining"
-        description="Set a pick against one living rock, then let steady work fill your pack."
+        description="Choose a rock, read its depth, and make the next deliberate swing."
         trailing={
-          <span className="badge gold">
-            Level {game.skills.mining.level} · {formatNumber(game.skills.mining.xp)} XP
-          </span>
+          <div className="mining-level-header" aria-label="Mining experience">
+            <strong>Level {game.skills.mining.level}</strong>
+            <span>
+              {formatNumber(game.skills.mining.xp)} XP ·{' '}
+              {game.skills.mining.level >= 100
+                ? 'Max level'
+                : `${Math.round(miningProgress.percent)}% to Level ${game.skills.mining.level + 1}`}
+            </span>
+            <ProgressBar value={miningProgress.percent} max={100} label="Mining level progress" />
+          </div>
         }
       />
       <div className="ui-panel-grid mining-panel-grid" data-ui-panel-grid="mining">
         <UiPanelSlot screen="mining" id="miningOverview" layout={uiLayout}>
-          <section className="panel scene-panel mining-overview-panel">
-            <ThreeScene screen="mining" settings={game.settings} theme="#b87950" />
+          <section className="panel scene-panel mining-overview-panel mining-active-panel">
+            <ThreeScene
+              screen="mining"
+              settings={game.settings}
+              miningTheme={activeDisplayNode.theme}
+              miningStage={activeDisplayRuntime.stageIndex}
+            />
             <div className="mining-overview-content">
-              <div className="eyebrow">Deep-earth study</div>
-              <h2>{activeNode?.name ?? 'Choose a rock node'}</h2>
+              <div className="eyebrow">{activeNode ? 'Active Mining' : 'Mining Idle'}</div>
+              <h2>{activeNode?.name ?? selectedNode.name}</h2>
               <p className="subtle">
                 {activeNode
-                  ? `${phaseLabel(activePhase)} · stage ${(activeRuntime?.stageIndex ?? 0) + 1} / ${activeNode.stages.length}`
-                  : 'Select a node to begin a persistent Mining action.'}
+                  ? `${phaseLabel(game.activeAction.type === 'mining' ? game.activeAction.phase : 'swing')} · Stage ${(activeDisplayRuntime.stageIndex ?? 0) + 1} of ${activeDisplayNode.stages.length}`
+                  : 'Select a rock and press Mine to begin.'}
               </p>
-              {activeNode && activeRuntime && activeStage ? (
-                <div className="mining-overview-status">
-                  <div className="split">
-                    <span>{activeStage.name}</span>
-                    <strong>
-                      {Math.ceil(activeRuntime.stageDurability)} / {activeStage.durability}
-                    </strong>
-                  </div>
-                  <div
-                    className="bar mining-progress-bar"
-                    role="progressbar"
-                    aria-label="Current stage durability"
-                    aria-valuemin={0}
-                    aria-valuemax={activeStage.durability}
-                    aria-valuenow={Math.ceil(activeRuntime.stageDurability)}
-                  >
-                    <i
-                      style={{
-                        width: `${(activeRuntime.stageDurability / activeStage.durability) * 100}%`,
-                      }}
+
+              <StageTrack
+                node={activeDisplayNode}
+                currentStage={activeDisplayRuntime.stageIndex}
+                preview={!activeNode}
+              />
+
+              <div className="mining-overview-status">
+                <div className="split">
+                  <span>{activeDisplayStage.name} durability</span>
+                  <strong>
+                    {Math.ceil(activeDisplayRuntime.stageDurability)} /{' '}
+                    {activeDisplayStage.durability}
+                  </strong>
+                </div>
+                <ProgressBar
+                  value={activeDisplayRuntime.stageDurability}
+                  max={activeDisplayStage.durability}
+                  label="Current stage durability"
+                  className="mining-durability-bar"
+                />
+
+                {activeNode ? (
+                  <>
+                    <div className="split mining-phase-row">
+                      <span>
+                        {phaseTitle(
+                          game.activeAction.type === 'mining' ? game.activeAction.phase : 'swing',
+                        )}
+                      </span>
+                      <strong>{formatDuration(activeRemaining)}</strong>
+                    </div>
+                    <ProgressBar
+                      value={activeProgress * 100}
+                      max={100}
+                      label={`${phaseLabel(game.activeAction.type === 'mining' ? game.activeAction.phase : 'swing')} progress`}
+                      className="mining-phase-bar"
                     />
-                  </div>
-                  <div className="split mining-phase-row">
-                    <span>{phaseLabel(activePhase)}</span>
+                  </>
+                ) : (
+                  <div className="mining-preview-note">Previewing Stage 1 at full durability.</div>
+                )}
+
+                <div className="mining-active-stats">
+                  <span>
+                    Resource progress
+                    <strong>{Math.round(activeDisplayRuntime.primaryYieldProgress * 100)}%</strong>
+                  </span>
+                  <span>
+                    {activeNode ? 'Stamina' : 'Ready'}
                     <strong>
-                      {game.activeAction.type === 'mining'
-                        ? `${formatDuration(phaseRemaining)} remaining`
-                        : 'Ready'}
+                      {Math.round(game.mining.stamina)} / {MINING_TUNING.maxStamina}
                     </strong>
-                  </div>
-                  <div
-                    className="bar mining-progress-bar"
-                    role="progressbar"
-                    aria-label={`${phaseLabel(activePhase)} progress`}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.round(Math.max(0, Math.min(1, progress)) * 100)}
-                  >
-                    <i style={{ width: `${Math.max(0, Math.min(1, progress)) * 100}%` }} />
-                  </div>
-                  <StaminaBar stamina={game.mining.stamina} />
+                  </span>
+                  {activeNode && (
+                    <span>
+                      Before rest
+                      <strong>
+                        {swingsBeforeRest} swing{swingsBeforeRest === 1 ? '' : 's'}
+                      </strong>
+                    </span>
+                  )}
                 </div>
-              ) : (
-                <div className="mining-empty-state">
-                  <Pickaxe size={28} aria-hidden="true" />
-                  <span>Nothing is selected. Choose Copper or Tin to start Mining.</span>
-                </div>
-              )}
+                <StaminaBar stamina={game.mining.stamina} />
+              </div>
             </div>
           </section>
         </UiPanelSlot>
@@ -185,8 +380,11 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
           <section className="panel panel-pad">
             <div className="split">
               <div>
+                <div className="eyebrow">Phase One resources</div>
                 <h2>Rock nodes</h2>
-                <p className="subtle">Rates include tool damage, stamina rest, and respawn time.</p>
+                <p className="subtle">
+                  Select a rock to inspect it. Mining only changes when you press its action.
+                </p>
               </div>
               <span className="badge">
                 {occupiedSlots(game.inventory)}/{GAME_CONFIG.inventorySlots} slots
@@ -195,54 +393,73 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
             <div className="list mining-node-list">
               {MINING_NODES.map((node) => {
                 const locked = game.skills.mining.level < node.level;
-                const isActive = active === node.id;
-                const effectiveness = getMiningEffectiveness(tool, node);
+                const isSelected = selectedNode.id === node.id;
+                const isActive = activeNodeId === node.id;
+                const effectiveness = getMiningEffectiveness(activeTool, node);
                 const rates = getMiningEstimatedRates(game, node);
                 const primary = itemById[node.primaryRewardItemId];
+                const actionText = locked
+                  ? `Level ${node.level} Required`
+                  : isActive
+                    ? 'Stop Mining'
+                    : activeNode
+                      ? `Switch to ${node.name}`
+                      : `Mine ${node.name}`;
                 return (
                   <div
-                    className={`list-row mining-node-card ${locked ? 'locked-card' : ''}`}
+                    className={`list-row mining-node-card ${locked ? 'locked-card' : ''} ${isSelected ? 'is-selected' : ''} ${isActive ? 'is-active' : ''}`}
                     key={node.id}
                   >
-                    <div className="row-main">
-                      <strong>
-                        {node.name}{' '}
-                        {locked && <span className="badge locked">Level {node.level}</span>}
-                      </strong>
-                      <small>
-                        <ItemIcon itemId={primary?.id} size="sm" />{' '}
-                        {primary?.name ?? node.primaryRewardItemId} · {node.stages.length} stages ·{' '}
-                        {node.requiredPenetration} penetration
-                      </small>
-                      <div className="mining-node-metrics">
-                        <span>{Math.round(effectiveness * 100)}% effective</span>
-                        <span>{rates.primaryOrePerHour.toFixed(1)} ore/hr</span>
-                        <span>{Math.round(rates.xpPerHour)} XP/hr</span>
-                      </div>
-                    </div>
-                    {locked ? (
-                      <Lock
-                        size={15}
-                        className="muted"
-                        aria-label={`Locked: Mining level ${node.level} required`}
-                      />
-                    ) : isActive ? (
-                      <button
-                        className="button danger"
-                        onClick={stopAction}
-                        aria-label={`Stop mining ${node.name}`}
-                      >
-                        Stop
-                      </button>
-                    ) : (
-                      <button
-                        className="button primary"
-                        onClick={() => requestAction('mining', () => startMining(node.id))}
-                        aria-label="Mine"
-                      >
-                        Mine
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      className="mining-node-select"
+                      onClick={() => setSelectedNodeId(node.id)}
+                      aria-label={`Inspect ${node.name}`}
+                      aria-pressed={isSelected}
+                    >
+                      <ItemIcon itemId={primary?.id} size="md" />
+                      <span className="row-main">
+                        <strong>
+                          {node.name}
+                          {isSelected && (
+                            <span className="mining-state-pill selected-pill">Selected</span>
+                          )}
+                          {isActive && (
+                            <span className="mining-state-pill active-pill">Mining</span>
+                          )}
+                        </strong>
+                        <small>
+                          Mining Level {node.level} · {primary?.name ?? node.primaryRewardItemId} ·
+                          5 stages · Pen {node.requiredPenetration}
+                        </small>
+                        <span className="mining-node-effectiveness">
+                          <EffectivenessBadge effectiveness={effectiveness} />
+                        </span>
+                        <span className="mining-node-rates">
+                          ~{formatRate(rates.primaryOrePerHour)}{' '}
+                          {primary?.name ?? node.primaryRewardItemId}/hr · ~
+                          {formatRate(rates.xpPerHour)} XP/hr
+                        </span>
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className={`button ${isActive ? 'danger' : locked ? 'ghost' : 'primary'}`}
+                      disabled={locked}
+                      onClick={() => {
+                        if (isActive) stopAction();
+                        else requestAction('mining', () => startMining(node.id));
+                      }}
+                      aria-label={actionText}
+                    >
+                      {locked ? (
+                        <Lock size={14} aria-hidden="true" />
+                      ) : isActive ? (
+                        'Stop'
+                      ) : (
+                        actionText
+                      )}
+                    </button>
                   </div>
                 );
               })}
@@ -253,87 +470,106 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
         <UiPanelSlot screen="mining" id="miningDetails" layout={uiLayout}>
           <section className="panel panel-pad mining-details-panel">
             <div className="mining-details-grid">
-              <div>
-                <div className="eyebrow">Current tool</div>
-                <h2>{tool.itemId ? itemById[tool.itemId]?.name : 'No pickaxe'}</h2>
-                <div className="mining-tool-summary">
-                  <ItemIcon itemId={tool.itemId || undefined} size="md" />
-                  <div className="mining-stat-grid">
-                    <span>
-                      Rock damage<strong>{tool.rockDamage}</strong>
-                    </span>
-                    <span>
-                      Penetration<strong>{tool.penetration}</strong>
-                    </span>
-                    <span>
-                      Swing time<strong>{formatDuration(tool.swingIntervalMs)}</strong>
-                    </span>
-                    <span>
-                      Stamina / swing<strong>{tool.staminaCost}</strong>
-                    </span>
-                    <span>
-                      Required level<strong>{tool.requiredMiningLevel}</strong>
-                    </span>
-                    {activeNode && (
-                      <span>
-                        Effectiveness
-                        <strong>
-                          {Math.round(getMiningEffectiveness(tool, activeNode) * 100)}%
-                        </strong>
-                      </span>
-                    )}
+              <div className="mining-selected-rock">
+                <div className="eyebrow">Selected rock</div>
+                <h2>{selectedNode.name}</h2>
+                <p className="subtle">
+                  Mining Level {selectedNode.level} · Required Penetration{' '}
+                  {selectedNode.requiredPenetration}
+                </p>
+                <p>{selectedNode.description}</p>
+                <div className="mining-primary-resource">
+                  <ItemIcon itemId={selectedNode.primaryRewardItemId} size="md" />
+                  <div>
+                    <span>Primary resource</span>
+                    <strong>{itemById[selectedNode.primaryRewardItemId]?.name}</strong>
+                    <small>Deterministic yield from swing damage</small>
                   </div>
                 </div>
-                {activeNode && getMiningEffectiveness(tool, activeNode) < 1 && (
-                  <p className="mining-warning" role="status">
-                    Under-penetration reduces damage and XP against this node. Mining never misses.
-                  </p>
-                )}
-                <StaminaBar stamina={game.mining.stamina} />
+                <div className="mining-selected-stage-heading">
+                  <span>{selectedHasRuntime ? 'Saved stage' : 'Preview stage'}</span>
+                  <strong>
+                    Stage {selectedRuntime.stageIndex + 1}: {selectedStage.name}
+                  </strong>
+                </div>
+                <StageRows node={selectedNode} currentStage={selectedRuntime.stageIndex} />
+                <RateSummary game={game} node={selectedNode} />
+                <div className="mining-detail-meta">
+                  <span>
+                    Respawn<strong>{formatDuration(selectedNode.respawnMs)}</strong>
+                  </span>
+                  <span>
+                    Damage / resource<strong>{selectedNode.damagePerPrimaryReward}</strong>
+                  </span>
+                </div>
+                <div className="mining-reward-section">
+                  <div className="eyebrow">Possible byproducts</div>
+                  {selectedNode.bonusDrops.length > 0 ? (
+                    <ByproductRows node={selectedNode} stage={selectedRuntime.stageIndex} />
+                  ) : (
+                    <p className="subtle">No authored bonus drops.</p>
+                  )}
+                </div>
               </div>
-              <div>
-                <div className="eyebrow">Rock and rewards</div>
-                <h2>{activeNode?.name ?? 'Select a node'}</h2>
-                {activeNode && activeRuntime ? (
-                  <>
-                    <StageList node={activeNode} currentStage={activeRuntime.stageIndex} />
-                    <div className="mining-reward-summary">
-                      <span>
-                        Primary ore<strong>{itemById[activeNode.primaryRewardItemId]?.name}</strong>
-                      </span>
-                      <span>
-                        Current durability
-                        <strong>{Math.ceil(activeRuntime.stageDurability)}</strong>
-                      </span>
-                      <span>
-                        Stage bonus
-                        <strong>{(activeStage?.bonusChanceMultiplier ?? 1).toFixed(2)}×</strong>
-                      </span>
-                      <span>
-                        Rest / respawn
-                        <strong>
-                          {formatDuration(MINING_TUNING.restDurationMs)} /{' '}
-                          {formatDuration(activeNode.respawnMs)}
-                        </strong>
-                      </span>
-                    </div>
-                    <div className="mining-loot-list">
-                      {activeNode.bonusDrops.map((drop) => (
-                        <span key={drop.itemId}>
-                          {itemById[drop.itemId]?.name ?? drop.itemId} ·{' '}
-                          {(drop.chance * (activeStage?.bonusChanceMultiplier ?? 1) * 100).toFixed(
-                            2,
-                          )}
-                          %
-                        </span>
-                      ))}
-                    </div>
-                  </>
+
+              <div className="mining-tool-details">
+                <div className="eyebrow">Current pickaxe</div>
+                <h2>{activeTool.itemId ? itemById[activeTool.itemId]?.name : 'No pickaxe'}</h2>
+                <div className="mining-tool-summary">
+                  <ItemIcon itemId={activeTool.itemId || undefined} size="md" />
+                  <div className="mining-stat-grid">
+                    <span>
+                      Rock damage<strong>{activeTool.rockDamage}</strong>
+                    </span>
+                    <span>
+                      Penetration<strong>{activeTool.penetration}</strong>
+                    </span>
+                    <span>
+                      Swing time<strong>{formatDuration(activeTool.swingIntervalMs)}</strong>
+                    </span>
+                    <span>
+                      Stamina / swing<strong>{activeTool.staminaCost}</strong>
+                    </span>
+                    <span>
+                      Required level<strong>{activeTool.requiredMiningLevel}</strong>
+                    </span>
+                  </div>
+                </div>
+                <div className="mining-tool-comparison">
+                  <div className="eyebrow">Vs {selectedNode.name}</div>
+                  <div className="mining-comparison-row">
+                    <span>Required penetration</span>
+                    <strong>{selectedNode.requiredPenetration}</strong>
+                  </div>
+                  <div className="mining-comparison-row">
+                    <span>Your penetration</span>
+                    <strong>{activeTool.penetration}</strong>
+                  </div>
+                  <div className="mining-comparison-highlight">
+                    <EffectivenessBadge effectiveness={selectedEffectiveness} />
+                    <span>
+                      Actual damage<strong>{getMiningSwingDamage(activeTool, selectedNode)}</strong>
+                    </span>
+                    <span>
+                      XP effectiveness
+                      <strong>{getMiningSwingXp(selectedNode, selectedEffectiveness)}</strong>{' '}
+                      XP/swing
+                    </span>
+                  </div>
+                </div>
+                {selectedEffectiveness < 1 ? (
+                  <p className="mining-warning" role="status">
+                    Your pickaxe cannot fully penetrate this rock. Damage and Mining XP are reduced.
+                  </p>
                 ) : (
-                  <p className="subtle">
-                    Current-stage loot and durability appear here after selecting a node.
+                  <p className="mining-ready" role="status">
+                    Your pickaxe fully penetrates this rock.
                   </p>
                 )}
+                <div className="mining-tool-rate-note">
+                  <span>Selected-node estimate</span>
+                  <strong>{formatDuration(selectedRates.cycleMs)} per rock cycle</strong>
+                </div>
               </div>
             </div>
           </section>

@@ -22,6 +22,7 @@ const forge = (
 });
 
 export const RECIPES: RecipeDefinition[] = [
+  // Legacy Bronze-era Smithing remains valid for existing content and saves; Mining 1.1 only retires its source nodes.
   {
     id: 'bronze-bar',
     name: 'Bronze Bar',

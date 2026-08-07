@@ -12,6 +12,12 @@ import {
 import { miningNodeById } from '../../content/miningNodes';
 import type { GameState, InventoryStack } from '../types';
 
+const LEGACY_MINING_NODE_MAP: Record<string, 'stone-outcrop' | null> = {
+  'copper-vein': 'stone-outcrop',
+  'tin-vein': 'stone-outcrop',
+  'mithril-deposit': null,
+};
+
 export type SaveMigration = (input: GameState) => GameState;
 
 export const LEGACY_ARMOR_ITEM_MAP: Record<string, string> = {
@@ -197,6 +203,7 @@ const migrateMining = (input: GameState): GameState => {
   const raw = input as unknown as Record<string, unknown>;
   const hadMiningState = raw.mining !== undefined;
   const mining = normalizeMiningState(raw.mining);
+  const rawMining = raw.mining as { nodeStates?: Record<string, unknown> } | undefined;
   const oldStatistics = input.statistics as GameState['statistics'] & {
     miningSwings?: number;
     miningStagesDepleted?: number;
@@ -217,13 +224,45 @@ const migrateMining = (input: GameState): GameState => {
   };
   let activeAction = input.activeAction;
   if (activeAction.type === 'mining') {
-    const node = miningNodeById[activeAction.nodeId];
-    if (!node || input.skills.mining.level < node.level) {
+    const sourceNodeId = String(activeAction.nodeId);
+    const mappedLegacyNode = LEGACY_MINING_NODE_MAP[sourceNodeId];
+    const migratedNodeId = mappedLegacyNode === undefined ? sourceNodeId : mappedLegacyNode;
+    if (migratedNodeId === 'stone-outcrop' && sourceNodeId !== migratedNodeId) {
+      const legacyRuntime = rawMining?.nodeStates?.[sourceNodeId];
+      mining.nodeStates['stone-outcrop'] = createMiningRuntimeState('stone-outcrop');
+      if (legacyRuntime && typeof legacyRuntime === 'object') {
+        const value = legacyRuntime as Partial<ReturnType<typeof createMiningRuntimeState>>;
+        const nextRuntime = mining.nodeStates['stone-outcrop']!;
+        nextRuntime.stageIndex = Math.max(
+          0,
+          Math.min(4, Math.floor(Number(value.stageIndex) || 0)),
+        );
+        const stage = miningNodeById['stone-outcrop'].stages[nextRuntime.stageIndex];
+        const legacyDurability = Number(value.stageDurability);
+        nextRuntime.stageDurability = Number.isFinite(legacyDurability)
+          ? Math.max(0, Math.min(stage.durability, legacyDurability))
+          : stage.durability;
+        nextRuntime.primaryYieldProgress = Number.isFinite(Number(value.primaryYieldProgress))
+          ? Math.max(0, Math.min(0.999999999, Number(value.primaryYieldProgress)))
+          : 0;
+        nextRuntime.rngSeed = Number.isFinite(Number(value.rngSeed))
+          ? Number(value.rngSeed) >>> 0 || nextRuntime.rngSeed
+          : nextRuntime.rngSeed;
+        nextRuntime.rngCursor = Number.isFinite(Number(value.rngCursor))
+          ? Math.max(0, Math.floor(Number(value.rngCursor)))
+          : 0;
+      }
+    }
+    const node = migratedNodeId
+      ? miningNodeById[migratedNodeId as keyof typeof miningNodeById]
+      : undefined;
+    if (!migratedNodeId || !node || input.skills.mining.level < node.level) {
       activeAction = { type: 'none' };
     } else {
-      if (!hadMiningState || !mining.nodeStates[activeAction.nodeId])
-        mining.nodeStates[activeAction.nodeId] = createMiningRuntimeState(activeAction.nodeId);
-      const runtime = mining.nodeStates[activeAction.nodeId]!;
+      if (!hadMiningState || !mining.nodeStates[migratedNodeId as keyof typeof mining.nodeStates])
+        mining.nodeStates[migratedNodeId as keyof typeof mining.nodeStates] =
+          createMiningRuntimeState(migratedNodeId as keyof typeof miningNodeById);
+      const runtime = mining.nodeStates[migratedNodeId as keyof typeof mining.nodeStates]!;
       const phase =
         'phase' in activeAction && activeAction.phase
           ? activeAction.phase
@@ -243,7 +282,7 @@ const migrateMining = (input: GameState): GameState => {
         : 0;
       activeAction = {
         type: 'mining',
-        nodeId: activeAction.nodeId,
+        nodeId: migratedNodeId as 'stone-outcrop' | 'iron-vein' | 'coal-seam',
         startedAt: Number.isFinite(activeAction.startedAt)
           ? activeAction.startedAt
           : input.lastSimulatedAt,

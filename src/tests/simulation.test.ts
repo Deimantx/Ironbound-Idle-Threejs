@@ -8,14 +8,14 @@ import { GAME_CONFIG } from '../config/gameConfig';
 
 describe('deterministic action simulation', () => {
   it('mining completes cycles and preserves remainder', () => {
-    const state = startMining(createNewGame(0, 'Miner'), 'copper-vein', 0);
+    const state = startMining(createNewGame(0, 'Miner'), 'stone-outcrop', 0);
     const result = simulateElapsed(state, 7_500);
     expect(result.summary).toMatchObject({
       requestedElapsedMs: 7_500,
       processedElapsedMs: 7_500,
       remainingElapsedMs: 0,
     });
-    expect(getItemQuantity(result.state.inventory, 'copper-ore')).toBe(2);
+    expect(getItemQuantity(result.state.inventory, 'stone-ore')).toBe(2);
     expect(
       result.state.activeAction.type === 'mining' && result.state.activeAction.progressMs,
     ).toBe(1_500);
@@ -27,7 +27,7 @@ describe('deterministic action simulation', () => {
       quantity: 1,
       locked: false,
     }));
-    state = startMining(state, 'copper-vein', 0);
+    state = startMining(state, 'stone-outcrop', 0);
     const result = simulateElapsed(state, 5_000);
     expect(result.state.activeAction.type).toBe('none');
     expect(result.summary.stoppedReason).toBe('Inventory is full.');
@@ -56,7 +56,12 @@ describe('deterministic action simulation', () => {
     if (state.activeAction.type === 'combat') {
       state.activeAction = {
         ...state.activeAction,
-        combatState: { ...state.activeAction.combatState, enemyHp: 1, playerAttackMs: 0, enemyAttackMs: 100_000 },
+        combatState: {
+          ...state.activeAction.combatState,
+          enemyHp: 1,
+          playerAttackMs: 0,
+          enemyAttackMs: 100_000,
+        },
       };
       state.activeAction.combatState.rngSeed = 1;
       state.activeAction.combatState.rngCursor = 1;
@@ -65,7 +70,10 @@ describe('deterministic action simulation', () => {
     }
     const result = simulateElapsed(state, 100);
     expect(result.state.player.currentHp).toBe(getDerivedStats(result.state).maxHealth);
-    expect(result.state.activeAction.type === 'combat' && result.state.activeAction.combatState.respawnMs).toBeGreaterThan(0);
+    expect(
+      result.state.activeAction.type === 'combat' &&
+        result.state.activeAction.combatState.respawnMs,
+    ).toBeGreaterThan(0);
   });
   it('starts a newly selected combat target at full health', () => {
     const state = createNewGame(0, 'Target Switch');
@@ -106,7 +114,9 @@ describe('deterministic action simulation', () => {
       0,
     );
     const firstEncounterStartedAt =
-      state.activeAction.type === 'combat' ? state.activeAction.combatState.encounterStartedAt : null;
+      state.activeAction.type === 'combat'
+        ? state.activeAction.combatState.encounterStartedAt
+        : null;
     if (state.activeAction.type === 'combat') {
       state.activeAction.combatState.enemyHp = 1;
       state.activeAction.combatState.enemyMaxHp = 1;
@@ -120,8 +130,8 @@ describe('deterministic action simulation', () => {
         ? result.state.activeAction.combatState.encounterStartedAt
         : null,
     ).toBeGreaterThan(firstEncounterStartedAt ?? -1);
-    expect(result.state.log.find((entry) => entry.text.includes('defeated'))?.combatEncounterStartedAt).toBe(
-      firstEncounterStartedAt,
-    );
+    expect(
+      result.state.log.find((entry) => entry.text.includes('defeated'))?.combatEncounterStartedAt,
+    ).toBe(firstEncounterStartedAt);
   });
 });

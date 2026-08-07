@@ -24,8 +24,8 @@ export type EquipmentSlot =
 export type AreaId = 'training-grounds' | 'copper-hills' | 'ironwood-pass';
 export type EnemyId =
   'forest-rat' | 'goblin-scavenger' | 'cave-bat' | 'stoneback-crab' | 'grey-wolf' | 'road-bandit';
-export type MiningNodeId =
-  'copper-vein' | 'tin-vein' | 'iron-vein' | 'coal-seam' | 'mithril-deposit';
+export type MiningNodeId = 'stone-outcrop' | 'iron-vein' | 'coal-seam';
+export type LegacyMiningNodeId = 'copper-vein' | 'tin-vein' | 'mithril-deposit';
 export type RecipeId = string;
 export type ScreenId =
   | 'home'
@@ -118,12 +118,6 @@ export interface MiningNodeDefinition {
   bonusDrops: MiningBonusDrop[];
   description: string;
   theme: string;
-  /** @deprecated Kept for old content consumers; Mining uses explicit tool stats. */
-  intervalMs?: number;
-  /** @deprecated Kept for old save/UI consumers. */
-  rewardItemId?: string;
-  /** @deprecated Kept for old save/UI consumers. */
-  xp?: number;
 }
 
 export interface MiningToolDefinition {

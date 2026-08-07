@@ -60,7 +60,7 @@ describe('Equipment 2.1 content', () => {
       expect(itemById[id]).toBeUndefined();
   });
 
-  it('splits sword combat speed from pickaxe Mining speed', () => {
+  it('keeps pickaxe stats outside generic item bonuses', () => {
     expect(itemById['bronze-sword']?.bonuses).toEqual({ attack: 8, strength: 5, attackSpeed: 0 });
     expect(itemById['iron-sword']?.bonuses).toEqual({
       attack: 18,
@@ -72,9 +72,9 @@ describe('Equipment 2.1 content', () => {
       strength: 24,
       attackSpeed: 0.1,
     });
-    expect(itemById['bronze-pickaxe']?.bonuses).toEqual({ miningSpeed: 0.1 });
-    expect(itemById['iron-pickaxe']?.bonuses).toEqual({ miningSpeed: 0.2 });
-    expect(itemById['steel-pickaxe']?.bonuses).toEqual({ miningSpeed: 0.3 });
+    expect(itemById['bronze-pickaxe']?.bonuses).toEqual({});
+    expect(itemById['iron-pickaxe']?.bonuses).toEqual({});
+    expect(itemById['steel-pickaxe']?.bonuses).toEqual({});
     expect(ITEMS.flatMap((item) => Object.keys(item.bonuses ?? {}))).not.toContain('speed');
   });
 

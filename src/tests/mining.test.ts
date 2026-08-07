@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { MINING_TUNING } from '../config/miningTuning';
-import { miningNodeById } from '../content/miningNodes';
+import { MINING_NODES, miningNodeById } from '../content/miningNodes';
 import { validateMiningContent } from '../content/miningValidation';
 import {
   getMiningEffectiveness,
   getMiningPrimaryYield,
+  getMiningStageBonusChance,
   getMiningSwingDamage,
   getMiningSwingXp,
   getMiningTool,
+  nextMiningRandom,
 } from '../game/formulas/miningFormulas';
 import { startMining } from '../game/engine/actionController';
 import { simulateElapsed } from '../game/engine/simulation';
@@ -15,21 +17,44 @@ import { createNewGame } from '../game/state/initialState';
 import { getItemQuantity } from '../game/systems/inventorySystem';
 import type { GameState } from '../game/types';
 
-describe('Mining 1.0 formulas and simulation', () => {
+describe('Mining 1.1 formulas and simulation', () => {
+  it('authored Phase One content is exactly Stone, Iron, and Coal', () => {
+    expect(MINING_NODES.map((node) => node.id)).toEqual([
+      'stone-outcrop',
+      'iron-vein',
+      'coal-seam',
+    ]);
+    expect(miningNodeById['stone-outcrop']).toMatchObject({
+      name: 'Stone Outcrop',
+      level: 1,
+      primaryRewardItemId: 'stone-ore',
+    });
+    expect(miningNodeById['iron-vein'].level).toBe(15);
+    expect(miningNodeById['coal-seam']).toMatchObject({ name: 'Coal Seam', level: 30 });
+  });
+
   it('keeps Mining content references and tuning valid', () => {
     expect(validateMiningContent()).toEqual([]);
   });
 
-  it('starts each rock at its highest-durability stage and decreases by stage', () => {
-    for (const node of Object.values(miningNodeById)) {
-      expect(node.stages[0].durability).toBeGreaterThan(node.stages.at(-1)?.durability ?? 0);
-      for (let index = 1; index < node.stages.length; index += 1)
-        expect(node.stages[index].durability).toBeLessThan(node.stages[index - 1].durability);
+  it('uses intentional centerward durability and bonus progression', () => {
+    for (const node of MINING_NODES) {
+      expect(node.stages.map((stage) => stage.durability)).toEqual(
+        [...node.stages]
+          .sort((left, right) => left.durability - right.durability)
+          .map((stage) => stage.durability),
+      );
+      expect(node.stages.map((stage) => stage.bonusChanceMultiplier)).toEqual([
+        0.5, 0.75, 1, 1.35, 1.8,
+      ]);
     }
+    expect(miningNodeById['stone-outcrop'].stages.map((stage) => stage.durability)).toEqual([
+      60, 70, 80, 90, 100,
+    ]);
   });
 
   it('uses explicit penetration, damage, XP, and fractional primary yield formulas', () => {
-    const node = miningNodeById['copper-vein'];
+    const node = miningNodeById['stone-outcrop'];
     const state = createNewGame(0, 'Formula Miner');
     const tool = getMiningTool(state);
     expect(getMiningEffectiveness(tool, node)).toBe(1);
@@ -39,19 +64,63 @@ describe('Mining 1.0 formulas and simulation', () => {
     expect(getMiningPrimaryYield(1, node, 0)).toEqual({ quantity: 0, remainingProgress: 0.1 });
   });
 
-  it('completes a swing with rewards, stage damage, XP, and stamina cost', () => {
-    const result = simulateElapsed(startMining(createNewGame(0, 'Miner'), 'copper-vein', 0), 3_000);
+  it('completes a Stone swing with primary rewards, stage damage, XP, and stamina cost', () => {
+    const result = simulateElapsed(
+      startMining(createNewGame(0, 'Miner'), 'stone-outcrop', 0),
+      3_000,
+    );
     expect(result.state.mining.stamina).toBe(80);
-    expect(getItemQuantity(result.state.inventory, 'copper-ore')).toBe(1);
+    expect(getItemQuantity(result.state.inventory, 'stone-ore')).toBe(1);
     expect(result.state.skills.mining.xp).toBe(8);
-    expect(result.state.mining.nodeStates['copper-vein']?.stageDurability).toBe(90);
-    expect(result.summary.completed['mine-swing:copper-vein']).toBe(1);
+    expect(result.state.mining.nodeStates['stone-outcrop']?.stageDurability).toBe(50);
+    expect(result.summary.completed['mine-swing:stone-outcrop']).toBe(1);
+  });
+
+  it('uses the Stone Iron Ore byproduct and scales its Stage 5 chance', () => {
+    const node = miningNodeById['stone-outcrop'];
+    expect(getMiningStageBonusChance(node.bonusDrops[0], node.stages[4])).toBeCloseTo(0.144);
+
+    let seed = 1;
+    while (true) {
+      const sample = { rngSeed: seed, rngCursor: 0 };
+      if (nextMiningRandom(sample) < node.bonusDrops[0].chance) break;
+      seed += 1;
+    }
+    const state = createNewGame(0, 'Byproduct Miner');
+    state.mining.nodeStates['stone-outcrop'] = {
+      stageIndex: 0,
+      stageDurability: 60,
+      primaryYieldProgress: 0,
+      respawnRemainingMs: 0,
+      rngSeed: seed,
+      rngCursor: 0,
+    };
+    const result = simulateElapsed(startMining(state, 'stone-outcrop', 0), 3_000);
+    expect(getItemQuantity(result.state.inventory, 'stone-ore')).toBe(1);
+    expect(getItemQuantity(result.state.inventory, 'iron-ore')).toBe(1);
+  });
+
+  it('transitions to a tougher inner stage with its authored maximum', () => {
+    const state = createNewGame(0, 'Stage Miner');
+    state.mining.nodeStates['stone-outcrop'] = {
+      stageIndex: 0,
+      stageDurability: 1,
+      primaryYieldProgress: 0,
+      respawnRemainingMs: 0,
+      rngSeed: 1,
+      rngCursor: 0,
+    };
+    const result = simulateElapsed(startMining(state, 'stone-outcrop', 0), 3_000);
+    expect(result.state.mining.nodeStates['stone-outcrop']).toMatchObject({
+      stageIndex: 1,
+      stageDurability: 61,
+    });
   });
 
   it('rests at zero stamina, then resumes automatically', () => {
     let state = createNewGame(0, 'Resting Miner');
     state.mining.stamina = 20;
-    state = startMining(state, 'copper-vein', 0);
+    state = startMining(state, 'stone-outcrop', 0);
     const afterSwing = simulateElapsed(state, 3_000).state;
     expect(afterSwing.mining.stamina).toBe(0);
     expect(afterSwing.activeAction.type === 'mining' && afterSwing.activeAction.phase).toBe('rest');
@@ -66,7 +135,7 @@ describe('Mining 1.0 formulas and simulation', () => {
   it('orders respawn before rest when the final swing also empties stamina', () => {
     let state = createNewGame(0, 'Respawn Miner');
     state.mining.stamina = 20;
-    state.mining.nodeStates['copper-vein'] = {
+    state.mining.nodeStates['stone-outcrop'] = {
       stageIndex: 4,
       stageDurability: 1,
       primaryYieldProgress: 0,
@@ -74,23 +143,24 @@ describe('Mining 1.0 formulas and simulation', () => {
       rngSeed: 1,
       rngCursor: 0,
     };
-    state = startMining(state, 'copper-vein', 0);
+    state = startMining(state, 'stone-outcrop', 0);
     const depleted = simulateElapsed(state, 3_000).state;
     expect(depleted.activeAction.type === 'mining' && depleted.activeAction.phase).toBe('respawn');
-    expect(depleted.mining.nodeStates['copper-vein']?.respawnRemainingMs).toBe(15_000);
+    expect(depleted.mining.nodeStates['stone-outcrop']?.respawnRemainingMs).toBe(15_000);
     const respawned = simulateElapsed(depleted, 15_000).state;
     expect(respawned.activeAction.type === 'mining' && respawned.activeAction.phase).toBe('rest');
-    expect(respawned.mining.nodeStates['copper-vein']?.stageIndex).toBe(0);
+    expect(respawned.mining.nodeStates['stone-outcrop']?.stageIndex).toBe(0);
+    expect(respawned.mining.nodeStates['stone-outcrop']?.stageDurability).toBe(60);
   });
 
   it('rejects a complete reward bundle atomically when inventory is full', () => {
     let state = createNewGame(0, 'Full Pack');
     state.inventory = Array.from({ length: 60 }, () => ({
-      itemId: 'tin-ore',
+      itemId: 'iron-ore',
       quantity: 1,
       locked: false,
     }));
-    state = startMining(state, 'copper-vein', 0);
+    state = startMining(state, 'stone-outcrop', 0);
     const before = structuredClone(state.mining);
     const result = simulateElapsed(state, 3_000);
     expect(result.state.activeAction.type).toBe('none');
@@ -100,7 +170,7 @@ describe('Mining 1.0 formulas and simulation', () => {
   });
 
   it('is deterministic and chunking elapsed time produces the same Mining state', () => {
-    const initial = startMining(createNewGame(0, 'Deterministic Miner'), 'copper-vein', 0);
+    const initial = startMining(createNewGame(0, 'Deterministic Miner'), 'stone-outcrop', 0);
     const large = simulateElapsed(initial, 60_000);
     let chunked: GameState = initial;
     for (let index = 0; index < 60; index += 1) chunked = simulateElapsed(chunked, 1_000).state;
@@ -113,9 +183,9 @@ describe('Mining 1.0 formulas and simulation', () => {
   it('falls back safely to no-tool Mining', () => {
     const state = createNewGame(0, 'Barehanded Miner');
     state.equipment = {};
-    const result = simulateElapsed(startMining(state, 'copper-vein', 0), 5_000);
+    const result = simulateElapsed(startMining(state, 'stone-outcrop', 0), 5_000);
     expect(result.summary.xpGained.mining).toBe(1);
-    expect(getItemQuantity(result.state.inventory, 'copper-ore')).toBe(0);
+    expect(getItemQuantity(result.state.inventory, 'stone-ore')).toBe(0);
     expect(result.state.mining.stamina).toBe(75);
   });
 });

@@ -61,6 +61,12 @@ const gear = (
 });
 
 export const ITEMS: ItemDefinition[] = [
+  material(
+    'stone-ore',
+    'Stone Ore',
+    'A versatile stone resource for future fieldwork and production.',
+    'Mining · Stone Outcrop',
+  ),
   {
     id: 'stone-fragment',
     name: 'Stone Fragment',
@@ -99,7 +105,7 @@ export const ITEMS: ItemDefinition[] = [
   ),
   material('tin-ore', 'Tin Ore', 'Soft grey ore used with copper.', 'Mining · Tin Vein'),
   material('iron-ore', 'Iron Ore', 'Dense ore that takes a dark polish.', 'Mining · Iron Vein'),
-  material('coal', 'Coal', 'Fuel for a hotter, cleaner forge.', 'Mining · Coal Seam'),
+  material('coal', 'Coal Ore', 'Dense fuel ore for a hotter, cleaner forge.', 'Mining · Coal Seam'),
   material(
     'mithril-ore',
     'Mithril Ore',
@@ -156,9 +162,9 @@ export const ITEMS: ItemDefinition[] = [
     rarity: 'common',
     presentation: { iconKey: 'tool', visualCategory: 'equipment' },
     slot: 'tool',
-    bonuses: { miningSpeed: 0 },
+    bonuses: {},
   },
-  gear('bronze-pickaxe', 'Bronze Pick', 'tool', 'bronze', { miningSpeed: 0.1 }, 'Bronze'),
+  gear('bronze-pickaxe', 'Bronze Pick', 'tool', 'bronze', {}, 'Bronze'),
   gear(
     'iron-sword',
     'Iron Sword',
@@ -197,7 +203,7 @@ export const ITEMS: ItemDefinition[] = [
     undefined,
     'shield',
   ),
-  gear('iron-pickaxe', 'Iron Pick', 'tool', 'iron', { miningSpeed: 0.2 }, 'Iron'),
+  gear('iron-pickaxe', 'Iron Pick', 'tool', 'iron', {}, 'Iron'),
   gear(
     'steel-sword',
     'Steel Sword',
@@ -237,7 +243,7 @@ export const ITEMS: ItemDefinition[] = [
     undefined,
     'shield',
   ),
-  gear('steel-pickaxe', 'Steel Pick', 'tool', 'steel', { miningSpeed: 0.3 }, 'Steel'),
+  gear('steel-pickaxe', 'Steel Pick', 'tool', 'steel', {}, 'Steel'),
   ...[
     ['rat-tail', 'Rat Tail', 'Training Grounds · Forest Rat'],
     ['tattered-hide', 'Tattered Hide', 'Training Grounds · Forest Rat'],

@@ -103,9 +103,9 @@ describe('Debug Tools action boundary', () => {
   it('advances one real Mining and Smithing cycle deterministically', () => {
     let mining = fresh();
     mining.skills.mining.level = 100;
-    mining = debugStartMining(mining, 'copper-vein').state!;
+    mining = debugStartMining(mining, 'stone-outcrop').state!;
     mining = debugAdvanceOneCycle(mining).state!;
-    expect(getItemQuantity(mining.inventory, 'copper-ore')).toBe(1);
+    expect(getItemQuantity(mining.inventory, 'stone-ore')).toBe(1);
 
     let smithing = fresh();
     smithing.skills.smithing.level = 100;
@@ -135,7 +135,7 @@ describe('Debug Tools action boundary', () => {
   it('does not stop active actions when changing unrelated debug state', () => {
     let state = fresh();
     state.skills.mining.level = 100;
-    state = debugStartMining(state, 'copper-vein').state!;
+    state = debugStartMining(state, 'stone-outcrop').state!;
     state = debugAddGold(state, 50).state!;
     expect(state.activeAction.type).toBe('mining');
     expect(state.gold).toBe(50);

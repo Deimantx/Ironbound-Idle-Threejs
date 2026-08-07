@@ -29,6 +29,18 @@ export const getMiningEffectiveness = (
   return clamp(raw, MINING_TUNING.minimumEffectiveness, 1);
 };
 
+export type MiningEffectivenessLabel =
+  'OPTIMAL' | 'EFFECTIVE' | 'WEAK' | 'UNDERPOWERED' | 'SEVERELY UNDERPOWERED';
+
+export const getMiningEffectivenessLabel = (effectiveness: number): MiningEffectivenessLabel => {
+  const value = clamp(effectiveness, MINING_TUNING.minimumEffectiveness, 1);
+  if (value >= 1) return 'OPTIMAL';
+  if (value >= 0.7) return 'EFFECTIVE';
+  if (value >= 0.4) return 'WEAK';
+  if (value >= 0.15) return 'UNDERPOWERED';
+  return 'SEVERELY UNDERPOWERED';
+};
+
 export const getMiningSwingDamage = (
   tool: MiningToolDefinition,
   node: MiningNodeDefinition,

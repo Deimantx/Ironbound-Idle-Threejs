@@ -39,9 +39,7 @@ describe('Equipment view helpers and separated bonuses', () => {
         itemById['iron-pickaxe'],
         'profession',
       ),
-    ).toEqual([
-      { id: 'miningSpeed', label: 'Mining speed', current: 0.1, candidate: 0.2, delta: 0.1 },
-    ]);
+    ).toEqual([]);
     expect(
       getEquipmentBonusComparison(itemById['bronze-pickaxe'], itemById['iron-pickaxe']),
     ).toEqual([]);
@@ -59,7 +57,7 @@ describe('Equipment view helpers and separated bonuses', () => {
     expect(sword.attackIntervalMs).toBeLessThan(baseline.attackIntervalMs);
     expect(sword.miningIntervalMultiplier).toBe(baseline.miningIntervalMultiplier);
     expect(pick.attackIntervalMs).toBe(baseline.attackIntervalMs);
-    expect(pick.miningIntervalMultiplier).toBeLessThan(baseline.miningIntervalMultiplier);
+    expect(pick.miningIntervalMultiplier).toBe(baseline.miningIntervalMultiplier);
     expect(both.attackIntervalMs).toBe(sword.attackIntervalMs);
     expect(both.miningIntervalMultiplier).toBe(pick.miningIntervalMultiplier);
     expect(getEquipmentBonuses({ weapon: 'iron-sword', tool: 'iron-pickaxe' })).toEqual({
@@ -68,7 +66,7 @@ describe('Equipment view helpers and separated bonuses', () => {
       defence: 0,
       health: 0,
       attackSpeed: 0.05,
-      miningSpeed: 0.2,
+      miningSpeed: 0,
     });
   });
 
@@ -85,7 +83,7 @@ describe('Equipment view helpers and separated bonuses', () => {
     ]);
     const mining = getDerivedStatComparison(current, preview, 'profession')[0];
     expect(mining.id).toBe('miningIntervalMultiplier');
-    expect(mining.delta).toBeLessThan(0);
+    expect(mining.delta).toBe(0);
     expect(mining.beneficial).toBe(true);
   });
 

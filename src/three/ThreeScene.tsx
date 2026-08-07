@@ -19,6 +19,8 @@ interface ThreeSceneProps {
   playerHasBodyArmor?: boolean;
   playerHasLegArmor?: boolean;
   playerHasShield?: boolean;
+  miningTheme?: string;
+  miningStage?: number;
 }
 
 const material = (color: string, roughness = 0.72, metalness = 0.12): THREE.MeshStandardMaterial =>
@@ -108,6 +110,60 @@ const addCombatEnvironment = (group: THREE.Group, accent: string): void => {
       group.add(crown);
     }
   }
+};
+
+interface MiningPalette {
+  rock: string;
+  inner: string;
+  accent: string;
+  glow: string;
+}
+
+const getMiningPalette = (theme: string): MiningPalette => {
+  if (theme === 'iron')
+    return { rock: '#3c4143', inner: '#8d5a42', accent: '#b0734e', glow: '#9b6145' };
+  if (theme === 'coal')
+    return { rock: '#282d31', inner: '#687477', accent: '#9ba5a0', glow: '#657478' };
+  return { rock: '#697477', inner: '#a8b0ad', accent: '#b99a69', glow: '#819092' };
+};
+
+const addMiningScene = (group: THREE.Group, theme: string, stage: number): string => {
+  const palette = getMiningPalette(theme);
+  const depth = Math.max(0, Math.min(4, Math.floor(stage))) / 4;
+  const ground = new THREE.Mesh(
+    new THREE.CylinderGeometry(2.5, 2.9, 0.26, 8),
+    material('#1c252a', 0.9),
+  );
+  ground.position.y = -1.45;
+  group.add(ground);
+
+  const shell = new THREE.Mesh(
+    new THREE.DodecahedronGeometry(1.22, 1),
+    material(palette.rock, 0.93, 0.04),
+  );
+  shell.position.y = 0.25;
+  shell.rotation.set(0.1, 0.2, -0.08);
+  group.add(shell);
+
+  const core = new THREE.Mesh(
+    new THREE.IcosahedronGeometry(0.62 + depth * 0.16, 1),
+    material(palette.inner, 0.58, theme === 'coal' ? 0.24 : 0.2),
+  );
+  core.position.set(0, 0.27, 0.2);
+  core.scale.setScalar(0.55 + depth * 0.35);
+  group.add(core);
+
+  for (let index = 0; index < 3; index += 1) {
+    const angle = (index / 3) * Math.PI * 2 + 0.35;
+    const vein = new THREE.Mesh(
+      new THREE.ConeGeometry(0.12 + depth * 0.04, 0.56 + depth * 0.2, 5),
+      material(palette.accent, 0.52, theme === 'coal' ? 0.35 : 0.28),
+    );
+    vein.position.set(Math.cos(angle) * 0.56, -0.03 + depth * 0.1, Math.sin(angle) * 0.56);
+    vein.rotation.set(0.25, angle, -0.2);
+    group.add(vein);
+  }
+  return palette.glow;
 };
 
 interface PlayerVisualOptions {
@@ -400,6 +456,8 @@ export function ThreeScene({
   playerHasBodyArmor = false,
   playerHasLegArmor = false,
   playerHasShield = false,
+  miningTheme = 'stone',
+  miningStage = 0,
 }: ThreeSceneProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const visualRef = useRef<VisualState | null>(null);
@@ -466,6 +524,7 @@ export function ThreeScene({
     camera.lookAt(0, -0.25, 0);
     const group = new THREE.Group();
     scene.add(group);
+    let sceneAccent = theme;
     let playerModel: THREE.Group | null = null;
     let enemyModel: THREE.Group | null = null;
     if (screen === 'combat') {
@@ -475,6 +534,9 @@ export function ThreeScene({
       visualRef.current = {
         updatePlayer: (options) => playerModel && updatePlayerEquipment(playerModel, options),
       };
+    } else if (screen === 'mining') {
+      sceneAccent = addMiningScene(group, miningTheme, miningStage);
+      visualRef.current = null;
     } else {
       const color = new THREE.Color(theme);
       const ground = new THREE.Mesh(
@@ -492,7 +554,11 @@ export function ThreeScene({
       visualRef.current = null;
     }
     scene.add(new THREE.AmbientLight('#a8b4b5', screen === 'combat' ? 1.8 : 1.5));
-    const light = new THREE.PointLight(new THREE.Color(theme), screen === 'combat' ? 14 : 11, 12);
+    const light = new THREE.PointLight(
+      new THREE.Color(sceneAccent),
+      screen === 'combat' ? 14 : 11,
+      12,
+    );
     light.position.set(0, 3, 3);
     scene.add(light);
     const resize = () => {
@@ -546,11 +612,23 @@ export function ThreeScene({
       });
       renderer.dispose();
     };
-  }, [screen, settings.reducedMotion, settings.threeQuality, theme, enemyTheme, enemyPresentation]);
+  }, [
+    screen,
+    settings.reducedMotion,
+    settings.threeQuality,
+    theme,
+    enemyTheme,
+    enemyPresentation,
+    miningTheme,
+    miningStage,
+  ]);
   return (
     <div className="scene-frame">
       <canvas ref={canvasRef} aria-hidden="true" />
-      <div className="scene-glow" style={{ background: theme }} />
+      <div
+        className="scene-glow"
+        style={{ background: screen === 'mining' ? getMiningPalette(miningTheme).glow : theme }}
+      />
     </div>
   );
 }

@@ -461,18 +461,31 @@ function ActionStrip({
     );
   }
   const miningNode = action.type === 'mining' ? miningNodeById[action.nodeId] : undefined;
-  const miningRuntime = action.type === 'mining'
-    ? getMiningRuntimeState(game.mining, action.nodeId)
-    : undefined;
-  const miningRemainingMs = action.type !== 'mining'
-    ? 0
-    : action.phase === 'respawn'
-      ? miningRuntime?.respawnRemainingMs ?? 0
-      : Math.max(
-          0,
-          (action.phase === 'rest' ? MINING_TUNING.restDurationMs : getMiningTool(game).swingIntervalMs) -
-            action.progressMs,
-        );
+  const miningRuntime =
+    action.type === 'mining' ? getMiningRuntimeState(game.mining, action.nodeId) : undefined;
+  const miningRemainingMs =
+    action.type !== 'mining'
+      ? 0
+      : action.phase === 'respawn'
+        ? (miningRuntime?.respawnRemainingMs ?? 0)
+        : Math.max(
+            0,
+            (action.phase === 'rest'
+              ? MINING_TUNING.restDurationMs
+              : getMiningTool(game).swingIntervalMs) - action.progressMs,
+          );
+  const miningPhaseText =
+    action.type !== 'mining'
+      ? ''
+      : action.phase === 'rest'
+        ? 'Resting'
+        : action.phase === 'respawn'
+          ? 'Rock reforming'
+          : 'Swinging';
+  const miningStageText =
+    action.type === 'mining'
+      ? `Stage ${(miningRuntime?.stageIndex ?? 0) + 1}/${miningNode?.stages.length ?? 0}`
+      : '';
   return (
     <div className="action-strip" data-ui-region="actionStrip">
       <div className="action-icon">
@@ -486,9 +499,14 @@ function ActionStrip({
       </div>
       <button className="action-main button ghost" onClick={() => onNavigate(screen)}>
         <strong>{actionLabel(game)}</strong>
-        <small>
+        <small className="mining-activity-legacy-label" aria-hidden="true">
           {action.type === 'mining'
             ? `${action.phase === 'rest' ? 'Resting' : action.phase === 'respawn' ? 'Respawning' : 'Swinging'} · Stage ${miningRuntime?.stageIndex ? miningRuntime.stageIndex + 1 : 1}/${miningNode?.stages.length ?? 0}`
+            : 'Active in background'}
+        </small>
+        <small className="mining-activity-label">
+          {action.type === 'mining'
+            ? `${miningPhaseText} · ${miningStageText}`
             : 'Active in background'}
         </small>
       </button>
@@ -520,10 +538,10 @@ function HomeScreen({
   const stats = getDerivedStats(game);
   const objectives = [
     {
-      text: 'Mine Copper and Tin',
+      text: 'Mine Stone and Iron',
       done:
-        getItemQuantity(game.inventory, 'copper-ore') > 0 &&
-        getItemQuantity(game.inventory, 'tin-ore') > 0,
+        getItemQuantity(game.inventory, 'stone-ore') > 0 &&
+        getItemQuantity(game.inventory, 'iron-ore') > 0,
       target: 'mining' as const,
     },
     {

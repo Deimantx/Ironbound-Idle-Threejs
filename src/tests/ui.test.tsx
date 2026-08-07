@@ -98,7 +98,7 @@ describe('navigation integration', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: /Mining/ }));
-    await user.click(screen.getAllByRole('button', { name: 'Mine' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Mine Stone Outcrop' }));
     await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
     expect(screen.getByRole('heading', { name: 'Inventory' })).toBeInTheDocument();
     expect(useGameStore.getState().game?.activeAction.type).toBe('mining');
@@ -177,7 +177,7 @@ describe('navigation integration', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Mining/ })[0]);
-    await user.click(screen.getAllByRole('button', { name: 'Mine' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Mine Stone Outcrop' }));
     await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
     const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
     await user.click(within(editor).getByRole('button', { name: /Mining overview/ }));
@@ -188,6 +188,51 @@ describe('navigation integration', () => {
       expect(useGameStore.getState().game?.activeAction.type).toBe('mining');
     });
     await user.click(within(editor).getByRole('button', { name: 'Close UI editor' }));
+  });
+
+  it('separates selected rock inspection from the active Mining node', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Mining Selection Tester');
+    game.settings.threeQuality = 'off';
+    game.skills.mining.level = 15;
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Mining/ })[0]);
+    await user.click(screen.getByRole('button', { name: 'Mine Stone Outcrop' }));
+    expect(useGameStore.getState().game?.activeAction).toMatchObject({
+      type: 'mining',
+      nodeId: 'stone-outcrop',
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Inspect Iron Vein' }));
+    expect(useGameStore.getState().game?.activeAction).toMatchObject({
+      type: 'mining',
+      nodeId: 'stone-outcrop',
+    });
+    expect(screen.getByRole('heading', { name: 'Iron Vein' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Switch to Iron Vein' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Switch to Iron Vein' }));
+    await user.click(screen.getByRole('button', { name: 'Replace activity' }));
+    expect(useGameStore.getState().game?.activeAction).toMatchObject({
+      type: 'mining',
+      nodeId: 'iron-vein',
+    });
+  });
+
+  it('allows locked Coal inspection without allowing it to start', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Locked Mining Tester');
+    game.settings.threeQuality = 'off';
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Mining/ })[0]);
+    await user.click(screen.getByRole('button', { name: 'Inspect Coal Seam' }));
+    expect(screen.getAllByRole('heading', { name: 'Coal Seam' }).length).toBeGreaterThan(0);
+    expect(screen.getByRole('button', { name: 'Level 30 Required' })).toBeDisabled();
+    expect(useGameStore.getState().game?.activeAction.type).toBe('none');
   });
 
   it('keeps extracted Inventory, Equipment, and Smithing interactions working', async () => {
@@ -777,7 +822,7 @@ describe('navigation integration', () => {
     expect(details().getByText('3')).toBeInTheDocument();
   });
 
-  it('uses Off-hand and separated speed labels in Inventory details', async () => {
+  it('uses Off-hand and keeps Mining tool stats separate from Inventory bonuses', async () => {
     const user = userEvent.setup();
     seedInventory([
       { itemId: 'iron-shield', quantity: 1 },
@@ -795,7 +840,7 @@ describe('navigation integration', () => {
     expect(screen.queryByText('Mining speed')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /View Iron Pick/ }));
-    expect(screen.getByText('Mining speed')).toBeInTheDocument();
+    expect(screen.queryByText('Mining speed')).not.toBeInTheDocument();
     expect(screen.queryByText('Attack speed')).not.toBeInTheDocument();
   });
 
