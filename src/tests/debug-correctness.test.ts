@@ -13,6 +13,7 @@ import {
   debugToggleLock,
 } from '../game/debug/debugActions';
 import { getTimeUntilNextCombatEvent } from '../game/engine/simulation';
+import { getXpForLevel } from '../game/formulas/experienceFormulas';
 import { emptyCombatSession, type CombatVisualEvent, type GameState } from '../game/types';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
@@ -22,7 +23,7 @@ const fresh = (): GameState => createNewGame(0, 'Correctness Tester', 1000);
 const combatState = (): GameState => {
   const state = debugStartCombat(fresh(), 'training-grounds', 'forest-rat').state!;
   for (const skill of ['attack', 'strength', 'defence', 'hitpoints'] as const)
-    state.skills[skill] = { level: 100, xp: 1_000_000 };
+    state.skills[skill] = { level: 100, xp: getXpForLevel(100) };
   state.player.currentHp = 100;
   return state;
 };

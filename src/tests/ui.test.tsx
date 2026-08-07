@@ -199,6 +199,7 @@ describe('navigation integration', () => {
     const game = createNewGame(0, 'Mining Selection Tester');
     game.settings.threeQuality = 'off';
     game.skills.mining.level = 15;
+    game.skills.mining.xp = getXpForLevel(15);
     useGameStore.getState().setGame(game);
     render(<App />);
 
@@ -249,6 +250,7 @@ describe('navigation integration', () => {
     const game = createNewGame(0, 'Mining Copy Tester');
     game.settings.threeQuality = 'off';
     game.skills.mining.level = 15;
+    game.skills.mining.xp = getXpForLevel(15);
     game.mining.stamina = 10;
     useGameStore.getState().setGame(game);
     render(<App />);

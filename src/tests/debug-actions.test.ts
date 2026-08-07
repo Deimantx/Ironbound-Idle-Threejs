@@ -20,6 +20,7 @@ import {
   debugStartSmithing,
   debugSimulateFullInventoryUnequip,
   debugForceLargeStackQuantity,
+  debugSetSkillLevel,
   debugUnequipSlot,
 } from '../game/debug/debugActions';
 import { DEBUG_PRESETS } from '../game/debug/debugPresets';
@@ -30,6 +31,7 @@ import {
   occupiedSlots,
 } from '../game/systems/inventorySystem';
 import { savePayloadSchema } from '../game/persistence/saveSchema';
+import { getXpForLevel } from '../game/formulas/experienceFormulas';
 import type { GameState } from '../game/types';
 
 const fresh = (): GameState => createNewGame(0, 'Debug Tester', 1000);
@@ -90,10 +92,16 @@ describe('Debug Tools action boundary', () => {
 
   it('sets exact XP through thresholds and clamps gold and HP safely', () => {
     let state = fresh();
-    state = debugSetSkillXp(state, 'mining', 12_345).state!;
-    expect(state.skills.mining.level).toBeGreaterThan(1);
+    state = debugSetSkillLevel(state, 'mining', 30).state!;
+    expect(state.skills.mining).toEqual({ level: 30, xp: 17_372 });
+    state = debugSetSkillLevel(state, 'attack', 50).state!;
+    expect(state.skills.attack.xp).toBe(131_733);
+    state = debugSetSkillXp(state, 'hitpoints', 1_500).state!;
+    expect(state.skills.hitpoints).toEqual({ level: 10, xp: 1_500 });
+    state = debugSetSkillLevel(state, 'smithing', 100).state!;
+    expect(state.skills.smithing.xp).toBe(getXpForLevel(100));
     state = debugAddSkillLevels(state, 'mining', 10).state!;
-    expect(state.skills.mining.xp).toBeGreaterThanOrEqual(state.skills.mining.level > 1 ? 0 : 1);
+    expect(state.skills.mining).toEqual({ level: 40, xp: getXpForLevel(40) });
     state = debugAddGold(state, 1000).state!;
     expect(state.gold).toBe(1000);
     const invalidHp = debugSetHpAboveMaximum(state).state!;
@@ -102,13 +110,13 @@ describe('Debug Tools action boundary', () => {
 
   it('advances one real Mining and Smithing cycle deterministically', () => {
     let mining = fresh();
-    mining.skills.mining.level = 100;
+    mining.skills.mining = { level: 100, xp: getXpForLevel(100) };
     mining = debugStartMining(mining, 'stone-outcrop').state!;
     mining = debugAdvanceOneCycle(mining).state!;
     expect(getItemQuantity(mining.inventory, 'stone-ore')).toBe(1);
 
     let smithing = fresh();
-    smithing.skills.smithing.level = 100;
+    smithing.skills.smithing = { level: 100, xp: getXpForLevel(100) };
     smithing.inventory = [{ itemId: 'iron-bar', quantity: 10, locked: false }];
     smithing = debugStartSmithing(smithing, 'iron-sword', 1).state!;
     smithing = debugAdvanceOneCycle(smithing).state!;
@@ -134,7 +142,7 @@ describe('Debug Tools action boundary', () => {
 
   it('does not stop active actions when changing unrelated debug state', () => {
     let state = fresh();
-    state.skills.mining.level = 100;
+    state.skills.mining = { level: 100, xp: getXpForLevel(100) };
     state = debugStartMining(state, 'stone-outcrop').state!;
     state = debugAddGold(state, 50).state!;
     expect(state.activeAction.type).toBe('mining');
@@ -143,10 +151,8 @@ describe('Debug Tools action boundary', () => {
 
   it('resolves one current enemy through the normal combat reward pipeline', () => {
     let state = fresh();
-    state.skills.attack.level = 100;
-    state.skills.strength.level = 100;
-    state.skills.defence.level = 100;
-    state.skills.hitpoints.level = 100;
+    for (const skill of ['attack', 'strength', 'defence', 'hitpoints'] as const)
+      state.skills[skill] = { level: 100, xp: getXpForLevel(100) };
     state = debugStartCombat(state, 'training-grounds', 'forest-rat').state!;
     const result = debugKillCurrentEnemy(state);
     expect(result.result.ok).toBe(true);

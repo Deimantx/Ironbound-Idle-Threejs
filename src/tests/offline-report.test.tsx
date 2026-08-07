@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { OfflineModal, formatOfflineDuration } from '../app/OfflineReport';
+import { getXpForLevel } from '../game/formulas/experienceFormulas';
 import { createNewGame } from '../game/state/initialState';
 import { emptySummary } from '../game/types';
 
@@ -15,6 +16,7 @@ describe('Offline Report 2.0', () => {
   it('renders a player-facing Mining report without internal completion keys', () => {
     const game = createNewGame(0, 'Offline Miner');
     game.skills.mining.level = 98;
+    game.skills.mining.xp = getXpForLevel(98);
     game.activeAction = {
       type: 'mining',
       nodeId: 'stone-outcrop',

@@ -9,8 +9,10 @@ import {
   getMiningTool,
   normalizeMiningState,
 } from '../formulas/miningFormulas';
+import { getXpForLevel, getLevelFromXp, MAX_LEVEL } from '../formulas/experienceFormulas';
 import { miningNodeById } from '../../content/miningNodes';
-import type { GameState, InventoryStack } from '../types';
+import { SKILL_IDS } from '../types';
+import type { GameState, InventoryStack, SkillId } from '../types';
 
 const LEGACY_MINING_NODE_MAP: Record<string, 'stone-outcrop' | null> = {
   'copper-vein': 'stone-outcrop',
@@ -300,6 +302,59 @@ const migrateMining = (input: GameState): GameState => {
   };
 };
 
+const LEGACY_MAX_LEVEL = 100;
+const EXPERIENCE_SKILLS: readonly SkillId[] = SKILL_IDS;
+
+// Frozen copy of the retired runtime curve. This is migration-only and must not be used for awards.
+const getLegacyXpForLevel = (level: number): number => {
+  const safeLevel = Math.max(1, Math.min(LEGACY_MAX_LEVEL, Math.floor(level)));
+  return safeLevel === 1 ? 0 : Math.floor(100 * Math.pow(safeLevel - 1, 1.5));
+};
+
+const getLegacyLevelFromXp = (xp: number): number => {
+  const safeXp = Number.isFinite(xp) ? Math.max(0, Math.floor(xp)) : 0;
+  let low = 1;
+  let high = LEGACY_MAX_LEVEL;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    if (getLegacyXpForLevel(middle) <= safeXp) low = middle;
+    else high = middle - 1;
+  }
+  return low;
+};
+
+const migrateSkillExperience = (input: GameState): GameState => {
+  const skills = { ...input.skills };
+  for (const skillId of EXPERIENCE_SKILLS) {
+    const oldSkill = input.skills[skillId];
+    const oldXp = Number.isFinite(oldSkill.xp) ? Math.max(0, Math.floor(oldSkill.xp)) : 0;
+    const oldLevel = getLegacyLevelFromXp(oldXp);
+
+    if (oldLevel >= LEGACY_MAX_LEVEL) {
+      const legacyCapXp = getLegacyXpForLevel(LEGACY_MAX_LEVEL);
+      const excessXp = Math.max(0, oldXp - legacyCapXp);
+      skills[skillId] = {
+        level: MAX_LEVEL,
+        xp: getXpForLevel(MAX_LEVEL) + excessXp,
+      };
+      continue;
+    }
+
+    const oldFloor = getLegacyXpForLevel(oldLevel);
+    const oldNext = getLegacyXpForLevel(oldLevel + 1);
+    const oldSpan = Math.max(1, oldNext - oldFloor);
+    const oldProgress = Math.max(0, Math.min(1, (oldXp - oldFloor) / oldSpan));
+    const newFloor = getXpForLevel(oldLevel);
+    const newNext = getXpForLevel(oldLevel + 1);
+    const newXp = Math.round(newFloor + oldProgress * (newNext - newFloor));
+    skills[skillId] = { level: getLevelFromXp(newXp), xp: newXp };
+  }
+  return { ...input, skills, schemaVersion: 6 };
+};
+
+const migrateExperience = (input: GameState): GameState =>
+  migrateSkillExperience(migrateMining(input));
+
 export const migrations: Record<number, SaveMigration> = {
   1: (input) => ({
     ...input,
@@ -357,6 +412,7 @@ export const migrations: Record<number, SaveMigration> = {
   3: migrateEquipmentAndClampHealth,
   4: migrateShieldSlot,
   5: migrateMining,
+  6: migrateExperience,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {
