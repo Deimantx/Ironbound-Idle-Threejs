@@ -7979,8 +7979,8 @@ h3 {
 .activity-strip-smithing {
   display: grid;
   grid-template-columns:
-    38px minmax(160px, 220px) minmax(190px, 1.15fr) minmax(125px, 175px)
-    minmax(150px, 1fr) minmax(90px, 130px) 64px;
+    38px minmax(160px, 220px) minmax(190px, 420px) minmax(125px, 175px)
+    minmax(150px, 220px) minmax(150px, 1fr) minmax(90px, 130px) 64px;
   gap: 12px;
 }
 .activity-strip-smithing .action-icon {
@@ -7989,8 +7989,8 @@ h3 {
 @media (max-width: 1180px) {
   .activity-strip-smithing {
     grid-template-columns:
-      38px minmax(140px, 1fr) minmax(170px, 1.1fr) minmax(110px, 150px) minmax(130px, 1fr)
-      auto 60px;
+      38px minmax(140px, 1fr) minmax(170px, 1.1fr) minmax(110px, 150px)
+      minmax(130px, 1fr) minmax(130px, 1fr) auto 60px;
     gap: 9px;
   }
 }
@@ -8000,8 +8000,9 @@ h3 {
     grid-template-areas:
       'icon identity rate stop'
       'level level level level'
+      'next next next next'
       'phase phase quantity quantity';
-    min-height: max(var(--ui-action-height, 77px), 116px);
+    min-height: max(var(--ui-action-height, 77px), 136px);
     padding: 9px 13px;
     gap: 7px 9px;
   }
@@ -8016,6 +8017,10 @@ h3 {
   }
   .activity-strip-smithing .activity-rate-column {
     grid-area: rate;
+    justify-self: end;
+  }
+  .activity-strip-smithing .activity-next-column {
+    grid-area: next;
     justify-self: end;
   }
   .activity-strip-smithing .activity-phase {
