@@ -133,8 +133,8 @@ describe('navigation integration', () => {
       {
         nav: 'Smithing',
         screen: 'smithing',
-        panels: ['smithingControls', 'smithingRecipes'],
-        labels: ['Smithing controls', 'Smithing recipes'],
+        panels: ['smithingOverview', 'smithingForge', 'smithingAnvil'],
+        labels: ['Smithing overview', 'Smithing Forge', 'Smithing Anvil'],
       },
     ];
 
@@ -299,6 +299,8 @@ describe('navigation integration', () => {
     expect(screen.getByText('10', { selector: '.activity-level-current' })).toBeInTheDocument();
     expect(screen.getByText('11', { selector: '.activity-level-next' })).toBeInTheDocument();
     expect(screen.getByText('50%')).toBeInTheDocument();
+    expect(screen.getByText('XP to next: 133')).toBeInTheDocument();
+    expect(screen.getByText(/^ETA: \d{2}:\d{2}$/)).toBeInTheDocument();
     expect(screen.getByText(/Rich Core/)).toBeInTheDocument();
     expect(screen.getByText('Swing')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Swing progress' })).toBeInTheDocument();
@@ -333,6 +335,7 @@ describe('navigation integration', () => {
       'aria-valuenow',
       '100',
     );
+    expect(screen.queryByText(/^ETA:/)).not.toBeInTheDocument();
     expect(screen.getByText('Rest')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Rest progress' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Open Mining: Stone Outcrop' }));
@@ -377,11 +380,11 @@ describe('navigation integration', () => {
     const game = createNewGame(0, 'Crafter');
     game.settings.threeQuality = 'off';
     game.inventory = [
-      { itemId: 'copper-ore', quantity: 1, locked: false },
-      { itemId: 'tin-ore', quantity: 1, locked: false },
+      { itemId: 'iron-ore', quantity: 1, locked: false },
+      { itemId: 'coal', quantity: 1, locked: false },
       { itemId: 'bronze-sword', quantity: 1, locked: false },
     ];
-    game.discoveredItems = ['copper-ore', 'tin-ore', 'bronze-sword'];
+    game.discoveredItems = ['iron-ore', 'coal', 'bronze-sword'];
     useGameStore.getState().setGame(game);
     render(<App />);
 
@@ -398,14 +401,12 @@ describe('navigation integration', () => {
     expect(useGameStore.getState().game?.equipment.weapon).toBeUndefined();
 
     await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
-    await user.click(screen.getByRole('button', { name: 'Forging' }));
     await user.click(screen.getByRole('button', { name: 'Continuous' }));
-    await user.click(screen.getByRole('button', { name: 'Smelting' }));
-    await user.click(screen.getAllByRole('button', { name: 'Start forging' })[0]);
+    await user.click(screen.getByRole('button', { name: 'Start smelting' }));
     const action = useGameStore.getState().game?.activeAction;
     expect(action?.type).toBe('smithing');
     expect(action?.type === 'smithing' ? action.quantityMode : null).toBe('continuous');
-    expect(screen.getByText('Active in background')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open Smithing: Iron Bar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Stop smithing' })).toBeInTheDocument();
   });
 

@@ -1,6 +1,7 @@
 import { itemById, ITEMS } from './items';
 import { MINING_NODES } from './miningNodes';
 import { MINING_TOOLS, miningToolByItemId } from './miningTools';
+import { smithingToolByItemId } from './smithingTools';
 
 const ACTIVE_MINING_NODE_IDS = ['stone-outcrop', 'iron-vein', 'coal-seam'] as const;
 
@@ -53,7 +54,12 @@ export const validateMiningContent = (): string[] => {
       errors.push(`${tool.itemId} has invalid swing or stamina tuning.`);
   }
   for (const item of ITEMS)
-    if (item.category === 'tool' && item.slot === 'tool' && !miningToolByItemId[item.id])
+    if (
+      item.category === 'tool' &&
+      item.slot === 'tool' &&
+      !miningToolByItemId[item.id] &&
+      !smithingToolByItemId[item.id]
+    )
       errors.push(`Pickaxe item ${item.id} is missing a Mining tool definition.`);
   return errors;
 };

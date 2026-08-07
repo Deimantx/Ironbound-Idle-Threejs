@@ -21,7 +21,6 @@ import { getDerivedStats } from '../formulas/statFormulas';
 import {
   addItem,
   addItemBundle,
-  canAddItem,
   canAddItemBundle,
   getItemQuantity,
   removeItem,
@@ -38,6 +37,12 @@ import {
   nextMiningRandom,
   normalizeMiningState,
 } from '../formulas/miningFormulas';
+import {
+  getSmithingEffectiveInterval,
+  getSmithingPreservationChance,
+  nextSmithingRandom,
+  normalizeSmithingState,
+} from '../formulas/smithingFormulas';
 import type {
   ActiveAction,
   ActiveCombatState,
@@ -292,12 +297,72 @@ const simulateMining = (
   return processed;
 };
 
-const maxCraftable = (state: GameState, recipe: (typeof recipeById)[string]): number =>
-  Math.min(
-    ...recipe.inputs.map((input) =>
-      Math.floor(getItemQuantity(state.inventory, input.itemId) / input.quantity),
-    ),
+const resolveSmithingCycle = (
+  state: GameState,
+  recipe: (typeof recipeById)[string],
+  summary: SimulationSummary,
+): { ok: true } | { ok: false; reason: string } => {
+  for (const input of recipe.inputs) {
+    if (input.quantity <= 0 || getItemQuantity(state.inventory, input.itemId) < input.quantity)
+      return { ok: false, reason: 'Materials ran out.' };
+  }
+  if (
+    recipe.fuel &&
+    (recipe.fuel.quantity <= 0 ||
+      getItemQuantity(state.inventory, recipe.fuel.itemId) < recipe.fuel.quantity)
+  )
+    return { ok: false, reason: 'Forge fuel ran out.' };
+
+  const chance = getSmithingPreservationChance(state, recipe);
+  const nextSmithingState = structuredClone(state.smithing);
+  const consumed = new Map<string, number>();
+  for (const input of recipe.inputs) {
+    const requiredQuantity = Math.max(0, Math.floor(input.quantity));
+    let consumedQuantity = requiredQuantity;
+    if (recipe.category === 'forging' && chance > 0) {
+      for (let unit = 0; unit < requiredQuantity; unit += 1)
+        if (nextSmithingRandom(nextSmithingState) < chance) consumedQuantity -= 1;
+    }
+    consumed.set(input.itemId, (consumed.get(input.itemId) ?? 0) + consumedQuantity);
+  }
+  if (recipe.fuel)
+    consumed.set(
+      recipe.fuel.itemId,
+      (consumed.get(recipe.fuel.itemId) ?? 0) + Math.max(0, Math.floor(recipe.fuel.quantity)),
+    );
+
+  let stagedInventory = state.inventory;
+  for (const [itemId, quantity] of consumed) {
+    const removed = removeItem(stagedInventory, itemId, quantity);
+    if (removed.rejected > 0) return { ok: false, reason: 'Materials ran out.' };
+    stagedInventory = removed.inventory;
+  }
+  const output = addItem(
+    stagedInventory,
+    recipe.outputItemId,
+    recipe.outputQuantity,
+    GAME_CONFIG.inventorySlots,
   );
+  if (output.rejected > 0) return { ok: false, reason: 'Inventory is full.' };
+
+  state.inventory = output.inventory;
+  state.smithing = nextSmithingState;
+  for (const [itemId, quantity] of consumed) addSummaryNumber(summary.itemsUsed, itemId, quantity);
+  state.statistics[recipe.category === 'smelting' ? 'smelted' : 'forged'] += 1;
+  addSummaryNumber(summary.completed, `${recipe.category}:${recipe.id}`, 1);
+  addSummaryNumber(summary.itemsGained, recipe.outputItemId, recipe.outputQuantity);
+  awardXp(state, summary, 'smithing', recipe.xp);
+  if (!state.discoveredItems.includes(recipe.outputItemId)) {
+    state.discoveredItems.push(recipe.outputItemId);
+    addLog(
+      state,
+      `${itemById[recipe.outputItemId]?.name ?? recipe.outputItemId} added to the collection.`,
+      'success',
+    );
+  }
+  return { ok: true };
+};
+
 const simulateSmithing = (
   state: GameState,
   elapsedMs: number,
@@ -306,23 +371,49 @@ const simulateSmithing = (
   if (state.activeAction.type !== 'smithing') return;
   const action = state.activeAction;
   const recipe = recipeById[action.recipeId];
-  if (!recipe || state.skills.smithing.level < recipe.level) {
+  if (!recipe) {
+    state.activeAction = { type: 'none' };
+    summary.stoppedReason = 'Smithing recipe is no longer available.';
+    return;
+  }
+  if (state.skills.smithing.level < recipe.level) {
     state.activeAction = { type: 'none' };
     summary.stoppedReason = 'Smithing level is too low for that recipe.';
     return;
   }
-  const interval = recipe.intervalMs;
+  state.smithing = normalizeSmithingState(state.smithing);
+  state.statistics = {
+    ...state.statistics,
+    smelted: state.statistics?.smelted ?? 0,
+    forged: state.statistics?.forged ?? 0,
+  };
   let remaining = elapsedMs;
-  let progress = action.progressMs;
+  let progress = Math.max(0, action.progressMs);
   let cycles = 0;
-  while (remaining > 0 && cycles < 100_000 && (action.remaining === null || action.remaining > 0)) {
-    const available = maxCraftable(state, recipe);
-    if (available < 1) {
+  while (
+    remaining > 0 &&
+    cycles < 100_000 &&
+    state.activeAction.type === 'smithing' &&
+    (action.remaining === null || action.remaining > 0)
+  ) {
+    const missingInput = recipe.inputs.some(
+      (input) =>
+        input.quantity <= 0 || getItemQuantity(state.inventory, input.itemId) < input.quantity,
+    );
+    if (
+      missingInput ||
+      (recipe.fuel && getItemQuantity(state.inventory, recipe.fuel.itemId) < recipe.fuel.quantity)
+    ) {
       state.activeAction = { type: 'none' };
-      summary.stoppedReason = 'Materials ran out.';
+      summary.stoppedReason =
+        recipe.fuel && getItemQuantity(state.inventory, recipe.fuel.itemId) < recipe.fuel.quantity
+          ? 'Forge fuel ran out.'
+          : 'Materials ran out.';
       break;
     }
-    const needed = interval - progress;
+    const interval = getSmithingEffectiveInterval(state, recipe);
+    progress = Math.min(interval, progress);
+    const needed = Math.max(1, interval - progress);
     if (remaining < needed) {
       progress += remaining;
       remaining = 0;
@@ -330,40 +421,13 @@ const simulateSmithing = (
     }
     remaining -= needed;
     progress = 0;
-    if (!canAddItem(state.inventory, recipe.outputItemId, GAME_CONFIG.inventorySlots)) {
+    const result = resolveSmithingCycle(state, recipe, summary);
+    if (!result.ok) {
       state.activeAction = { type: 'none' };
-      summary.stoppedReason = 'Inventory is full.';
+      summary.stoppedReason = result.reason;
       break;
     }
-    for (const input of recipe.inputs) {
-      state.inventory = removeItem(state.inventory, input.itemId, input.quantity).inventory;
-      addSummaryNumber(summary.itemsUsed, input.itemId, input.quantity);
-    }
-    const output = addItem(
-      state.inventory,
-      recipe.outputItemId,
-      recipe.outputQuantity,
-      GAME_CONFIG.inventorySlots,
-    );
-    if (output.rejected) {
-      state.activeAction = { type: 'none' };
-      summary.stoppedReason = 'Inventory is full.';
-      break;
-    }
-    state.inventory = output.inventory;
-    state.statistics[recipe.category === 'smelting' ? 'smelted' : 'forged'] += 1;
     cycles += 1;
-    addSummaryNumber(summary.completed, `${recipe.category}:${recipe.id}`, 1);
-    addSummaryNumber(summary.itemsGained, recipe.outputItemId, recipe.outputQuantity);
-    awardXp(state, summary, 'smithing', recipe.xp);
-    if (!state.discoveredItems.includes(recipe.outputItemId)) {
-      state.discoveredItems.push(recipe.outputItemId);
-      addLog(
-        state,
-        `${itemById[recipe.outputItemId]?.name ?? recipe.outputItemId} added to the collection.`,
-        'success',
-      );
-    }
     if (action.remaining !== null) action.remaining -= 1;
   }
   if (state.activeAction.type === 'smithing') {
@@ -907,7 +971,9 @@ export const progressRatio = (action: ActiveAction, now: number, state: GameStat
   }
   if (action.type === 'smithing') {
     const recipe = recipeById[action.recipeId];
-    return recipe ? action.progressMs / recipe.intervalMs : 0;
+    return recipe
+      ? action.progressMs / Math.max(1, getSmithingEffectiveInterval(state, recipe))
+      : 0;
   }
   if (action.type === 'combat') {
     const enemy = enemyById[action.enemyId];

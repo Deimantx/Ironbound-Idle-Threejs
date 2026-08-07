@@ -156,6 +156,10 @@ const savePayloadShape = {
       }),
     ),
   }),
+  smithing: z.object({
+    rngSeed: z.number().finite(),
+    rngCursor: z.number().int().nonnegative(),
+  }),
   activeAction: activeActionSchema,
   unlockedAreas: z.array(z.string()),
   settings: z.object({
@@ -180,6 +184,7 @@ const savePayloadShape = {
 export const savePayloadSchema = z.object(savePayloadShape);
 export const legacySavePayloadSchema = z.object({
   ...savePayloadShape,
+  smithing: savePayloadShape.smithing.optional(),
   statistics: z.object({
     mined: z.number(),
     miningSwings: z.number().optional(),

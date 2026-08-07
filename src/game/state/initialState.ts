@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from '../../config/gameConfig';
+import { createSmithingState } from '../formulas/smithingFormulas';
 import type { GameState, SkillId } from '../types';
 
 export const createNewGame = (slot: number, name: string, now = Date.now()): GameState => {
@@ -33,6 +34,7 @@ export const createNewGame = (slot: number, name: string, now = Date.now()): Gam
     },
     gold: 0,
     mining: { stamina: 100, nodeStates: {} },
+    smithing: createSmithingState(`profile:${slot}:${now}`),
     activeAction: { type: 'none' },
     unlockedAreas: ['training-grounds'],
     settings: {

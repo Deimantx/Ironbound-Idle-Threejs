@@ -157,6 +157,11 @@ export interface MiningState {
   nodeStates: Partial<Record<MiningNodeId, MiningNodeRuntimeState>>;
 }
 
+export interface SmithingState {
+  rngSeed: number;
+  rngCursor: number;
+}
+
 export type MiningPhase = 'swing' | 'rest' | 'respawn';
 
 export interface RecipeDefinition {
@@ -170,6 +175,15 @@ export interface RecipeDefinition {
   outputQuantity: number;
   xp: number;
   description: string;
+  legacy?: boolean;
+  fuel?: { itemId: string; quantity: number };
+}
+
+export interface SmithingToolDefinition {
+  itemId: string;
+  requiredSmithingLevel: number;
+  speedBonus: number;
+  materialPreservationChance: number;
 }
 
 export interface LootEntry {
@@ -316,6 +330,7 @@ export interface GameState {
   };
   gold: number;
   mining: MiningState;
+  smithing: SmithingState;
   activeAction: ActiveAction;
   unlockedAreas: AreaId[];
   settings: GameSettings;

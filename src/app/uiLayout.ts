@@ -74,8 +74,9 @@ export const DEFAULT_MINING_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
 };
 
 export const DEFAULT_SMITHING_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
-  smithingControls: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1 },
-  smithingRecipes: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1 },
+  smithingOverview: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1 },
+  smithingForge: { column: 1, row: 2, columnSpan: 5, height: 0, scale: 1 },
+  smithingAnvil: { column: 6, row: 2, columnSpan: 7, height: 0, scale: 1 },
 };
 
 export const UI_SCREEN_PANELS: Partial<Record<ScreenId, UiPanelDefinition[]>> = {
@@ -167,16 +168,22 @@ export const UI_SCREEN_PANELS: Partial<Record<ScreenId, UiPanelDefinition[]>> = 
   ],
   smithing: [
     {
-      id: 'smithingControls',
-      label: 'Smithing controls',
-      description: 'Recipe category tabs, quantity mode, and active work',
-      defaultPosition: DEFAULT_SMITHING_PANEL_LAYOUT.smithingControls,
+      id: 'smithingOverview',
+      label: 'Smithing overview',
+      description: 'Active work, level progress, quantity mode, and fuel status',
+      defaultPosition: DEFAULT_SMITHING_PANEL_LAYOUT.smithingOverview,
     },
     {
-      id: 'smithingRecipes',
-      label: 'Smithing recipes',
-      description: 'Available recipes, requirements, outputs, and start controls',
-      defaultPosition: DEFAULT_SMITHING_PANEL_LAYOUT.smithingRecipes,
+      id: 'smithingForge',
+      label: 'Smithing Forge',
+      description: 'Smelt ore into bars with authored Coal fuel',
+      defaultPosition: DEFAULT_SMITHING_PANEL_LAYOUT.smithingForge,
+    },
+    {
+      id: 'smithingAnvil',
+      label: 'Smithing Anvil',
+      description: 'Forge equipment and profession tools from bars',
+      defaultPosition: DEFAULT_SMITHING_PANEL_LAYOUT.smithingAnvil,
     },
   ],
 };

@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { itemById } from '../content/items';
 import { MINING_TUNING } from '../config/miningTuning';
 import { getMiningToolDefinition } from '../content/miningTools';
+import { getSmithingHammerDefinition } from '../content/smithingTools';
 import { getDerivedStats } from '../game/formulas/statFormulas';
 import {
   ACCESSORY_EQUIPMENT_SLOTS,
@@ -242,12 +243,18 @@ function ProfessionBonuses({
 }) {
   const currentDefinition = getMiningToolDefinition(currentTool?.id) ?? MINING_TUNING.noTool;
   const candidateDefinition = candidateItem
-    ? getMiningToolDefinition(candidateItem.id) ?? MINING_TUNING.noTool
+    ? (getMiningToolDefinition(candidateItem.id) ?? MINING_TUNING.noTool)
     : null;
+  const currentHammer = getSmithingHammerDefinition(currentTool?.id);
+  const candidateHammer = getSmithingHammerDefinition(candidateItem?.id);
   const summary = candidateItem
-    ? `Preview ${formatMiningToolStats(candidateDefinition ?? MINING_TUNING.noTool)}`
+    ? candidateHammer
+      ? `Preview ${Math.round(candidateHammer.speedBonus * 100)}% faster · ${Math.round(candidateHammer.materialPreservationChance * 100)}% preservation`
+      : `Preview ${formatMiningToolStats(candidateDefinition ?? MINING_TUNING.noTool)}`
     : currentTool
-      ? formatMiningToolStats(currentDefinition)
+      ? currentHammer
+        ? `${Math.round(currentHammer.speedBonus * 100)}% faster · ${Math.round(currentHammer.materialPreservationChance * 100)}% preservation`
+        : formatMiningToolStats(currentDefinition)
       : 'No pickaxe equipped';
   return (
     <section className="equipment-profession-bonuses" aria-labelledby="profession-bonuses-title">
@@ -272,7 +279,9 @@ function ProfessionBonuses({
             </p>
           ) : (
             <>
-              <div className="eyebrow">Mining</div>
+              <div className="eyebrow">
+                {currentHammer || candidateHammer ? 'Anvil Smithing' : 'Mining'}
+              </div>
               <div className="equipment-profession-row">
                 <span>{currentTool ? 'Equipped tool' : 'Current tool'}</span>
                 <strong>{currentTool?.name ?? 'None'}</strong>
@@ -283,20 +292,48 @@ function ProfessionBonuses({
                   <strong>{candidateItem.name}</strong>
                 </div>
               )}
-              <div className="equipment-profession-row">
-                <span>Mining stats</span>
-                <strong>
-                  {formatMiningToolStats(currentDefinition)}
-                </strong>
-              </div>
-              <div className="equipment-profession-row">
-                <span>Required Mining level</span>
-                <strong>{currentDefinition.requiredMiningLevel}</strong>
-              </div>
-              {candidateItem && candidateDefinition && (
-                <div className="equipment-profession-improvement">
-                  Candidate · {formatMiningToolStats(candidateDefinition)} · level {candidateDefinition.requiredMiningLevel}
-                </div>
+              {currentHammer || candidateHammer ? (
+                <>
+                  <div className="equipment-profession-row">
+                    <span>Hammer effects</span>
+                    <strong>
+                      {currentHammer
+                        ? `${Math.round(currentHammer.speedBonus * 100)}% faster · ${Math.round(currentHammer.materialPreservationChance * 100)}% preservation`
+                        : 'None'}
+                    </strong>
+                  </div>
+                  <div className="equipment-profession-row">
+                    <span>Required Smithing level</span>
+                    <strong>
+                      {currentHammer?.requiredSmithingLevel ??
+                        candidateHammer?.requiredSmithingLevel}
+                    </strong>
+                  </div>
+                  {candidateHammer && (
+                    <div className="equipment-profession-improvement">
+                      Candidate · {Math.round(candidateHammer.speedBonus * 100)}% faster ·{' '}
+                      {Math.round(candidateHammer.materialPreservationChance * 100)}% preservation ·
+                      level {candidateHammer.requiredSmithingLevel}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="equipment-profession-row">
+                    <span>Mining stats</span>
+                    <strong>{formatMiningToolStats(currentDefinition)}</strong>
+                  </div>
+                  <div className="equipment-profession-row">
+                    <span>Required Mining level</span>
+                    <strong>{currentDefinition.requiredMiningLevel}</strong>
+                  </div>
+                  {candidateItem && candidateDefinition && (
+                    <div className="equipment-profession-improvement">
+                      Candidate · {formatMiningToolStats(candidateDefinition)} · level{' '}
+                      {candidateDefinition.requiredMiningLevel}
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

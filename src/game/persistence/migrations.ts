@@ -9,6 +9,12 @@ import {
   getMiningTool,
   normalizeMiningState,
 } from '../formulas/miningFormulas';
+import {
+  createSmithingState,
+  getSmithingEffectiveInterval,
+  getSmithingMaxCraftable,
+  normalizeSmithingState,
+} from '../formulas/smithingFormulas';
 import { getXpForLevel, getLevelFromXp, MAX_LEVEL } from '../formulas/experienceFormulas';
 import { miningNodeById } from '../../content/miningNodes';
 import { SKILL_IDS } from '../types';
@@ -355,6 +361,37 @@ const migrateSkillExperience = (input: GameState): GameState => {
 const migrateExperience = (input: GameState): GameState =>
   migrateSkillExperience(migrateMining(input));
 
+const migrateSmithing = (input: GameState): GameState => {
+  const smithing = normalizeSmithingState(
+    (input as unknown as Record<string, unknown>).smithing ?? createSmithingState(input.profileId),
+  );
+  let activeAction = input.activeAction;
+  if (activeAction.type === 'smithing') {
+    const recipe = recipeById[activeAction.recipeId];
+    const quantityMode =
+      activeAction.quantityMode === 1 ||
+      activeAction.quantityMode === 10 ||
+      activeAction.quantityMode === 'all' ||
+      activeAction.quantityMode === 'continuous'
+        ? activeAction.quantityMode
+        : 1;
+    const remaining =
+      quantityMode === 'continuous'
+        ? null
+        : quantityMode === 'all' && activeAction.remaining === null
+          ? getSmithingMaxCraftable({ ...input, smithing }, recipe)
+          : quantityMode === 'all'
+            ? Math.max(0, Math.floor(activeAction.remaining ?? 0))
+            : quantityMode;
+    const interval = recipe ? getSmithingEffectiveInterval({ ...input, smithing }, recipe) : 1;
+    const progressMs = Number.isFinite(activeAction.progressMs)
+      ? Math.max(0, Math.min(Math.max(0, interval - 1), activeAction.progressMs))
+      : 0;
+    activeAction = { ...activeAction, quantityMode, remaining, progressMs };
+  }
+  return { ...input, smithing, activeAction, schemaVersion: 7 };
+};
+
 export const migrations: Record<number, SaveMigration> = {
   1: (input) => ({
     ...input,
@@ -413,6 +450,7 @@ export const migrations: Record<number, SaveMigration> = {
   4: migrateShieldSlot,
   5: migrateMining,
   6: migrateExperience,
+  7: migrateSmithing,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {
@@ -421,7 +459,10 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
     const migration = migrations[version];
     if (migration) current = migration(current);
   }
-  if (fromVersion >= GAME_CONFIG.currentSaveVersion) current = migrateMining(current);
+  if (fromVersion >= GAME_CONFIG.currentSaveVersion) {
+    current = migrateMining(current);
+    current = migrateSmithing(current);
+  }
   current.schemaVersion = GAME_CONFIG.currentSaveVersion;
   return current;
 };

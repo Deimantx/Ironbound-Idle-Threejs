@@ -2,6 +2,7 @@ import { itemById } from '../../content/items';
 import { GAME_CONFIG } from '../../config/gameConfig';
 import { getDerivedStats } from '../formulas/statFormulas';
 import { getMiningToolDefinition } from '../../content/miningTools';
+import { getSmithingHammerDefinition } from '../../content/smithingTools';
 import { addItem, removeItem } from './inventorySystem';
 import type { EquipmentLoadout, EquipmentSlot, GameState } from '../types';
 
@@ -19,6 +20,13 @@ export const equipItem = (state: GameState, itemId: string): EquipmentResult => 
       state,
       ok: false,
       message: `Mining level ${miningTool.requiredMiningLevel} is required for ${item.name}.`,
+    };
+  const smithingHammer = item.slot === 'tool' ? getSmithingHammerDefinition(itemId) : null;
+  if (smithingHammer && state.skills.smithing.level < smithingHammer.requiredSmithingLevel)
+    return {
+      state,
+      ok: false,
+      message: `Smithing level ${smithingHammer.requiredSmithingLevel} is required for ${item.name}.`,
     };
   const stack = state.inventory.find((entry) => entry.itemId === itemId);
   if (!stack) return { state, ok: false, message: 'That item is not in your inventory.' };

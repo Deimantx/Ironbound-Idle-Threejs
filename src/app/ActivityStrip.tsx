@@ -2,9 +2,15 @@ import { Hammer, Heart, Pickaxe, Swords, Timer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { MINING_TUNING } from '../config/miningTuning';
 import { enemyById } from '../content/enemies';
+import { itemById } from '../content/items';
 import { miningNodeById } from '../content/miningNodes';
 import { recipeById } from '../content/recipes';
 import { progressRatio } from '../game/engine/simulation';
+import {
+  getSmithingEffectiveInterval,
+  getSmithingEstimatedRates,
+  getSmithingHammer,
+} from '../game/formulas/smithingFormulas';
 import {
   getMiningEstimatedRates,
   getMiningRuntimeState,
@@ -32,6 +38,15 @@ const formatFightDuration = (startedAt: number | null, now: number): string => {
 
 const formatPhaseRemaining = (milliseconds: number): string =>
   `${Math.max(0, Math.ceil(milliseconds / 1000))}s`;
+
+const formatLevelEta = (xpRemaining: number, xpPerHour: number): string => {
+  if (xpRemaining <= 0) return '00:00';
+  if (!Number.isFinite(xpPerHour) || xpPerHour <= 0) return '--:--';
+  const totalMinutes = Math.max(1, Math.ceil((xpRemaining / xpPerHour) * 60));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+};
 
 interface ActivityLevelProgressProps {
   label: string;
@@ -145,6 +160,7 @@ const MiningActivityStrip = ({
       ? runtime.respawnRemainingMs
       : Math.max(0, phaseDuration - action.progressMs);
   const levelProgress = getLevelProgress(game.skills.mining);
+  const xpToNextLevel = Math.max(0, levelProgress.next - levelProgress.current);
   const rates = getMiningEstimatedRates(game, node);
   const phaseDescription =
     action.phase === 'respawn' ? phaseFullLabel : `${phaseFullLabel} · ${stage.name}`;
@@ -168,12 +184,24 @@ const MiningActivityStrip = ({
         percent={levelProgress.percent}
         maxLevel={MAX_LEVEL}
       />
-      <span
-        className="activity-rate"
-        title="Estimated Mining XP per hour including rest and rock respawn"
-      >
-        ~{formatRatePerHour(rates.xpPerHour)} XP/hr
-      </span>
+      <div className="activity-rate-column">
+        <span
+          className="activity-rate"
+          title="Estimated Mining XP per hour including rest and rock respawn"
+        >
+          ~{formatRatePerHour(rates.xpPerHour)} XP/hr
+        </span>
+      </div>
+      {levelProgress.next > 0 && (
+        <div className="activity-next-column" aria-label="Mining level estimate">
+          <span className="activity-xp-next" title="XP remaining until the next Mining level">
+            XP to next: {formatRatePerHour(xpToNextLevel)}
+          </span>
+          <span className="activity-eta" title="Estimated time until the next Mining level">
+            ETA: {formatLevelEta(xpToNextLevel, rates.xpPerHour)}
+          </span>
+        </div>
+      )}
       <ActivityPhaseProgress
         label={phaseLabel}
         ratio={progressRatio(action, now, game)}
@@ -231,6 +259,76 @@ const CombatActivityStrip = ({
       <div className="action-meta action-fight-time">
         <Timer size={13} /> {formatFightDuration(combatStartedAt, now)}
       </div>
+    </div>
+  );
+};
+
+const SmithingActivityStrip = ({
+  game,
+  now,
+  onNavigate,
+  onStop,
+}: {
+  game: GameState;
+  now: number;
+  onNavigate: (screen: ScreenId) => void;
+  onStop: () => void;
+}) => {
+  if (game.activeAction.type !== 'smithing') return null;
+  const action = game.activeAction;
+  const recipe = recipeById[action.recipeId];
+  if (!recipe) return null;
+  const interval = getSmithingEffectiveInterval(game, recipe);
+  const rates = getSmithingEstimatedRates(game, recipe);
+  const levelProgress = getLevelProgress(game.skills.smithing);
+  const hammer = getSmithingHammer(game);
+  const remainingMs = Math.max(0, interval - action.progressMs);
+  const quantity =
+    action.quantityMode === 'continuous'
+      ? 'Continuous'
+      : action.quantityMode === 'all'
+        ? `All · ${action.remaining ?? 0} left`
+        : action.quantityMode === 1
+          ? '1'
+          : `10 Â· ${action.remaining ?? 0} left`;
+  return (
+    <div className="action-strip activity-strip-smithing" data-ui-region="actionStrip">
+      <div className="action-icon" aria-hidden="true">
+        <Hammer size={19} />
+      </div>
+      <button
+        className="activity-identity action-main button ghost"
+        onClick={() => onNavigate('smithing')}
+        aria-label={`Open Smithing: ${recipe.name}`}
+      >
+        <strong>{recipe.name}</strong>
+        <small>
+          {recipe.category === 'smelting' ? 'Forge' : 'Anvil'} · {quantity}
+        </small>
+      </button>
+      <ActivityLevelProgress
+        label="Smithing"
+        level={game.skills.smithing.level}
+        percent={levelProgress.percent}
+        maxLevel={MAX_LEVEL}
+      />
+      <div className="activity-rate-column">
+        <span className="activity-rate" title="Theoretical active Smithing XP per hour">
+          ~{formatRatePerHour(rates.xpPerHour)} XP/hr
+        </span>
+        <small className="smithing-activity-tool">
+          {hammer ? `${itemById[hammer.itemId]?.name} equipped` : 'No hammer'}
+        </small>
+      </div>
+      <ActivityPhaseProgress
+        label={recipe.category === 'smelting' ? 'Forge' : 'Anvil'}
+        ratio={progressRatio(action, now, game)}
+        remainingMs={remainingMs}
+      />
+      <span className="smithing-activity-quantity">{quantity}</span>
+      <button className="button danger activity-stop" onClick={onStop} aria-label="Stop smithing">
+        Stop
+      </button>
     </div>
   );
 };
@@ -295,5 +393,9 @@ export function ActivityStrip({
     );
   if (action.type === 'combat')
     return <CombatActivityStrip game={game} now={now} onNavigate={onNavigate} />;
+  if (action.type === 'smithing')
+    return (
+      <SmithingActivityStrip game={game} now={now} onNavigate={onNavigate} onStop={stopAction} />
+    );
   return <GenericActivityStrip game={game} now={now} onNavigate={onNavigate} onStop={stopAction} />;
 }

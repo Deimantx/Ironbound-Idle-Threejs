@@ -5,6 +5,7 @@ import { createCombatRngForStart, initializeEnemySpawn } from './combatEncounter
 import { getDerivedStats } from '../formulas/statFormulas';
 import { miningNodeById } from '../../content/miningNodes';
 import { createMiningRuntimeState, normalizeMiningState } from '../formulas/miningFormulas';
+import { getSmithingMaxCraftable } from '../formulas/smithingFormulas';
 import type { AreaId, CombatStyle, EnemyId, GameState, MiningNodeId, QuantityMode } from '../types';
 import { getItemQuantity } from '../systems/inventorySystem';
 
@@ -22,15 +23,9 @@ export const startMining = (
   if (!runtime) mining.nodeStates[nodeId] = createMiningRuntimeState(nodeId);
   const selected = mining.nodeStates[nodeId]!;
   const phase =
-    selected.respawnRemainingMs > 0
-      ? 'respawn'
-      : mining.stamina <= 0
-        ? 'rest'
-        : 'swing';
+    selected.respawnRemainingMs > 0 ? 'respawn' : mining.stamina <= 0 ? 'rest' : 'swing';
   const progressMs =
-    phase === 'respawn'
-      ? Math.max(0, node.respawnMs - selected.respawnRemainingMs)
-      : 0;
+    phase === 'respawn' ? Math.max(0, node.respawnMs - selected.respawnRemainingMs) : 0;
   return {
     ...state,
     mining,
@@ -45,17 +40,23 @@ export const startSmithing = (
   recipeId: string,
   quantityMode: QuantityMode,
   now = Date.now(),
-): GameState => ({
-  ...state,
-  activeAction: {
-    type: 'smithing',
-    recipeId,
-    quantityMode,
-    remaining: quantityMode === 'continuous' || quantityMode === 'all' ? null : quantityMode,
-    progressMs: 0,
-  },
-  updatedAt: now,
-});
+): GameState => {
+  const recipe = recipeById[recipeId];
+  if (!recipe || state.skills.smithing.level < recipe.level)
+    return { ...state, activeAction: { type: 'none' }, updatedAt: now };
+  const remaining =
+    quantityMode === 'continuous'
+      ? null
+      : quantityMode === 'all'
+        ? getSmithingMaxCraftable(state, recipe)
+        : quantityMode;
+  return {
+    ...state,
+    activeAction: { type: 'smithing', recipeId, quantityMode, remaining, progressMs: 0 },
+    updatedAt: now,
+    lastSimulatedAt: now,
+  };
+};
 
 export const startCombat = (
   state: GameState,
@@ -124,9 +125,9 @@ export const recipeCanStart = (state: GameState, recipeId: string): boolean => {
   const recipe = recipeById[recipeId];
   return Boolean(
     recipe &&
-      state.skills.smithing.level >= recipe.level &&
-      recipe.inputs.every(
-        (input) => getItemQuantity(state.inventory, input.itemId) >= input.quantity,
-      ),
+    state.skills.smithing.level >= recipe.level &&
+    recipe.inputs.every(
+      (input) => getItemQuantity(state.inventory, input.itemId) >= input.quantity,
+    ),
   );
 };

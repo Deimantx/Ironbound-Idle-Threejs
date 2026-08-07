@@ -204,6 +204,11 @@ export const ITEMS: ItemDefinition[] = [
     'shield',
   ),
   gear('iron-pickaxe', 'Iron Pick', 'tool', 'iron', {}, 'Iron'),
+  {
+    ...gear('iron-smithing-hammer', 'Iron Smithing Hammer', 'tool', 'iron', {}, 'Iron'),
+    source: 'Smithing · Anvil',
+    description: 'A balanced hammer that speeds Anvil work and occasionally preserves a bar.',
+  },
   gear(
     'steel-sword',
     'Steel Sword',
@@ -244,6 +249,11 @@ export const ITEMS: ItemDefinition[] = [
     'shield',
   ),
   gear('steel-pickaxe', 'Steel Pick', 'tool', 'steel', {}, 'Steel'),
+  {
+    ...gear('steel-smithing-hammer', 'Steel Smithing Hammer', 'tool', 'steel', {}, 'Steel'),
+    source: 'Smithing · Anvil',
+    description: 'A rare, carefully balanced hammer for fast and economical Anvil work.',
+  },
   ...[
     ['rat-tail', 'Rat Tail', 'Training Grounds · Forest Rat'],
     ['tattered-hide', 'Tattered Hide', 'Training Grounds · Forest Rat'],

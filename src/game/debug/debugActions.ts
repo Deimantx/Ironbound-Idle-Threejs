@@ -13,6 +13,10 @@ import {
   getMiningTool,
   normalizeMiningState,
 } from '../formulas/miningFormulas';
+import {
+  getSmithingEffectiveInterval,
+  getSmithingMaxCraftable,
+} from '../formulas/smithingFormulas';
 import { getTimeUntilNextCombatEvent, simulateElapsed } from '../engine/simulation';
 import { startCombat, startMining, startSmithing } from '../engine/actionController';
 import { createNewGame } from '../state/initialState';
@@ -720,7 +724,8 @@ export const debugSetMiningStage = (
   const node = miningNodeById[nodeId];
   const parsed = parseDebugInteger(stage, 1, node?.stages.length ?? 1);
   if (!node) return { result: failure(`Unknown Mining node: ${nodeId}.`) };
-  if (parsed === null) return { result: failure(`Stage must be between 1 and ${node.stages.length}.`) };
+  if (parsed === null)
+    return { result: failure(`Stage must be between 1 and ${node.stages.length}.`) };
   return mutate(state, `Set ${node.name} to stage ${parsed}.`, (next) => {
     next.mining = normalizeMiningState(next.mining);
     const runtime = getMiningRuntimeState(next.mining, nodeId);
@@ -743,11 +748,15 @@ export const debugSetMiningDurability = (
   const node = miningNodeById[nodeId];
   if (!node) return { result: failure(`Unknown Mining node: ${nodeId}.`) };
   const parsed = Number(durability);
-  if (!Number.isFinite(parsed) || parsed < 0) return { result: failure('Durability must be non-negative.') };
+  if (!Number.isFinite(parsed) || parsed < 0)
+    return { result: failure('Durability must be non-negative.') };
   return mutate(state, `Set ${node.name} durability.`, (next) => {
     next.mining = normalizeMiningState(next.mining);
     const runtime = getMiningRuntimeState(next.mining, nodeId);
-    runtime.stageDurability = Math.min(node.stages[runtime.stageIndex].durability, Math.floor(parsed));
+    runtime.stageDurability = Math.min(
+      node.stages[runtime.stageIndex].durability,
+      Math.floor(parsed),
+    );
     next.mining.nodeStates[nodeId] = runtime;
   });
 };
@@ -819,7 +828,26 @@ export const debugStartSmithing = (
   recipeById[recipeId]
     ? {
         result: success(`Started ${recipeById[recipeId].name}.`),
-        state: startSmithing(state, recipeId, mode, Date.now()),
+        state: (() => {
+          const recipe = recipeById[recipeId];
+          const prepared = structuredClone(state);
+          if (getSmithingMaxCraftable(prepared, recipe) < 1) {
+            const requirements = [...recipe.inputs, ...(recipe.fuel ? [recipe.fuel] : [])];
+            for (const requirement of requirements) {
+              if (getItemQuantity(prepared.inventory, requirement.itemId) >= requirement.quantity)
+                continue;
+              const added = addItem(
+                prepared.inventory,
+                requirement.itemId,
+                Math.max(requirement.quantity * 100, requirement.quantity),
+                GAME_CONFIG.inventorySlots,
+              );
+              if (added.rejected > 0) return state;
+              prepared.inventory = added.inventory;
+            }
+          }
+          return startSmithing(prepared, recipeId, mode, Date.now());
+        })(),
       }
     : { result: failure(`Unknown Smithing recipe: ${recipeId}.`) };
 
@@ -869,10 +897,10 @@ export const debugAdvanceOneCycle = (state: GameState): DebugMutation => {
     if (!node) return { result: failure('Unknown Mining node.') };
     const duration =
       state.activeAction.phase === 'rest'
-          ? 10_000
-          : state.activeAction.phase === 'respawn'
-            ? getMiningRuntimeState(state.mining, node.id).respawnRemainingMs
-            : getMiningTool(state).swingIntervalMs;
+        ? 10_000
+        : state.activeAction.phase === 'respawn'
+          ? getMiningRuntimeState(state.mining, node.id).respawnRemainingMs
+          : getMiningTool(state).swingIntervalMs;
     const remaining =
       state.activeAction.phase === 'respawn'
         ? duration
@@ -882,7 +910,10 @@ export const debugAdvanceOneCycle = (state: GameState): DebugMutation => {
   if (state.activeAction.type === 'smithing') {
     const recipe = recipeById[state.activeAction.recipeId];
     return recipe
-      ? debugAdvanceElapsed(state, Math.max(1, recipe.intervalMs - state.activeAction.progressMs))
+      ? debugAdvanceElapsed(
+          state,
+          Math.max(1, getSmithingEffectiveInterval(state, recipe) - state.activeAction.progressMs),
+        )
       : { result: failure('Unknown Smithing recipe.') };
   }
   if (state.activeAction.type === 'combat')
@@ -906,7 +937,6 @@ export const debugCompleteMiningRespawn = (state: GameState): DebugMutation =>
   state.activeAction.type === 'mining' && state.activeAction.phase === 'respawn'
     ? debugAdvanceOneCycle(state)
     : { result: failure('Mining is not currently respawning a rock.') };
-
 
 export const debugOfflineSimulation = (state: GameState, elapsedMs: number): DebugMutation => {
   const amount = parseDebugInteger(elapsedMs, 1, GAME_CONFIG.offlineCapMs);
@@ -953,6 +983,16 @@ export const debugGrantRecipeMaterials = (state: GameState, recipeId: string): D
       inventory,
       input.itemId,
       input.quantity * 100,
+      GAME_CONFIG.inventorySlots,
+    );
+    if (added.rejected) return { result: failure('Inventory is full.') };
+    inventory = added.inventory;
+  }
+  if (recipe.fuel) {
+    const added = addItem(
+      inventory,
+      recipe.fuel.itemId,
+      recipe.fuel.quantity * 100,
       GAME_CONFIG.inventorySlots,
     );
     if (added.rejected) return { result: failure('Inventory is full.') };

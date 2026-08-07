@@ -607,6 +607,163 @@ h3 {
   color: #e39b94;
   border-color: #764d4b;
 }
+.smithing-heading-progress {
+  display: grid;
+  gap: 5px;
+  min-width: 170px;
+}
+.smithing-heading-progress small {
+  color: var(--muted);
+  text-align: right;
+}
+.smithing-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 17px 0;
+}
+.smithing-overview-grid span,
+.smithing-recipe-meta span {
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.smithing-overview-grid strong,
+.smithing-recipe-meta strong {
+  color: var(--text);
+  font-size: 12px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+.smithing-active-progress {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 15px;
+}
+.smithing-facility-panel {
+  min-width: 0;
+}
+.smithing-facility-header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+  padding: 0 0 13px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+.smithing-facility-icon {
+  display: grid;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  color: var(--gold);
+  background: #2b2925;
+  border: 1px solid #5c4d35;
+  border-radius: 8px;
+}
+.smithing-facility-title {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.smithing-facility-title strong {
+  font-size: 15px;
+}
+.smithing-facility-title small,
+.smithing-facility-summary {
+  color: var(--muted);
+  font-size: 11px;
+}
+.smithing-facility-summary {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.smithing-facility-header svg:last-child {
+  transition: transform 0.2s ease;
+}
+.smithing-facility-header svg.rotated {
+  transform: rotate(180deg);
+}
+.smithing-recipe-list {
+  display: grid;
+  gap: 8px;
+  padding-top: 13px;
+}
+.smithing-recipe-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(190px, 1.2fr) minmax(145px, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 10px;
+  background: rgba(12, 15, 17, 0.38);
+  border: 1px solid #2f393e;
+  border-radius: 8px;
+}
+.smithing-recipe-row.active {
+  border-color: var(--gold);
+  box-shadow: inset 2px 0 0 var(--gold);
+}
+.smithing-recipe-output {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+.smithing-recipe-output div {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.smithing-recipe-output strong,
+.smithing-recipe-output small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.smithing-recipe-output small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.smithing-recipe-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.smithing-rate {
+  color: var(--gold) !important;
+}
+.smithing-recipe-materials {
+  margin: 0;
+}
+.smithing-recipe-materials small {
+  color: var(--gold);
+}
+.smithing-hammer-summary {
+  margin-top: 11px;
+  padding: 8px 10px;
+  color: #d7bd88;
+  background: rgba(73, 57, 31, 0.25);
+  border: 1px solid #55472f;
+  border-radius: 6px;
+  font-size: 11px;
+}
+.smithing-filterbar {
+  margin: 13px 0 0;
+}
+.smithing-activity-tool,
+.smithing-activity-quantity {
+  color: var(--muted);
+  font-size: 10px;
+  white-space: nowrap;
+}
 .inventory-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(134px, 1fr));
@@ -7430,9 +7587,64 @@ h3 {
 .activity-strip-mining {
   display: grid;
   grid-template-columns:
-    38px minmax(170px, 220px) minmax(260px, 1.35fr) minmax(110px, 150px)
-    minmax(150px, 220px) minmax(80px, 110px) 64px;
+    38px minmax(170px, 220px) minmax(220px, 1.2fr) minmax(110px, 150px)
+    minmax(140px, 180px) minmax(150px, 220px) minmax(80px, 110px) 64px;
   gap: 12px;
+}
+.activity-strip-smithing {
+  display: grid;
+  grid-template-columns: 38px minmax(160px, 220px) minmax(190px, 1.15fr) minmax(
+      125px,
+      175px
+    ) minmax(150px, 1fr) minmax(90px, 130px) 64px;
+  gap: 12px;
+}
+.activity-strip-smithing .action-icon {
+  align-self: center;
+}
+@media (max-width: 1180px) {
+  .activity-strip-smithing {
+    grid-template-columns: 38px minmax(140px, 1fr) minmax(170px, 1.1fr) minmax(110px, 150px) minmax(
+        130px,
+        1fr
+      ) auto 60px;
+    gap: 9px;
+  }
+}
+@media (max-width: 760px) {
+  .activity-strip-smithing {
+    grid-template-columns: 34px minmax(0, 1fr) auto 58px;
+    grid-template-areas:
+      'icon identity rate stop'
+      'level level level level'
+      'phase phase quantity quantity';
+    min-height: max(var(--ui-action-height, 77px), 116px);
+    padding: 9px 13px;
+    gap: 7px 9px;
+  }
+  .activity-strip-smithing .action-icon {
+    grid-area: icon;
+  }
+  .activity-strip-smithing .activity-identity {
+    grid-area: identity;
+  }
+  .activity-strip-smithing .activity-level-progress {
+    grid-area: level;
+  }
+  .activity-strip-smithing .activity-rate-column {
+    grid-area: rate;
+    justify-self: end;
+  }
+  .activity-strip-smithing .activity-phase {
+    grid-area: phase;
+  }
+  .activity-strip-smithing .smithing-activity-quantity {
+    grid-area: quantity;
+    justify-self: end;
+  }
+  .activity-strip-smithing .activity-stop {
+    grid-area: stop;
+  }
 }
 .activity-strip-mining .action-icon {
   align-self: center;
@@ -7503,13 +7715,35 @@ h3 {
   display: block;
   width: 24px;
 }
-.activity-rate {
+.activity-rate-column,
+.activity-next-column {
+  display: grid;
+  gap: 2px;
   min-width: 0;
+  white-space: nowrap;
+}
+.activity-rate-column {
+  align-content: center;
+}
+.activity-rate,
+.activity-xp-next {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.activity-rate {
   color: var(--gold);
   font-size: 12px;
-  font-variant-numeric: tabular-nums;
   font-weight: 700;
-  white-space: nowrap;
+}
+.activity-xp-next {
+  color: var(--muted);
+  font-size: 10px;
+}
+.activity-eta {
+  color: var(--text);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
 }
 .activity-phase {
   display: grid;
@@ -7559,8 +7793,8 @@ h3 {
 @media (max-width: 1180px) {
   .activity-strip-mining {
     grid-template-columns:
-      38px minmax(140px, 1fr) minmax(200px, 1.25fr) minmax(105px, 125px)
-      minmax(135px, 1fr) auto 60px;
+      38px minmax(140px, 1fr) minmax(180px, 1.15fr) minmax(105px, 135px)
+      minmax(125px, 155px) minmax(135px, 1fr) auto 60px;
     gap: 9px;
     padding-left: 16px;
     padding-right: 16px;
@@ -7575,8 +7809,9 @@ h3 {
     grid-template-areas:
       'icon identity rate stop'
       'level level level level'
+      'next next next next'
       'phase phase stamina stamina';
-    min-height: max(var(--ui-action-height, 77px), 112px);
+    min-height: max(var(--ui-action-height, 77px), 136px);
     padding: 9px 13px;
     gap: 7px 9px;
   }
@@ -7591,8 +7826,12 @@ h3 {
   .activity-strip-mining .activity-level-progress {
     grid-area: level;
   }
-  .activity-strip-mining .activity-rate {
+  .activity-strip-mining .activity-rate-column {
     grid-area: rate;
+    justify-self: end;
+  }
+  .activity-strip-mining .activity-next-column {
+    grid-area: next;
     justify-self: end;
   }
   .activity-strip-mining .activity-phase {
@@ -7611,10 +7850,12 @@ h3 {
 }
 @media (min-width: 761px) and (max-width: 1050px) {
   .activity-strip-mining {
-    grid-template-columns: 34px minmax(120px, 1fr) minmax(190px, 1.25fr) minmax(100px, 1fr) 60px;
+    grid-template-columns:
+      34px minmax(120px, 1fr) minmax(170px, 1.15fr) minmax(100px, 1fr)
+      minmax(130px, 1fr) 60px;
     grid-template-areas:
-      'icon identity level rate stop'
-      'icon identity phase phase stamina';
+      'icon identity level rate next stop'
+      'icon identity phase phase phase stamina';
     min-height: max(var(--ui-action-height, 77px), 90px);
   }
   .activity-strip-mining .action-icon {
@@ -7626,8 +7867,11 @@ h3 {
   .activity-strip-mining .activity-level-progress {
     grid-area: level;
   }
-  .activity-strip-mining .activity-rate {
+  .activity-strip-mining .activity-rate-column {
     grid-area: rate;
+  }
+  .activity-strip-mining .activity-next-column {
+    grid-area: next;
   }
   .activity-strip-mining .activity-phase {
     grid-area: phase;
