@@ -196,10 +196,9 @@ export function OfflineModal({
         aria-labelledby="offline-title"
       >
         <div className="eyebrow">Welcome back</div>
-        <h2 id="offline-title">Welcome back</h2>
-        <p className="offline-report-away">
+        <h2 id="offline-title" className="offline-report-away">
           {formatOfflineDuration(summary.requestedElapsedMs)} away
-        </p>
+        </h2>
         <p className="subtle">{activityCopy(context)}</p>
         {subjectName && <h3 className="offline-activity">{subjectName}</h3>}
         <OfflineItems summary={summary} context={context} />

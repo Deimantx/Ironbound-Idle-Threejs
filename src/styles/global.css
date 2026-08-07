@@ -3923,6 +3923,11 @@ h3 {
   height: 34px;
   border-radius: 6px;
 }
+.loot-icon-lg {
+  width: 42px;
+  height: 42px;
+  border-radius: 8px;
+}
 .loot-icon-xs {
   width: 21px;
   height: 21px;
@@ -7169,8 +7174,7 @@ h3 {
   gap: 2px;
 }
 .mining-primary-resource span,
-.mining-primary-resource small,
-.mining-tool-rate-note span {
+.mining-primary-resource small {
   color: var(--muted);
   font-size: 10px;
 }
@@ -7292,18 +7296,6 @@ h3 {
 .mining-ready {
   color: #8bc6a1;
 }
-.mining-tool-rate-note {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 22px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-.mining-tool-rate-note strong {
-  color: var(--text);
-  font-size: 11px;
-}
 @container (max-width: 760px) {
   .mining-details-grid {
     grid-template-columns: 1fr;
@@ -7356,5 +7348,80 @@ h3 {
   .mining-comparison-highlight .mining-effectiveness {
     grid-column: 1 / -1;
     justify-self: start;
+  }
+}
+
+/* Mining 1.3 readability and reward emphasis. */
+.mining-stage-step {
+  font-size: 11px;
+}
+.mining-stage-step strong {
+  font-size: 11px;
+}
+.mining-stage-step small {
+  font-size: 10px;
+}
+.mining-node-select small,
+.mining-node-rates {
+  font-size: 12px;
+}
+.mining-primary-resource {
+  gap: 12px;
+  margin: 20px 0;
+  padding: 12px 0;
+}
+.mining-primary-resource span,
+.mining-primary-resource small {
+  font-size: 11px;
+}
+.mining-primary-resource strong {
+  font-size: 15px;
+}
+.mining-selected-stage-heading {
+  font-size: 12px;
+}
+.mining-rate-summary {
+  font-size: 13px;
+}
+.mining-detail-meta span,
+.mining-comparison-row {
+  font-size: 12px;
+}
+.mining-detail-meta strong,
+.mining-comparison-row strong {
+  font-size: 13px;
+}
+.mining-reward-row {
+  padding: 8px 0;
+}
+.mining-reward-row strong,
+.mining-reward-row small {
+  font-size: 13px;
+}
+.mining-reward-row small {
+  color: var(--muted);
+}
+.mining-stat-grid span {
+  font-size: 12px;
+}
+.mining-stat-grid strong {
+  font-size: 14px;
+}
+.mining-comparison-highlight > span:not(.mining-effectiveness) {
+  font-size: 11px;
+}
+.mining-comparison-highlight strong {
+  font-size: 13px;
+}
+.mining-recommendation span,
+.mining-recommendation small {
+  font-size: 11px;
+}
+.mining-recommendation strong {
+  font-size: 13px;
+}
+@media (max-width: 650px) {
+  .mining-stage-step strong {
+    font-size: 10px;
   }
 }

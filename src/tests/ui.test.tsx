@@ -254,6 +254,9 @@ describe('navigation integration', () => {
     expect(screen.getByText(/Mining XP \/ Swing/)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Inspect Iron Vein' }));
     expect(screen.getByText('Iron Pick')).toBeInTheDocument();
+    expect(screen.getByText('Iron Pick', { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getAllByText(/Owned 0/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Ore yield|1 per \d+ damage/)).not.toBeInTheDocument();
     expect(screen.queryByText('Resource progress')).not.toBeInTheDocument();
     expect(screen.queryByText('Phase One resources')).not.toBeInTheDocument();
     expect(screen.queryByText('Selected')).not.toBeInTheDocument();

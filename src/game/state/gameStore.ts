@@ -125,7 +125,7 @@ const appendCombatEvents = (
   events: CombatVisualEvent[] = [],
 ): CombatVisualEvent[] => [...current, ...events].slice(-64);
 
-const getMiningFeedbackMessage = (summary: SimulationSummary): string | null => {
+export const getMiningFeedbackMessage = (summary: SimulationSummary): string | null => {
   const context = summary.offlineContext;
   if (context?.activity !== 'mining' || !context.miningNodeId) return null;
   const node = miningNodeById[context.miningNodeId];
@@ -133,7 +133,7 @@ const getMiningFeedbackMessage = (summary: SimulationSummary): string | null => 
   if (roughGem > 0) return `${itemById['rough-gem']?.name ?? 'Rough Gem'} found! +${roughGem}`;
   const traceIron =
     context.miningNodeId === 'stone-outcrop' ? (summary.itemsGained['iron-ore'] ?? 0) : 0;
-  if (traceIron > 0) return `Iron Ore trace uncovered. +${traceIron}`;
+  if (traceIron > 0) return `Iron Ore trace uncovered! +${traceIron}`;
   if (!node) return null;
   const stageEntry = Object.entries(summary.completed)
     .filter(([key, amount]) => key.startsWith(`mine-stage:${node.id}:`) && amount > 0)
@@ -142,7 +142,7 @@ const getMiningFeedbackMessage = (summary: SimulationSummary): string | null => 
   if (!stageEntry) return null;
   const index = Number(stageEntry[0].split(':').at(-1));
   const nextStage = Number.isInteger(index) ? node.stages[index + 1] : undefined;
-  return nextStage ? `${nextStage.name} exposed.` : `${node.name} fully mined.`;
+  return nextStage ? `${nextStage.name} exposed!` : `${node.name} fully mined!`;
 };
 
 export const useGameStore = create<Store>((set, get) => ({

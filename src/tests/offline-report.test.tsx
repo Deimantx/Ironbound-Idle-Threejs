@@ -35,7 +35,8 @@ describe('Offline Report 2.0', () => {
     };
     render(<OfflineModal game={game} summary={summary} onClose={() => undefined} />);
 
-    expect(screen.getByRole('heading', { name: 'Welcome back' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '1h 4m away' })).toBeInTheDocument();
+    expect(screen.getAllByText('Welcome back')).toHaveLength(1);
     expect(screen.getByText('1h 4m away')).toBeInTheDocument();
     expect(screen.getByText('Mining continued while you were gone.')).toBeInTheDocument();
     expect(screen.getByText('Stone Outcrop')).toBeInTheDocument();

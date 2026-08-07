@@ -205,17 +205,28 @@ const RateSummary = ({ game, node }: { game: GameState; node: MiningNodeDefiniti
   );
 };
 
-const ByproductRows = ({ node, stage }: { node: MiningNodeDefinition; stage: number }) => (
+const ByproductRows = ({
+  node,
+  stage,
+  inventory,
+}: {
+  node: MiningNodeDefinition;
+  stage: number;
+  inventory: GameState['inventory'];
+}) => (
   <div className="mining-reward-rows">
     {node.bonusDrops.map((drop) => {
       const item = itemById[drop.itemId];
       const currentChance = getMiningStageBonusChance(drop, node.stages[stage] ?? node.stages[0]);
+      const owned = getItemQuantity(inventory, drop.itemId);
       return (
         <div className="mining-reward-row" key={drop.itemId}>
           <ItemIcon itemId={drop.itemId} size="md" />
           <div>
             <strong>{item?.name ?? drop.itemId}</strong>
-            <small>{formatDropChance(currentChance)} chance</small>
+            <small>
+              {formatDropChance(currentChance)} chance · Owned {formatNumber(owned)}
+            </small>
           </div>
         </div>
       );
@@ -469,7 +480,7 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 </p>
                 <p>{selectedNode.description}</p>
                 <div className="mining-primary-resource">
-                  <ItemIcon itemId={selectedNode.primaryRewardItemId} size="md" />
+                  <ItemIcon itemId={selectedNode.primaryRewardItemId} size="lg" />
                   <div>
                     <span>Primary resource</span>
                     <strong>{itemById[selectedNode.primaryRewardItemId]?.name}</strong>
@@ -492,16 +503,20 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 <RateSummary game={game} node={selectedNode} />
                 <div className="mining-detail-meta">
                   <span>
-                    Respawn<strong>{formatDuration(selectedNode.respawnMs)}</strong>
+                    Full deposit<strong>~{formatDuration(selectedRates.cycleMs)}</strong>
                   </span>
                   <span>
-                    Ore yield<strong>1 per {selectedNode.damagePerPrimaryReward} damage</strong>
+                    Respawn<strong>{formatDuration(selectedNode.respawnMs)}</strong>
                   </span>
                 </div>
                 <div className="mining-reward-section">
                   <div className="eyebrow">Rare Finds</div>
                   {selectedNode.bonusDrops.length > 0 ? (
-                    <ByproductRows node={selectedNode} stage={selectedRuntime.stageIndex} />
+                    <ByproductRows
+                      node={selectedNode}
+                      stage={selectedRuntime.stageIndex}
+                      inventory={game.inventory}
+                    />
                   ) : (
                     <p className="subtle">No authored bonus drops.</p>
                   )}
@@ -565,19 +580,25 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 <div className="mining-recommendation">
                   <span>Recommended pickaxe</span>
                   <strong>
-                    {selectedEffectiveness >= 1
-                      ? 'Your current pickaxe is sufficient.'
-                      : recommendedToolName}
+                    {recommendedToolName}
+                    {recommendedTool && activeTool.penetration > recommendedTool.penetration
+                      ? ' or better'
+                      : ''}
                   </strong>
-                  {selectedEffectiveness < 1 &&
-                    recommendedTool &&
-                    game.skills.mining.level < recommendedTool.requiredMiningLevel && (
-                      <small>Requires Mining Level {recommendedTool.requiredMiningLevel}</small>
-                    )}
-                </div>
-                <div className="mining-tool-rate-note">
-                  <span>Estimated cycle</span>
-                  <strong>~{formatDuration(selectedRates.cycleMs)} full rock</strong>
+                  {selectedEffectiveness >= 1 ? (
+                    <small>
+                      {activeTool.itemId === recommendedTool?.itemId
+                        ? 'Current tool meets this requirement'
+                        : 'Your current tool exceeds this requirement'}
+                    </small>
+                  ) : (
+                    <small>
+                      Requires {recommendedToolName}
+                      {recommendedTool
+                        ? ` or better · Mining Level ${recommendedTool.requiredMiningLevel}`
+                        : ''}
+                    </small>
+                  )}
                 </div>
               </div>
             </div>

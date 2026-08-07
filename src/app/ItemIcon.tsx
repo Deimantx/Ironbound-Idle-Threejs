@@ -35,7 +35,7 @@ export function ItemIcon({
   itemId?: string;
   discovered?: boolean;
   gold?: boolean;
-  size?: 'xs' | 'sm' | 'md';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }) {
   const item = itemId ? itemById[itemId] : undefined;
   const iconKey = gold
@@ -50,7 +50,10 @@ export function ItemIcon({
       className={`loot-icon loot-icon-${size} loot-icon-${gold ? 'gold' : (item?.category ?? 'unknown')} loot-rarity-${rarity} ${!discovered ? 'is-hidden' : ''}`}
       aria-hidden="true"
     >
-      <Icon size={size === 'xs' ? 12 : size === 'md' ? 18 : 15} strokeWidth={1.8} />
+      <Icon
+        size={size === 'xs' ? 12 : size === 'lg' ? 24 : size === 'md' ? 18 : 15}
+        strokeWidth={1.8}
+      />
     </span>
   );
 }
