@@ -408,6 +408,10 @@ describe('navigation integration', () => {
     expect(action?.type === 'smithing' ? action.quantityMode : null).toBe('continuous');
     expect(screen.getByRole('button', { name: 'Open Smithing: Iron Bar' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Stop smithing' })).toBeInTheDocument();
+    expect(screen.getByText('Active Order')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Smelting Iron Bar' })).toBeInTheDocument();
+    expect(screen.getAllByText('Next Iron Bar')).toHaveLength(2);
+    expect(screen.queryByText('Quantity:')).not.toBeInTheDocument();
   });
 
   it('renders Smithing with compact facility-specific recipe presentations', async () => {
@@ -439,13 +443,26 @@ describe('navigation integration', () => {
     expect(smithingText).not.toContain(String.fromCharCode(195, 130));
     expect(smithingText).not.toContain(String.fromCharCode(195, 151));
     expect(smithingText).not.toContain(String.fromCharCode(194, 183));
-    expect(screen.getByRole('button', { name: 'Missing Coal fuel' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'No fuel' })).toBeDisabled();
     expect(screen.getAllByRole('button', { name: 'Requires level 30' })).toHaveLength(2);
     expect(
       screen
         .getAllByRole('button', { name: 'Requires level 30' })
         .every((button) => button.hasAttribute('disabled')),
     ).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: 'Iron' }));
+    expect(
+      screen.getByText('IRON', { selector: '.smithing-tier-heading span' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('STEEL', { selector: '.smithing-tier-heading span' }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'All Metals' }));
+    await user.click(screen.getByRole('button', { name: 'Weapons' }));
+    await user.click(screen.getByRole('button', { name: 'Iron' }));
+    expect(screen.getByText('Iron Sword')).toBeInTheDocument();
+    expect(screen.queryByText('Iron Armor')).not.toBeInTheDocument();
 
     const forgeHeader = screen.getByRole('button', { name: /Forge Smelt ore/ });
     expect(forgeHeader).toHaveAttribute('aria-expanded', 'true');

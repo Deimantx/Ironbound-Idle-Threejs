@@ -38,10 +38,15 @@ import {
   normalizeMiningState,
 } from '../formulas/miningFormulas';
 import {
+  getForgeFuelCapacity,
+  getForgeFuelDefinition,
+  getForgeFuelUnitsRequired,
+  getForgeLoadedFuelValue,
   getSmithingEffectiveInterval,
   getSmithingPreservationChance,
   nextSmithingRandom,
   normalizeSmithingState,
+  stageForgeAutoRefuel,
 } from '../formulas/smithingFormulas';
 import type {
   ActiveAction,
@@ -306,15 +311,34 @@ const resolveSmithingCycle = (
     if (input.quantity <= 0 || getItemQuantity(state.inventory, input.itemId) < input.quantity)
       return { ok: false, reason: 'Materials ran out.' };
   }
-  if (
-    recipe.fuel &&
-    (recipe.fuel.quantity <= 0 ||
-      getItemQuantity(state.inventory, recipe.fuel.itemId) < recipe.fuel.quantity)
-  )
-    return { ok: false, reason: 'Forge fuel ran out.' };
-
   const chance = getSmithingPreservationChance(state, recipe);
   const nextSmithingState = structuredClone(state.smithing);
+  let stagedInventory = state.inventory;
+  let stagedForgeFuel = nextSmithingState.forgeFuel;
+  const fuelUnitsRequired = getForgeFuelUnitsRequired(recipe);
+  let fuelQuantityConsumed = 0;
+  let fuelItemId: string | null = null;
+  if (fuelUnitsRequired > 0) {
+    if (getForgeLoadedFuelValue(state) < fuelUnitsRequired && stagedForgeFuel.autoRefuel) {
+      const refill = stageForgeAutoRefuel(
+        stagedInventory,
+        stagedForgeFuel,
+        getForgeFuelCapacity(state),
+      );
+      stagedInventory = refill.inventory;
+      stagedForgeFuel = refill.forgeFuel;
+    }
+    const stagedFuel = getForgeFuelDefinition(stagedForgeFuel.loadedFuelItemId);
+    const stagedFuelValue = stagedFuel
+      ? stagedForgeFuel.loadedFuelQuantity * stagedFuel.fuelValue
+      : 0;
+    if (!stagedFuel || stagedFuelValue < fuelUnitsRequired)
+      return { ok: false, reason: 'Forge fuel ran out.' };
+    fuelItemId = stagedFuel.itemId;
+    fuelQuantityConsumed = Math.ceil(fuelUnitsRequired / stagedFuel.fuelValue);
+    stagedForgeFuel.loadedFuelQuantity -= fuelQuantityConsumed;
+    if (stagedForgeFuel.loadedFuelQuantity <= 0) stagedForgeFuel.loadedFuelItemId = null;
+  }
   const consumed = new Map<string, number>();
   for (const input of recipe.inputs) {
     const requiredQuantity = Math.max(0, Math.floor(input.quantity));
@@ -325,13 +349,6 @@ const resolveSmithingCycle = (
     }
     consumed.set(input.itemId, (consumed.get(input.itemId) ?? 0) + consumedQuantity);
   }
-  if (recipe.fuel)
-    consumed.set(
-      recipe.fuel.itemId,
-      (consumed.get(recipe.fuel.itemId) ?? 0) + Math.max(0, Math.floor(recipe.fuel.quantity)),
-    );
-
-  let stagedInventory = state.inventory;
   for (const [itemId, quantity] of consumed) {
     const removed = removeItem(stagedInventory, itemId, quantity);
     if (removed.rejected > 0) return { ok: false, reason: 'Materials ran out.' };
@@ -346,8 +363,12 @@ const resolveSmithingCycle = (
   if (output.rejected > 0) return { ok: false, reason: 'Inventory is full.' };
 
   state.inventory = output.inventory;
-  state.smithing = nextSmithingState;
+  state.smithing = {
+    ...nextSmithingState,
+    forgeFuel: stagedForgeFuel,
+  };
   for (const [itemId, quantity] of consumed) addSummaryNumber(summary.itemsUsed, itemId, quantity);
+  if (fuelItemId) addSummaryNumber(summary.itemsUsed, fuelItemId, fuelQuantityConsumed);
   state.statistics[recipe.category === 'smelting' ? 'smelted' : 'forged'] += 1;
   addSummaryNumber(summary.completed, `${recipe.category}:${recipe.id}`, 1);
   addSummaryNumber(summary.itemsGained, recipe.outputItemId, recipe.outputQuantity);
@@ -400,15 +421,9 @@ const simulateSmithing = (
       (input) =>
         input.quantity <= 0 || getItemQuantity(state.inventory, input.itemId) < input.quantity,
     );
-    if (
-      missingInput ||
-      (recipe.fuel && getItemQuantity(state.inventory, recipe.fuel.itemId) < recipe.fuel.quantity)
-    ) {
+    if (missingInput) {
       state.activeAction = { type: 'none' };
-      summary.stoppedReason =
-        recipe.fuel && getItemQuantity(state.inventory, recipe.fuel.itemId) < recipe.fuel.quantity
-          ? 'Forge fuel ran out.'
-          : 'Materials ran out.';
+      summary.stoppedReason = 'Materials ran out.';
       break;
     }
     const interval = getSmithingEffectiveInterval(state, recipe);

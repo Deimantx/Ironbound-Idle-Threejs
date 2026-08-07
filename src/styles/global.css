@@ -683,6 +683,23 @@ h3 {
   color: var(--text);
   text-align: left;
 }
+.smithing-facility-collapse {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+.smithing-facility-collapse:focus-visible,
+.smithing-fuel-trigger:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
 .smithing-facility-icon {
   display: grid;
   flex: 0 0 34px;
@@ -716,8 +733,125 @@ h3 {
 .smithing-facility-header svg:last-child {
   transition: transform 0.2s ease;
 }
+.smithing-facility-collapse > svg:last-child,
+.smithing-fuel-trigger > svg {
+  flex: 0 0 auto;
+  transition: transform 0.2s ease;
+}
 .smithing-facility-header svg.rotated {
   transform: rotate(180deg);
+}
+.smithing-fuel-control {
+  position: relative;
+  flex: 0 1 270px;
+  min-width: 210px;
+}
+.smithing-fuel-trigger {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid #5c4d35;
+  border-radius: 7px;
+  background: rgba(40, 35, 27, 0.72);
+  color: var(--text);
+  text-align: left;
+}
+.smithing-fuel-trigger > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.smithing-fuel-trigger strong,
+.smithing-fuel-trigger small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.smithing-fuel-trigger strong {
+  color: #e8d39f;
+  font-size: 11px;
+}
+.smithing-fuel-trigger small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.smithing-fuel-popover {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 8px);
+  right: 0;
+  display: grid;
+  width: min(330px, calc(100vw - 32px));
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid #5c4d35;
+  border-radius: 8px;
+  background: #171b1d;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.38);
+}
+.smithing-fuel-popover label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.smithing-fuel-popover select {
+  min-height: 30px;
+  padding: 5px 7px;
+  border: 1px solid #3b4649;
+  border-radius: 5px;
+  background: #0e1214;
+  color: var(--text);
+}
+.smithing-fuel-popover-stats,
+.smithing-fuel-estimates {
+  display: grid;
+  gap: 5px;
+}
+.smithing-fuel-popover-stats span,
+.smithing-fuel-estimates > span:not(.eyebrow) {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.smithing-fuel-popover-stats strong,
+.smithing-fuel-estimates strong {
+  color: var(--text);
+}
+.smithing-auto-refuel {
+  display: flex !important;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 7px !important;
+  color: var(--text) !important;
+  font-size: 11px !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}
+.smithing-auto-refuel input {
+  accent-color: var(--gold);
+}
+.smithing-fuel-actions {
+  gap: 5px;
+}
+.smithing-fuel-actions .button {
+  flex: 1 1 auto;
+  padding-inline: 7px;
+  font-size: 10px;
+}
+.smithing-tool-summary {
+  flex: 0 1 300px;
+  min-width: 0;
+  color: #d7bd88;
+  font-size: 10px;
+  text-align: right;
 }
 .smithing-recipe-list {
   display: grid;
@@ -777,6 +911,32 @@ h3 {
 .smithing-recipe-materials {
   margin: 0;
 }
+.smithing-forge-requirements {
+  display: grid;
+  gap: 7px;
+}
+.smithing-cost-materials {
+  display: grid;
+  gap: 4px;
+}
+.smithing-material-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.smithing-material-line strong {
+  color: var(--text);
+  white-space: nowrap;
+}
+.smithing-fuel-cost {
+  color: var(--muted);
+  font-size: 11px;
+}
+.smithing-fuel-cost strong {
+  color: #d7bd88;
+}
 .smithing-recipe-materials small {
   color: var(--gold);
 }
@@ -835,6 +995,66 @@ h3 {
 .smithing-filterbar {
   margin: 13px 0 0;
 }
+.smithing-filter-groups {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+}
+.smithing-filter-groups .smithing-filterbar {
+  margin-bottom: 0;
+}
+.smithing-metal-filterbar {
+  padding-left: 12px;
+  border-left: 1px solid var(--line);
+}
+.smithing-active-order {
+  display: grid;
+  gap: 14px;
+}
+.smithing-order-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.smithing-order-grid > div,
+.smithing-order-detail {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px;
+  border: 1px solid #2f393e;
+  border-radius: 7px;
+  background: rgba(12, 15, 17, 0.38);
+}
+.smithing-order-grid span,
+.smithing-order-detail .eyebrow {
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+}
+.smithing-order-grid strong,
+.smithing-order-detail strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+.smithing-order-detail small {
+  color: var(--muted);
+  font-size: 10px;
+}
+.smithing-order-detail .smithing-tool-summary {
+  text-align: left;
+}
+.smithing-order-detail + .smithing-order-detail {
+  margin-top: -7px;
+}
+.smithing-activity-tool {
+  overflow: hidden;
+  max-width: 190px;
+  text-overflow: ellipsis;
+}
 
 @media (max-width: 1200px) {
   .smithing-anvil-row {
@@ -879,6 +1099,21 @@ h3 {
     max-width: 42%;
     white-space: normal;
   }
+  .smithing-facility-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .smithing-fuel-control,
+  .smithing-tool-summary {
+    flex-basis: 100%;
+    max-width: none;
+    margin-left: 44px;
+    text-align: left;
+  }
+  .smithing-fuel-popover {
+    left: 0;
+    right: auto;
+  }
   .smithing-forge-card-top {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -899,6 +1134,13 @@ h3 {
   }
   .smithing-anvil-row > .button {
     justify-self: start;
+  }
+  .smithing-order-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .smithing-metal-filterbar {
+    padding-left: 0;
+    border-left: 0;
   }
 }
 .smithing-activity-tool,

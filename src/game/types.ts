@@ -160,6 +160,14 @@ export interface MiningState {
 export interface SmithingState {
   rngSeed: number;
   rngCursor: number;
+  forgeFuel: ForgeFuelState;
+}
+
+export interface ForgeFuelState {
+  selectedFuelItemId: string | null;
+  loadedFuelItemId: string | null;
+  loadedFuelQuantity: number;
+  autoRefuel: boolean;
 }
 
 export type MiningPhase = 'swing' | 'rest' | 'respawn';
@@ -176,6 +184,8 @@ export interface RecipeDefinition {
   xp: number;
   description: string;
   legacy?: boolean;
+  forgeFuelUnits?: number;
+  /** @deprecated Use forgeFuelUnits with the Forge hopper. */
   fuel?: { itemId: string; quantity: number };
 }
 
@@ -184,6 +194,12 @@ export interface SmithingToolDefinition {
   requiredSmithingLevel: number;
   speedBonus: number;
   materialPreservationChance: number;
+}
+
+export interface SmithingFuelDefinition {
+  itemId: string;
+  name: string;
+  fuelValue: number;
 }
 
 export interface LootEntry {

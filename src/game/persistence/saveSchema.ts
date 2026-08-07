@@ -103,6 +103,23 @@ const legacyActiveActionSchema = z.union([
     .passthrough(),
 ]);
 const legacyEquipmentSchema = z.record(z.string(), z.string());
+const forgeFuelStateSchema = z.object({
+  selectedFuelItemId: z.string().nullable(),
+  loadedFuelItemId: z.string().nullable(),
+  loadedFuelQuantity: z.number().int().nonnegative(),
+  autoRefuel: z.boolean(),
+});
+const currentSmithingStateSchema = z.object({
+  rngSeed: z.number().finite(),
+  rngCursor: z.number().int().nonnegative(),
+  forgeFuel: forgeFuelStateSchema,
+});
+const legacySmithingStateSchema = z
+  .object({
+    rngSeed: z.number().finite(),
+    rngCursor: z.number().int().nonnegative(),
+  })
+  .passthrough();
 const currentEquipmentSchema = z
   .record(z.string(), z.string())
   .superRefine((equipment, context) => {
@@ -156,10 +173,7 @@ const savePayloadShape = {
       }),
     ),
   }),
-  smithing: z.object({
-    rngSeed: z.number().finite(),
-    rngCursor: z.number().int().nonnegative(),
-  }),
+  smithing: currentSmithingStateSchema,
   activeAction: activeActionSchema,
   unlockedAreas: z.array(z.string()),
   settings: z.object({
@@ -184,7 +198,7 @@ const savePayloadShape = {
 export const savePayloadSchema = z.object(savePayloadShape);
 export const legacySavePayloadSchema = z.object({
   ...savePayloadShape,
-  smithing: savePayloadShape.smithing.optional(),
+  smithing: legacySmithingStateSchema.optional(),
   statistics: z.object({
     mined: z.number(),
     miningSwings: z.number().optional(),

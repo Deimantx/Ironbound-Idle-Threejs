@@ -7,6 +7,7 @@ import { miningNodeById } from '../content/miningNodes';
 import { recipeById } from '../content/recipes';
 import { progressRatio } from '../game/engine/simulation';
 import {
+  getForgeFuelCapacity,
   getSmithingEffectiveInterval,
   getSmithingEstimatedRates,
   getSmithingHammer,
@@ -282,6 +283,9 @@ const SmithingActivityStrip = ({
   const rates = getSmithingEstimatedRates(game, recipe);
   const levelProgress = getLevelProgress(game.skills.smithing);
   const hammer = getSmithingHammer(game);
+  const forgeFuel = game.smithing.forgeFuel;
+  const fuelName = itemById[forgeFuel.selectedFuelItemId ?? '']?.name ?? 'Fuel';
+  const fuelStatus = `${fuelName} ${forgeFuel.loadedFuelQuantity}/${getForgeFuelCapacity(game)} · Auto ${forgeFuel.autoRefuel ? 'ON' : 'OFF'}`;
   const remainingMs = Math.max(0, interval - action.progressMs);
   const quantity =
     action.quantityMode === 'continuous'
@@ -301,7 +305,9 @@ const SmithingActivityStrip = ({
         onClick={() => onNavigate('smithing')}
         aria-label={`Open Smithing: ${recipe.name}`}
       >
-        <strong>{recipe.name}</strong>
+        <strong>
+          {recipe.category === 'smelting' ? 'Smelting' : 'Forging'} {recipe.name}
+        </strong>
         <small>
           {recipe.category === 'smelting' ? 'Forge' : 'Anvil'} · {quantity}
         </small>
@@ -317,11 +323,15 @@ const SmithingActivityStrip = ({
           ~{formatRatePerHour(rates.xpPerHour)} XP/hr
         </span>
         <small className="smithing-activity-tool">
-          {hammer ? `${itemById[hammer.itemId]?.name} equipped` : 'No hammer'}
+          {recipe.category === 'smelting'
+            ? fuelStatus
+            : hammer
+              ? `${itemById[hammer.itemId]?.name} equipped`
+              : 'No hammer'}
         </small>
       </div>
       <ActivityPhaseProgress
-        label={recipe.category === 'smelting' ? 'Forge' : 'Anvil'}
+        label={`Next ${itemById[recipe.outputItemId]?.name ?? recipe.name}`}
         ratio={progressRatio(action, now, game)}
         remainingMs={remainingMs}
       />

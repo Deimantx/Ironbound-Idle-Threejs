@@ -57,6 +57,7 @@ export const RECIPES: RecipeDefinition[] = [
     outputQuantity: 1,
     xp: 12,
     description: 'Refine iron ore into a strong bar.',
+    forgeFuelUnits: 1,
     fuel: { itemId: 'coal', quantity: 1 },
   }),
   smithingRecipe({
@@ -70,6 +71,7 @@ export const RECIPES: RecipeDefinition[] = [
     outputQuantity: 1,
     xp: 20,
     description: 'Harden iron with coal in a hotter furnace.',
+    forgeFuelUnits: 2,
     fuel: { itemId: 'coal', quantity: 2 },
   }),
   // Legacy Bronze equipment recipes retain their historical IDs and balance.

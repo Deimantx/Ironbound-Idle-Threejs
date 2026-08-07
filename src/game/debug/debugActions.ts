@@ -14,6 +14,8 @@ import {
   normalizeMiningState,
 } from '../formulas/miningFormulas';
 import {
+  getForgeFuelDefinition,
+  getForgeFuelUnitsRequired,
   getSmithingEffectiveInterval,
   getSmithingMaxCraftable,
 } from '../formulas/smithingFormulas';
@@ -832,7 +834,14 @@ export const debugStartSmithing = (
           const recipe = recipeById[recipeId];
           const prepared = structuredClone(state);
           if (getSmithingMaxCraftable(prepared, recipe) < 1) {
-            const requirements = [...recipe.inputs, ...(recipe.fuel ? [recipe.fuel] : [])];
+            const requirements = [...recipe.inputs];
+            const fuel = getForgeFuelDefinition(prepared.smithing.forgeFuel.selectedFuelItemId);
+            const fuelUnits = getForgeFuelUnitsRequired(recipe);
+            if (fuel && fuelUnits > 0)
+              requirements.push({
+                itemId: fuel.itemId,
+                quantity: Math.ceil(fuelUnits / fuel.fuelValue),
+              });
             for (const requirement of requirements) {
               if (getItemQuantity(prepared.inventory, requirement.itemId) >= requirement.quantity)
                 continue;
@@ -988,11 +997,13 @@ export const debugGrantRecipeMaterials = (state: GameState, recipeId: string): D
     if (added.rejected) return { result: failure('Inventory is full.') };
     inventory = added.inventory;
   }
-  if (recipe.fuel) {
+  const fuel = getForgeFuelDefinition(state.smithing.forgeFuel.selectedFuelItemId);
+  const fuelUnits = getForgeFuelUnitsRequired(recipe);
+  if (fuel && fuelUnits > 0) {
     const added = addItem(
       inventory,
-      recipe.fuel.itemId,
-      recipe.fuel.quantity * 100,
+      fuel.itemId,
+      Math.ceil(fuelUnits / fuel.fuelValue) * 100,
       GAME_CONFIG.inventorySlots,
     );
     if (added.rejected) return { result: failure('Inventory is full.') };

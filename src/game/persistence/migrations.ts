@@ -397,6 +397,12 @@ const migrateSmithing = (input: GameState): GameState => {
   return { ...input, smithing, activeAction, schemaVersion: 7 };
 };
 
+const migrateForgeFuel = (input: GameState): GameState => ({
+  ...input,
+  smithing: normalizeSmithingState(input.smithing),
+  schemaVersion: 8,
+});
+
 const normalizeSkillStates = (input: GameState): GameState => {
   const skills = { ...input.skills };
   for (const skillId of EXPERIENCE_SKILLS)
@@ -463,6 +469,7 @@ export const migrations: Record<number, SaveMigration> = {
   5: migrateMining,
   6: migrateExperience,
   7: migrateSmithing,
+  8: migrateForgeFuel,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {
@@ -474,6 +481,7 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
   if (fromVersion >= GAME_CONFIG.currentSaveVersion) {
     current = migrateMining(current);
     current = migrateSmithing(current);
+    current = migrateForgeFuel(current);
   }
   current = normalizeSkillStates(current);
   current.schemaVersion = GAME_CONFIG.currentSaveVersion;

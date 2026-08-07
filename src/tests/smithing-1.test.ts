@@ -33,11 +33,13 @@ describe('Smithing 1.0 content and formulas', () => {
     expect(recipeById['iron-bar']).toMatchObject({
       level: 1,
       xp: 12,
+      forgeFuelUnits: 1,
       fuel: { itemId: 'coal', quantity: 1 },
     });
     expect(recipeById['steel-bar']).toMatchObject({
       level: 30,
       xp: 20,
+      forgeFuelUnits: 2,
       fuel: { itemId: 'coal', quantity: 2 },
     });
     expect(LEGACY_SMITHING_RECIPES.every((recipe) => recipe.legacy)).toBe(true);
@@ -123,7 +125,7 @@ describe('Smithing 1.0 atomic cycles and quantity modes', () => {
     const state = withItems(createNewGame(0, 'Preservation'), [['iron-bar', 4]]);
     levelSmithing(state, 15);
     state.equipment.tool = 'iron-smithing-hammer';
-    state.smithing = { rngSeed: 1972, rngCursor: 0 };
+    state.smithing = { ...state.smithing, rngSeed: 1972, rngCursor: 0 };
     const result = simulateElapsed(startSmithing(state, 'iron-sword', 1, 0), 3864);
     expect(getItemQuantity(result.state.inventory, 'iron-sword')).toBe(1);
     expect(getItemQuantity(result.state.inventory, 'iron-bar')).toBe(3);
@@ -134,7 +136,7 @@ describe('Smithing 1.0 atomic cycles and quantity modes', () => {
     const rejected = withItems(createNewGame(0, 'Rejected'), [['iron-bar', 5]]);
     levelSmithing(rejected, 15);
     rejected.equipment.tool = 'iron-smithing-hammer';
-    rejected.smithing = { rngSeed: 1972, rngCursor: 0 };
+    rejected.smithing = { ...rejected.smithing, rngSeed: 1972, rngCursor: 0 };
     rejected.inventory.push(
       ...Array.from({ length: 59 }, () => ({ itemId: 'tin-ore', quantity: 1, locked: false })),
     );
@@ -184,7 +186,7 @@ describe('Smithing 1.0 atomic cycles and quantity modes', () => {
     const initial = withItems(createNewGame(0, 'Offline'), [['iron-bar', 20]]);
     levelSmithing(initial, 15);
     initial.equipment.tool = 'iron-smithing-hammer';
-    initial.smithing = { rngSeed: 1972, rngCursor: 0 };
+    initial.smithing = { ...initial.smithing, rngSeed: 1972, rngCursor: 0 };
     const one = startSmithing(initial, 'iron-sword', 'continuous', 0);
     let many = structuredClone(one);
     const oneResult = simulateElapsed(one, 60_000).state;
@@ -197,10 +199,11 @@ describe('Smithing 1.0 atomic cycles and quantity modes', () => {
   });
 });
 
-describe('Smithing schema 7 migration', () => {
-  it('adds RNG state without changing XP, inventory, equipment, or active recipe', () => {
+describe('Smithing schema 8 migration', () => {
+  it('adds Forge fuel state without changing XP, inventory, equipment, RNG, or active recipe', () => {
     const state = createNewGame(0, 'Schema Seven');
-    state.schemaVersion = 6;
+    state.schemaVersion = 7;
+    state.smithing = { rngSeed: 1972, rngCursor: 9 } as GameState['smithing'];
     state.inventory = [{ itemId: 'bronze-bar', quantity: 4, locked: true }];
     state.equipment.tool = 'worn-pickaxe';
     state.activeAction = {
@@ -211,9 +214,18 @@ describe('Smithing schema 7 migration', () => {
       progressMs: 100,
     };
     const xp = state.skills.smithing.xp;
-    const migrated = migrateSave(state, 6);
-    expect(migrated.schemaVersion).toBe(7);
-    expect(migrated.smithing.rngCursor).toBe(0);
+    const migrated = migrateSave(state, 7);
+    expect(migrated.schemaVersion).toBe(8);
+    expect(migrated.smithing).toMatchObject({
+      rngSeed: 1972,
+      rngCursor: 9,
+      forgeFuel: {
+        selectedFuelItemId: 'coal',
+        loadedFuelItemId: null,
+        loadedFuelQuantity: 0,
+        autoRefuel: true,
+      },
+    });
     expect(migrated.skills.smithing.xp).toBe(xp);
     expect(migrated.inventory).toEqual(state.inventory);
     expect(migrated.equipment).toEqual(state.equipment);
@@ -223,7 +235,7 @@ describe('Smithing schema 7 migration', () => {
   it('repairs a current-save Smithing level that disagrees with its XP', () => {
     const state = createNewGame(0, 'Stale Smithing');
     state.skills.smithing = { level: 3, xp: 220 };
-    const migrated = migrateSave(state, 7);
+    const migrated = migrateSave(state, 8);
     expect(migrated.skills.smithing).toEqual({ level: getLevelFromXp(220), xp: 220 });
   });
 });

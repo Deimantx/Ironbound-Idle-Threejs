@@ -16,6 +16,11 @@ import { destroyItem, toggleItemLock } from '../systems/inventorySystem';
 import { equipItem, unequipItem } from '../systems/equipmentSystem';
 import { emptyCombatSession } from '../types';
 import { normalizeSkillState } from '../formulas/experienceFormulas';
+import {
+  loadForgeFuel as loadForgeFuelState,
+  selectForgeFuel as selectForgeFuelState,
+  unloadForgeFuel as unloadForgeFuelState,
+} from '../formulas/smithingFormulas';
 import type {
   AreaId,
   CombatStyle,
@@ -49,6 +54,10 @@ interface Store {
   tick: (now: number) => void;
   startMining: (nodeId: MiningNodeId) => void;
   startSmithing: (recipeId: string, mode: QuantityMode) => void;
+  selectForgeFuel: (itemId: string) => void;
+  loadForgeFuel: (quantity: number | 'max') => void;
+  unloadForgeFuel: () => void;
+  setForgeAutoRefuel: (enabled: boolean) => void;
   startCombat: (
     areaId: AreaId,
     enemyId: EnemyId,
@@ -232,6 +241,41 @@ export const useGameStore = create<Store>((set, get) => ({
   startSmithing: (recipeId, mode) => {
     const game = get().game;
     if (game) set({ game: startSmithing(game, recipeId, mode) });
+  },
+  selectForgeFuel: (itemId) => {
+    const game = get().game;
+    if (!game) return;
+    const result = selectForgeFuelState(game, itemId);
+    if (result.ok) set({ game: result.state });
+    notify(result.message);
+  },
+  loadForgeFuel: (quantity) => {
+    const game = get().game;
+    if (!game) return;
+    const result = loadForgeFuelState(game, quantity);
+    if (result.ok) set({ game: result.state });
+    notify(result.message);
+  },
+  unloadForgeFuel: () => {
+    const game = get().game;
+    if (!game) return;
+    const result = unloadForgeFuelState(game);
+    if (result.ok) set({ game: result.state });
+    notify(result.message);
+  },
+  setForgeAutoRefuel: (enabled) => {
+    const game = get().game;
+    if (!game) return;
+    set({
+      game: {
+        ...game,
+        smithing: {
+          ...game.smithing,
+          forgeFuel: { ...game.smithing.forgeFuel, autoRefuel: enabled },
+        },
+      },
+    });
+    notify(`Auto-refuel ${enabled ? 'enabled' : 'disabled'}.`);
   },
   startCombat: (areaId, enemyId, style, autoRepeat, autoSpecial = true) => {
     const game = get().game;
