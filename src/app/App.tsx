@@ -18,7 +18,6 @@ import { AREAS, areaById } from '../content/areas';
 import { ENEMIES, enemyById } from '../content/enemies';
 import { ITEMS } from '../content/items';
 import { miningNodeById } from '../content/miningNodes';
-import { recipeById } from '../content/recipes';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { getLevelProgress } from '../game/formulas/experienceFormulas';
 import { getDerivedStats } from '../game/formulas/statFormulas';
@@ -64,6 +63,7 @@ import {
 import { CombatScreen as RealtimeCombatScreen } from './CombatScreen';
 import { ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog';
 import { OfflineModal as OfflineReportModal } from './OfflineReport';
+import { ActivityStrip, actionLabel } from './ActivityStrip';
 
 const DebugMenu = import.meta.env.DEV ? lazy(() => import('./debug/DebugMenu')) : null;
 
@@ -71,13 +71,6 @@ const formatFightDuration = (startedAt: number | null, now = Date.now()): string
   if (startedAt === null) return '0:00';
   const seconds = Math.max(0, Math.floor((now - startedAt) / 1000));
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
-};
-const actionLabel = (state: GameState): string => {
-  const action = state.activeAction;
-  if (action.type === 'mining') return miningNodeById[action.nodeId]?.name ?? 'Mining';
-  if (action.type === 'smithing') return recipeById[action.recipeId]?.name ?? 'Smithing';
-  if (action.type === 'combat') return `Fighting ${enemyById[action.enemyId]?.name ?? 'enemy'}`;
-  return 'No active action';
 };
 const getProfileName = (record: SaveRecord): string => {
   try {
@@ -411,7 +404,7 @@ function Header({
   );
 }
 
-function ActionStrip({
+export function LegacyActionStrip({
   game,
   onNavigate,
 }: {
@@ -1470,7 +1463,7 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
       {render()}
     </main>
   );
-  const actionStrip = <ActionStrip game={currentGame} onNavigate={nav} />;
+  const actionStrip = <ActivityStrip game={currentGame} onNavigate={nav} />;
   const overlays = (
     <>
       {toast && (

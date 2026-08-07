@@ -3,9 +3,13 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../app/App';
 import { GAME_CONFIG } from '../config/gameConfig';
+import { miningNodeById } from '../content/miningNodes';
+import { getMiningEstimatedRates, createMiningRuntimeState } from '../game/formulas/miningFormulas';
+import { getXpForLevel } from '../game/formulas/experienceFormulas';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
 import { UI_LAYOUT_STORAGE_KEY } from '../app/uiLayout';
+import { formatRatePerHour } from '../app/formatters';
 
 const rect = (left: number, top: number, width: number, height: number): DOMRect =>
   ({
@@ -212,6 +216,7 @@ describe('navigation integration', () => {
     });
     expect(screen.getByRole('heading', { name: 'Iron Vein' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Switch to Iron Vein' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open Mining: Stone Outcrop' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Switch to Iron Vein' }));
     await user.click(screen.getByRole('button', { name: 'Replace activity' }));
@@ -267,6 +272,104 @@ describe('navigation integration', () => {
     expect(screen.getByText('1 swing', { exact: true })).toBeInTheDocument();
   });
 
+  it('renders the Mining Activity Bar with level progress, XP rate, stage, phase, and stamina', () => {
+    const game = createNewGame(0, 'Activity Bar Tester');
+    game.skills.mining.level = 10;
+    const levelStart = getXpForLevel(10);
+    const levelSpan = getXpForLevel(11) - levelStart;
+    game.skills.mining.xp = levelStart + Math.floor(levelSpan / 2);
+    game.activeAction = {
+      type: 'mining',
+      nodeId: 'stone-outcrop',
+      startedAt: 0,
+      phase: 'swing',
+      progressMs: 1_000,
+    };
+    const runtime = createMiningRuntimeState('stone-outcrop');
+    runtime.stageIndex = 3;
+    runtime.stageDurability = 20;
+    game.mining.nodeStates['stone-outcrop'] = runtime;
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    const levelBar = screen.getByRole('progressbar', { name: 'Mining level progress' });
+    expect(levelBar).toHaveAttribute('aria-valuenow', '50');
+    expect(screen.getByText('10', { selector: '.activity-level-current' })).toBeInTheDocument();
+    expect(screen.getByText('11', { selector: '.activity-level-next' })).toBeInTheDocument();
+    expect(screen.getByText('50%')).toBeInTheDocument();
+    expect(screen.getByText(/Rich Core/)).toBeInTheDocument();
+    expect(screen.getByText('Swing')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Swing progress' })).toBeInTheDocument();
+    expect(screen.getByText('Stamina')).toBeInTheDocument();
+    expect(screen.getByText('100/100')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `~${formatRatePerHour(getMiningEstimatedRates(game, miningNodeById['stone-outcrop']).xpPerHour)} XP/hr`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Open Mining: Stone Outcrop' })).toBeInTheDocument();
+  });
+
+  it('keeps the Mining Activity Bar stable at max level and stops cleanly', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Max Level Activity Tester');
+    game.skills.mining.level = 100;
+    game.skills.mining.xp = getXpForLevel(100);
+    game.activeAction = {
+      type: 'mining',
+      nodeId: 'stone-outcrop',
+      startedAt: 0,
+      phase: 'rest',
+      progressMs: 4_000,
+    };
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    expect(screen.getByText('MAX LEVEL')).toBeInTheDocument();
+    expect(screen.queryByText('101')).not.toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Mining level progress' })).toHaveAttribute(
+      'aria-valuenow',
+      '100',
+    );
+    expect(screen.getByText('Rest')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Rest progress' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Open Mining: Stone Outcrop' }));
+    expect(screen.getByRole('heading', { name: 'Mining' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Stop mining' }));
+    expect(useGameStore.getState().game?.activeAction.type).toBe('none');
+    expect(screen.queryByRole('button', { name: 'Stop mining' })).not.toBeInTheDocument();
+  });
+
+  it('uses the Stage 1 name and a compact Respawn phase', async () => {
+    const game = createNewGame(0, 'Phase Activity Tester');
+    const runtime = createMiningRuntimeState('stone-outcrop');
+    runtime.respawnRemainingMs = 9_000;
+    game.mining.nodeStates['stone-outcrop'] = runtime;
+    game.activeAction = {
+      type: 'mining',
+      nodeId: 'stone-outcrop',
+      startedAt: 0,
+      phase: 'respawn',
+      progressMs: 0,
+    };
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    expect(screen.getByText('Rock reforming')).toBeInTheDocument();
+    expect(screen.getByText('Respawn')).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Respawn progress' })).toBeInTheDocument();
+
+    game.activeAction = {
+      type: 'mining',
+      nodeId: 'stone-outcrop',
+      startedAt: 0,
+      phase: 'swing',
+      progressMs: 0,
+    };
+    useGameStore.getState().setGame(game);
+    await waitFor(() => expect(screen.getByText(/Outer Crust/)).toBeInTheDocument());
+  });
+
   it('keeps extracted Inventory, Equipment, and Smithing interactions working', async () => {
     const user = userEvent.setup();
     const game = createNewGame(0, 'Crafter');
@@ -300,6 +403,8 @@ describe('navigation integration', () => {
     const action = useGameStore.getState().game?.activeAction;
     expect(action?.type).toBe('smithing');
     expect(action?.type === 'smithing' ? action.quantityMode : null).toBe('continuous');
+    expect(screen.getByText('Active in background')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stop smithing' })).toBeInTheDocument();
   });
 
   it('selects Armor, previews compatible gear, and requires explicit replacement', async () => {

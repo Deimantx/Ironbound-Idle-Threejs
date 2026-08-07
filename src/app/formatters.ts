@@ -10,3 +10,8 @@ export const formatDropChance = (chance: number): string => {
   if (percent >= 1) return `${percent.toFixed(1).replace(/\.0$/, '')}%`;
   return `${percent.toFixed(2)}%`;
 };
+
+export const formatRatePerHour = (value: number): string =>
+  new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(
+    Math.round(Math.max(0, value)),
+  );
