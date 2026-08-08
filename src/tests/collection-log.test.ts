@@ -11,6 +11,7 @@ import {
   getCollectionEligibleEnemies,
   getCollectionEligibleItemIds,
   getCollectionItemCategory,
+  getCollectionItemSourceNavigation,
   getCollectionProgress,
   getRegionCollectionEnemies,
 } from '../app/collection/collectionSelectors';
@@ -49,6 +50,22 @@ describe('Collection Log 2.0 selectors', () => {
     expect(collectionItemMatchesSearch(itemById['boar-tusk'], 'Boar Tusk', true)).toBe(true);
     expect(collectionEnemyMatchesSearch(enemyById['watchtower-captain'], 'Watchtower Captain', false)).toBe(false);
     expect(collectionEnemyMatchesSearch(enemyById['watchtower-captain'], 'Watchtower Captain', true)).toBe(true);
+  });
+
+  it('resolves source navigation from structured acquisition content', () => {
+    expect(getCollectionItemSourceNavigation('iron-ore')).toEqual({
+      screen: 'mining',
+      label: 'Open Mining',
+    });
+    expect(getCollectionItemSourceNavigation('iron-bar')).toEqual({
+      screen: 'smithing',
+      label: 'Open Smithing',
+    });
+    expect(getCollectionItemSourceNavigation('boar-tusk')).toEqual({
+      screen: 'combat',
+      label: 'Open Combat',
+    });
+    expect(getCollectionItemSourceNavigation('worn-pickaxe')).toBeNull();
   });
 
   it('keeps monster organization authored by region and area', () => {

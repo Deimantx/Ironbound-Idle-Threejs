@@ -1,12 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Search } from 'lucide-react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { ArrowUpRight, Search } from 'lucide-react';
 import { AREAS } from '../content/areas';
 import { COMBAT_REGIONS } from '../content/combatRegions';
 import { itemById } from '../content/items';
 import { getEnemyCombatStats } from '../game/formulas/combatStats';
 import { getItemQuantity } from '../game/systems/inventorySystem';
-import type { CombatRegionId, EnemyDefinition, GameState, ItemDefinition } from '../game/types';
+import type {
+  CombatRegionId,
+  EnemyDefinition,
+  GameState,
+  ItemDefinition,
+  ScreenId,
+} from '../game/types';
 import { formatNumber } from './formatters';
+import { getEquipmentBonusLabel, formatEquipmentBonus } from './equipmentView';
 import { ItemIcon } from './ItemIcon';
 import { ItemTooltip } from './items/ItemTooltip';
 import { ProfessionToolDetails } from './items/ProfessionToolDetails';
@@ -21,6 +28,7 @@ import {
   getCollectionEligibleEnemies,
   getCollectionEligibleItems,
   getCollectionItemCategory,
+  getCollectionItemSourceNavigation,
   getCollectionProgress,
   getItemCollectionProgress,
   getMonsterCollectionProgress,
@@ -31,6 +39,16 @@ import {
 
 type CollectionTab = 'items' | 'monsters';
 type DiscoveryFilter = 'all' | 'discovered' | 'undiscovered';
+type ItemCategoryFilter = CollectionItemCategory | 'All Items';
+
+const DISCOVERY_FILTERS: DiscoveryFilter[] = ['all', 'discovered', 'undiscovered'];
+const ITEM_CATEGORIES: ItemCategoryFilter[] = [
+  'All Items',
+  'Equipment',
+  'Tools',
+  'Resources',
+  'Combat Drops',
+];
 
 const titleCase = (value: string): string =>
   value.replace(/[-_]/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase());
@@ -69,88 +87,220 @@ function CollectionSummary({ game }: { game: GameState }) {
   );
 }
 
-function CollectionToolbar({
+function FilterGroup({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="collection-filter-group" role="group" aria-label={label}>
+      <div className="collection-filter-buttons">{children}</div>
+      <div className="collection-filter-caption">{label}</div>
+    </div>
+  );
+}
+
+function DiscoveryFilterGroup({
+  filter,
+  onChange,
+}: {
+  filter: DiscoveryFilter;
+  onChange: (value: DiscoveryFilter) => void;
+}) {
+  return (
+    <FilterGroup label="Discovery Status">
+      {DISCOVERY_FILTERS.map((option) => (
+        <button
+          type="button"
+          className={`button ${filter === option ? 'gold' : 'ghost'}`}
+          aria-pressed={filter === option}
+          key={option}
+          onClick={() => onChange(option)}
+        >
+          {titleCase(option)}
+        </button>
+      ))}
+    </FilterGroup>
+  );
+}
+
+function SearchField({
   tab,
   query,
-  onQueryChange,
-  filter,
-  onFilterChange,
-  category,
-  onCategoryChange,
+  onChange,
 }: {
   tab: CollectionTab;
   query: string;
-  onQueryChange: (value: string) => void;
-  filter: DiscoveryFilter;
-  onFilterChange: (value: DiscoveryFilter) => void;
-  category?: CollectionItemCategory | 'All Items';
-  onCategoryChange?: (value: CollectionItemCategory | 'All Items') => void;
+  onChange: (value: string) => void;
 }) {
-  const filters: DiscoveryFilter[] = ['all', 'discovered', 'undiscovered'];
-  const categories: Array<CollectionItemCategory | 'All Items'> = [
-    'All Items',
-    'Equipment',
-    'Tools',
-    'Resources',
-    'Combat Drops',
-  ];
   return (
-    <div className="collection-toolbar">
-      <label className="collection-search">
-        <Search size={15} aria-hidden="true" />
-        <span className="sr-only">Search {tab}</span>
-        <input
-          type="search"
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-          placeholder={tab === 'items' ? 'Search collection…' : 'Search monsters…'}
-        />
-      </label>
-      <div className="collection-control-group" aria-label="Discovery status">
-        {filters.map((option) => (
-          <button
-            type="button"
-            className={`button ${filter === option ? 'gold' : 'ghost'}`}
-            key={option}
-            onClick={() => onFilterChange(option)}
-          >
-            {titleCase(option)}
-          </button>
-        ))}
-      </div>
-      {tab === 'items' && onCategoryChange && (
-        <div className="collection-control-group" aria-label="Item category">
-          {categories.map((option) => (
-            <button
-              type="button"
-              className={`button ${category === option ? 'gold' : 'ghost'}`}
-              key={option}
-              onClick={() => onCategoryChange(option)}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
+    <label className="collection-search">
+      <Search size={15} aria-hidden="true" />
+      <span className="sr-only">Search {tab}</span>
+      <input
+        type="search"
+        value={query}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={tab === 'items' ? 'Search collection…' : 'Search monsters…'}
+      />
+    </label>
+  );
+}
+
+function CollectionResultsBar({
+  visible,
+  total,
+  noun,
+  showClear,
+  onClear,
+}: {
+  visible: number;
+  total: number;
+  noun: string;
+  showClear: boolean;
+  onClear: () => void;
+}) {
+  return (
+    <div className="collection-results-bar" aria-live="polite">
+      <span>Showing {visible} of {total} {noun}</span>
+      {showClear && (
+        <button type="button" className="button ghost collection-clear" onClick={onClear}>
+          Clear Filters
+        </button>
       )}
     </div>
   );
 }
 
-function ItemCollection({ game }: { game: GameState }) {
+function ItemToolbar({
+  game,
+  eligibleItems,
+  filter,
+  onFilterChange,
+  category,
+  onCategoryChange,
+}: {
+  game: GameState;
+  eligibleItems: ItemDefinition[];
+  filter: DiscoveryFilter;
+  onFilterChange: (value: DiscoveryFilter) => void;
+  category: ItemCategoryFilter;
+  onCategoryChange: (value: ItemCategoryFilter) => void;
+}) {
+  const allProgress = getItemCollectionProgress(game);
+  return (
+    <div className="collection-filter-row">
+      <DiscoveryFilterGroup filter={filter} onChange={onFilterChange} />
+      <div className="collection-filter-divider" aria-hidden="true" />
+      <FilterGroup label="Category">
+        {ITEM_CATEGORIES.map((option) => {
+          const ids = eligibleItems
+            .filter((item) => option === 'All Items' || getCollectionItemCategory(item) === option)
+            .map((item) => item.id);
+          const progress = option === 'All Items'
+            ? allProgress
+            : getCollectionProgress(ids, game.discoveredItems);
+          return (
+            <button
+              type="button"
+              className={`button collection-count-button ${category === option ? 'gold' : 'ghost'}`}
+              aria-pressed={category === option}
+              key={option}
+              onClick={() => onCategoryChange(option)}
+            >
+              <span>{option}</span>
+              <small>{progress.discovered}/{progress.total}</small>
+            </button>
+          );
+        })}
+      </FilterGroup>
+    </div>
+  );
+}
+
+function ItemCard({
+  item,
+  discovered,
+  selected,
+  onSelect,
+}: {
+  item: ItemDefinition;
+  discovered: boolean;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const card = (
+    <button
+      type="button"
+      className={`collection-card ${!discovered ? 'unknown' : ''} ${selected ? 'selected' : ''}`}
+      aria-label={discovered ? item.name : 'Unknown item'}
+      aria-current={selected ? 'true' : undefined}
+      onClick={onSelect}
+    >
+      <ItemIcon itemId={item.id} discovered={discovered} size="md" />
+      <span>
+        <strong>{discovered ? item.name : '???'}</strong>
+        <small>{discovered ? getCollectionItemCategory(item) : 'Undiscovered'}</small>
+      </span>
+    </button>
+  );
+  return <ItemTooltip item={item} disabled={!discovered}>{card}</ItemTooltip>;
+}
+
+function CollectionItemSection({
+  title,
+  items,
+  discoveredIds,
+  selectedItemId,
+  onSelect,
+}: {
+  title: string;
+  items: ItemDefinition[];
+  discoveredIds: readonly string[];
+  selectedItemId: string | null;
+  onSelect: (itemId: string) => void;
+}) {
+  if (!items.length) return null;
+  return (
+    <section className="collection-section" aria-label={title}>
+      <div className="collection-section-heading">
+        <h3>{title}</h3>
+        <span className="collection-section-count">{items.length} items</span>
+      </div>
+      <div className="collection-grid">
+        {items.map((item) => {
+          const discovered = discoveredIds.includes(item.id);
+          return (
+            <ItemCard
+              item={item}
+              discovered={discovered}
+              selected={selectedItemId === item.id}
+              onSelect={() => onSelect(item.id)}
+              key={item.id}
+            />
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function ItemCollection({
+  game,
+  onNavigate,
+}: {
+  game: GameState;
+  onNavigate: (screen: ScreenId) => void;
+}) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<DiscoveryFilter>('all');
-  const [category, setCategory] = useState<CollectionItemCategory | 'All Items'>('All Items');
-  const eligibleItems = getCollectionEligibleItems();
+  const [category, setCategory] = useState<ItemCategoryFilter>('All Items');
+  const eligibleItems = useMemo(() => getCollectionEligibleItems(), []);
   const visibleItems = useMemo(
-    () =>
-      eligibleItems.filter((item) => {
-        const discovered = game.discoveredItems.includes(item.id);
-        return (
-          filterMatches(filter, discovered) &&
-          (category === 'All Items' || getCollectionItemCategory(item) === category) &&
-          collectionItemMatchesSearch(item, query, discovered)
-        );
-      }),
+    () => eligibleItems.filter((item) => {
+      const discovered = game.discoveredItems.includes(item.id);
+      return (
+        filterMatches(filter, discovered) &&
+        (category === 'All Items' || getCollectionItemCategory(item) === category) &&
+        collectionItemMatchesSearch(item, query, discovered)
+      );
+    }),
     [category, eligibleItems, filter, game.discoveredItems, query],
   );
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -159,83 +309,220 @@ function ItemCollection({ game }: { game: GameState }) {
     if (selectedItemId && visibleItems.some((item) => item.id === selectedItemId)) return;
     setSelectedItemId(firstDiscovered?.id ?? visibleItems[0]?.id ?? null);
   }, [firstDiscovered?.id, selectedItemId, visibleItems]);
-  const selectedItem = selectedItemId ? itemById[selectedItemId] : undefined;
+
+  const discoveredItems = visibleItems.filter((item) => game.discoveredItems.includes(item.id));
+  const undiscoveredItems = visibleItems.filter((item) => !game.discoveredItems.includes(item.id));
+  const categoryTotal = eligibleItems.filter(
+    (item) => category === 'All Items' || getCollectionItemCategory(item) === category,
+  ).length;
+  const filtersActive = Boolean(query.trim()) || filter !== 'all' || category !== 'All Items';
+  const clearFilters = () => {
+    setQuery('');
+    setFilter('all');
+    setCategory('All Items');
+  };
+
   return (
     <>
-      <CollectionToolbar
-        tab="items"
-        query={query}
-        onQueryChange={setQuery}
+      <SearchField tab="items" query={query} onChange={setQuery} />
+      <ItemToolbar
+        game={game}
+        eligibleItems={eligibleItems}
         filter={filter}
         onFilterChange={setFilter}
         category={category}
         onCategoryChange={setCategory}
       />
-      <div className="collection-category-progress">
-        {(['Equipment', 'Tools', 'Resources', 'Combat Drops'] as CollectionItemCategory[]).map((group) => {
-          const ids = eligibleItems.filter((item) => getCollectionItemCategory(item) === group).map((item) => item.id);
-          const progress = getCollectionProgress(ids, game.discoveredItems);
-          return <span key={group}>{group} {progress.discovered}/{progress.total}</span>;
-        })}
-      </div>
+      <CollectionResultsBar
+        visible={visibleItems.length}
+        total={categoryTotal}
+        noun="items"
+        showClear={filtersActive}
+        onClear={clearFilters}
+      />
       <div className="collection-browser">
-        <div className="collection-grid" aria-label="Item collection">
-          {visibleItems.map((item) => {
-            const discovered = game.discoveredItems.includes(item.id);
-            return (
-              <ItemTooltip item={item} disabled={!discovered} key={item.id}>
-                <button
-                  type="button"
-                  className={`collection-card ${!discovered ? 'unknown' : ''} ${selectedItemId === item.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedItemId(item.id)}
-                  aria-label={discovered ? item.name : 'Unknown item'}
-                >
-                  <ItemIcon itemId={item.id} discovered={discovered} size="md" />
-                  <span><strong>{discovered ? item.name : '???'}</strong><small>{discovered ? getCollectionItemCategory(item) : 'Undiscovered'}</small></span>
-                </button>
-              </ItemTooltip>
-            );
-          })}
-          {!visibleItems.length && <div className="collection-empty">No discovered items match these filters.</div>}
+        <div className="collection-item-browser" aria-label="Item collection">
+          <CollectionItemSection
+            title="Discovered Items"
+            items={discoveredItems}
+            discoveredIds={game.discoveredItems}
+            selectedItemId={selectedItemId}
+            onSelect={setSelectedItemId}
+          />
+          <CollectionItemSection
+            title="Undiscovered Items"
+            items={undiscoveredItems}
+            discoveredIds={game.discoveredItems}
+            selectedItemId={selectedItemId}
+            onSelect={setSelectedItemId}
+          />
+          {!visibleItems.length && <div className="collection-empty">No items match these filters.</div>}
         </div>
-        <ItemCollectionDetails item={selectedItem} game={game} />
+        <ItemCollectionDetails
+          item={selectedItemId ? itemById[selectedItemId] : undefined}
+          game={game}
+          onNavigate={onNavigate}
+        />
       </div>
     </>
   );
 }
 
-function ItemCollectionDetails({ item, game }: { item?: ItemDefinition; game: GameState }) {
-  if (!item || !game.discoveredItems.includes(item.id))
-    return <div className="collection-detail"><span className="eyebrow">Collection record</span><h2>UNKNOWN ITEM</h2><p className="subtle">Discover this item to reveal its record.</p></div>;
+function ItemCollectionDetails({
+  item,
+  game,
+  onNavigate,
+}: {
+  item?: ItemDefinition;
+  game: GameState;
+  onNavigate: (screen: ScreenId) => void;
+}) {
+  if (!item || !game.discoveredItems.includes(item.id)) {
+    return (
+      <div className="collection-detail">
+        <span className="eyebrow">Collection record</span>
+        <h2>UNKNOWN ITEM</h2>
+        <p className="subtle">Discover this item to reveal its record.</p>
+      </div>
+    );
+  }
   const bonuses = Object.entries(item.bonuses ?? {}).filter(([, value]) => value !== 0);
+  const sourceNavigation = getCollectionItemSourceNavigation(item.id);
   return (
     <aside className="collection-detail" aria-label={`${item.name} details`}>
       <div className="collection-detail-heading">
         <ItemIcon itemId={item.id} size="lg" />
-        <div><span className="eyebrow">{getCollectionItemCategory(item)}</span><h2>{item.name}</h2><span className="muted">{titleCase(item.rarity)}{item.slot ? ` · ${titleCase(item.slot)}` : ''}{item.tier ? ` · ${titleCase(item.tier)}` : ''}</span></div>
+        <div>
+          <span className="eyebrow">{getCollectionItemCategory(item)}</span>
+          <h2>{item.name}</h2>
+          <span className="muted">
+            {titleCase(item.rarity)}{item.slot ? ` · ${titleCase(item.slot)}` : ''}{item.tier ? ` · ${titleCase(item.tier)}` : ''}
+          </span>
+        </div>
       </div>
-      <p>{item.description}</p>
-      <div className="collection-detail-row"><span>Owned</span><strong>{formatNumber(getItemQuantity(game.inventory, item.id))}</strong></div>
-      <div className="collection-detail-row"><span>Source</span><strong>{item.source}</strong></div>
-      {bonuses.length > 0 && <div className="collection-detail-section"><span className="item-tooltip-kicker">Bonuses</span>{bonuses.map(([key, value]) => <span key={key}>{titleCase(key)} <strong>{value}</strong></span>)}</div>}
+      <p className="collection-detail-description">{item.description}</p>
+      <div className="collection-detail-meta">
+        <div className="collection-detail-row"><span>Owned</span><strong>{formatNumber(getItemQuantity(game.inventory, item.id))}</strong></div>
+        <div className="collection-detail-source">
+          <div className="collection-detail-row"><span>Source</span><strong>{item.source}</strong></div>
+          {sourceNavigation && (
+            <button
+              type="button"
+              className="button ghost collection-detail-source-action"
+              onClick={() => onNavigate(sourceNavigation.screen)}
+            >
+              {sourceNavigation.label} <ArrowUpRight size={13} aria-hidden="true" />
+            </button>
+          )}
+        </div>
+      </div>
+      {bonuses.length > 0 && (
+        <div className="collection-detail-section">
+          <span className="item-tooltip-kicker">Bonuses</span>
+          {bonuses.map(([key, value]) => (
+            <span key={key}>{getEquipmentBonusLabel(key)} <strong>{formatEquipmentBonus(key, value as number)}</strong></span>
+          ))}
+        </div>
+      )}
       <ProfessionToolDetails itemId={item.id} className="collection-detail-section" />
-      {item.specialAttack && <div className="collection-detail-section"><span className="item-tooltip-kicker">Special Attack</span><strong>{item.specialAttack.name}</strong><p>{item.specialAttack.description}</p><SpecialAttackDetails special={item.specialAttack} /></div>}
+      {item.specialAttack && (
+        <div className="collection-detail-section">
+          <span className="item-tooltip-kicker">Special Attack</span>
+          <strong>{item.specialAttack.name}</strong>
+          <p>{item.specialAttack.description}</p>
+          <SpecialAttackDetails special={item.specialAttack} />
+        </div>
+      )}
     </aside>
   );
 }
 
-function RegionProgress({ regionId, game }: { regionId: CombatRegionId; game: GameState }) {
-  const enemies = getRegionCollectionEnemies(regionId);
-  const progress = getCollectionProgress(enemies.map((enemy) => enemy.id), game.discoveredMonsters);
-  return <span className="collection-region-progress">{progress.discovered}/{progress.total}</span>;
+function MonsterToolbar({
+  game,
+  regionId,
+  onRegionChange,
+  filter,
+  onFilterChange,
+}: {
+  game: GameState;
+  regionId: CombatRegionId;
+  onRegionChange: (value: CombatRegionId) => void;
+  filter: DiscoveryFilter;
+  onFilterChange: (value: DiscoveryFilter) => void;
+}) {
+  const regions = COMBAT_REGIONS.filter((region) => region.availability === 'available');
+  return (
+    <div className="collection-filter-row">
+      <DiscoveryFilterGroup filter={filter} onChange={onFilterChange} />
+      <div className="collection-filter-divider" aria-hidden="true" />
+      <FilterGroup label="Region">
+        {regions.map((region) => {
+          const progress = getCollectionProgress(
+            getRegionCollectionEnemies(region.id).map((enemy) => enemy.id),
+            game.discoveredMonsters,
+          );
+          return (
+            <button
+              type="button"
+              className={`button collection-count-button ${region.id === regionId ? 'gold' : 'ghost'}`}
+              aria-pressed={region.id === regionId}
+              key={region.id}
+              onClick={() => onRegionChange(region.id)}
+            >
+              <span>{region.name}</span>
+              <small>{progress.discovered}/{progress.total}</small>
+            </button>
+          );
+        })}
+      </FilterGroup>
+    </div>
+  );
 }
 
-function MonsterCollection({ game }: { game: GameState }) {
+function MonsterCard({
+  enemy,
+  discovered,
+  selected,
+  kills,
+  onSelect,
+}: {
+  enemy: EnemyDefinition;
+  discovered: boolean;
+  selected: boolean;
+  kills: number;
+  onSelect: () => void;
+}) {
+  const card = (
+    <button
+      type="button"
+      className={`collection-card ${!discovered ? 'unknown' : ''} ${selected ? 'selected' : ''}`}
+      aria-label={discovered ? enemy.name : 'Unknown foe'}
+      aria-current={selected ? 'true' : undefined}
+      onClick={onSelect}
+    >
+      <span className="enemy-art">{discovered ? '◈' : '?'}</span>
+      <span>
+        <strong>{discovered ? enemy.name : 'Unknown foe'}</strong>
+        <small>{discovered ? `Level ${enemy.displayLevel} · ${formatNumber(kills)} kills` : 'Undiscovered'}</small>
+      </span>
+    </button>
+  );
+  return <EnemyTooltip enemy={enemy} kills={kills} disabled={!discovered}>{card}</EnemyTooltip>;
+}
+
+function MonsterCollection({
+  game,
+}: {
+  game: GameState;
+}) {
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<DiscoveryFilter>('all');
-  const availableRegions = COMBAT_REGIONS.filter((region) => region.availability === 'available');
-  const [regionId, setRegionId] = useState<CombatRegionId>(availableRegions[0]?.id ?? 'greenvale');
-  const regionEnemies = getRegionCollectionEnemies(regionId);
+  const regions = useMemo(
+    () => COMBAT_REGIONS.filter((region) => region.availability === 'available'),
+    [],
+  );
+  const [regionId, setRegionId] = useState<CombatRegionId>(regions[0]?.id ?? 'greenvale');
+  const regionEnemies = useMemo(() => getRegionCollectionEnemies(regionId), [regionId]);
   const visibleEnemies = useMemo(
     () => regionEnemies.filter((enemy) => {
       const discovered = game.discoveredMonsters.includes(enemy.id);
@@ -249,42 +536,74 @@ function MonsterCollection({ game }: { game: GameState }) {
     if (selectedEnemyId && visibleEnemies.some((enemy) => enemy.id === selectedEnemyId)) return;
     setSelectedEnemyId(firstDiscovered?.id ?? visibleEnemies[0]?.id ?? null);
   }, [firstDiscovered?.id, selectedEnemyId, visibleEnemies]);
-  const selectedEnemy = selectedEnemyId ? getCollectionEligibleEnemies().find((enemy) => enemy.id === selectedEnemyId) : undefined;
+
+  const filtersActive = Boolean(query.trim()) || filter !== 'all';
+  const clearFilters = () => {
+    setQuery('');
+    setFilter('all');
+  };
+  const selectedEnemy = selectedEnemyId
+    ? getCollectionEligibleEnemies().find((enemy) => enemy.id === selectedEnemyId)
+    : undefined;
+
   return (
     <>
-      <CollectionToolbar tab="monsters" query={query} onQueryChange={setQuery} filter={filter} onFilterChange={setFilter} />
-      <div className="collection-region-tabs" aria-label="Collection regions">
-        {availableRegions.map((region) => <button type="button" className={`button ${region.id === regionId ? 'gold' : 'ghost'}`} key={region.id} onClick={() => setRegionId(region.id)}>{region.name} <RegionProgress regionId={region.id} game={game} /></button>)}
-      </div>
+      <SearchField tab="monsters" query={query} onChange={setQuery} />
+      <MonsterToolbar
+        game={game}
+        regionId={regionId}
+        onRegionChange={setRegionId}
+        filter={filter}
+        onFilterChange={setFilter}
+      />
+      <CollectionResultsBar
+        visible={visibleEnemies.length}
+        total={regionEnemies.length}
+        noun="monsters"
+        showClear={filtersActive}
+        onClear={clearFilters}
+      />
       <div className="collection-browser">
         <div className="collection-monster-browser" aria-label={`${regionId} monsters`}>
           {AREAS.filter((area) => area.regionId === regionId).map((area) => {
-            const enemies = getAreaCollectionEnemies(area.id).filter((enemy) => {
-              const discovered = game.discoveredMonsters.includes(enemy.id);
-              return filterMatches(filter, discovered) && collectionEnemyMatchesSearch(enemy, query, discovered);
-            });
-            const allAreaEnemies = getAreaCollectionEnemies(area.id);
-            const progress = getCollectionProgress(allAreaEnemies.map((enemy) => enemy.id), game.discoveredMonsters);
+            const areaEnemies = getAreaCollectionEnemies(area.id).filter((enemy) => visibleEnemies.includes(enemy));
+            const orderedEnemies = filter === 'all'
+              ? [...areaEnemies].sort((left, right) => {
+                  const leftDiscovered = game.discoveredMonsters.includes(left.id);
+                  const rightDiscovered = game.discoveredMonsters.includes(right.id);
+                  return Number(rightDiscovered) - Number(leftDiscovered);
+                })
+              : areaEnemies;
+            const progress = getCollectionProgress(
+              getAreaCollectionEnemies(area.id).map((enemy) => enemy.id),
+              game.discoveredMonsters,
+            );
+            if (!orderedEnemies.length) return null;
             return (
               <section className="collection-area-section" key={area.id}>
-                <div className="collection-area-heading"><h3>{area.name}</h3><span>{progress.discovered}/{progress.total}</span></div>
+                <div className="collection-area-heading">
+                  <h3>{area.name}</h3>
+                  <span>{progress.discovered}/{progress.total}</span>
+                </div>
                 <div className="collection-grid collection-monster-grid">
-                  {enemies.map((enemy) => {
+                  {orderedEnemies.map((enemy) => {
                     const discovered = game.discoveredMonsters.includes(enemy.id);
                     return (
-                      <EnemyTooltip enemy={enemy} kills={game.killCounts[enemy.id] ?? 0} disabled={!discovered} key={enemy.id}>
-                        <button type="button" className={`collection-card ${!discovered ? 'unknown' : ''} ${selectedEnemyId === enemy.id ? 'selected' : ''}`} onClick={() => setSelectedEnemyId(enemy.id)} aria-label={discovered ? enemy.name : 'Unknown foe'}>
-                          <span className="enemy-art">{discovered ? '◈' : '?'}</span>
-                          <span><strong>{discovered ? enemy.name : 'Unknown foe'}</strong><small>{discovered ? `Level ${enemy.displayLevel} · ${formatNumber(game.killCounts[enemy.id] ?? 0)} kills` : 'Undiscovered'}</small></span>
-                        </button>
-                      </EnemyTooltip>
+                      <MonsterCard
+                        enemy={enemy}
+                        discovered={discovered}
+                        selected={selectedEnemyId === enemy.id}
+                        kills={game.killCounts[enemy.id] ?? 0}
+                        onSelect={() => setSelectedEnemyId(enemy.id)}
+                        key={enemy.id}
+                      />
                     );
                   })}
-                  {!enemies.length && <span className="collection-empty">Nothing discovered here yet.</span>}
                 </div>
               </section>
             );
           })}
+          {!visibleEnemies.length && <div className="collection-empty">No monsters match these filters.</div>}
         </div>
         <MonsterCollectionDetails enemy={selectedEnemy} game={game} />
       </div>
@@ -293,35 +612,112 @@ function MonsterCollection({ game }: { game: GameState }) {
 }
 
 function MonsterCollectionDetails({ enemy, game }: { enemy?: EnemyDefinition; game: GameState }) {
-  if (!enemy || !game.discoveredMonsters.includes(enemy.id))
-    return <div className="collection-detail"><span className="eyebrow">Bestiary record</span><h2>UNKNOWN FOE</h2><p className="subtle">Defeat this enemy to reveal its record.</p></div>;
+  if (!enemy || !game.discoveredMonsters.includes(enemy.id)) {
+    return (
+      <div className="collection-detail">
+        <span className="eyebrow">Bestiary record</span>
+        <h2>UNKNOWN FOE</h2>
+        <p className="subtle">Defeat this enemy to reveal its record.</p>
+      </div>
+    );
+  }
   const area = AREAS.find((candidate) => candidate.id === enemy.areaId);
   const region = COMBAT_REGIONS.find((candidate) => candidate.id === area?.regionId);
   const stats = getEnemyCombatStats(enemy);
   return (
     <aside className="collection-detail" aria-label={`${enemy.name} details`}>
-      <div className="collection-detail-heading"><span className="enemy-art enemy-art-large">◈</span><div><span className="eyebrow">Bestiary record</span><h2>{enemy.name}</h2><span className="muted">{region?.name} · {area?.name}</span></div></div>
-      <div className="collection-detail-row"><span>Level</span><strong>{enemy.displayLevel}</strong></div>
-      <div className="collection-detail-row"><span>Lifetime kills</span><strong>{formatNumber(game.killCounts[enemy.id] ?? 0)}</strong></div>
-      <div className="collection-detail-section"><span className="item-tooltip-kicker">Combat</span><div className="collection-stat-grid"><span>Health <strong>{stats.maxHealth}</strong></span><span>Damage <strong>{formatDamageRange(stats.maxHit)}</strong></span><span>Accuracy <strong>{stats.accuracyRating}</strong></span><span>Defence <strong>{stats.defenceRating}</strong></span><span>Attack interval <strong>{(stats.attackIntervalMs / 1000).toFixed(1)}s</strong></span></div></div>
-      <div className="collection-detail-section"><span className="item-tooltip-kicker">Trait · {enemy.trait.name}</span><p>{enemy.trait.description}</p></div>
-      {enemy.specialAttack && <div className="collection-detail-section"><EnemySpecialDetails special={enemy.specialAttack} includeNormalQualifier /></div>}
-      <div className="collection-detail-section"><span className="item-tooltip-kicker">Drops</span>{enemy.loot.map((drop) => { const item = itemById[drop.itemId]; const discovered = game.discoveredItems.includes(drop.itemId); return <ItemTooltip item={item} disabled={!discovered} key={drop.itemId}><div className="collection-drop-row"><ItemIcon itemId={drop.itemId} discovered={discovered} size="xs" /><span>{discovered ? item?.name : 'Undiscovered drop'}</span><small>{Math.round(drop.chance * 100)}%</small></div></ItemTooltip>; })}{enemy.gold && <div className="collection-drop-row gold"><ItemIcon gold size="xs" /><span>Gold</span><small>{enemy.gold[0]}–{enemy.gold[1]}</small></div>}</div>
+      <div className="collection-detail-heading">
+        <span className="enemy-art enemy-art-large">◈</span>
+        <div>
+          <span className="eyebrow">Bestiary record</span>
+          <h2>{enemy.name}</h2>
+          <span className="muted">{region?.name} · {area?.name}</span>
+        </div>
+      </div>
+      <div className="collection-detail-meta">
+        <div className="collection-detail-row"><span>Level</span><strong>{enemy.displayLevel}</strong></div>
+        <div className="collection-detail-row"><span>Lifetime kills</span><strong>{formatNumber(game.killCounts[enemy.id] ?? 0)}</strong></div>
+      </div>
+      <div className="collection-detail-section">
+        <span className="item-tooltip-kicker">Combat</span>
+        <div className="collection-stat-grid">
+          <span>Health <strong>{stats.maxHealth}</strong></span>
+          <span>Damage <strong>{formatDamageRange(stats.maxHit)}</strong></span>
+          <span>Accuracy <strong>{stats.accuracyRating}</strong></span>
+          <span>Defence <strong>{stats.defenceRating}</strong></span>
+          <span>Attack interval <strong>{(stats.attackIntervalMs / 1000).toFixed(1)}s</strong></span>
+        </div>
+      </div>
+      <div className="collection-detail-section">
+        <span className="item-tooltip-kicker">Trait · {enemy.trait.name}</span>
+        <p>{enemy.trait.description}</p>
+      </div>
+      {enemy.specialAttack && (
+        <div className="collection-detail-section">
+          <EnemySpecialDetails special={enemy.specialAttack} includeNormalQualifier />
+        </div>
+      )}
+      <div className="collection-detail-section">
+        <span className="item-tooltip-kicker">Drops</span>
+        {enemy.loot.map((drop) => {
+          const item = itemById[drop.itemId];
+          const discovered = game.discoveredItems.includes(drop.itemId);
+          return (
+            <ItemTooltip item={item} disabled={!discovered} key={drop.itemId}>
+              <div className="collection-drop-row">
+                <ItemIcon itemId={drop.itemId} discovered={discovered} size="xs" />
+                <span>{discovered ? item?.name : 'Undiscovered drop'}</span>
+                <small>{Math.round(drop.chance * 100)}%</small>
+              </div>
+            </ItemTooltip>
+          );
+        })}
+        {enemy.gold && (
+          <div className="collection-drop-row gold">
+            <ItemIcon gold size="xs" />
+            <span>Gold</span>
+            <small>{enemy.gold[0]}–{enemy.gold[1]}</small>
+          </div>
+        )}
+      </div>
     </aside>
   );
 }
 
-export function CollectionScreen({ game }: { game: GameState }) {
+export function CollectionScreen({
+  game,
+  onNavigate,
+}: {
+  game: GameState;
+  onNavigate: (screen: ScreenId) => void;
+}) {
   const [tab, setTab] = useState<CollectionTab>('items');
   return (
     <div className="collection-screen">
-      <div className="screen-heading"><div><div className="eyebrow">Records of the road</div><h1>Collection Log</h1><p className="subtle">Records of creatures and items discovered across Ironbound.</p></div></div>
+      <div className="screen-heading">
+        <div>
+          <div className="eyebrow">Records of the road</div>
+          <h1>Collection Log</h1>
+          <p className="subtle">Records of creatures and items discovered across Ironbound.</p>
+        </div>
+      </div>
       <CollectionSummary game={game} />
       <section className="panel panel-pad collection-panel">
         <div className="tabs" role="tablist" aria-label="Collection categories">
-          {(['items', 'monsters'] as CollectionTab[]).map((option) => <button type="button" role="tab" aria-selected={tab === option} className={`tab ${tab === option ? 'active' : ''}`} onClick={() => setTab(option)} key={option}>{option === 'items' ? 'Items' : 'Monsters'}</button>)}
+          {(['items', 'monsters'] as CollectionTab[]).map((option) => (
+            <button
+              type="button"
+              role="tab"
+              aria-selected={tab === option}
+              className={`tab ${tab === option ? 'active' : ''}`}
+              onClick={() => setTab(option)}
+              key={option}
+            >
+              {option === 'items' ? 'Items' : 'Monsters'}
+            </button>
+          ))}
         </div>
-        {tab === 'items' ? <ItemCollection game={game} /> : <MonsterCollection game={game} />}
+        {tab === 'items' ? <ItemCollection game={game} onNavigate={onNavigate} /> : <MonsterCollection game={game} />}
       </section>
     </div>
   );

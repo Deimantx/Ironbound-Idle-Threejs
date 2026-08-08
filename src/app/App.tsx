@@ -1350,7 +1350,7 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
       case 'equipment':
         return <EquipmentScreen game={currentGame} uiLayout={uiLayout} onNavigate={nav} />;
       case 'collection':
-        return <CollectionScreen game={currentGame} />;
+        return <CollectionScreen game={currentGame} onNavigate={nav} />;
       case 'settings':
         return (
           <SettingsScreen
