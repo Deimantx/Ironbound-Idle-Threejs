@@ -3,6 +3,7 @@ import type { ItemDefinition } from '../../game/types';
 import { getEquipmentBonusLabel, formatEquipmentBonus, getEquipmentSlotLabel } from '../equipmentView';
 import { ItemIcon } from '../ItemIcon';
 import { GameTooltip } from './GameTooltip';
+import { ProfessionToolDetails } from './ProfessionToolDetails';
 import { SpecialAttackDetails } from './SpecialAttackDetails';
 
 const titleCase = (value: string): string => value.replace(/[-_]/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
@@ -39,6 +40,7 @@ export function ItemTooltipContent({ item }: { item?: ItemDefinition }) {
           ))}
         </div>
       )}
+      <ProfessionToolDetails itemId={item.id} />
       {item.specialAttack && (
         <div className="item-tooltip-special">
           <span className="item-tooltip-kicker">{item.specialAttack.name}</span>

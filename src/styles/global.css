@@ -1664,6 +1664,13 @@ h3 {
   border-radius: 7px;
   background: rgba(11, 14, 16, 0.32);
 }
+.equipment-item-summary[tabindex] {
+  cursor: help;
+}
+.equipment-item-summary[tabindex]:focus-visible {
+  outline: 2px solid rgba(224, 189, 111, 0.8);
+  outline-offset: 2px;
+}
 .equipment-item-summary-heading {
   display: flex;
   align-items: center;
@@ -6325,7 +6332,8 @@ h3 {
 }
 .item-tooltip-header > div,
 .item-tooltip-bonuses,
-.item-tooltip-special {
+.item-tooltip-special,
+.item-tooltip-profession {
   display: grid;
   gap: 3px;
 }
@@ -6345,12 +6353,20 @@ h3 {
   color: #b8c0ba;
 }
 .item-tooltip-bonuses,
-.item-tooltip-special {
+.item-tooltip-special,
+.item-tooltip-profession {
   padding-top: 6px;
   border-top: 1px solid rgba(173, 142, 79, 0.26);
 }
 .item-tooltip-bonuses > span:not(.item-tooltip-kicker) {
   color: #c8a86b;
+}
+.item-tooltip-profession > span:not(.item-tooltip-kicker) {
+  color: #c8a86b;
+}
+.item-tooltip-profession strong {
+  color: #e0bd6f;
+  font-variant-numeric: tabular-nums;
 }
 .item-tooltip-special .special-attack-effect-list {
   display: grid;
@@ -7713,6 +7729,13 @@ h3 {
 }
 .inventory-detail-group {
   margin-top: 15px;
+}
+.inventory-profession-details {
+  margin-top: 15px;
+  padding: 10px;
+  background: rgba(31, 40, 41, 0.42);
+  border: 1px solid #354144;
+  border-radius: 5px;
 }
 .inventory-bonus-grid {
   display: grid;

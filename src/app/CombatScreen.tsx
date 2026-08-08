@@ -355,7 +355,7 @@ function StyleControls({
                 </span>
                 <span>
                   <strong>{info.name}</strong>
-                  <small>{queued ? 'Queued — after current attack' : info.modifier}</small>
+                  {queued && <small>Queued — after current attack</small>}
                 </span>
                 {current && <Check size={14} aria-label="Current" />}
               </button>

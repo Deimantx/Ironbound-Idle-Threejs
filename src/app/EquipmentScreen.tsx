@@ -26,7 +26,7 @@ import {
   type ActiveEquipmentSlot,
   getEquipmentSlotLabel,
 } from '../game/equipmentSlots';
-import type { GameState, ItemDefinition, MiningToolDefinition, ScreenId } from '../game/types';
+import type { GameState, ItemDefinition, ScreenId } from '../game/types';
 import { useGameStore } from '../game/state/gameStore';
 import {
   formatEquipmentBonus,
@@ -43,6 +43,10 @@ import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
 import { ItemTooltip } from './items/ItemTooltip';
+import {
+  formatMiningToolSummary,
+  formatSmithingToolSummary,
+} from './items/itemProfessionPresentation';
 import type { UiLayout } from './uiLayout';
 
 export interface EquipmentScreenProps {
@@ -73,8 +77,12 @@ function ItemSummary({
     if (value === 0) return false;
     return scope === 'profession' ? false : key !== 'miningSpeed';
   });
-  return (
-    <div className="equipment-item-summary">
+  const content = (
+    <div
+      className="equipment-item-summary"
+      tabIndex={item ? 0 : undefined}
+      aria-label={item ? `${heading}: ${item.name}` : undefined}
+    >
       <div className="equipment-item-summary-heading">
         <ItemIcon itemId={item?.id ?? itemId} size="md" />
         <div className="equipment-item-summary-title">
@@ -100,6 +108,7 @@ function ItemSummary({
       )}
     </div>
   );
+  return item ? <ItemTooltip item={item}>{content}</ItemTooltip> : content;
 }
 
 const formatCombatStatValue = (value: number, id: string): string =>
@@ -229,9 +238,6 @@ function EquipmentStatRows({
   );
 }
 
-const formatMiningToolStats = (definition: MiningToolDefinition): string =>
-  `${definition.rockDamage} damage · ${definition.penetration} pen · ${(definition.swingIntervalMs / 1000).toFixed(1)}s · ${definition.staminaCost} stamina`;
-
 function ProfessionBonuses({
   currentTool,
   candidateItem,
@@ -251,12 +257,12 @@ function ProfessionBonuses({
   const candidateHammer = getSmithingHammerDefinition(candidateItem?.id);
   const summary = candidateItem
     ? candidateHammer
-      ? `Preview ${Math.round(candidateHammer.speedBonus * 100)}% faster · ${Math.round(candidateHammer.materialPreservationChance * 100)}% preservation`
-      : `Preview ${formatMiningToolStats(candidateDefinition ?? MINING_TUNING.noTool)}`
+      ? `Preview ${formatSmithingToolSummary(candidateHammer)}`
+      : `Preview ${formatMiningToolSummary(candidateDefinition ?? MINING_TUNING.noTool)}`
     : currentTool
       ? currentHammer
-        ? `${Math.round(currentHammer.speedBonus * 100)}% faster · ${Math.round(currentHammer.materialPreservationChance * 100)}% preservation`
-        : formatMiningToolStats(currentDefinition)
+        ? formatSmithingToolSummary(currentHammer)
+        : formatMiningToolSummary(currentDefinition)
       : 'No pickaxe equipped';
   return (
     <section className="equipment-profession-bonuses" aria-labelledby="profession-bonuses-title">
@@ -300,7 +306,7 @@ function ProfessionBonuses({
                     <span>Hammer effects</span>
                     <strong>
                       {currentHammer
-                        ? `${Math.round(currentHammer.speedBonus * 100)}% faster · ${Math.round(currentHammer.materialPreservationChance * 100)}% preservation`
+                        ? formatSmithingToolSummary(currentHammer)
                         : 'None'}
                     </strong>
                   </div>
@@ -313,9 +319,8 @@ function ProfessionBonuses({
                   </div>
                   {candidateHammer && (
                     <div className="equipment-profession-improvement">
-                      Candidate · {Math.round(candidateHammer.speedBonus * 100)}% faster ·{' '}
-                      {Math.round(candidateHammer.materialPreservationChance * 100)}% preservation ·
-                      level {candidateHammer.requiredSmithingLevel}
+                      Candidate · {formatSmithingToolSummary(candidateHammer)} · level{' '}
+                      {candidateHammer.requiredSmithingLevel}
                     </div>
                   )}
                 </>
@@ -323,7 +328,7 @@ function ProfessionBonuses({
                 <>
                   <div className="equipment-profession-row">
                     <span>Mining stats</span>
-                    <strong>{formatMiningToolStats(currentDefinition)}</strong>
+                    <strong>{formatMiningToolSummary(currentDefinition)}</strong>
                   </div>
                   <div className="equipment-profession-row">
                     <span>Required Mining level</span>
@@ -331,7 +336,7 @@ function ProfessionBonuses({
                   </div>
                   {candidateItem && candidateDefinition && (
                     <div className="equipment-profession-improvement">
-                      Candidate · {formatMiningToolStats(candidateDefinition)} · level{' '}
+                      Candidate · {formatMiningToolSummary(candidateDefinition)} · level{' '}
                       {candidateDefinition.requiredMiningLevel}
                     </div>
                   )}

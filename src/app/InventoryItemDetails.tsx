@@ -5,6 +5,7 @@ import { formatNumber } from './formatters';
 import { formatEquipmentBonus, getEquipmentBonusLabel } from './equipmentView';
 import { getInventoryDisplayGroup, getInventoryValueLabel } from './inventoryView';
 import { ItemIcon } from './ItemIcon';
+import { ProfessionToolDetails } from './items/ProfessionToolDetails';
 import { SpecialAttackDetails } from './items/SpecialAttackDetails';
 
 export interface InventoryItemDetailsProps {
@@ -108,6 +109,7 @@ export function InventoryItemDetails({
           </div>
         </div>
       )}
+      <ProfessionToolDetails itemId={item.id} className="inventory-profession-details" />
       {item.specialAttack && (
         <div className="inventory-special-attack">
           <div className="inventory-special-attack-heading">

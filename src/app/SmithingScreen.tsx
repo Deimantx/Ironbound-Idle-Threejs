@@ -29,7 +29,6 @@ import type {
   QuantityMode,
   RecipeDefinition,
   ScreenId,
-  SmithingToolDefinition,
 } from '../game/types';
 import { getItemQuantity } from '../game/systems/inventorySystem';
 import { formatHoursMinutes, formatNumber, formatRatePerHour } from './formatters';
@@ -37,6 +36,7 @@ import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
 import { ItemTooltip } from './items/ItemTooltip';
+import { formatSmithingToolSummary } from './items/itemProfessionPresentation';
 import { ExplainedTerm } from './tooltips/GameConceptTooltip';
 import type { UiLayout } from './uiLayout';
 
@@ -559,8 +559,7 @@ function QuantitySelector({
   );
 }
 
-const formatHammerStats = (hammer: SmithingToolDefinition): string =>
-  `${Math.round(hammer.speedBonus * 100)}% faster · ${Math.round(hammer.materialPreservationChance * 100)}% preservation`;
+const formatHammerStats = formatSmithingToolSummary;
 
 const getActiveToolBonus = (game: GameState): { name: string; detail: string } => {
   const hammer = getSmithingHammer(game);
