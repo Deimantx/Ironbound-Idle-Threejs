@@ -46,8 +46,8 @@ describe('save validation and migration', () => {
       { ...state, schemaVersion: 0, settings: { ...state.settings, threeQuality: 'low' } },
       0,
     );
-    expect(migrated.schemaVersion).toBe(8);
-    expect(migrated.unlockedAreas).toContain('training-grounds');
+    expect(migrated.schemaVersion).toBe(9);
+    expect(migrated.unlockedAreas).toContain('forest-path');
   });
   it('rejects malformed save data', () => {
     expect(() => parseGameState('{"nope":true}')).toThrow();
@@ -55,7 +55,7 @@ describe('save validation and migration', () => {
   it('migrates an old active combat action with safe deterministic defaults', () => {
     const current = startCombat(
       createNewGame(0, 'Legacy', 0),
-      'training-grounds',
+      'forest-path',
       'forest-rat',
       'accurate',
       true,
@@ -77,7 +77,7 @@ describe('save validation and migration', () => {
       },
     } as unknown as GameState['activeAction'];
     const migrated = parseGameState(JSON.stringify(legacy));
-    expect(migrated.schemaVersion).toBe(8);
+    expect(migrated.schemaVersion).toBe(9);
     expect(
       migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.momentum,
     ).toBe(0);
@@ -205,7 +205,7 @@ describe('save validation and migration', () => {
       const migrated = migrateSave(state, 5);
       expect(migrated.skills.mining.level).toBe(level);
       expect(migrated.skills.mining.xp).toBe(getXpForLevel(level));
-      expect(migrated.schemaVersion).toBe(8);
+      expect(migrated.schemaVersion).toBe(9);
     }
   });
 
@@ -271,7 +271,7 @@ describe('save validation and migration', () => {
 
     const combatState = startCombat(
       legacyState('Legacy Combat'),
-      'training-grounds',
+      'forest-path',
       'forest-rat',
       'accurate',
       true,
@@ -304,6 +304,6 @@ describe('save validation and migration', () => {
     const reloaded = migrateSave(migrated, migrated.schemaVersion);
     expect(reloaded.skills.mining).toEqual(migrated.skills.mining);
     expect(reloaded.activeAction).toEqual(migrated.activeAction);
-    expect(reloaded.schemaVersion).toBe(8);
+    expect(reloaded.schemaVersion).toBe(9);
   });
 });

@@ -50,11 +50,10 @@ export const UI_REGIONS: Array<{ id: UiRegion; label: string; description: strin
 
 export const DEFAULT_COMBAT_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
   combatLocations: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1 },
-  targetPreview: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1 },
-  player: { column: 1, row: 3, columnSpan: 3, height: 0, scale: 1 },
-  liveCombat: { column: 4, row: 3, columnSpan: 6, height: 0, scale: 1 },
-  enemy: { column: 10, row: 3, columnSpan: 3, height: 0, scale: 1 },
-  combatOverview: { column: 1, row: 4, columnSpan: 12, height: 0, scale: 1 },
+  player: { column: 1, row: 2, columnSpan: 3, height: 0, scale: 1 },
+  liveCombat: { column: 4, row: 2, columnSpan: 6, height: 0, scale: 1 },
+  enemy: { column: 10, row: 2, columnSpan: 3, height: 0, scale: 1 },
+  combatOverview: { column: 1, row: 3, columnSpan: 12, height: 0, scale: 1 },
 };
 
 export const DEFAULT_INVENTORY_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
@@ -86,12 +85,6 @@ export const UI_SCREEN_PANELS: Partial<Record<ScreenId, UiPanelDefinition[]>> = 
       label: 'Combat locations',
       description: 'Areas and enemy roster',
       defaultPosition: DEFAULT_COMBAT_PANEL_LAYOUT.combatLocations,
-    },
-    {
-      id: 'targetPreview',
-      label: 'Target Preview',
-      description: 'Target analysis and forecasts',
-      defaultPosition: DEFAULT_COMBAT_PANEL_LAYOUT.targetPreview,
     },
     {
       id: 'player',

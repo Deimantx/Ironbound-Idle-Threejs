@@ -36,7 +36,7 @@ export const createNewGame = (slot: number, name: string, now = Date.now()): Gam
     mining: { stamina: 100, nodeStates: {} },
     smithing: createSmithingState(`profile:${slot}:${now}`),
     activeAction: { type: 'none' },
-    unlockedAreas: ['training-grounds'],
+    unlockedAreas: ['forest-path'],
     settings: {
       sound: true,
       music: true,

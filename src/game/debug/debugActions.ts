@@ -675,18 +675,17 @@ export const debugResetKillCount = (state: GameState, enemyId: string): DebugMut
   debugSetKillCount(state, enemyId, 0);
 
 export const debugUnlockAllAreas = (state: GameState): DebugMutation =>
-  mutate(state, 'Unlocked all current Combat areas through progression inputs.', (next) => {
+  mutate(state, 'Raised Combat Level so all current Combat areas are available.', (next) => {
     next.skills.attack = { level: MAX_LEVEL, xp: getXpForLevel(MAX_LEVEL) };
     next.skills.strength = { level: MAX_LEVEL, xp: getXpForLevel(MAX_LEVEL) };
     next.skills.defence = { level: MAX_LEVEL, xp: getXpForLevel(MAX_LEVEL) };
-    next.killCounts['forest-rat'] = Math.max(5, next.killCounts['forest-rat'] ?? 0);
-    next.killCounts['cave-bat'] = Math.max(8, next.killCounts['cave-bat'] ?? 0);
-    next.unlockedAreas = AREAS.filter((area) => area.unlock(next)).map((area) => area.id);
+    next.skills.hitpoints = { level: MAX_LEVEL, xp: getXpForLevel(MAX_LEVEL) };
+    next.unlockedAreas = AREAS.map((area) => area.id);
   });
 
 export const debugResetCombatUnlocks = (state: GameState): DebugMutation =>
-  mutate(state, 'Reset Combat unlock inputs and returned access to Training Grounds.', (next) => {
-    next.unlockedAreas = ['training-grounds'];
+  mutate(state, 'Reset Combat progression and returned access to Forest Path.', (next) => {
+    next.unlockedAreas = ['forest-path'];
     next.killCounts = {};
   });
 

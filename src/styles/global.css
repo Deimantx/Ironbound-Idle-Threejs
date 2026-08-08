@@ -5223,6 +5223,153 @@ h3 {
 .combat-locations {
   overflow: hidden;
 }
+.combat-browser-content {
+  padding: 0 14px 14px;
+}
+.combat-browser-collapsed-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 16px 14px;
+  color: #c6cfc9;
+  font-size: 11px;
+}
+.combat-browser-collapsed-summary small {
+  color: #d2b276;
+  font-size: 10px;
+}
+.combat-region-header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 12px;
+  background: rgba(47, 65, 55, 0.24);
+  border: 1px solid #3f5a4b;
+  border-radius: 8px;
+}
+.combat-region-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  color: #c4d9bb;
+  background: #2c4639;
+  border: 1px solid #78936e;
+  border-radius: 8px;
+}
+.combat-region-header h3 {
+  margin: 2px 0 3px;
+  color: #e9e0ca;
+  font-size: 15px;
+}
+.combat-region-header p {
+  margin: 0;
+  color: #98a69e;
+  font-size: 10px;
+}
+.combat-area-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.combat-area-card {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  grid-template-rows: 1fr auto;
+  gap: 0 8px;
+  min-width: 0;
+  min-height: 122px;
+  padding: 9px;
+  color: #cbd2cd;
+  text-align: left;
+  background: #1b2325;
+  border: 1px solid #3a474a;
+  border-radius: 8px;
+}
+.combat-area-card:hover:not(:disabled),
+.combat-area-card:focus-visible,
+.combat-area-card.selected {
+  background: #28291f;
+  border-color: var(--combat-gold);
+}
+.combat-area-card.fighting {
+  box-shadow: inset 3px 0 var(--combat-player);
+}
+.combat-area-card.locked {
+  cursor: not-allowed;
+  opacity: 0.72;
+}
+.combat-area-card-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: #211e1a;
+  border-radius: 7px;
+}
+.combat-area-card.locked .combat-area-card-icon {
+  color: #b7c0bd;
+  background: #455054 !important;
+}
+.combat-area-card-copy {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.combat-area-card-copy strong {
+  overflow: hidden;
+  color: #eee3cb;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.combat-area-card-copy small {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #87948f;
+  font-size: 9px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.combat-area-card-copy span {
+  color: #c2a56a;
+  font-size: 9px;
+}
+.combat-area-card-status {
+  grid-column: 1 / -1;
+  margin-top: 8px;
+  color: #9fc6a8;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.combat-area-card.locked .combat-area-card-status {
+  color: #d49e93;
+}
+.combat-browser-selection {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(280px, 0.9fr);
+  gap: 10px;
+  margin-top: 10px;
+}
+.combat-browser-roster {
+  min-width: 0;
+  padding: 10px;
+  background: rgba(11, 16, 18, 0.3);
+  border: 1px solid #303b3e;
+  border-radius: 8px;
+}
+.combat-browser-roster .combat-enemy-roster {
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.combat-browser-selection > .combat-analysis {
+  margin: 0;
+}
 .combat-section-heading,
 .combat-live-heading,
 .combat-subheading-row,
@@ -6082,6 +6229,25 @@ h3 {
   display: grid;
   gap: 7px;
 }
+.combat-analysis-lifetime-kills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px;
+  color: #a9b5ae;
+  background: rgba(65, 53, 32, 0.18);
+  border: 1px solid #4e4534;
+  border-radius: 6px;
+  font-size: 10px;
+}
+.combat-analysis-lifetime-kills svg {
+  color: var(--combat-gold);
+}
+.combat-analysis-lifetime-kills strong {
+  margin-left: auto;
+  color: #e7dfca;
+  font-variant-numeric: tabular-nums;
+}
 .combat-analysis-content[hidden] {
   display: none;
 }
@@ -6443,6 +6609,9 @@ h3 {
   font-size: 9px;
 }
 @media (max-width: 1120px) {
+  .combat-area-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .combat-location-row {
     grid-template-columns: 22px 32px minmax(150px, 1fr) 95px auto;
   }
@@ -6472,6 +6641,9 @@ h3 {
   }
   .combat-location-row {
     grid-template-columns: 22px 32px minmax(150px, 1fr) auto;
+  }
+  .combat-browser-selection {
+    grid-template-columns: 1fr;
   }
   .combat-location-level {
     display: none;
@@ -6522,6 +6694,12 @@ h3 {
   .combat-content-tabs button {
     padding: 8px 7px;
   }
+  .combat-content-tabs {
+    overflow-x: auto;
+  }
+  .combat-content-tabs button {
+    flex: 0 0 132px;
+  }
   .combat-content-tabs button small {
     display: none;
   }
@@ -6545,6 +6723,13 @@ h3 {
   }
   .combat-enemy-card {
     flex-basis: 190px;
+  }
+  .combat-area-grid {
+    grid-template-columns: 1fr;
+  }
+  .combat-browser-collapsed-summary {
+    align-items: flex-start;
+    flex-direction: column;
   }
   .ui-panel-grid {
     display: flex;

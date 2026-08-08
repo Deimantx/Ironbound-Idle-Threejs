@@ -1,47 +1,49 @@
-import type { AreaDefinition, GameState } from '../game/types';
-
-const combatLevel = (state: GameState): number =>
-  Math.floor(
-    (state.skills.attack.level + state.skills.strength.level + state.skills.defence.level) / 3,
-  );
+import type { AreaDefinition } from '../game/types';
 
 export const AREAS: AreaDefinition[] = [
   {
-    id: 'training-grounds',
-    name: 'Training Grounds',
-    description: 'An old practice yard at the edge of the settlement.',
-    requirement: 'Available from the beginning',
-    unlock: () => true,
+    id: 'forest-path',
+    regionId: 'greenvale',
+    name: 'Forest Path',
+    description: 'A woodland trail where the frontier gives way to tangled green.',
+    requiredCombatLevel: 1,
     enemyIds: ['forest-rat', 'goblin-scavenger'],
     accent: '#b58b53',
     recommendedLevel: [1, 8],
-    presentation: { iconKey: 'target', theme: 'training', environmentKey: 'practice-yard' },
+    presentation: { iconKey: 'tree', theme: 'forest-path', environmentKey: 'forest-path' },
   },
   {
-    id: 'copper-hills',
-    name: 'Copper Hills',
-    description: 'Warm caverns threaded with bright mineral veins.',
-    requirement: 'Combat level 5 or 5 Training Grounds kills',
-    unlock: (state) =>
-      combatLevel(state) >= 5 ||
-      (state.killCounts['forest-rat'] ?? 0) + (state.killCounts['goblin-scavenger'] ?? 0) >= 5,
-    enemyIds: ['cave-bat', 'stoneback-crab'],
-    accent: '#c67b53',
-    recommendedLevel: [8, 18],
-    presentation: { iconKey: 'crystal', theme: 'copper-cavern', environmentKey: 'copper-cavern' },
-  },
-  {
-    id: 'ironwood-pass',
-    name: 'Ironwood Pass',
-    description: 'A cold road cut through dark, iron-streaked trees.',
-    requirement: 'Combat level 15 and 8 Copper Hills kills',
-    unlock: (state) =>
-      combatLevel(state) >= 15 &&
-      (state.killCounts['cave-bat'] ?? 0) + (state.killCounts['stoneback-crab'] ?? 0) >= 8,
-    enemyIds: ['grey-wolf', 'road-bandit'],
+    id: 'wolf-den',
+    regionId: 'greenvale',
+    name: 'Wolf Den',
+    description: 'A cold hollow beneath the pines, marked by old tracks and watchful eyes.',
+    requiredCombatLevel: 18,
+    enemyIds: ['grey-wolf'],
     accent: '#71839a',
-    recommendedLevel: [18, 35],
-    presentation: { iconKey: 'tree', theme: 'ironwood', environmentKey: 'ironwood-pass' },
+    recommendedLevel: [18, 28],
+    presentation: { iconKey: 'tree', theme: 'wolf-den', environmentKey: 'wolf-den' },
+  },
+  {
+    id: 'abandoned-camp',
+    regionId: 'greenvale',
+    name: 'Abandoned Camp',
+    description: 'A weathered campsite where the fire is cold but the outlaws are not.',
+    requiredCombatLevel: 24,
+    enemyIds: ['road-bandit'],
+    accent: '#a47b5f',
+    recommendedLevel: [24, 35],
+    presentation: { iconKey: 'target', theme: 'abandoned-camp', environmentKey: 'abandoned-camp' },
+  },
+  {
+    id: 'old-shrine',
+    regionId: 'greenvale',
+    name: 'Old Shrine',
+    description: 'Ruined stone and a forgotten altar draw creatures from the dark.',
+    requiredCombatLevel: 8,
+    enemyIds: ['cave-bat', 'stoneback-crab'],
+    accent: '#7d748d',
+    recommendedLevel: [8, 18],
+    presentation: { iconKey: 'crystal', theme: 'old-shrine', environmentKey: 'old-shrine' },
   },
 ];
 

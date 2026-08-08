@@ -23,7 +23,7 @@ import {
 } from '../formulas/experienceFormulas';
 import { miningNodeById } from '../../content/miningNodes';
 import { SKILL_IDS } from '../types';
-import type { GameState, InventoryStack, SkillId } from '../types';
+import type { AreaId, EnemyId, GameState, InventoryStack, SkillId } from '../types';
 
 const LEGACY_MINING_NODE_MAP: Record<string, 'stone-outcrop' | null> = {
   'copper-vein': 'stone-outcrop',
@@ -43,6 +43,56 @@ export const LEGACY_ARMOR_ITEM_MAP: Record<string, string> = {
 };
 
 export const LEGACY_ARMOR_RECIPE_MAP: Record<string, string> = { ...LEGACY_ARMOR_ITEM_MAP };
+
+const LEGACY_AREA_MAP: Record<string, AreaId> = {
+  'training-grounds': 'forest-path',
+  'copper-hills': 'old-shrine',
+  'ironwood-pass': 'wolf-den',
+};
+
+const COMBAT_AREA_BY_ENEMY: Record<EnemyId, AreaId> = {
+  'forest-rat': 'forest-path',
+  'goblin-scavenger': 'forest-path',
+  'cave-bat': 'old-shrine',
+  'stoneback-crab': 'old-shrine',
+  'grey-wolf': 'wolf-den',
+  'road-bandit': 'abandoned-camp',
+};
+
+const isCurrentAreaId = (value: unknown): value is AreaId =>
+  value === 'forest-path' ||
+  value === 'wolf-den' ||
+  value === 'abandoned-camp' ||
+  value === 'old-shrine';
+
+const migrateCombatAreaId = (areaId: unknown, enemyId: unknown): AreaId => {
+  if (typeof enemyId === 'string' && enemyId in COMBAT_AREA_BY_ENEMY)
+    return COMBAT_AREA_BY_ENEMY[enemyId as EnemyId];
+  if (isCurrentAreaId(areaId)) return areaId;
+  return LEGACY_AREA_MAP[String(areaId)] ?? 'forest-path';
+};
+
+const migrateCombatAreas = (input: GameState): GameState => {
+  const activeAction = input.activeAction;
+  const nextActiveAction =
+    activeAction.type === 'combat'
+      ? {
+          ...activeAction,
+          areaId: migrateCombatAreaId(activeAction.areaId, activeAction.enemyId),
+        }
+      : activeAction;
+  const unlockedAreas = Array.from(
+    new Set(
+      (input.unlockedAreas ?? []).map((areaId) => migrateCombatAreaId(areaId, undefined)),
+    ),
+  );
+  return {
+    ...input,
+    activeAction: nextActiveAction,
+    unlockedAreas: unlockedAreas.length ? unlockedAreas : ['forest-path'],
+    schemaVersion: 9,
+  };
+};
 
 const getMigratedArmorId = (itemId: unknown): string | null => {
   if (typeof itemId !== 'string') return null;
@@ -415,7 +465,7 @@ export const migrations: Record<number, SaveMigration> = {
     ...input,
     schemaVersion: 1,
     settings: { ...input.settings },
-    unlockedAreas: input.unlockedAreas?.length ? input.unlockedAreas : ['training-grounds'],
+    unlockedAreas: input.unlockedAreas?.length ? input.unlockedAreas : ['forest-path'],
   }),
   2: (input) => {
     const settings = { ...input.settings, huntElites: input.settings.huntElites ?? true };
@@ -470,6 +520,7 @@ export const migrations: Record<number, SaveMigration> = {
   6: migrateExperience,
   7: migrateSmithing,
   8: migrateForgeFuel,
+  9: migrateCombatAreas,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {
@@ -484,6 +535,7 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
     current = migrateForgeFuel(current);
   }
   current = normalizeSkillStates(current);
+  current = migrateCombatAreas(current);
   current.schemaVersion = GAME_CONFIG.currentSaveVersion;
   return current;
 };

@@ -25,6 +25,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { AREAS, areaById } from '../content/areas';
+import { combatRegionById } from '../content/combatRegions';
 import { enemyById } from '../content/enemies';
 import { eliteById } from '../content/elites';
 import { itemById } from '../content/items';
@@ -39,7 +40,6 @@ import {
   getHealthPercent,
   getHealthState,
   getLootRarity,
-  selectCombatProgress,
   selectCombatStatus,
   selectEnemyAttackProgress,
   selectEnemyHitChance,
@@ -49,6 +49,7 @@ import {
   selectTargetTrait,
   selectPlayerAttackProgress,
   selectPlayerEstimatedDps,
+  isCombatAreaUnlocked,
 } from '../game/selectors/combatSelectors';
 import { useGameStore } from '../game/state/gameStore';
 import { getItemQuantity, occupiedSlots } from '../game/systems/inventorySystem';
@@ -61,6 +62,7 @@ import type {
   EnemyId,
   GameState,
   ScreenId,
+  CombatContentCategory,
 } from '../game/types';
 import forestRatImage from '../Art/Monsters/ForestRat.png';
 import type { ConfirmDialogOptions } from './ConfirmDialog';
@@ -70,7 +72,7 @@ import type { CombatEquipmentSlot } from '../game/equipmentSlots';
 import type { UiLayout } from './uiLayout';
 import { UiPanelSlot } from './UiPanelSlot';
 
-type CombatContentTab = 'areas' | 'dungeons' | 'slayer';
+type CombatContentTab = CombatContentCategory;
 type OverviewTab = 'overview' | 'loot' | 'progression';
 
 const formatSeconds = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
@@ -543,104 +545,128 @@ function EnemyRoster({
   );
 }
 
-function AreaAccordion({
+function CombatBrowser({
   game,
   selectedArea,
-  expandedArea,
   selectedEnemy,
   activeEnemy,
+  activeArea,
   locationsExpanded,
-  onToggle,
+  style,
+  styleIsQueued,
+  onSelectArea,
   onSelectEnemy,
   onToggleLocations,
 }: {
   game: GameState;
   selectedArea: AreaId;
-  expandedArea: AreaId | null;
   selectedEnemy: EnemyId;
   activeEnemy: EnemyId | null;
+  activeArea: AreaId | null;
   locationsExpanded: boolean;
-  onToggle: (areaId: AreaId) => void;
+  style: CombatStyle;
+  styleIsQueued: boolean;
+  onSelectArea: (areaId: AreaId) => void;
   onSelectEnemy: (enemyId: EnemyId, areaId: AreaId) => void;
   onToggleLocations: () => void;
 }) {
+  const region = combatRegionById.greenvale;
+  const area = areaById[selectedArea] ?? areaById['forest-path'];
+  const selectedTarget = enemyById[selectedEnemy] ?? enemyById['forest-rat'];
   return (
-    <section className="combat-locations" aria-labelledby="combat-locations-title">
+    <section className="combat-locations combat-browser" aria-labelledby="combat-locations-title">
       <div className="combat-section-heading">
         <div>
           <div className="eyebrow">Choose your road</div>
-          <h2 id="combat-locations-title">Combat locations</h2>
+          <h2 id="combat-locations-title">Combat Browser</h2>
         </div>
         <button
           type="button"
           className="combat-locations-toggle"
           aria-expanded={locationsExpanded}
-          aria-controls="combat-location-list"
+          aria-controls="combat-browser-content"
           onClick={onToggleLocations}
         >
           {locationsExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-          {locationsExpanded ? 'Collapse locations' : 'Expand locations'}
+          {locationsExpanded ? 'Collapse browser' : 'Show browser'}
         </button>
       </div>
-      <div id="combat-location-list" className="combat-location-list" hidden={!locationsExpanded}>
-        {AREAS.map((area) => {
-          const unlocked = game.unlockedAreas.includes(area.id) || area.unlock(game);
-          const expanded = expandedArea === area.id;
-          const selected = selectedArea === area.id;
-          const Icon = zoneIcon[area.presentation.iconKey];
-          return (
-            <div
-              className={`combat-location ${expanded ? 'expanded' : ''} ${selected ? 'selected' : ''} ${!unlocked ? 'locked' : ''}`}
-              key={area.id}
-            >
+      {!locationsExpanded && (
+        <div className="combat-browser-collapsed-summary">
+          <span>Areas Â· {region.name} Â· {area.name} Â· {selectedTarget.name}</span>
+          {activeArea && (activeArea !== selectedArea || activeEnemy !== selectedEnemy) && (
+            <small>Browsing while fighting {enemyById[activeEnemy ?? 'forest-rat']?.name}</small>
+          )}
+        </div>
+      )}
+      <div id="combat-browser-content" className="combat-browser-content" hidden={!locationsExpanded}>
+        <div className="combat-region-header">
+          <div className="combat-region-icon">
+            <TreePine size={20} />
+          </div>
+          <div>
+            <div className="combat-panel-kicker">Region</div>
+            <h3>{region.name}</h3>
+            <p>{region.description}</p>
+          </div>
+        </div>
+        <div className="combat-area-grid" aria-label={`${region.name} combat areas`}>
+          {region.areaIds.map((areaId) => {
+            const candidate = areaById[areaId];
+            const unlocked = isCombatAreaUnlocked(game, candidate);
+            const selected = selectedArea === candidate.id;
+            const activeFight = activeArea === candidate.id;
+            const Icon = zoneIcon[candidate.presentation.iconKey];
+            return (
               <button
                 type="button"
-                className="combat-location-row"
-                aria-expanded={expanded}
+                className={`combat-area-card ${selected ? 'selected' : ''} ${activeFight ? 'fighting' : ''} ${!unlocked ? 'locked' : ''}`}
+                aria-pressed={selected}
                 disabled={!unlocked}
-                aria-controls={`combat-location-${area.id}`}
-                onClick={() => onToggle(area.id)}
+                key={candidate.id}
+                onClick={() => onSelectArea(candidate.id)}
               >
-                <span className="combat-location-chevron" aria-hidden="true">
-                  {expanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}
+                <span className="combat-area-card-icon" style={{ background: candidate.accent }}>
+                  {unlocked ? <Icon size={18} /> : <Lock size={16} />}
                 </span>
-                <span className="combat-location-icon">
-                  <Icon size={17} />
+                <span className="combat-area-card-copy">
+                  <strong>{candidate.name}</strong>
+                  <small>{candidate.description}</small>
+                  <span>Requires Combat Lv {candidate.requiredCombatLevel}</span>
+                  <span>
+                    {unlocked
+                      ? `Recommended ${candidate.recommendedLevel[0]}–${candidate.recommendedLevel[1]}`
+                      : `Requires Combat Level ${candidate.requiredCombatLevel}`}
+                  </span>
                 </span>
-                <span className="combat-location-name">
-                  <strong>{area.name}</strong>
-                  <small>{area.description}</small>
-                </span>
-                <span className="combat-location-level">
-                  Recommended {area.recommendedLevel[0]}–{area.recommendedLevel[1]}
-                </span>
-                <span className={`combat-location-status ${unlocked ? '' : 'locked'}`}>
-                  {unlocked ? (selected ? 'Selected' : 'Available') : 'Locked'}
+                <span className="combat-area-card-status">
+                  {activeFight ? 'Fighting here' : selected ? 'Selected' : unlocked ? 'Available' : 'Locked'}
                 </span>
               </button>
-              {!unlocked && (
-                <div className="combat-location-requirement">
-                  <Lock size={13} /> Requires: {area.requirement}
-                </div>
-              )}
-              {expanded && unlocked && (
-                <div className="combat-location-content" id={`combat-location-${area.id}`}>
-                  <div className="combat-location-content-heading">
-                    <span className="combat-panel-kicker">Know your enemy</span>
-                    <span className="muted">Select a target to update the live panels.</span>
-                  </div>
-                  <EnemyRoster
-                    game={game}
-                    area={area}
-                    selectedEnemy={selectedEnemy}
-                    activeEnemy={activeEnemy}
-                    onSelect={onSelectEnemy}
-                  />
-                </div>
-              )}
+            );
+          })}
+        </div>
+        <div className="combat-browser-selection">
+          <div className="combat-browser-roster">
+            <div className="combat-location-content-heading">
+              <span className="combat-panel-kicker">{area.name} Â· Enemy roster</span>
+              <span className="muted">Choose a target to preview it.</span>
             </div>
-          );
-        })}
+            <EnemyRoster
+              game={game}
+              area={area}
+              selectedEnemy={selectedEnemy}
+              activeEnemy={activeEnemy}
+              onSelect={onSelectEnemy}
+            />
+          </div>
+          <TargetAnalysis
+            game={game}
+            enemy={selectedTarget}
+            style={style}
+            styleIsQueued={styleIsQueued}
+          />
+        </div>
       </div>
     </section>
   );
@@ -656,7 +682,8 @@ function CombatContentTabs({
   const tabs: Array<{ id: CombatContentTab; label: string; description: string }> = [
     { id: 'areas', label: 'Areas', description: 'Open-world combat locations' },
     { id: 'dungeons', label: 'Dungeons', description: 'Future multi-stage encounters' },
-    { id: 'slayer', label: 'Slayer Areas', description: 'Future task-based hunts' },
+    { id: 'special', label: 'Special Areas', description: 'Future rules and encounters' },
+    { id: 'conquest', label: 'Conquest', description: 'Future territory campaigns' },
   ];
   return (
     <div className="combat-content-tabs" role="tablist" aria-label="Combat content">
@@ -678,7 +705,8 @@ function CombatContentTabs({
 }
 
 function LockedCombatContent({ tab }: { tab: Exclude<CombatContentTab, 'areas'> }) {
-  const label = tab === 'dungeons' ? 'Dungeons' : 'Slayer Areas';
+  const label =
+    tab === 'dungeons' ? 'Dungeons' : tab === 'special' ? 'Special Areas' : 'Conquest';
   return (
     <section className="combat-future-content" role="tabpanel" aria-label={label}>
       <Lock size={19} />
@@ -775,6 +803,11 @@ function TargetAnalysis({
         </div>
       </div>
       <div id="target-analysis-content" className="combat-analysis-content" hidden={!expanded}>
+        <div className="combat-analysis-lifetime-kills">
+          <Trophy size={14} />
+          <span>Lifetime kills</span>
+          <strong>{formatNumber(game.killCounts[enemy.id] ?? 0)}</strong>
+        </div>
         <div className="combat-analysis-grid">
           {rows.map(([label, value]) => (
             <div className="combat-analysis-row" key={label}>
@@ -1252,11 +1285,11 @@ function LootPanel({
 }
 
 function getNextUnlockText(game: GameState): { name: string; requirement: string } {
-  const next = AREAS.find((area) => !game.unlockedAreas.includes(area.id) && !area.unlock(game));
+  const next = AREAS.find((area) => !isCombatAreaUnlocked(game, area));
   return next
-    ? { name: next.name, requirement: next.requirement }
+    ? { name: next.name, requirement: `Requires Combat Level ${next.requiredCombatLevel}` }
     : {
-        name: 'All current zones unlocked',
+        name: 'All current areas unlocked',
         requirement: 'Keep training for the next content pass.',
       };
 }
@@ -1499,10 +1532,7 @@ export function CombatScreen({
   const [contentTab, setContentTab] = useState<CombatContentTab>('areas');
   const [locationsExpanded, setLocationsExpanded] = useState(true);
   const [overviewTab, setOverviewTab] = useState<OverviewTab>('overview');
-  const [selectedArea, setSelectedArea] = useState<AreaId>(activeAreaId ?? 'training-grounds');
-  const [expandedArea, setExpandedArea] = useState<AreaId | null>(
-    activeAreaId ?? 'training-grounds',
-  );
+  const [selectedArea, setSelectedArea] = useState<AreaId>(activeAreaId ?? 'forest-path');
   const [selectedEnemy, setSelectedEnemy] = useState<EnemyId>(activeEnemyId ?? 'forest-rat');
   const [style, setStyle] = useState<CombatStyle>(activeStyle ?? 'accurate');
   const [autoRepeat, setAutoRepeat] = useState(activeAutoRepeat ?? true);
@@ -1521,19 +1551,17 @@ export function CombatScreen({
   const startPending = useRef(false);
   const currentAreaId = activeAreaId ?? selectedArea;
   const currentEnemyId = activeEnemyId ?? selectedEnemy;
-  const currentArea = areaById[currentAreaId] ?? areaById['training-grounds'];
+  const currentArea = areaById[currentAreaId] ?? areaById['forest-path'];
   const currentEnemy = enemyById[currentEnemyId] ?? enemyById['forest-rat'];
-  const selectedTargetArea = areaById[selectedArea] ?? areaById['training-grounds'];
+  const selectedTargetArea = areaById[selectedArea] ?? areaById['forest-path'];
   const selectedTarget = enemyById[selectedEnemy] ?? enemyById['forest-rat'];
   const targetChanged = Boolean(
     active && (active.areaId !== selectedTargetArea.id || active.enemyId !== selectedTarget.id),
   );
   const encounterStartedAt =
     active?.combatState.encounterStartedAt ?? session.encounterStartedAt ?? session.startedAt;
-  const progress = selectCombatProgress(game);
   const inventoryFull = occupiedSlots(game.inventory) >= GAME_CONFIG.inventorySlots;
-  const locked =
-    !game.unlockedAreas.includes(selectedTargetArea.id) && !selectedTargetArea.unlock(game);
+  const locked = !isCombatAreaUnlocked(game, selectedTargetArea);
 
   useEffect(() => {
     if (
@@ -1544,7 +1572,6 @@ export function CombatScreen({
     )
       return;
     setSelectedArea(activeAreaId);
-    setExpandedArea((expanded) => (expanded === null ? activeAreaId : expanded));
     setSelectedEnemy(activeEnemyId);
     setStyle(activeStyle);
     setAutoRepeat(activeAutoRepeat);
@@ -1553,21 +1580,15 @@ export function CombatScreen({
 
   const selectArea = (areaId: AreaId) => {
     const area = areaById[areaId];
-    if (!area || (game.unlockedAreas.includes(areaId) === false && !area.unlock(game))) return;
-    if (active?.areaId === areaId) {
-      setExpandedArea((expanded) => (expanded === areaId ? null : areaId));
-      return;
-    }
+    if (!area || !isCombatAreaUnlocked(game, area)) return;
     // Area and enemy changes are browsing-only while combat is active. The
     // action button applies the selected target to the live encounter.
     setSelectedArea(areaId);
     setSelectedEnemy(area.enemyIds[0]);
-    setExpandedArea((expanded) => (expanded === areaId ? null : areaId));
   };
 
   const selectEnemy = (enemyId: EnemyId, areaId: AreaId) => {
     setSelectedArea(areaId);
-    setExpandedArea(areaId);
     setSelectedEnemy(enemyId);
   };
 
@@ -1590,7 +1611,6 @@ export function CombatScreen({
         active.autoSpecial,
       );
       setSelectedArea(selectedTargetArea.id);
-      setExpandedArea(selectedTargetArea.id);
       setSelectedEnemy(selectedTarget.id);
       return;
     }
@@ -1645,7 +1665,8 @@ export function CombatScreen({
       </header>
       <div className="combat-context-bar combat-redesign-context">
         <span>
-          <span className="context-kicker">Location</span> <b>{currentArea.name}</b>
+          <span className="context-kicker">{active ? 'Current fight' : 'Selected target'}</span>{' '}
+          <b>{combatRegionById.greenvale.name} Â· {currentArea.name}</b>
         </span>
         <ChevronRight size={15} />
         <span>
@@ -1663,36 +1684,28 @@ export function CombatScreen({
                 : 'Ready'}
         </span>
         <span className="context-spacer" />
-        <span className="combat-context-meta">
-          {progress.killed} / {progress.target} area kills
-        </span>
+        {targetChanged && <span className="combat-context-meta">Browsing: {selectedTarget.name}</span>}
       </div>
       <CombatContentTabs activeTab={contentTab} onChange={setContentTab} />
       <div className="ui-panel-grid" data-ui-panel-grid="combat">
         <UiPanelSlot screen="combat" id="combatLocations" layout={uiLayout}>
           {contentTab === 'areas' ? (
-            <AreaAccordion
+            <CombatBrowser
               game={game}
               selectedArea={selectedArea}
-              expandedArea={expandedArea}
               selectedEnemy={selectedEnemy}
               activeEnemy={active?.enemyId ?? null}
+              activeArea={active?.areaId ?? null}
               locationsExpanded={locationsExpanded}
-              onToggle={selectArea}
+              style={nextEncounterStyle}
+              styleIsQueued={Boolean(active?.pendingStyle)}
+              onSelectArea={selectArea}
               onSelectEnemy={selectEnemy}
               onToggleLocations={() => setLocationsExpanded((expanded) => !expanded)}
             />
           ) : (
             <LockedCombatContent tab={contentTab} />
           )}
-        </UiPanelSlot>
-        <UiPanelSlot screen="combat" id="targetPreview" layout={uiLayout}>
-          <TargetAnalysis
-            game={game}
-            enemy={selectedTarget}
-            style={nextEncounterStyle}
-            styleIsQueued={Boolean(active?.pendingStyle)}
-          />
         </UiPanelSlot>
         <UiPanelSlot screen="combat" id="player" layout={uiLayout}>
           <PlayerSummaryPanel

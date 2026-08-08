@@ -23,7 +23,7 @@ import {
 import type { CombatVisualEvent } from '../game/types';
 
 const configuredCombat = (enemyId: 'forest-rat' | 'goblin-scavenger' | 'grey-wolf' | 'road-bandit' = 'forest-rat', seed = 1) => {
-  const state = startCombat(createNewGame(0, 'Expansion', 0), 'training-grounds', enemyId, 'accurate', false, 0);
+  const state = startCombat(createNewGame(0, 'Expansion', 0), 'forest-path', enemyId, 'accurate', false, 0);
   if (state.activeAction.type === 'combat') {
     state.activeAction.combatState.rngSeed = seed;
     state.activeAction.combatState.rngCursor = 1;
@@ -47,7 +47,7 @@ describe('authoritative combat expansion formulas', () => {
   it('disables elite spawns when the combat preference is off', () => {
     const state = createNewGame(0, 'No Elites', 0);
     state.settings.huntElites = false;
-    const combat = startCombat(state, 'training-grounds', 'forest-rat', 'accurate', false, 0);
+    const combat = startCombat(state, 'forest-path', 'forest-rat', 'accurate', false, 0);
     expect(combat.activeAction.type === 'combat' && combat.activeAction.combatState.eliteModifier).toBe(null);
   });
 

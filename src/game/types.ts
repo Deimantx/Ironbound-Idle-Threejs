@@ -21,7 +21,9 @@ export type EquipmentSlot =
   | 'ring'
   | 'cape'
   | 'tool';
-export type AreaId = 'training-grounds' | 'copper-hills' | 'ironwood-pass';
+export type CombatRegionId = 'greenvale';
+export type CombatContentCategory = 'areas' | 'dungeons' | 'special' | 'conquest';
+export type AreaId = 'forest-path' | 'wolf-den' | 'abandoned-camp' | 'old-shrine';
 export type EnemyId =
   'forest-rat' | 'goblin-scavenger' | 'cave-bat' | 'stoneback-crab' | 'grey-wolf' | 'road-bandit';
 export type MiningNodeId = 'stone-outcrop' | 'iron-vein' | 'coal-seam';
@@ -45,7 +47,7 @@ export type EnemyTraitId =
 export type EliteModifierId = 'savage' | 'armoured' | 'swift' | 'wealthy' | 'treasure-touched';
 export type WeaponSpecialId = 'focused-slash' | 'sundering-strike' | 'executioners-cut';
 export type EnemyVisualArchetype = 'rat' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
-export type ZoneVisualTheme = 'training' | 'copper-cavern' | 'ironwood';
+export type ZoneVisualTheme = 'forest-path' | 'wolf-den' | 'abandoned-camp' | 'old-shrine';
 
 export interface ItemPresentation {
   iconKey?: string;
@@ -234,10 +236,10 @@ export interface EnemyDefinition {
 
 export interface AreaDefinition {
   id: AreaId;
+  regionId: CombatRegionId;
   name: string;
   description: string;
-  requirement: string;
-  unlock: (state: GameState) => boolean;
+  requiredCombatLevel: number;
   enemyIds: EnemyId[];
   accent: string;
   recommendedLevel: [number, number];

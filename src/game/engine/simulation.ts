@@ -96,14 +96,6 @@ const awardXp = (
     );
   }
 };
-const unlockAreas = (state: GameState): void => {
-  for (const area of Object.values(areaById))
-    if (!state.unlockedAreas.includes(area.id) && area.unlock(state)) {
-      state.unlockedAreas.push(area.id);
-      addLog(state, `${area.name} is now accessible.`, 'success');
-    }
-};
-
 const MAX_MINING_SIMULATION_EVENTS = 100_000;
 
 const advanceMiningRockDamage = (
@@ -956,7 +948,6 @@ export const simulateElapsed = (
   summary.processedElapsedMs = processedElapsedMs;
   summary.remainingElapsedMs = Math.max(0, safeElapsed - processedElapsedMs);
   summary.elapsedMs = processedElapsedMs;
-  unlockAreas(state);
   state.lastSimulatedAt += processedElapsedMs;
   state.updatedAt = Date.now();
   return { state, summary, events };

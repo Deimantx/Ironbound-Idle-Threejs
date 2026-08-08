@@ -11,7 +11,6 @@ import {
 import { getDerivedStats } from '../formulas/statFormulas';
 import type { AreaId, CombatStyle, EliteModifierId, EnemyDefinition, EnemyId, GameState } from '../types';
 
-export const ZONE_COMPLETION_KILLS = 25;
 export type AttackProgressState = 'idle' | 'active' | 'ready' | 'defeated' | 'respawning';
 export type HealthState = 'healthy' | 'wounded' | 'critical' | 'near-death' | 'defeated';
 export interface AttackProgress {
@@ -35,7 +34,7 @@ export const getHealthState = (current: number, max: number): HealthState => {
 
 export const selectSelectedCombatArea = (
   state: GameState,
-  fallback: AreaId = 'training-grounds',
+  fallback: AreaId = 'forest-path',
 ): (typeof AREAS)[number] =>
   areaById[state.activeAction.type === 'combat' ? state.activeAction.areaId : fallback] ??
   areaById[fallback];
@@ -218,6 +217,11 @@ export const selectExpectedFoodPerHour = (_state?: GameState): 'Not available ye
 
 export const selectTargetTrait = (state: GameState, enemy = selectSelectedEnemy(state)) => enemy.trait;
 
+export const isCombatAreaUnlocked = (
+  state: GameState,
+  area: (typeof AREAS)[number],
+): boolean => getDerivedStats(state).combatLevel >= area.requiredCombatLevel;
+
 export const selectCombatStatus = (state: GameState): string => {
   if (state.activeAction.type !== 'combat') {
     const recent = state.log[0]?.text ?? '';
@@ -228,20 +232,6 @@ export const selectCombatStatus = (state: GameState): string => {
   if (state.player.currentHp <= 0) return 'Player defeated';
   return 'Fighting';
 };
-
-export const selectCombatProgress = (
-  state: GameState,
-): { killed: number; target: number; percent: number } => {
-  const area = selectSelectedCombatArea(state);
-  const killed = area.enemyIds.reduce((total, id) => total + (state.killCounts[id] ?? 0), 0);
-  return {
-    killed,
-    target: ZONE_COMPLETION_KILLS,
-    percent: Math.min(100, (killed / ZONE_COMPLETION_KILLS) * 100),
-  };
-};
-
-export const selectZoneUnlockProgress = selectCombatProgress;
 
 export const displayDropChance = (chance: number): string => `${Math.round(chance * 100)}%`;
 export type LootRarityLabel = 'Common' | 'Uncommon' | 'Rare' | 'Very Rare';

@@ -6,6 +6,7 @@ import {
   getHitpointsDamageXp,
 } from '../game/formulas/combatFormulas';
 import { simulateElapsed } from '../game/engine/simulation';
+import { areaById } from '../content/areas';
 import {
   displayDropChance,
   getHealthPercent,
@@ -14,7 +15,7 @@ import {
   selectEnemyAttackProgress,
   selectPlayerAttackProgress,
   selectPlayerEstimatedDps,
-  selectZoneUnlockProgress,
+  isCombatAreaUnlocked,
 } from '../game/selectors/combatSelectors';
 import { createNewGame } from '../game/state/initialState';
 
@@ -29,7 +30,7 @@ describe('combat selectors and visual events', () => {
 
   it('derives authoritative attack progress and estimates from combat state', () => {
     let state = createNewGame(0, 'Selector');
-    state = startCombat(state, 'training-grounds', 'forest-rat', 'accurate', true);
+    state = startCombat(state, 'forest-path', 'forest-rat', 'accurate', true);
     state.updatedAt = 1_000;
     expect(selectPlayerAttackProgress(state, 1_000).ratio).toBe(0);
     expect(selectEnemyAttackProgress(state, 1_000).ratio).toBe(0);
@@ -60,7 +61,7 @@ describe('combat selectors and visual events', () => {
   it('exposes a bounded authoritative visual event stream from combat simulation', () => {
     const state = startCombat(
       createNewGame(0, 'Events'),
-      'training-grounds',
+      'forest-path',
       'forest-rat',
       'accurate',
       true,
@@ -71,10 +72,15 @@ describe('combat selectors and visual events', () => {
     expect(result.events.some((event) => event.type === 'player-hit')).toBe(true);
   });
 
-  it('tracks zone kill progress against the visible completion target', () => {
+  it('uses Combat Level only for normal area availability', () => {
     const state = createNewGame(0, 'Progress');
-    state.killCounts['forest-rat'] = 7;
-    expect(selectZoneUnlockProgress(state)).toMatchObject({ killed: 7, target: 25 });
-    expect(selectZoneUnlockProgress(state).percent).toBeCloseTo(28);
+    const wolfDen = areaById['wolf-den'];
+    state.killCounts['forest-rat'] = 10_000;
+    expect(isCombatAreaUnlocked(state, wolfDen)).toBe(false);
+    state.skills.attack.level = 18;
+    state.skills.strength.level = 18;
+    state.skills.defence.level = 18;
+    state.skills.hitpoints.level = 18;
+    expect(isCombatAreaUnlocked(state, wolfDen)).toBe(true);
   });
 });

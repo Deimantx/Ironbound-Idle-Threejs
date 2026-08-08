@@ -21,7 +21,7 @@ import { useGameStore } from '../game/state/gameStore';
 const fresh = (): GameState => createNewGame(0, 'Correctness Tester', 1000);
 
 const combatState = (): GameState => {
-  const state = debugStartCombat(fresh(), 'training-grounds', 'forest-rat').state!;
+  const state = debugStartCombat(fresh(), 'forest-path', 'forest-rat').state!;
   for (const skill of ['attack', 'strength', 'defence', 'hitpoints'] as const)
     state.skills[skill] = { level: 100, xp: getXpForLevel(100) };
   state.player.currentHp = 100;

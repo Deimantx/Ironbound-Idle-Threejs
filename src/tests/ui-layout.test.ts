@@ -13,7 +13,14 @@ import { findAvailablePanelPosition } from '../app/UIEditor';
 
 describe('visual UI layout', () => {
   it('exposes panel definitions by active screen', () => {
-    expect(getUiPanels('combat')).toHaveLength(6);
+    expect(getUiPanels('combat')).toHaveLength(5);
+    expect(getUiPanels('combat').map((panel) => panel.id)).toEqual([
+      'combatLocations',
+      'player',
+      'liveCombat',
+      'enemy',
+      'combatOverview',
+    ]);
     expect(getUiPanels('inventory')).toHaveLength(2);
     expect(getUiPanels('equipment')).toHaveLength(2);
     expect(getUiPanels('mining')).toHaveLength(3);
@@ -206,6 +213,6 @@ describe('visual UI layout', () => {
     const player = layout.screenPanels.combat?.player;
     expect(player).toBeDefined();
     const resolved = findAvailablePanelPosition(layout, 'combat', 'player', { ...player!, row: 4 });
-    expect(resolved).toMatchObject({ column: 1, row: 5, columnSpan: 3 });
+    expect(resolved).toMatchObject({ column: 1, row: 4, columnSpan: 3 });
   });
 });

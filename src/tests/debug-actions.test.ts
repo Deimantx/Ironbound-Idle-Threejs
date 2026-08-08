@@ -153,7 +153,7 @@ describe('Debug Tools action boundary', () => {
     let state = fresh();
     for (const skill of ['attack', 'strength', 'defence', 'hitpoints'] as const)
       state.skills[skill] = { level: 100, xp: getXpForLevel(100) };
-    state = debugStartCombat(state, 'training-grounds', 'forest-rat').state!;
+    state = debugStartCombat(state, 'forest-path', 'forest-rat').state!;
     const result = debugKillCurrentEnemy(state);
     expect(result.result.ok).toBe(true);
     expect(result.summary?.enemiesDefeated).toBe(1);

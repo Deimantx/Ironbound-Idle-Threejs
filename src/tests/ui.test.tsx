@@ -54,11 +54,10 @@ const mockCombatGeometry = () => {
   if (!grid) throw new Error('Combat panel grid was not rendered');
   const geometry: Record<string, DOMRect> = {
     combatLocations: rect(0, 0, 1200, 200),
-    targetPreview: rect(0, 212, 1200, 180),
-    player: rect(0, 404, 280, 220),
-    liveCombat: rect(292, 404, 560, 220),
-    enemy: rect(864, 404, 280, 220),
-    combatOverview: rect(0, 636, 1200, 180),
+    player: rect(0, 212, 280, 220),
+    liveCombat: rect(292, 212, 560, 220),
+    enemy: rect(864, 212, 280, 220),
+    combatOverview: rect(0, 444, 1200, 180),
   };
   vi.spyOn(grid, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 1200, 900));
   Object.entries(geometry).forEach(([id, panelRect]) => {
@@ -1517,7 +1516,7 @@ describe('navigation integration', () => {
       const stored = JSON.parse(window.localStorage.getItem('ironbound-idle-ui-layout') ?? '{}');
       expect(stored.screenPanels.combat.player).toEqual({
         column: 1,
-        row: 3,
+        row: 2,
         columnSpan: 3,
         height: 0,
         scale: 1,
@@ -1559,7 +1558,7 @@ describe('navigation integration', () => {
     dispatchPointer(window, 'pointerup', { pointerId: 7, clientX: 424, clientY: 700 });
     await waitFor(() => {
       const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
-      expect(stored.screenPanels.combat.player.row).toBe(5);
+      expect(stored.screenPanels.combat.player.row).toBe(4);
       expect(stored.screenPanels.combat.player.column).toBe(5);
     });
   });
@@ -1648,7 +1647,7 @@ describe('navigation integration', () => {
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
     expect(screen.getByRole('heading', { name: 'Combat' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Combat locations' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Combat Browser' })).toBeInTheDocument();
     const livePanel = screen.getByRole('region', { name: 'Live combat resolution' });
     await user.click(within(livePanel).getByRole('button', { name: 'Combat settings' }));
     expect(within(livePanel).getByRole('checkbox', { name: 'Auto Repeat' })).toBeInTheDocument();
@@ -1732,7 +1731,8 @@ describe('navigation integration', () => {
     const user = userEvent.setup();
     const game = createNewGame(0, 'Navigator');
     game.settings.threeQuality = 'off';
-    game.unlockedAreas.push('copper-hills');
+    for (const skill of ['attack', 'strength', 'defence', 'hitpoints'] as const)
+      game.skills[skill] = { level: 18, xp: getXpForLevel(18) };
     useGameStore.getState().setGame(game);
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
@@ -1741,11 +1741,11 @@ describe('navigation integration', () => {
     expect(before?.type).toBe('combat');
     expect(before?.type === 'combat' ? before.enemyId : null).toBe('forest-rat');
 
-    await user.click(screen.getByRole('button', { name: /Copper Hills/ }));
+    await user.click(screen.getByRole('button', { name: /Old Shrine/ }));
 
     const after = useGameStore.getState().game?.activeAction;
     expect(after?.type).toBe('combat');
-    expect(after?.type === 'combat' ? after.areaId : null).toBe('training-grounds');
+    expect(after?.type === 'combat' ? after.areaId : null).toBe('forest-path');
     expect(after?.type === 'combat' ? after.enemyId : null).toBe('forest-rat');
     expect(screen.getByRole('button', { name: /Switch target Cave Bat/ })).toBeInTheDocument();
     expect(screen.getAllByRole('heading', { name: 'Forest Rat' })).toHaveLength(2);
@@ -1755,26 +1755,24 @@ describe('navigation integration', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
-    const locationsToggle = screen.getByRole('button', { name: 'Collapse locations' });
+    const locationsToggle = screen.getByRole('button', { name: 'Collapse browser' });
     expect(locationsToggle).toHaveAttribute('aria-expanded', 'true');
     await user.click(locationsToggle);
-    expect(screen.getByRole('button', { name: 'Expand locations' })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: 'Show browser' })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
-    expect(screen.queryByRole('button', { name: /Training Grounds/ })).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Expand locations' }));
-    const trainingRow = screen.getByRole('button', { name: /Training Grounds/ });
-    expect(trainingRow).toHaveAttribute('aria-expanded', 'true');
-    await user.click(trainingRow);
-    expect(trainingRow).toHaveAttribute('aria-expanded', 'false');
-    expect(
-      screen.queryByRole('button', { name: /Select target Forest Rat/ }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Forest Path/ })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show browser' }));
+    expect(screen.getByRole('button', { name: /Forest Path/ })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: /Select target Forest Rat/ })).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: /Dungeons/ }));
     expect(screen.getByText('Dungeons are not available yet')).toBeInTheDocument();
-    await user.click(screen.getByRole('tab', { name: /Slayer Areas/ }));
-    expect(screen.getByText('Slayer Areas are not available yet')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: /Special Areas/ }));
+    expect(screen.getByText('Special Areas are not available yet')).toBeInTheDocument();
   });
 
   it('keeps HP, attack timing, and the live log only in the center panel', async () => {

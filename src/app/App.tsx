@@ -21,6 +21,7 @@ import { miningNodeById } from '../content/miningNodes';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { getLevelProgress } from '../game/formulas/experienceFormulas';
 import { getDerivedStats } from '../game/formulas/statFormulas';
+import { isCombatAreaUnlocked } from '../game/selectors/combatSelectors';
 import { progressRatio } from '../game/engine/simulation';
 import { getMiningRuntimeState, getMiningTool } from '../game/formulas/miningFormulas';
 import { MINING_TUNING } from '../config/miningTuning';
@@ -711,7 +712,7 @@ function _LegacyCombatScreen({
   game: GameState;
   requestAction: (screen: ScreenId, action: () => void) => void;
 }) {
-  const [areaId, setAreaId] = useState<AreaId>('training-grounds');
+  const [areaId, setAreaId] = useState<AreaId>('forest-path');
   const [style, setStyle] = useState<CombatStyle>('accurate');
   const [autoRepeat, setAutoRepeat] = useState(true);
   const startCombat = useGameStore((store) => store.startCombat);
@@ -733,7 +734,7 @@ function _LegacyCombatScreen({
       </div>
       <div className="button-row" style={{ marginBottom: 15 }}>
         {AREAS.map((candidate) => {
-          const unlocked = game.unlockedAreas.includes(candidate.id) || candidate.unlock(game);
+          const unlocked = isCombatAreaUnlocked(game, candidate);
           return (
             <button
               key={candidate.id}

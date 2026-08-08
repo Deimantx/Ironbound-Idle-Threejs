@@ -44,7 +44,7 @@ describe('deterministic action simulation', () => {
   });
   it('combat resolves invalid content safely and supports style XP assignment', () => {
     let state = createNewGame(0, 'Fighter');
-    state = startCombat(state, 'training-grounds', 'forest-rat', 'aggressive', false);
+    state = startCombat(state, 'forest-path', 'forest-rat', 'aggressive', false);
     const result = simulateElapsed(state, 12_000);
     expect(result.state.statistics.totalKills).toBeGreaterThanOrEqual(0);
     expect(result.state.skills.strength.xp).toBeGreaterThanOrEqual(0);
@@ -52,7 +52,7 @@ describe('deterministic action simulation', () => {
   it('restores player health when auto-repeat queues the next monster', () => {
     let state = createNewGame(0, 'Repeater');
     state.player.currentHp = 1;
-    state = startCombat(state, 'training-grounds', 'forest-rat', 'accurate', true);
+    state = startCombat(state, 'forest-path', 'forest-rat', 'accurate', true);
     if (state.activeAction.type === 'combat') {
       state.activeAction = {
         ...state.activeAction,
@@ -78,13 +78,13 @@ describe('deterministic action simulation', () => {
   it('starts a newly selected combat target at full health', () => {
     const state = createNewGame(0, 'Target Switch');
     state.player.currentHp = 1;
-    const next = startCombat(state, 'training-grounds', 'goblin-scavenger', 'defensive', false);
+    const next = startCombat(state, 'forest-path', 'goblin-scavenger', 'defensive', false);
     expect(next.player.currentHp).toBe(getDerivedStats(next).maxHealth);
   });
   it('stops combat and records the killer when the player dies', () => {
     const state = startCombat(
       createNewGame(0, 'Fallen Fighter'),
-      'training-grounds',
+      'forest-path',
       'forest-rat',
       'accurate',
       false,
@@ -107,7 +107,7 @@ describe('deterministic action simulation', () => {
   it('resets the encounter clock when auto-repeat spawns a new monster', () => {
     const state = startCombat(
       createNewGame(0, 'Repeating Fighter', 0),
-      'training-grounds',
+      'forest-path',
       'forest-rat',
       'accurate',
       true,
