@@ -44,9 +44,12 @@ export type ScreenId =
 export type QuantityMode = 1 | 10 | 'all' | 'continuous';
 export type CombatStyle = 'accurate' | 'aggressive' | 'defensive';
 export type EnemyTraitId =
-  'scurry' | 'desperate-swing' | 'evasive' | 'armoured-shell' | 'bleeding-bites' | 'heavy-strike';
+  'scurry' | 'desperate-swing' | 'evasive' | 'armoured-shell' | 'bleeding-bites' | 'opportunist';
 export type EliteModifierId = 'savage' | 'armoured' | 'swift' | 'wealthy' | 'treasure-touched';
 export type WeaponSpecialId = 'focused-slash' | 'sundering-strike' | 'executioners-cut';
+export type EnemySpecialId = string;
+export type CombatEffectTarget = 'player' | 'enemy';
+export type CombatEffectPolarity = 'buff' | 'debuff' | 'status';
 export type EnemyVisualArchetype = 'rat' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
 export type ZoneVisualTheme = 'forest-path' | 'wolf-den' | 'abandoned-camp' | 'old-shrine';
 
@@ -106,6 +109,58 @@ export interface WeaponSpecial {
   ignoresFlatDamageReduction?: boolean;
   executeThreshold?: number;
   executeDamageMultiplier?: number;
+}
+
+export interface CombatEffectDefinition {
+  id: string;
+  name: string;
+  polarity: CombatEffectPolarity;
+  description: string;
+  durationMs?: number | null;
+  maxStacks?: number;
+  modifiers?: Partial<{
+    accuracyMultiplier: number;
+    defenceMultiplier: number;
+    damageMultiplier: number;
+    attackIntervalMultiplier: number;
+    periodicDamageIntervalMs: number;
+  }>;
+}
+
+export interface ActiveCombatEffect {
+  instanceId: string;
+  effectId: string;
+  target: CombatEffectTarget;
+  sourceEnemyId?: EnemyId;
+  sourceSpecialId?: EnemySpecialId;
+  remainingMs: number | null;
+  stacks: number;
+  magnitude?: number;
+}
+
+export interface CombatEffectsState {
+  player: ActiveCombatEffect[];
+  enemy: ActiveCombatEffect[];
+}
+
+export type EnemySpecialEffect =
+  | { kind: 'attack-progress-pushback'; amountMs: number; applyOn: 'hit' | 'always' }
+  | { kind: 'attack-delay'; amountMs: number; applyOn: 'hit' | 'always' }
+  | {
+      kind: 'apply-combat-effect';
+      effectId: string;
+      target: CombatEffectTarget;
+      applyOn: 'hit' | 'always';
+    };
+
+export interface EnemySpecialDefinition {
+  id: EnemySpecialId;
+  name: string;
+  description: string;
+  delivery: 'attack' | 'self';
+  damageMultiplier?: number;
+  accuracyMultiplier?: number;
+  effects?: EnemySpecialEffect[];
 }
 
 export interface MiningNodeDefinition {
@@ -228,6 +283,7 @@ export interface EnemyDefinition {
     name: string;
     description: string;
   };
+  specialAttack?: EnemySpecialDefinition;
   loot: LootEntry[];
   gold: [number, number];
   theme: 'rodent' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
@@ -271,6 +327,8 @@ export interface ActiveCombatState {
   rngSeed: number;
   rngCursor: number;
   adrenaline: number;
+  enemySpecialCharge: number;
+  effects: CombatEffectsState;
   eliteModifier: EliteModifierId | null;
   eliteAnnounced: boolean;
   traitState: CombatTraitState;
@@ -326,6 +384,7 @@ export interface MilestoneLogEntry {
 
 export type CombatDefeatCause =
   | { kind: 'enemy-hit'; damage: number; heavy: boolean }
+  | { kind: 'enemy-special'; specialId: EnemySpecialId; damage: number }
   | { kind: 'bleed'; damage: number };
 
 export interface CombatLogBase {
@@ -340,6 +399,9 @@ export type CombatLogEntry =
   | (CombatLogBase & { kind: 'player-miss'; special: boolean })
   | (CombatLogBase & { kind: 'enemy-hit'; damage: number; heavy: boolean })
   | (CombatLogBase & { kind: 'enemy-miss' })
+  | (CombatLogBase & { kind: 'enemy-special-hit'; specialId: EnemySpecialId; damage: number })
+  | (CombatLogBase & { kind: 'enemy-special-miss'; specialId: EnemySpecialId })
+  | (CombatLogBase & { kind: 'enemy-special-used'; specialId: EnemySpecialId })
   | (CombatLogBase & { kind: 'enemy-bleed'; damage: number })
   | (CombatLogBase & {
       kind: 'enemy-defeated';
@@ -473,6 +535,21 @@ export type CombatVisualEvent =
       type: 'enemy-miss';
       enemyId: EnemyId;
       damage: number;
+      at: number;
+    }
+  | {
+      id: string;
+      type: 'enemy-special-hit';
+      enemyId: EnemyId;
+      specialId: EnemySpecialId;
+      damage: number;
+      at: number;
+    }
+  | {
+      id: string;
+      type: 'enemy-special-miss' | 'enemy-special-used';
+      enemyId: EnemyId;
+      specialId: EnemySpecialId;
       at: number;
     }
   | {

@@ -38,6 +38,9 @@ export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresen
     };
 
   const enemyName = enemyById[entry.enemyId]?.name ?? entry.enemyId;
+  const specialName =
+    enemyById[entry.enemyId]?.specialAttack?.name ??
+    ('specialId' in entry ? entry.specialId : 'Special Attack');
   switch (entry.kind) {
     case 'player-hit':
       return {
@@ -70,6 +73,30 @@ export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresen
         icon: Target,
         category: 'miss',
         important: false,
+      };
+    case 'enemy-special-hit':
+      return {
+        text: `${enemyName} used ${specialName} for ${formatCombatDamage(entry.damage)} damage.`,
+        label: 'Enemy special',
+        icon: ShieldAlert,
+        category: 'special enemy-hit',
+        important: true,
+      };
+    case 'enemy-special-miss':
+      return {
+        text: `${enemyName}'s ${specialName} missed.`,
+        label: 'Enemy special miss',
+        icon: ShieldAlert,
+        category: 'special miss',
+        important: true,
+      };
+    case 'enemy-special-used':
+      return {
+        text: `${enemyName} used ${specialName}.`,
+        label: 'Enemy special',
+        icon: ShieldAlert,
+        category: 'special',
+        important: true,
       };
     case 'enemy-bleed':
       return {
@@ -126,7 +153,9 @@ export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresen
         text:
           entry.cause.kind === 'bleed'
             ? `You were killed by ${enemyName} from bleeding bites for ${formatCombatDamage(entry.cause.damage)} damage.`
-            : `You were killed by ${enemyName} with a hit for ${formatCombatDamage(entry.cause.damage)}${entry.cause.heavy ? ' from a heavy strike' : ''}.`,
+            : entry.cause.kind === 'enemy-special'
+              ? `You were killed by ${enemyName}'s ${specialName} for ${formatCombatDamage(entry.cause.damage)} damage.`
+              : `You were killed by ${enemyName} with a hit for ${formatCombatDamage(entry.cause.damage)}${entry.cause.heavy ? ' from a heavy strike' : ''}.`,
         label: 'Death',
         icon: Skull,
         category: 'death',

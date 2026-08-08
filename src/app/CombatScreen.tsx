@@ -14,7 +14,6 @@ import {
   PackageOpen,
   Shield,
   Skull,
-  Sparkles,
   Swords,
   Settings2,
   Target,
@@ -48,6 +47,11 @@ import {
   selectPlayerHitChance,
   selectTargetTrait,
   selectPlayerAttackProgress,
+  selectEnemySpecialCharge,
+  selectEnemySpecialReady,
+  selectEnemySpecialProgress,
+  selectPlayerCombatEffects,
+  selectEnemyCombatEffects,
   isCombatAreaUnlocked,
 } from '../game/selectors/combatSelectors';
 import { useGameStore } from '../game/state/gameStore';
@@ -80,6 +84,9 @@ import { formatHealth } from './formatters';
 import { getActualDps, getActualKillsPerHour } from './combat/sessionMetrics';
 import { SpecialAttackDetails } from './items/SpecialAttackDetails';
 import { COMBAT_TUNING } from '../config/combatTuning';
+import { formatDamageRange } from './combat/combatPresentation';
+import { EnemySpecialDetails } from './combat/EnemySpecialDetails';
+import { CombatEffectLane } from './combat/CombatEffectLanes';
 
 type CombatContentTab = CombatContentCategory;
 type OverviewTab = 'overview' | 'loot' | 'progression';
@@ -417,7 +424,7 @@ function PlayerSummaryPanel({
       </div>
       <div className="combat-stats-grid">
         <StatLine label="Accuracy" value={Math.round(stats.effectiveAccuracyRating)} concept="accuracy" showHelpIcons={game.settings.showHelpIcons} />
-        <StatLine label="Damage" value={`1–${stats.effectiveMaxHit}`} concept="max-hit" showHelpIcons={game.settings.showHelpIcons} />
+        <StatLine label="Damage" value={formatDamageRange(stats.effectiveMaxHit)} concept="damage-range" showHelpIcons={game.settings.showHelpIcons} />
         <StatLine label="Defence" value={Math.round(stats.effectiveDefenceRating)} concept="defence" showHelpIcons={game.settings.showHelpIcons} />
         <StatLine label="Attack speed" value={formatSeconds(stats.attackIntervalMs)} concept="attack-speed" showHelpIcons={game.settings.showHelpIcons} />
       </div>
@@ -444,6 +451,9 @@ function EnemySummaryPanel({
     enemy,
     active?.combatState.eliteModifier ?? null,
     active?.combatState.enemyHp ?? enemy.maxHealth,
+    game.player.currentHp /
+      Math.max(1, getDerivedStats(game, active?.style ?? 'accurate', selectPlayerCombatEffects(game)).maxHealth),
+    selectEnemyCombatEffects(game),
   );
   const baseEnemyDps =
     (1 + enemyStats.maxHit) / 2 / Math.max(0.001, enemyStats.attackIntervalMs / 1000);
@@ -500,13 +510,18 @@ function EnemySummaryPanel({
       >
         <StatLine label="Accuracy" value={enemyStats.accuracyRating} concept="accuracy" showHelpIcons={game.settings.showHelpIcons} />
         <StatLine label="Defence" value={enemyStats.defenceRating} concept="defence" showHelpIcons={game.settings.showHelpIcons} />
-        <StatLine label="Maximum hit" value={enemyStats.maxHit} concept="max-hit" showHelpIcons={game.settings.showHelpIcons} />
+        <StatLine label="Damage" value={formatDamageRange(enemyStats.maxHit)} concept="damage-range" showHelpIcons={game.settings.showHelpIcons} />
         <StatLine label="Attack interval" value={formatSeconds(enemyStats.attackIntervalMs)} concept="attack-speed" showHelpIcons={game.settings.showHelpIcons} />
         <StatLine label="Base DPS" value={baseEnemyDps.toFixed(1)} />
       </div>
       <div className="combat-panel-note">
         <strong>{enemy.trait.name}</strong> — {enemy.trait.description}
       </div>
+      {enemy.specialAttack && (
+        <div className="combat-panel-note combat-enemy-special-note">
+          <EnemySpecialDetails special={enemy.specialAttack} />
+        </div>
+      )}
       <div className="combat-drop-preview">
         <div className="combat-subheading-row">
           <span className="combat-panel-kicker">Drop preview</span>
@@ -859,6 +874,7 @@ function TargetAnalysis({
     ['Expected kills/hour', selectExpectedKillsPerHour(game, enemy, style).toFixed(1)],
     ['Enemy chance to hit', `${Math.round(selectEnemyHitChance(game, enemy, style) * 100)}%`],
     ['Enemy health', `${enemyStats.maxHealth} HP`],
+    ['Enemy damage', formatDamageRange(enemyStats.maxHit)],
     ['Expected XP from full kill', `${getCombatDamageXp(enemyStats.maxHealth)} XP`],
   ];
   return (
@@ -920,6 +936,11 @@ function TargetAnalysis({
           <strong>Important enemy trait: {trait.name}</strong>
           <span>{trait.description}</span>
         </div>
+        {enemy.specialAttack && (
+          <div className="combat-analysis-trait combat-analysis-special">
+            <EnemySpecialDetails special={enemy.specialAttack} />
+          </div>
+        )}
       </div>
     </section>
   );
@@ -1033,28 +1054,18 @@ function LiveCombatResolution({
     enemy,
     combatAction?.combatState.eliteModifier ?? null,
     combatAction?.combatState.enemyHp ?? enemy.maxHealth,
+    game.player.currentHp /
+      Math.max(
+        1,
+        getDerivedStats(game, combatAction?.style ?? 'accurate', selectPlayerCombatEffects(game)).maxHealth,
+      ),
+    selectEnemyCombatEffects(game),
   );
   const special = itemById[game.equipment.weapon ?? '']?.specialAttack;
   const adrenaline = combatAction?.combatState.adrenaline ?? 0;
-  const effects: string[] = [];
-  if (combatAction?.combatState.eliteModifier)
-    effects.push(`ELITE · ${eliteById[combatAction.combatState.eliteModifier].name}`);
-  if (enemy.trait.id === 'desperate-swing' && enemyHp <= enemyStats.maxHealth * 0.3)
-    effects.push('Desperate Swing active');
-  if (
-    enemy.trait.id === 'bleeding-bites' &&
-    (combatAction?.combatState.traitState.bleedStacks ?? 0) > 0
-  )
-    effects.push(`Bleed stacks: ${combatAction?.combatState.traitState.bleedStacks}`);
-  if (
-    enemy.trait.id === 'heavy-strike' &&
-    (combatAction?.combatState.traitState.enemyAttackCount ?? 0) % 4 === 3
-  )
-    effects.push('Heavy Strike incoming');
-  if (combatAction?.pendingStyle)
-    effects.push(
-      `Style change after current attack: ${getCombatStyleInfo(combatAction.pendingStyle).name}`,
-    );
+  const enemySpecialCharge = selectEnemySpecialCharge(game);
+  const enemySpecialReady = selectEnemySpecialReady(game);
+  const enemySpecialProgress = selectEnemySpecialProgress(game);
   const statusIcon =
     status === 'VICTORY' ? (
       <Trophy size={15} />
@@ -1082,7 +1093,7 @@ function LiveCombatResolution({
           <HealthBar
             label="YOU"
             current={game.player.currentHp}
-            max={getDerivedStats(game).maxHealth}
+            max={getDerivedStats(game, combatAction?.style ?? 'accurate', selectPlayerCombatEffects(game)).maxHealth}
             tone="player"
           />
           <AttackProgress label="Next attack" progress={playerProgress} tone="player" />
@@ -1119,10 +1130,37 @@ function LiveCombatResolution({
                       ? `Next player attack in ${formatSeconds(playerProgress.timeUntilAttackMs)}`
                       : 'Combat stopped'}
         </span>
-        <span className="combat-effects">
-          <Sparkles size={13} /> Active effects: {effects.length ? effects.join(' · ') : 'None'}
-        </span>
+        <span className="combat-resolution-status-spacer" aria-hidden="true" />
       </div>
+      <div className="combat-effect-lanes" aria-label="Combat effects">
+        <CombatEffectLane target="player" effects={selectPlayerCombatEffects(game)} />
+        <CombatEffectLane target="enemy" effects={selectEnemyCombatEffects(game)} />
+      </div>
+      {enemy.specialAttack && combatAction && (
+        <div className={`combat-enemy-special ${enemySpecialReady ? 'ready' : ''}`}>
+          <div className="combat-enemy-special-head">
+            <GameTooltip
+              content={<EnemySpecialDetails special={enemy.specialAttack} includeChargeRule includeNormalQualifier />}
+              label={`${enemy.specialAttack.name} enemy special details`}
+            >
+              <span className="combat-enemy-special-name">
+                Special Charge · <strong>{enemy.specialAttack.name}</strong>
+              </span>
+            </GameTooltip>
+            <strong>{enemySpecialCharge} / {COMBAT_TUNING.enemySpecialChargeMax}{enemySpecialReady ? ' READY' : ''}</strong>
+          </div>
+          <div
+            className="combat-enemy-special-track"
+            role="progressbar"
+            aria-label={`${enemy.specialAttack.name} Special Charge`}
+            aria-valuemin={0}
+            aria-valuemax={COMBAT_TUNING.enemySpecialChargeMax}
+            aria-valuenow={enemySpecialCharge}
+          >
+            <i style={{ width: `${enemySpecialProgress * 100}%` }} />
+          </div>
+        </div>
+      )}
       <div className={`combat-adrenaline ${adrenaline >= COMBAT_TUNING.adrenalineMax ? 'ready' : ''}`} aria-label="Adrenaline">
         <div className="combat-adrenaline-head">
           <ExplainedTerm concept="adrenaline" showHelpIcon={game.settings.showHelpIcons}>

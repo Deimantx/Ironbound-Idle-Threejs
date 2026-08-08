@@ -1,6 +1,8 @@
 import { COMBAT_TUNING } from '../../config/combatTuning';
 import { enemyById } from '../../content/enemies';
 import { eliteById } from '../../content/elites';
+import { getCombatEffectModifiers } from './combatEffects';
+import type { ActiveCombatEffect } from '../types';
 import type { EliteModifierId, EnemyDefinition, EnemyId } from '../types';
 
 export interface EffectiveEnemyStats {
@@ -21,6 +23,8 @@ export const getEnemyCombatStats = (
   enemy: EnemyDefinition,
   eliteModifier: EliteModifierId | null = null,
   currentHp = enemy.maxHealth,
+  playerHealthPercent = 1,
+  effects: ActiveCombatEffect[] = [],
 ): EffectiveEnemyStats => {
   const elite = eliteModifier;
   const effectiveMaxHealth = enemy.maxHealth * (eliteModifier ? COMBAT_TUNING.eliteHealthMultiplier : 1);
@@ -31,6 +35,14 @@ export const getEnemyCombatStats = (
   let flatDamageReduction = 0;
   let goldMultiplier = 1;
   let lootChanceMultiplier = 1;
+  const effectModifiers = getCombatEffectModifiers(effects);
+
+  let accuracyMultiplier = 1;
+  if (
+    enemy.trait.id === 'opportunist' &&
+    playerHealthPercent < COMBAT_TUNING.banditOpportunistHealthThreshold
+  )
+    accuracyMultiplier *= COMBAT_TUNING.banditOpportunistAccuracyMultiplier;
 
   if (enemy.trait.id === 'desperate-swing' && lowHealth)
     maxHitMultiplier *= COMBAT_TUNING.goblinDesperateMaxHitMultiplier;
@@ -46,11 +58,15 @@ export const getEnemyCombatStats = (
   if (elite) goldMultiplier *= COMBAT_TUNING.eliteGoldMultiplier;
   if (elite === 'wealthy') goldMultiplier *= COMBAT_TUNING.wealthyGoldMultiplier;
   if (elite === 'treasure-touched') lootChanceMultiplier = COMBAT_TUNING.treasureTouchedLootMultiplier;
+  maxHitMultiplier *= effectModifiers.damageMultiplier;
+  defenceMultiplier *= effectModifiers.defenceMultiplier;
+  intervalMultiplier *= effectModifiers.attackIntervalMultiplier;
+  accuracyMultiplier *= effectModifiers.accuracyMultiplier;
 
   return {
     maxHealth: Math.max(1, Math.round(effectiveMaxHealth)),
     maxHit: Math.max(1, Math.round(enemy.maxHit * maxHitMultiplier)),
-    accuracyRating: Math.max(0, enemy.accuracyRating),
+    accuracyRating: Math.max(0, Math.round(enemy.accuracyRating * accuracyMultiplier)),
     defenceRating: Math.max(0, Math.round(enemy.defenceRating * defenceMultiplier)),
     attackIntervalMs: Math.max(
       COMBAT_TUNING.minimumAttackIntervalMs,

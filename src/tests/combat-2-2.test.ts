@@ -130,6 +130,7 @@ describe('Combat 2.2 stance timing', () => {
     const state = readyCombat('road-bandit');
     state.skills.attack.level = 1;
     state.skills.defence.level = 50;
+    state.player.currentHp = getDerivedStats(state).maxHealth;
     if (state.activeAction !== undefined && state.activeAction.type === 'combat') {
       state.activeAction.combatState.playerAttackMs = 0;
       state.activeAction.combatState.enemyAttackMs = 0;

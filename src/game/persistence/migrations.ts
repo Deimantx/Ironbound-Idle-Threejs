@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from '../../config/gameConfig';
+import { COMBAT_TUNING } from '../../config/combatTuning';
 import { enemyById } from '../../content/enemies';
 import { itemById } from '../../content/items';
 import { recipeById } from '../../content/recipes';
@@ -540,6 +541,55 @@ const migrateHelpIcons = (input: GameState): GameState => ({
   schemaVersion: 12,
 });
 
+const normalizePersistedEffects = (value: unknown, target: 'player' | 'enemy') => {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((raw, index) => {
+    if (!raw || typeof raw !== 'object') return [];
+    const effect = raw as Record<string, unknown>;
+    const effectId = typeof effect.effectId === 'string' ? effect.effectId : null;
+    if (!effectId) return [];
+    const remainingMs = effect.remainingMs === null ? null : Number(effect.remainingMs);
+    return [
+      {
+        ...effect,
+        instanceId:
+          typeof effect.instanceId === 'string' && effect.instanceId.length
+            ? effect.instanceId
+            : `${effectId}-${target}-${index}`,
+        effectId,
+        target,
+        remainingMs: Number.isFinite(remainingMs) ? remainingMs : null,
+        stacks: Math.max(1, Math.floor(Number(effect.stacks) || 1)),
+      },
+    ];
+  });
+};
+
+const migrateEnemySpecialFoundation = (input: GameState): GameState => {
+  if (input.activeAction.type !== 'combat') return { ...input, schemaVersion: 13 };
+  const rawCombatState = input.activeAction.combatState as unknown as Record<string, unknown>;
+  const rawEffects = rawCombatState.effects as Record<string, unknown> | undefined;
+  const rawCharge = Number(rawCombatState.enemySpecialCharge);
+  const combatState = {
+    ...rawCombatState,
+    enemySpecialCharge: Number.isFinite(rawCharge)
+      ? Math.max(0, Math.min(COMBAT_TUNING.enemySpecialChargeMax, rawCharge))
+      : 0,
+    effects: {
+      player: normalizePersistedEffects(rawEffects?.player, 'player'),
+      enemy: normalizePersistedEffects(rawEffects?.enemy, 'enemy'),
+    },
+  };
+  return {
+    ...input,
+    activeAction: {
+      ...input.activeAction,
+      combatState: combatState as Extract<GameState['activeAction'], { type: 'combat' }>['combatState'],
+    },
+    schemaVersion: 13,
+  };
+};
+
 export const migrations: Record<number, SaveMigration> = {
   1: (input) => ({
     ...input,
@@ -581,6 +631,8 @@ export const migrations: Record<number, SaveMigration> = {
           rngSeed: rng.rngSeed,
           rngCursor: 0,
           adrenaline: 0,
+          enemySpecialCharge: 0,
+          effects: { player: [], enemy: [] },
           eliteModifier: null,
           eliteAnnounced: true,
           traitState: {
@@ -604,6 +656,7 @@ export const migrations: Record<number, SaveMigration> = {
   10: migrateActivityLogs,
   11: migrateMomentumToAdrenaline,
   12: migrateHelpIcons,
+  13: migrateEnemySpecialFoundation,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {
@@ -621,6 +674,7 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
   current = normalizeSkillStates(current);
   current = migrateCombatAreas(current);
   current = migrateActivityLogs(current);
+  current = migrateEnemySpecialFoundation(current);
   current.settings.showHelpIcons = current.settings.showHelpIcons ?? true;
   const maxHealth = getDerivedStats(current).maxHealth;
   current.player.currentHp = clampHealth(current.player.currentHp, maxHealth);

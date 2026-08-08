@@ -57,7 +57,7 @@ describe('Tooltip 1.0 concepts and enemies', () => {
     expect(tooltip).toHaveTextContent(enemy.name);
     expect(tooltip).toHaveTextContent(`Level ${enemy.displayLevel}`);
     expect(tooltip).toHaveTextContent(`Health ${enemy.maxHealth}`);
-    expect(tooltip).toHaveTextContent(`Max hit ${enemy.maxHit}`);
+    expect(tooltip).toHaveTextContent(`Damage 1–${enemy.maxHit}`);
     expect(tooltip).toHaveTextContent('Lifetime kills: 7');
   });
 

@@ -2,6 +2,8 @@ import type { ReactElement } from 'react';
 import type { EnemyDefinition } from '../../game/types';
 import { getEnemyCombatStats, type EffectiveEnemyStats } from '../../game/formulas/combatStats';
 import { GameTooltip } from '../items/GameTooltip';
+import { EnemySpecialDetails } from '../combat/EnemySpecialDetails';
+import { formatDamageRange } from '../combat/combatPresentation';
 
 export function EnemyTooltipContent({
   enemy,
@@ -21,13 +23,14 @@ export function EnemyTooltipContent({
       <p>{enemy.description}</p>
       <div className="enemy-tooltip-stats">
         <span>Health <strong>{stats.maxHealth}</strong></span>
-        <span>Max hit <strong>{stats.maxHit}</strong></span>
+        <span>Damage <strong>{formatDamageRange(stats.maxHit)}</strong></span>
         <span>Attack interval <strong>{(stats.attackIntervalMs / 1000).toFixed(1)}s</strong></span>
       </div>
       <div className="enemy-tooltip-trait">
         <span className="item-tooltip-kicker">Trait · {enemy.trait.name}</span>
         <span>{enemy.trait.description}</span>
       </div>
+      {enemy.specialAttack && <EnemySpecialDetails special={enemy.specialAttack} includeChargeRule includeNormalQualifier />}
       <span className="enemy-tooltip-kills">Lifetime kills: {kills}</span>
     </div>
   );

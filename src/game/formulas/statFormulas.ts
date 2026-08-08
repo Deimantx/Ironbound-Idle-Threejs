@@ -1,6 +1,7 @@
 import { itemById } from '../../content/items';
 import { getCombatStyleModifiers } from './combatFormulas';
-import type { CombatStyle, EquipmentLoadout, GameState } from '../types';
+import { getCombatEffectModifiers } from './combatEffects';
+import type { ActiveCombatEffect, CombatStyle, EquipmentLoadout, GameState } from '../types';
 
 export interface DerivedStats {
   attack: number;
@@ -47,6 +48,7 @@ export const getEquipmentBonuses = (equipment: EquipmentLoadout): EquipmentBonus
 export const getDerivedStats = (
   state: GameState,
   style: CombatStyle = 'accurate',
+  combatEffects: ActiveCombatEffect[] = [],
 ): DerivedStats => {
   const bonuses = getEquipmentBonuses(state.equipment);
   const attack = state.skills.attack.level + bonuses.attack;
@@ -57,9 +59,15 @@ export const getDerivedStats = (
   const baseDefenceRating = Math.max(0, defence);
   const baseMaxHit = Math.max(1, Math.floor(1 + strength / 5));
   const modifiers = getCombatStyleModifiers(style);
-  const effectiveAccuracyRating = baseAccuracyRating * modifiers.accuracyMultiplier;
-  const effectiveDefenceRating = baseDefenceRating * modifiers.defenceMultiplier;
-  const effectiveMaxHit = Math.max(1, Math.round(baseMaxHit * modifiers.maxHitMultiplier));
+  const effectModifiers = getCombatEffectModifiers(combatEffects);
+  const effectiveAccuracyRating =
+    baseAccuracyRating * modifiers.accuracyMultiplier * effectModifiers.accuracyMultiplier;
+  const effectiveDefenceRating =
+    baseDefenceRating * modifiers.defenceMultiplier * effectModifiers.defenceMultiplier;
+  const effectiveMaxHit = Math.max(
+    1,
+    Math.round(baseMaxHit * modifiers.maxHitMultiplier * effectModifiers.damageMultiplier),
+  );
   const combatLevel = Math.floor(
     (state.skills.attack.level +
       state.skills.strength.level +
@@ -72,7 +80,10 @@ export const getDerivedStats = (
     strength,
     defence,
     maxHealth,
-    attackIntervalMs: Math.max(900, 2400 * (1 - bonuses.attackSpeed * 0.25)),
+    attackIntervalMs: Math.max(
+      900,
+      2400 * (1 - bonuses.attackSpeed * 0.25) * effectModifiers.attackIntervalMultiplier,
+    ),
     miningIntervalMultiplier: Math.max(0.55, 1 - bonuses.miningSpeed),
     maxHit: baseMaxHit,
     baseAccuracyRating,

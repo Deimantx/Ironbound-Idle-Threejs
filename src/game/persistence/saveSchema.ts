@@ -33,8 +33,26 @@ const activeCombatStateBaseSchema = z
     encounterStartedAt: z.number().finite().optional(),
   })
   .passthrough();
+const activeCombatEffectSchema = z
+  .object({
+    instanceId: z.string().min(1),
+    effectId: z.string().min(1),
+    target: z.enum(['player', 'enemy']),
+    sourceEnemyId: z.string().optional(),
+    sourceSpecialId: z.string().optional(),
+    remainingMs: z.number().finite().nullable(),
+    stacks: z.number().int().positive(),
+    magnitude: z.number().finite().optional(),
+  })
+  .passthrough();
+const combatEffectsSchema = z.object({
+  player: z.array(activeCombatEffectSchema),
+  enemy: z.array(activeCombatEffectSchema),
+});
 const activeCombatStateSchema = activeCombatStateBaseSchema.extend({
   adrenaline: z.number().finite(),
+  enemySpecialCharge: z.number().finite(),
+  effects: combatEffectsSchema,
 }).superRefine((combatState, context) => {
   if ('momentum' in combatState)
     context.addIssue({
@@ -45,6 +63,9 @@ const activeCombatStateSchema = activeCombatStateBaseSchema.extend({
 });
 const legacyActiveCombatStateSchema = activeCombatStateBaseSchema.extend({
   momentum: z.number().finite().optional(),
+  adrenaline: z.number().finite().optional(),
+  enemySpecialCharge: z.number().finite().optional(),
+  effects: combatEffectsSchema.optional(),
 });
 const activeActionSchema = z.union([
   z.object({ type: z.literal('none') }).passthrough(),
@@ -183,6 +204,7 @@ const combatLogBaseShape = {
 };
 const combatDefeatCauseSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('enemy-hit'), damage: z.number().finite().nonnegative(), heavy: z.boolean() }),
+  z.object({ kind: z.literal('enemy-special'), specialId: z.string().min(1), damage: z.number().finite().nonnegative() }),
   z.object({ kind: z.literal('bleed'), damage: z.number().finite().nonnegative() }),
 ]);
 const combatLogEntrySchema = z.discriminatedUnion('kind', [
@@ -190,6 +212,9 @@ const combatLogEntrySchema = z.discriminatedUnion('kind', [
   z.object({ ...combatLogBaseShape, kind: z.literal('player-miss'), special: z.boolean() }),
   z.object({ ...combatLogBaseShape, kind: z.literal('enemy-hit'), damage: z.number().finite().nonnegative(), heavy: z.boolean() }),
   z.object({ ...combatLogBaseShape, kind: z.literal('enemy-miss') }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('enemy-special-hit'), specialId: z.string().min(1), damage: z.number().finite().nonnegative() }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('enemy-special-miss'), specialId: z.string().min(1) }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('enemy-special-used'), specialId: z.string().min(1) }),
   z.object({ ...combatLogBaseShape, kind: z.literal('enemy-bleed'), damage: z.number().finite().nonnegative() }),
   z.object({
     ...combatLogBaseShape,

@@ -165,9 +165,18 @@ export const ENEMIES: EnemyDefinition[] = [
     accuracyRating: COMBAT_TUNING.enemyRatings['road-bandit'].accuracy,
     defenceRating: COMBAT_TUNING.enemyRatings['road-bandit'].defence,
     trait: {
+      id: 'opportunist',
+      name: 'Opportunist',
+      description: 'Becomes more accurate against badly wounded opponents.',
+    },
+    specialAttack: {
       id: 'heavy-strike',
       name: 'Heavy Strike',
-      description: 'Every fourth attack is much more powerful.',
+      description: 'A powerful attack that hits harder and more accurately.',
+      delivery: 'attack',
+      damageMultiplier: 1.75,
+      accuracyMultiplier: 1.25,
+      effects: [],
     },
     loot: [
       { itemId: 'bandit-token', chance: 0.44, min: 1, max: 1 },

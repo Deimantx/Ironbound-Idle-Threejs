@@ -7,6 +7,7 @@ export type GameConceptId =
   | 'defence'
   | 'hitpoints'
   | 'max-hit'
+  | 'damage-range'
   | 'attack-speed'
   | 'combat-level'
   | 'hit-chance'
@@ -58,6 +59,15 @@ export const GAME_CONCEPTS: Record<GameConceptId, GameConceptDefinition> = {
     title: 'Max Hit',
     description: 'The highest normal damage your current attack can roll.',
     details: ['Enemy mitigation and Special Attack modifiers can change final damage.'],
+  },
+  'damage-range': {
+    id: 'damage-range',
+    title: 'Damage',
+    description: "Your normal attack's base damage range.",
+    details: [
+      'A successful normal attack rolls between 1 and your current maximum before enemy mitigation.',
+      'Special Attacks can modify the final damage.',
+    ],
   },
   'attack-speed': {
     id: 'attack-speed',

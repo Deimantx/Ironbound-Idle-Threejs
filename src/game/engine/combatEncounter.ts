@@ -3,6 +3,7 @@ import { enemyById } from '../../content/enemies';
 import { getEnemyCombatStats } from '../formulas/combatStats';
 import { createCombatRng, nextCombatRandom } from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
+import { emptyCombatEffects } from '../formulas/combatEffects';
 import type {
   ActiveCombatState,
   CombatStyle,
@@ -55,6 +56,8 @@ export const initializeEnemySpawn = (
       rngSeed: rng.rngSeed,
       rngCursor: rng.rngCursor,
       adrenaline: Math.max(0, Math.min(COMBAT_TUNING.adrenalineMax, adrenaline)),
+      enemySpecialCharge: 0,
+      effects: emptyCombatEffects(),
       eliteModifier: modifier,
       eliteAnnounced: false,
       traitState: { firstAttackPending, enemyAttackCount: 0, bleedStacks: 0 },
