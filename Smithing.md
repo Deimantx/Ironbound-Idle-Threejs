@@ -14,6 +14,20 @@ Anvil
 
 The default UI layout uses `smithingOverview` on row 1, `smithingForge` on row 2, and `smithingAnvil` on row 3, each spanning all 12 editor columns. Older locally stored Forge/Anvil 5/7 side-by-side positions are sanitized back to this layout. Forge and Anvil collapse state remains local UI state and their panel slots resize with their measured content.
 
+## Smithing 1.31 facility upgrade preview
+
+Forge and Anvil headers now have explicit control regions in this order:
+
+```text
+facility identity · Upgrade · Fuel/Tool · Collapse
+```
+
+The collapse control is always the final right-most button with its own accessible `Collapse Forge`, `Expand Forge`, `Collapse Anvil`, or `Expand Anvil` label. Facility identity is no longer a large clickable collapse surface.
+
+The `Upgrade` button opens an inline, preview-only panel below its facility header. Forge previews `Basic Forge -> Reinforced Forge`; Anvil previews `Basic Anvil -> Reinforced Anvil`. The panels show non-numeric planned effect categories, `Not yet available` requirements, and a `COMING LATER` treatment. They do not contain a purchase action, temporary costs, numeric bonuses, or gameplay effects.
+
+Upgrade open state, Fuel/Tool popover state, and collapse state are local React UI state. Opening Upgrade closes the same facility's Fuel or Tool popover, and collapsing a facility closes both. No facility state, migration, save field, or schema change is required; save schema remains 8.
+
 ## Forge
 
 Forge recipes consume authored ore inputs and abstract fuel units atomically. Coal is the active fuel and remains a normal stackable inventory item. Forge recipes ignore Smithing hammers and use their authored intervals.
@@ -112,6 +126,6 @@ The shared online and offline simulation uses the same effective interval, prese
 - `src/app/SmithingScreen.tsx` and `src/app/ActivityStrip.tsx` - Smithing UI and activity strip.
 - `src/app/formatters.ts` - shared aggregate duration formatting.
 
-## Smithing 1.3 direction
+## Later facility progression
 
-Facility upgrade levels, new fuels, queues, parallel actions, quality rolls, mastery, and hammer durability remain out of scope. The existing `baseForgeFuelCapacity` tuning boundary remains available for a later Basic -> Reinforced -> High-Heat -> Master facility pass.
+Actual facility upgrade levels, cross-profession and combat requirements, new fuels, queues, parallel actions, quality rolls, mastery, and hammer durability remain out of scope. The 1.31 preview is intentionally non-functional. The existing `baseForgeFuelCapacity` tuning boundary remains available for a later Basic -> Reinforced -> High-Heat -> Master facility pass.

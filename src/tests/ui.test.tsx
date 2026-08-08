@@ -490,13 +490,99 @@ describe('navigation integration', () => {
     expect(screen.getByText('Iron Sword')).toBeInTheDocument();
     expect(screen.queryByText('Iron Armor')).not.toBeInTheDocument();
 
-    const forgeHeader = screen.getByRole('button', { name: /Forge Smelt ore/ });
+    const forgeHeader = screen.getByRole('button', { name: 'Collapse Forge' });
     expect(forgeHeader).toHaveAttribute('aria-expanded', 'true');
     await user.click(forgeHeader);
     expect(forgeHeader).toHaveAttribute('aria-expanded', 'false');
     expect(document.querySelectorAll('.smithing-forge-card')).toHaveLength(0);
     await user.click(forgeHeader);
     expect(document.querySelectorAll('.smithing-forge-card')).toHaveLength(2);
+  });
+
+  it('opens preview-only facility upgrades without changing game state', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Facility Upgrade Preview');
+    game.settings.threeQuality = 'off';
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
+    const before = useGameStore.getState().game;
+    const withoutSimulationClock = (current: typeof before) => {
+      if (!current) return current;
+      const { updatedAt: _updatedAt, lastSimulatedAt: _lastSimulatedAt, ...stable } = current;
+      return stable;
+    };
+    const beforeStable = withoutSimulationClock(before);
+    const forgePanel = document.querySelector('[data-ui-panel="smithingForge"]') as HTMLElement;
+    await user.click(within(forgePanel).getByRole('button', { name: 'Upgrade' }));
+
+    expect(screen.getByText('FACILITY UPGRADE')).toBeInTheDocument();
+    expect(screen.getByText('Basic Forge')).toBeInTheDocument();
+    expect(screen.getByText('Reinforced Forge')).toBeInTheDocument();
+    expect(screen.getByText('Future Upgrade')).toBeInTheDocument();
+    expect(screen.getByText('Increased fuel capacity')).toBeInTheDocument();
+    expect(screen.getByText('Not yet available')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Upgrade Facility' })).not.toBeInTheDocument();
+    expect(withoutSimulationClock(useGameStore.getState().game)).toEqual(beforeStable);
+
+    await user.click(within(forgePanel).getByRole('button', { name: 'Upgrade' }));
+    expect(screen.queryByText('Basic Forge')).not.toBeInTheDocument();
+
+    const anvilPanel = document.querySelector('[data-ui-panel="smithingAnvil"]') as HTMLElement;
+    await user.click(within(anvilPanel).getByRole('button', { name: 'Upgrade' }));
+    expect(screen.getByText('Basic Anvil')).toBeInTheDocument();
+    expect(screen.getByText('Reinforced Anvil')).toBeInTheDocument();
+    expect(screen.getByText('Improved Smithing Hammer effectiveness')).toBeInTheDocument();
+    expect(withoutSimulationClock(useGameStore.getState().game)).toEqual(beforeStable);
+  });
+
+  it('keeps upgrade, accessory, and collapse controls ordered and coordinated', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Facility Header Controls');
+    game.settings.threeQuality = 'off';
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
+    const forgePanel = document.querySelector('[data-ui-panel="smithingForge"]') as HTMLElement;
+    const anvilPanel = document.querySelector('[data-ui-panel="smithingAnvil"]') as HTMLElement;
+    expect(
+      [...forgePanel.querySelectorAll('[data-smithing-control]')].map((control) =>
+        control.getAttribute('data-smithing-control'),
+      ),
+    ).toEqual(['upgrade', 'fuel', 'collapse']);
+    expect(
+      [...anvilPanel.querySelectorAll('[data-smithing-control]')].map((control) =>
+        control.getAttribute('data-smithing-control'),
+      ),
+    ).toEqual(['upgrade', 'tool', 'collapse']);
+
+    await user.click(within(forgePanel).getByRole('button', { name: 'Open Forge fuel controls' }));
+    expect(screen.getByRole('dialog', { name: 'Forge fuel controls' })).toBeInTheDocument();
+    await user.click(within(forgePanel).getByRole('button', { name: 'Upgrade' }));
+    expect(screen.getByText('Basic Forge')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Forge fuel controls' })).not.toBeInTheDocument();
+
+    await user.click(within(forgePanel).getByRole('button', { name: 'Collapse Forge' }));
+    expect(screen.getByRole('button', { name: 'Expand Forge' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    expect(screen.queryByText('Basic Forge')).not.toBeInTheDocument();
+    await user.click(within(forgePanel).getByRole('button', { name: 'Expand Forge' }));
+    expect(screen.queryByText('Basic Forge')).not.toBeInTheDocument();
+
+    await user.click(
+      within(anvilPanel).getByRole('button', { name: 'Anvil tool: No Smithing Hammer' }),
+    );
+    expect(screen.getByRole('dialog', { name: 'Anvil tool selector' })).toBeInTheDocument();
+    await user.click(within(anvilPanel).getByRole('button', { name: 'Upgrade' }));
+    expect(screen.getByText('Basic Anvil')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Anvil tool selector' })).not.toBeInTheDocument();
+
+    await user.click(within(anvilPanel).getByRole('button', { name: 'Collapse Anvil' }));
+    expect(screen.queryByText('Basic Anvil')).not.toBeInTheDocument();
   });
 
   it('collapses metal tiers while explicit metal filters force their tier visible', async () => {

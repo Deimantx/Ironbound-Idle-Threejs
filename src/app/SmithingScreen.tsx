@@ -1,4 +1,4 @@
-import { ChevronDown, Flame, Hammer, Lock } from 'lucide-react';
+import { ArrowUp, ChevronDown, Flame, Hammer, Lock } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { SMITHING_BAR_BY_TIER, type SmithingTier } from '../config/smithingTuning';
 import {
@@ -253,41 +253,142 @@ function FacilityHeader({
   subtitle,
   collapsed,
   onToggle,
-  summary,
-  accessory,
+  controls,
 }: {
   icon: ReactNode;
   title: string;
   subtitle: string;
   collapsed: boolean;
   onToggle: () => void;
-  summary: string;
-  accessory?: ReactNode;
+  controls?: ReactNode;
 }) {
   return (
     <div className="smithing-facility-header">
-      <button
-        type="button"
-        className="smithing-facility-collapse"
-        onClick={onToggle}
-        aria-expanded={!collapsed}
-        aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${title} ${subtitle}`}
-      >
+      <div className="smithing-facility-identity">
         <span className="smithing-facility-icon">{icon}</span>
         <span className="smithing-facility-title">
           <strong>{title}</strong>
           <small>{subtitle}</small>
         </span>
-        <span className="smithing-facility-summary">{summary}</span>
-        <ChevronDown size={16} className={collapsed ? '' : 'rotated'} />
-      </button>
-      {accessory}
+      </div>
+      <div className="smithing-facility-controls">
+        {controls}
+        <button
+          type="button"
+          className="smithing-facility-collapse"
+          data-smithing-control="collapse"
+          onClick={onToggle}
+          aria-expanded={!collapsed}
+          aria-label={`${collapsed ? 'Expand' : 'Collapse'} ${title}`}
+          title={`${collapsed ? 'Expand' : 'Collapse'} ${title}`}
+        >
+          <ChevronDown size={16} className={collapsed ? '' : 'rotated'} />
+        </button>
+      </div>
     </div>
   );
 }
 
-function ForgeFuelControl({ game }: { game: GameState }) {
-  const [open, setOpen] = useState(false);
+type FacilityKind = 'forge' | 'anvil';
+
+const FACILITY_UPGRADE_PREVIEW: Record<
+  FacilityKind,
+  { currentName: string; nextName: string; plannedEffects: string[] }
+> = {
+  forge: {
+    currentName: 'Basic Forge',
+    nextName: 'Reinforced Forge',
+    plannedEffects: ['Increased fuel capacity', 'Improved fuel efficiency', 'Faster smelting'],
+  },
+  anvil: {
+    currentName: 'Basic Anvil',
+    nextName: 'Reinforced Anvil',
+    plannedEffects: [
+      'Faster forging',
+      'Improved Smithing Hammer effectiveness',
+      'Advanced recipe support',
+    ],
+  },
+};
+
+function FacilityUpgradeTrigger({
+  open,
+  onToggle,
+  panelId,
+}: {
+  open: boolean;
+  onToggle: () => void;
+  panelId: string;
+}) {
+  return (
+    <button
+      type="button"
+      className="smithing-facility-upgrade-trigger"
+      data-smithing-control="upgrade"
+      aria-expanded={open}
+      aria-controls={panelId}
+      onClick={onToggle}
+    >
+      <ArrowUp size={14} />
+      <span>Upgrade</span>
+    </button>
+  );
+}
+
+function FacilityUpgradePreview({ facility }: { facility: FacilityKind }) {
+  const preview = FACILITY_UPGRADE_PREVIEW[facility];
+  return (
+    <section
+      id={`${facility}-facility-upgrade-preview`}
+      className="smithing-facility-upgrade-panel"
+      aria-label={`${preview.currentName} facility upgrade preview`}
+    >
+      <div className="eyebrow">FACILITY UPGRADE</div>
+      <div className="smithing-facility-upgrade-summary">
+        <div>
+          <strong>{preview.currentName}</strong>
+          <small>Current Tier</small>
+        </div>
+        <div className="smithing-facility-upgrade-arrow" aria-hidden="true">
+          →
+        </div>
+        <div>
+          <strong>{preview.nextName}</strong>
+          <small>Future Upgrade</small>
+        </div>
+      </div>
+      <div className="smithing-facility-upgrade-details">
+        <div className="smithing-facility-upgrade-effects">
+          <span className="eyebrow">PLANNED UPGRADE EFFECTS</span>
+          <ul>
+            {preview.plannedEffects.map((effect) => (
+              <li key={effect}>{effect}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="smithing-facility-upgrade-requirements">
+          <span className="eyebrow">REQUIREMENTS</span>
+          <strong>Not yet available</strong>
+          <small>Future progression resources</small>
+        </div>
+      </div>
+      <div className="smithing-facility-upgrade-note">
+        Upgrade requirements will be defined with future profession and combat progression.
+        <span className="badge ghost">COMING LATER</span>
+      </div>
+    </section>
+  );
+}
+
+function ForgeFuelControl({
+  game,
+  open,
+  onOpenChange,
+}: {
+  game: GameState;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const selected = getSelectedForgeFuel(game);
   const fuel = game.smithing.forgeFuel;
   const capacity = getForgeFuelCapacity(game);
@@ -301,9 +402,10 @@ function ForgeFuelControl({ game }: { game: GameState }) {
       <button
         type="button"
         className="smithing-fuel-trigger"
+        data-smithing-control="fuel"
         aria-label="Open Forge fuel controls"
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => onOpenChange(!open)}
       >
         <span>
           <strong>Fuel: {selected?.name ?? 'None'}</strong>
@@ -455,8 +557,15 @@ const getActiveToolBonus = (game: GameState): { name: string; detail: string } =
   };
 };
 
-function AnvilToolControl({ game }: { game: GameState }) {
-  const [open, setOpen] = useState(false);
+function AnvilToolControl({
+  game,
+  open,
+  onOpenChange,
+}: {
+  game: GameState;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   const equip = useGameStore((store) => store.equip);
   const unequip = useGameStore((store) => store.unequip);
   const hammer = getSmithingHammer(game);
@@ -476,20 +585,21 @@ function AnvilToolControl({ game }: { game: GameState }) {
   useEffect(() => {
     if (!open) return;
     const closeOnEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') onOpenChange(false);
     };
     window.addEventListener('keydown', closeOnEscape);
     return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [open]);
+  }, [onOpenChange, open]);
 
   return (
     <div className="smithing-tool-control">
       <button
         type="button"
         className="smithing-tool-trigger"
+        data-smithing-control="tool"
         aria-label={`Anvil tool: ${toolLabel}`}
         aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => onOpenChange(!open)}
       >
         <span>
           <strong>Tool: {toolLabel}</strong>
@@ -540,7 +650,7 @@ function AnvilToolControl({ game }: { game: GameState }) {
                     title={reason}
                     onClick={() => {
                       equip(definition.itemId);
-                      setOpen(false);
+                      onOpenChange(false);
                     }}
                   >
                     {isEquipped
@@ -563,7 +673,7 @@ function AnvilToolControl({ game }: { game: GameState }) {
               title={activeAnvil ? 'Stop the current Anvil order to change tools.' : undefined}
               onClick={() => {
                 unequip('tool');
-                setOpen(false);
+                onOpenChange(false);
               }}
             >
               Unequip Hammer
@@ -693,6 +803,10 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
   const [mode, setMode] = useState<QuantityMode>(1);
   const [forgeCollapsed, setForgeCollapsed] = useState(false);
   const [anvilCollapsed, setAnvilCollapsed] = useState(false);
+  const [forgeUpgradeOpen, setForgeUpgradeOpen] = useState(false);
+  const [forgeFuelOpen, setForgeFuelOpen] = useState(false);
+  const [anvilUpgradeOpen, setAnvilUpgradeOpen] = useState(false);
+  const [anvilToolOpen, setAnvilToolOpen] = useState(false);
   const [collapsedTiers, setCollapsedTiers] = useState<Record<SmithingTier, boolean>>({
     iron: false,
     steel: false,
@@ -701,6 +815,40 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
   const [filter, setFilter] = useState<OutputGroup>('all');
   const [metalFilter, setMetalFilter] = useState<MetalFilter>('all');
   const stopAction = useGameStore((store) => store.stopAction);
+  const toggleForgeUpgrade = () => {
+    const nextOpen = !forgeUpgradeOpen;
+    setForgeUpgradeOpen(nextOpen);
+    if (nextOpen) setForgeFuelOpen(false);
+  };
+  const toggleForgeFuel = (open: boolean) => {
+    setForgeFuelOpen(open);
+    if (open) setForgeUpgradeOpen(false);
+  };
+  const toggleAnvilUpgrade = () => {
+    const nextOpen = !anvilUpgradeOpen;
+    setAnvilUpgradeOpen(nextOpen);
+    if (nextOpen) setAnvilToolOpen(false);
+  };
+  const toggleAnvilTool = (open: boolean) => {
+    setAnvilToolOpen(open);
+    if (open) setAnvilUpgradeOpen(false);
+  };
+  const toggleForgeCollapsed = () => {
+    const nextCollapsed = !forgeCollapsed;
+    setForgeCollapsed(nextCollapsed);
+    if (nextCollapsed) {
+      setForgeUpgradeOpen(false);
+      setForgeFuelOpen(false);
+    }
+  };
+  const toggleAnvilCollapsed = () => {
+    const nextCollapsed = !anvilCollapsed;
+    setAnvilCollapsed(nextCollapsed);
+    if (nextCollapsed) {
+      setAnvilUpgradeOpen(false);
+      setAnvilToolOpen(false);
+    }
+  };
   const levelProgress = getLevelProgress(game.skills.smithing);
   const active = game.activeAction.type === 'smithing' ? game.activeAction : null;
   const activeRecipe = active ? recipeById[active.recipeId] : undefined;
@@ -813,13 +961,26 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
               icon={<Flame size={19} />}
               title="Forge"
               subtitle="Smelt ore into usable metal bars."
-              summary=""
-              accessory={<ForgeFuelControl game={game} />}
+              controls={
+                <>
+                  <FacilityUpgradeTrigger
+                    open={forgeUpgradeOpen}
+                    onToggle={toggleForgeUpgrade}
+                    panelId="forge-facility-upgrade-preview"
+                  />
+                  <ForgeFuelControl
+                    game={game}
+                    open={forgeFuelOpen}
+                    onOpenChange={toggleForgeFuel}
+                  />
+                </>
+              }
               collapsed={forgeCollapsed}
-              onToggle={() => setForgeCollapsed((value) => !value)}
+              onToggle={toggleForgeCollapsed}
             />
             {!forgeCollapsed && (
               <>
+                {forgeUpgradeOpen && <FacilityUpgradePreview facility="forge" />}
                 <ForgeVisibilityControl value={forgeVisibility} onChange={setForgeVisibility} />
                 <div className="smithing-recipe-list smithing-forge-list">
                   {visibleForgeRecipes.map((recipe) => (
@@ -842,13 +1003,26 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
               icon={<Hammer size={19} />}
               title="Anvil"
               subtitle="Forge bars into equipment and profession tools."
-              summary=""
-              accessory={<AnvilToolControl game={game} />}
+              controls={
+                <>
+                  <FacilityUpgradeTrigger
+                    open={anvilUpgradeOpen}
+                    onToggle={toggleAnvilUpgrade}
+                    panelId="anvil-facility-upgrade-preview"
+                  />
+                  <AnvilToolControl
+                    game={game}
+                    open={anvilToolOpen}
+                    onOpenChange={toggleAnvilTool}
+                  />
+                </>
+              }
               collapsed={anvilCollapsed}
-              onToggle={() => setAnvilCollapsed((value) => !value)}
+              onToggle={toggleAnvilCollapsed}
             />
             {!anvilCollapsed && (
               <>
+                {anvilUpgradeOpen && <FacilityUpgradePreview facility="anvil" />}
                 <div className="smithing-filter-groups">
                   <div
                     className="smithing-filter-group"
