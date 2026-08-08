@@ -2,8 +2,10 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../app/App';
+import { RecipeOutput } from '../app/SmithingScreen';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { miningNodeById } from '../content/miningNodes';
+import { recipeById } from '../content/recipes';
 import { getMiningEstimatedRates, createMiningRuntimeState } from '../game/formulas/miningFormulas';
 import { getXpForLevel } from '../game/formulas/experienceFormulas';
 import { createNewGame } from '../game/state/initialState';
@@ -458,6 +460,14 @@ describe('navigation integration', () => {
     expect(
       document.querySelector('.smithing-anvil-row .smithing-material-amount'),
     ).toBeInTheDocument();
+    const ironSwordTitle = screen.getByText('Iron Sword', {
+      selector: '.smithing-anvil-row .smithing-recipe-output strong',
+    });
+    expect(ironSwordTitle.closest('.smithing-recipe-output')?.querySelector('small')).toBeNull();
+    const ironBarTitle = screen.getByText('Iron Bar', {
+      selector: '.smithing-forge-card .smithing-recipe-output strong',
+    });
+    expect(ironBarTitle.closest('.smithing-recipe-output')?.querySelector('small')).toBeNull();
     expect(
       screen.getByText('IRON', { selector: '.smithing-tier-heading span' }),
     ).toBeInTheDocument();
@@ -521,7 +531,10 @@ describe('navigation integration', () => {
     };
     const beforeStable = withoutSimulationClock(before);
     const forgePanel = document.querySelector('[data-ui-panel="smithingForge"]') as HTMLElement;
-    await user.click(within(forgePanel).getByRole('button', { name: 'Upgrade' }));
+    const forgeUpgrade = within(forgePanel).getByRole('button', {
+      name: 'Open Forge upgrade preview',
+    });
+    await user.click(forgeUpgrade);
 
     expect(screen.getByText('FACILITY UPGRADE')).toBeInTheDocument();
     expect(screen.getByText('Basic Forge')).toBeInTheDocument();
@@ -530,17 +543,39 @@ describe('navigation integration', () => {
     expect(screen.getByText('Increased fuel capacity')).toBeInTheDocument();
     expect(screen.getByText('Not yet available')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Upgrade Facility' })).not.toBeInTheDocument();
+    expect(forgeUpgrade).toHaveAccessibleName('Close Forge upgrade preview');
+    expect(forgeUpgrade).toHaveAttribute('aria-expanded', 'true');
     expect(withoutSimulationClock(useGameStore.getState().game)).toEqual(beforeStable);
 
-    await user.click(within(forgePanel).getByRole('button', { name: 'Upgrade' }));
+    await user.click(forgeUpgrade);
     expect(screen.queryByText('Basic Forge')).not.toBeInTheDocument();
+    expect(forgeUpgrade).toHaveAccessibleName('Open Forge upgrade preview');
 
     const anvilPanel = document.querySelector('[data-ui-panel="smithingAnvil"]') as HTMLElement;
-    await user.click(within(anvilPanel).getByRole('button', { name: 'Upgrade' }));
+    const anvilUpgrade = within(anvilPanel).getByRole('button', {
+      name: 'Open Anvil upgrade preview',
+    });
+    await user.click(anvilUpgrade);
     expect(screen.getByText('Basic Anvil')).toBeInTheDocument();
     expect(screen.getByText('Reinforced Anvil')).toBeInTheDocument();
     expect(screen.getByText('Improved Smithing Hammer effectiveness')).toBeInTheDocument();
+    expect(anvilUpgrade).toHaveAccessibleName('Close Anvil upgrade preview');
     expect(withoutSimulationClock(useGameStore.getState().game)).toEqual(beforeStable);
+  });
+
+  it('deduplicates matching recipe subtitles and preserves meaningful names', () => {
+    const recipe = recipeById['iron-sword'];
+    const { container } = render(
+      <div>
+        <RecipeOutput recipe={recipe} />
+        <RecipeOutput recipe={{ ...recipe, name: 'Tempered Plate Forging' }} />
+      </div>,
+    );
+    const outputs = container.querySelectorAll('.smithing-recipe-output');
+    expect(outputs[0].querySelector('strong')).toHaveTextContent('Iron Sword');
+    expect(outputs[0].querySelector('small')).toBeNull();
+    expect(outputs[1].querySelector('strong')).toHaveTextContent('Iron Sword');
+    expect(outputs[1].querySelector('small')).toHaveTextContent('Tempered Plate Forging');
   });
 
   it('keeps upgrade, accessory, and collapse controls ordered and coordinated', async () => {
@@ -563,12 +598,27 @@ describe('navigation integration', () => {
         control.getAttribute('data-smithing-control'),
       ),
     ).toEqual(['upgrade', 'tool', 'collapse']);
+    expect(
+      within(forgePanel).getByRole('button', { name: 'Open Forge upgrade preview' }),
+    ).toBeInTheDocument();
+    expect(
+      within(anvilPanel).getByRole('button', { name: 'Open Anvil upgrade preview' }),
+    ).toBeInTheDocument();
 
     await user.click(within(forgePanel).getByRole('button', { name: 'Open Forge fuel controls' }));
     expect(screen.getByRole('dialog', { name: 'Forge fuel controls' })).toBeInTheDocument();
-    await user.click(within(forgePanel).getByRole('button', { name: 'Upgrade' }));
+    await user.click(
+      within(forgePanel).getByRole('button', { name: 'Open Forge upgrade preview' }),
+    );
     expect(screen.getByText('Basic Forge')).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: 'Forge fuel controls' })).not.toBeInTheDocument();
+
+    await user.click(
+      within(forgePanel).getByRole('button', { name: 'Close Forge upgrade preview' }),
+    );
+    await user.click(within(forgePanel).getByRole('button', { name: 'Open Forge fuel controls' }));
+    expect(screen.getByRole('dialog', { name: 'Forge fuel controls' })).toBeInTheDocument();
+    expect(screen.queryByText('Basic Forge')).not.toBeInTheDocument();
 
     await user.click(within(forgePanel).getByRole('button', { name: 'Collapse Forge' }));
     expect(screen.getByRole('button', { name: 'Expand Forge' })).toHaveAttribute(
@@ -578,17 +628,53 @@ describe('navigation integration', () => {
     expect(screen.queryByText('Basic Forge')).not.toBeInTheDocument();
     await user.click(within(forgePanel).getByRole('button', { name: 'Expand Forge' }));
     expect(screen.queryByText('Basic Forge')).not.toBeInTheDocument();
+    expect(
+      within(forgePanel).getByRole('button', { name: 'Open Forge upgrade preview' }),
+    ).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(within(forgePanel).getByRole('button', { name: 'Collapse Forge' }));
+    await user.click(
+      within(forgePanel).getByRole('button', { name: 'Open Forge upgrade preview' }),
+    );
+    expect(within(forgePanel).getByRole('button', { name: 'Collapse Forge' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByText('Basic Forge')).toBeInTheDocument();
 
     await user.click(
       within(anvilPanel).getByRole('button', { name: 'Anvil tool: No Smithing Hammer' }),
     );
     expect(screen.getByRole('dialog', { name: 'Anvil tool selector' })).toBeInTheDocument();
-    await user.click(within(anvilPanel).getByRole('button', { name: 'Upgrade' }));
+    await user.click(
+      within(anvilPanel).getByRole('button', { name: 'Open Anvil upgrade preview' }),
+    );
     expect(screen.getByText('Basic Anvil')).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: 'Anvil tool selector' })).not.toBeInTheDocument();
 
+    await user.click(
+      within(anvilPanel).getByRole('button', { name: 'Close Anvil upgrade preview' }),
+    );
+    await user.click(
+      within(anvilPanel).getByRole('button', { name: 'Anvil tool: No Smithing Hammer' }),
+    );
+    expect(screen.getByRole('dialog', { name: 'Anvil tool selector' })).toBeInTheDocument();
+    expect(screen.queryByText('Basic Anvil')).not.toBeInTheDocument();
+
     await user.click(within(anvilPanel).getByRole('button', { name: 'Collapse Anvil' }));
     expect(screen.queryByText('Basic Anvil')).not.toBeInTheDocument();
+    await user.click(within(anvilPanel).getByRole('button', { name: 'Expand Anvil' }));
+    expect(screen.queryByText('Basic Anvil')).not.toBeInTheDocument();
+
+    await user.click(within(anvilPanel).getByRole('button', { name: 'Collapse Anvil' }));
+    await user.click(
+      within(anvilPanel).getByRole('button', { name: 'Open Anvil upgrade preview' }),
+    );
+    expect(within(anvilPanel).getByRole('button', { name: 'Collapse Anvil' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByText('Basic Anvil')).toBeInTheDocument();
   });
 
   it('collapses metal tiers while explicit metal filters force their tier visible', async () => {

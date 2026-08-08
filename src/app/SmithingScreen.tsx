@@ -1,5 +1,5 @@
 import { ArrowUp, ChevronDown, Flame, Hammer, Lock } from 'lucide-react';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { SMITHING_BAR_BY_TIER, type SmithingTier } from '../config/smithingTuning';
 import {
   ACTIVE_SMITHING_RECIPES,
@@ -140,13 +140,15 @@ function SmithingRecipeAction({
   );
 }
 
-function RecipeOutput({ recipe }: { recipe: RecipeDefinition }) {
+export function RecipeOutput({ recipe }: { recipe: RecipeDefinition }) {
+  const outputName = itemName(recipe.outputItemId);
+  const recipeName = recipe.name.trim();
   return (
     <div className="smithing-recipe-output">
       <ItemIcon itemId={recipe.outputItemId} size="md" />
       <div>
-        <strong>{itemName(recipe.outputItemId)}</strong>
-        <small>{recipe.name}</small>
+        <strong>{outputName}</strong>
+        {recipeName !== outputName.trim() && <small>{recipeName}</small>}
       </div>
     </div>
   );
@@ -310,19 +312,25 @@ const FACILITY_UPGRADE_PREVIEW: Record<
 };
 
 function FacilityUpgradeTrigger({
+  facility,
   open,
   onToggle,
   panelId,
 }: {
+  facility: FacilityKind;
   open: boolean;
   onToggle: () => void;
   panelId: string;
 }) {
+  const facilityName = facility === 'forge' ? 'Forge' : 'Anvil';
+  const accessibleLabel = `${open ? 'Close' : 'Open'} ${facilityName} upgrade preview`;
   return (
     <button
       type="button"
       className="smithing-facility-upgrade-trigger"
       data-smithing-control="upgrade"
+      aria-label={accessibleLabel}
+      title={accessibleLabel}
       aria-expanded={open}
       aria-controls={panelId}
       onClick={onToggle}
@@ -814,23 +822,31 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
   const [metalFilter, setMetalFilter] = useState<MetalFilter>('all');
   const stopAction = useGameStore((store) => store.stopAction);
   const toggleForgeUpgrade = () => {
-    const nextOpen = !forgeUpgradeOpen;
-    setForgeUpgradeOpen(nextOpen);
-    if (nextOpen) setForgeFuelOpen(false);
+    if (forgeUpgradeOpen) {
+      setForgeUpgradeOpen(false);
+      return;
+    }
+    setForgeCollapsed(false);
+    setForgeFuelOpen(false);
+    setForgeUpgradeOpen(true);
   };
-  const toggleForgeFuel = (open: boolean) => {
+  const toggleForgeFuel = useCallback((open: boolean) => {
     setForgeFuelOpen(open);
     if (open) setForgeUpgradeOpen(false);
-  };
+  }, []);
   const toggleAnvilUpgrade = () => {
-    const nextOpen = !anvilUpgradeOpen;
-    setAnvilUpgradeOpen(nextOpen);
-    if (nextOpen) setAnvilToolOpen(false);
+    if (anvilUpgradeOpen) {
+      setAnvilUpgradeOpen(false);
+      return;
+    }
+    setAnvilCollapsed(false);
+    setAnvilToolOpen(false);
+    setAnvilUpgradeOpen(true);
   };
-  const toggleAnvilTool = (open: boolean) => {
+  const toggleAnvilTool = useCallback((open: boolean) => {
     setAnvilToolOpen(open);
     if (open) setAnvilUpgradeOpen(false);
-  };
+  }, []);
   const toggleForgeCollapsed = () => {
     const nextCollapsed = !forgeCollapsed;
     setForgeCollapsed(nextCollapsed);
@@ -962,6 +978,7 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
               controls={
                 <>
                   <FacilityUpgradeTrigger
+                    facility="forge"
                     open={forgeUpgradeOpen}
                     onToggle={toggleForgeUpgrade}
                     panelId="forge-facility-upgrade-preview"
@@ -1004,6 +1021,7 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
               controls={
                 <>
                   <FacilityUpgradeTrigger
+                    facility="anvil"
                     open={anvilUpgradeOpen}
                     onToggle={toggleAnvilUpgrade}
                     panelId="anvil-facility-upgrade-preview"
