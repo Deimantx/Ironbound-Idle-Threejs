@@ -484,7 +484,13 @@ const normalizeCombatAction = (
       respawnMs: Math.max(0, Number(raw.respawnMs) || 0),
       rngSeed: Number.isFinite(raw.rngSeed) ? Number(raw.rngSeed) : 1,
       rngCursor: Math.max(0, Math.floor(Number(raw.rngCursor) || 0)),
-      momentum: Math.max(0, Math.min(COMBAT_TUNING.momentumMax, Number(raw.momentum) || 0)),
+      adrenaline: Math.max(
+        0,
+        Math.min(
+          COMBAT_TUNING.adrenalineMax,
+          Number(raw.adrenaline) || 0,
+        ),
+      ),
       eliteModifier,
       eliteAnnounced: raw.eliteAnnounced ?? true,
       traitState: {
@@ -587,7 +593,7 @@ const simulateCombat = (
       rng,
       combatState.encounterIndex + 1,
       undefined,
-      combatState.momentum,
+      combatState.adrenaline,
       at,
     );
     action = { ...action, style, pendingStyle: null, specialQueued: false };
@@ -668,11 +674,11 @@ const simulateCombat = (
       const special = weapon?.specialAttack;
       const useSpecial = Boolean(
         special &&
-        combatState.momentum >= COMBAT_TUNING.momentumMax &&
+        combatState.adrenaline >= COMBAT_TUNING.adrenalineMax &&
         (action.autoSpecial || action.specialQueued),
       );
       if (useSpecial) {
-        combatState.momentum = 0;
+        combatState.adrenaline = 0;
         action = { ...action, specialQueued: false };
       }
       const targetHpAtStart = combatState.enemyHp;
@@ -723,9 +729,9 @@ const simulateCombat = (
             : Math.max(1, rolled - currentEnemyStats.flatDamageReduction);
         const actualDamage = Math.min(reduced, combatState.enemyHp);
         combatState.enemyHp = Math.max(0, combatState.enemyHp - actualDamage);
-        combatState.momentum = Math.min(
-          COMBAT_TUNING.momentumMax,
-          combatState.momentum + COMBAT_TUNING.momentumPerPlayerHit,
+        combatState.adrenaline = Math.min(
+          COMBAT_TUNING.adrenalineMax,
+          combatState.adrenaline + COMBAT_TUNING.adrenalinePerPlayerHit,
         );
         emit({
           id: combatEventId(useSpecial ? 'player-special-hit' : 'player-hit', clock, rng.rngCursor),
@@ -895,10 +901,10 @@ const simulateCombat = (
         const rolled = rollDamage(maxHit, nextCombatRandom(rng));
         const actualDamage = Math.min(rolled, state.player.currentHp);
         state.player.currentHp = Math.max(0, state.player.currentHp - actualDamage);
-        combatState.momentum = Math.min(
-          COMBAT_TUNING.momentumMax,
-          combatState.momentum +
-            (actualDamage > 0 ? COMBAT_TUNING.momentumPerDirectDamageTaken : 0),
+        combatState.adrenaline = Math.min(
+          COMBAT_TUNING.adrenalineMax,
+          combatState.adrenaline +
+            (actualDamage > 0 ? COMBAT_TUNING.adrenalinePerDirectDamageTaken : 0),
         );
         emit({
           id: combatEventId('enemy-hit', clock, rng.rngCursor),
@@ -945,7 +951,7 @@ const simulateCombat = (
         ...combatState,
         rngSeed: rng.rngSeed,
         rngCursor: rng.rngCursor,
-        momentum: Math.max(0, Math.min(COMBAT_TUNING.momentumMax, combatState.momentum)),
+        adrenaline: Math.max(0, Math.min(COMBAT_TUNING.adrenalineMax, combatState.adrenaline)),
       },
     };
   }

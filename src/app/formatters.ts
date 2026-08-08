@@ -4,6 +4,10 @@ export const formatNumber = (value: number): string =>
     maximumFractionDigits: 1,
   }).format(Math.floor(value));
 
+/** Player-facing health is always shown as a non-negative whole number. */
+export const formatHealth = (value: number): string =>
+  String(Math.ceil(Math.max(0, Number.isFinite(value) ? value : 0)));
+
 export const formatDropChance = (chance: number): string => {
   const percent = Math.max(0, chance) * 100;
   if (percent >= 10) return `${percent.toFixed(0)}%`;

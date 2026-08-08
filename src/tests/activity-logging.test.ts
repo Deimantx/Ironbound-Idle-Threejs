@@ -125,7 +125,7 @@ describe('Activity Logging 2.0', () => {
     state.schemaVersion = 9;
 
     const migrated = migrateSave(state, 9);
-    expect(migrated.schemaVersion).toBe(10);
+    expect(migrated.schemaVersion).toBe(11);
     expect(migrated.activityLogs.milestones).toMatchObject([
       { kind: 'level-up', skillId: 'mining', level: 42 },
     ]);
@@ -134,7 +134,7 @@ describe('Activity Logging 2.0', () => {
     ]);
     expect(migrated.activityLogs.combat).toHaveLength(1);
     const parsed = parseGameState(JSON.stringify(state));
-    expect(parsed.schemaVersion).toBe(10);
+    expect(parsed.schemaVersion).toBe(11);
     expect(parsed.activityLogs.milestones[0]).toMatchObject({ skillId: 'mining', level: 42 });
     expect(parsed.activityLogs.combat[0]).toMatchObject({ kind: 'legacy' });
   });
@@ -152,7 +152,7 @@ describe('Activity Logging 2.0', () => {
     state.activeAction.combatState.enemyHp = 5;
     state.activeAction.combatState.playerAttackMs = 321;
     state.activeAction.combatState.enemyAttackMs = 654;
-    state.activeAction.combatState.momentum = 73;
+    state.activeAction.combatState.adrenaline = 73;
     state.activeAction.pendingStyle = 'defensive';
     state.activeAction.specialQueued = true;
     const expectedCombat = structuredClone(state.activeAction);

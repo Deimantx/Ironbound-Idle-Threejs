@@ -71,6 +71,11 @@ import type { CombatEquipmentSlot } from '../game/equipmentSlots';
 import type { UiLayout } from './uiLayout';
 import { UiPanelSlot } from './UiPanelSlot';
 import { getCombatLogPresentation } from './combat/combatLogPresentation';
+import { formatHealth } from './formatters';
+import { getActualDps, getActualKillsPerHour } from './combat/sessionMetrics';
+import { ItemTooltip } from './items/ItemTooltip';
+import { SpecialAttackDetails } from './items/SpecialAttackDetails';
+import { COMBAT_TUNING } from '../config/combatTuning';
 
 type CombatContentTab = CombatContentCategory;
 type OverviewTab = 'overview' | 'loot' | 'progression';
@@ -149,7 +154,7 @@ function HealthBar({
           </span>
         </span>
         <strong>
-          {Math.ceil(Math.max(0, current))} / {max} HP · {percent}%
+          {formatHealth(current)} / {formatHealth(max)} HP · {percent}%
         </strong>
       </div>
       <div
@@ -159,7 +164,7 @@ function HealthBar({
         aria-valuemin={0}
         aria-valuemax={max}
         aria-valuenow={Math.ceil(Math.max(0, current))}
-        aria-valuetext={`${Math.ceil(Math.max(0, current))} of ${max} hit points`}
+        aria-valuetext={`${formatHealth(current)} of ${formatHealth(max)} hit points`}
       >
         <i style={{ width: `${percent}%` }} />
       </div>
@@ -254,14 +259,21 @@ function EquipmentStrip({ game }: { game: GameState }) {
       const itemId = game.equipment[slot];
       const item = itemId ? itemById[itemId] : undefined;
       const label = getEquipmentSlotLabel(slot);
+      const itemLabel = item?.name ?? (itemId ? 'Unknown item' : 'Empty');
       return (
-        <div className={`combat-equip-slot ${item ? 'filled' : ''}`} key={slot}>
+        <ItemTooltip item={item} disabled={!itemId} key={slot}>
+          <div
+            className={`combat-equip-slot ${item ? 'filled' : ''}`}
+            tabIndex={item ? 0 : undefined}
+            aria-label={`${label}: ${itemLabel}`}
+          >
           <span>{label}</span>
           {item ? <ItemIcon itemId={item.id} size="xs" /> : <b>—</b>}
-          <small title={item?.name} aria-label={`${label}: ${item?.name ?? 'Empty'}`}>
-            {item?.name ?? 'Empty'}
+          <small>
+            {itemLabel}
           </small>
-        </div>
+          </div>
+        </ItemTooltip>
       );
     });
   return (
@@ -983,7 +995,7 @@ function LiveCombatResolution({
     combatAction?.combatState.enemyHp ?? enemy.maxHealth,
   );
   const special = itemById[game.equipment.weapon ?? '']?.specialAttack;
-  const momentum = combatAction?.combatState.momentum ?? 0;
+  const adrenaline = combatAction?.combatState.adrenaline ?? 0;
   const effects: string[] = [];
   if (combatAction?.combatState.eliteModifier)
     effects.push(`ELITE · ${eliteById[combatAction.combatState.eliteModifier].name}`);
@@ -1071,28 +1083,35 @@ function LiveCombatResolution({
           <Sparkles size={13} /> Active effects: {effects.length ? effects.join(' · ') : 'None'}
         </span>
       </div>
-      <div className={`combat-momentum ${momentum >= 100 ? 'ready' : ''}`} aria-label="Momentum">
-        <div className="combat-momentum-head">
-          <span>Momentum</span>
+      <div className={`combat-adrenaline ${adrenaline >= COMBAT_TUNING.adrenalineMax ? 'ready' : ''}`} aria-label="Adrenaline">
+        <div className="combat-adrenaline-head">
+          <span>Adrenaline</span>
           <strong>
-            {momentum} / 100 {momentum >= 100 ? '· READY' : ''}
+            {adrenaline} / {COMBAT_TUNING.adrenalineMax}{' '}
+            {adrenaline >= COMBAT_TUNING.adrenalineMax ? 'READY' : ''}
           </strong>
         </div>
         <div
-          className="combat-momentum-track"
+          className="combat-adrenaline-track"
           role="progressbar"
-          aria-label="Momentum"
+          aria-label="Adrenaline"
           aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={momentum}
+          aria-valuemax={COMBAT_TUNING.adrenalineMax}
+          aria-valuenow={adrenaline}
         >
-          <i style={{ width: `${momentum}%` }} />
+          <i style={{ width: `${(adrenaline / COMBAT_TUNING.adrenalineMax) * 100}%` }} />
         </div>
-        <small>
-          {special
-            ? `${special.name}: ${special.description}`
-            : 'Equip a weapon with a special attack'}
-        </small>
+        <div className="combat-adrenaline-details">
+          {special ? (
+            <div className="combat-special-summary">
+              <strong>{special.name}</strong>
+              <SpecialAttackDetails special={special} />
+              <small>{special.description}</small>
+            </div>
+          ) : (
+            <small>Equip a weapon with a special attack</small>
+          )}
+        </div>
       </div>
       <div className="combat-live-controls">
         <div className="combat-settings-control">
@@ -1154,7 +1173,7 @@ function LiveCombatResolution({
             </div>
           )}
         </div>
-        {!autoSpecial && special && momentum >= 100 && (
+        {!autoSpecial && special && adrenaline >= COMBAT_TUNING.adrenalineMax && (
           <button type="button" className="button ghost" onClick={onUseSpecial} disabled={!active}>
             Use Special
           </button>
@@ -1376,7 +1395,7 @@ function OverviewSummary({ session }: { session: CombatSessionStats }) {
   const sessionStartedAt = session.startedAt;
   const started = sessionStartedAt ? Math.max(1_000, Date.now() - sessionStartedAt) : 0;
   const itemsGained = Object.values(session.lootGained).reduce((sum, amount) => sum + amount, 0);
-  const actualDps = started > 0 ? (session.damageDealt * 3_600_000) / started : 0;
+  const actualDps = getActualDps(session.damageDealt, started);
   const playerHitRate =
     session.playerAttacks > 0
       ? `${Math.round((session.playerHits / session.playerAttacks) * 100)}%`
@@ -1391,7 +1410,7 @@ function OverviewSummary({ session }: { session: CombatSessionStats }) {
       : '—';
   const averageKillTime =
     session.enemiesDefeated > 0 ? formatSeconds(started / session.enemiesDefeated) : '—';
-  const actualKillsPerHour = started > 0 ? (session.enemiesDefeated * 3_600_000) / started : 0;
+  const actualKillsPerHour = getActualKillsPerHour(session.enemiesDefeated, started);
   return (
     <section className="combat-overview-content" aria-labelledby="session-summary-title">
       <div className="combat-section-heading">

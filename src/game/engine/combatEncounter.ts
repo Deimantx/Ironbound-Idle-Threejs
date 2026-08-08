@@ -31,7 +31,7 @@ export const initializeEnemySpawn = (
   rng: CombatRngState,
   encounterIndex: number,
   eliteModifier: EliteModifierId | null | undefined = undefined,
-  momentum = 0,
+  adrenaline = 0,
   encounterStartedAt = Date.now(),
 ): { combatState: ActiveCombatState; eliteModifier: EliteModifierId | null } => {
   const enemy = enemyById[enemyId];
@@ -54,7 +54,7 @@ export const initializeEnemySpawn = (
       respawnMs: 0,
       rngSeed: rng.rngSeed,
       rngCursor: rng.rngCursor,
-      momentum: Math.max(0, Math.min(COMBAT_TUNING.momentumMax, momentum)),
+      adrenaline: Math.max(0, Math.min(COMBAT_TUNING.adrenalineMax, adrenaline)),
       eliteModifier: modifier,
       eliteAnnounced: false,
       traitState: { firstAttackPending, enemyAttackCount: 0, bleedStacks: 0 },

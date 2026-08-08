@@ -5877,6 +5877,10 @@ h3 {
   border-style: solid;
   border-color: #6c5b3e;
 }
+.combat-redesign .combat-equip-slot.filled:focus-visible {
+  outline: 2px solid #e0bd6f;
+  outline-offset: 2px;
+}
 .combat-redesign .combat-equip-slot > span,
 .combat-redesign .combat-equip-slot > small {
   display: block;
@@ -6212,7 +6216,7 @@ h3 {
 .combat-effects {
   color: #8faaa0;
 }
-.combat-momentum {
+.combat-adrenaline {
   display: grid;
   gap: 5px;
   margin-top: 12px;
@@ -6221,29 +6225,29 @@ h3 {
   border: 1px solid #665532;
   border-radius: 6px;
 }
-.combat-momentum-head {
+.combat-adrenaline-head {
   display: flex;
   justify-content: space-between;
   color: #d9c38f;
   font-size: 11px;
 }
-.combat-momentum-track {
+.combat-adrenaline-track {
   height: 8px;
   overflow: hidden;
   background: #252b2d;
   border-radius: 999px;
 }
-.combat-momentum-track i {
+.combat-adrenaline-track i {
   display: block;
   height: 100%;
   background: linear-gradient(90deg, #9b7040, #e0bd6f);
   transition: width 0.2s ease;
 }
-.combat-momentum.ready {
+.combat-adrenaline.ready {
   border-color: #b38c4c;
   box-shadow: 0 0 0 1px rgba(224, 189, 111, 0.18);
 }
-.combat-momentum.ready .combat-momentum-head strong {
+.combat-adrenaline.ready .combat-adrenaline-head strong {
   color: #f0d58e;
 }
 .combat-live-panel.elite-active .combat-live-status {
@@ -6259,9 +6263,100 @@ h3 {
   font-weight: 800;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
-.combat-momentum small {
+.combat-adrenaline small {
   color: #9da39b;
   line-height: 1.35;
+}
+.combat-adrenaline-details {
+  display: grid;
+  gap: 5px;
+}
+.combat-special-summary {
+  display: grid;
+  gap: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(173, 142, 79, 0.26);
+}
+.combat-special-summary > strong {
+  color: #e0bf78;
+  font-size: 10px;
+}
+.special-attack-details {
+  display: block;
+}
+.special-attack-effect-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.special-attack-effect-list span {
+  padding: 3px 5px;
+  color: #c8a86b;
+  background: rgba(22, 25, 24, 0.46);
+  border: 1px solid #675638;
+  border-radius: 4px;
+  font-size: 9px;
+}
+.game-tooltip {
+  position: fixed;
+  z-index: 10000;
+  width: max-content;
+  max-width: min(320px, calc(100vw - 20px));
+  padding: 9px 10px;
+  color: #d8ded8;
+  background: #111719;
+  border: 1px solid #806a42;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(224, 189, 111, 0.08);
+  font-size: 10px;
+  line-height: 1.35;
+  pointer-events: none;
+}
+.item-tooltip-content {
+  display: grid;
+  gap: 7px;
+  min-width: 190px;
+  max-width: 280px;
+}
+.item-tooltip-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.item-tooltip-header > div,
+.item-tooltip-bonuses,
+.item-tooltip-special {
+  display: grid;
+  gap: 3px;
+}
+.item-tooltip-header strong {
+  color: #e1bd6e;
+  font-size: 11px;
+}
+.item-tooltip-header span,
+.item-tooltip-kicker {
+  color: #87958e;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.item-tooltip-content p {
+  margin: 0;
+  color: #b8c0ba;
+}
+.item-tooltip-bonuses,
+.item-tooltip-special {
+  padding-top: 6px;
+  border-top: 1px solid rgba(173, 142, 79, 0.26);
+}
+.item-tooltip-bonuses > span:not(.item-tooltip-kicker) {
+  color: #c8a86b;
+}
+.item-tooltip-special .special-attack-effect-list {
+  display: grid;
+}
+.item-tooltip-unknown {
+  color: #b8c0ba;
 }
 .combat-analysis {
   display: grid;

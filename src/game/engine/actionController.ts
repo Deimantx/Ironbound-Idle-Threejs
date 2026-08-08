@@ -7,6 +7,7 @@ import { miningNodeById } from '../../content/miningNodes';
 import { createMiningRuntimeState, normalizeMiningState } from '../formulas/miningFormulas';
 import { getSmithingMaxCraftable, getSmithingStartBlockReason } from '../formulas/smithingFormulas';
 import { appendCombatLog } from '../logging/combatLog';
+import { COMBAT_TUNING } from '../../config/combatTuning';
 import type { AreaId, CombatStyle, EnemyId, GameState, MiningNodeId, QuantityMode } from '../types';
 
 export const startMining = (
@@ -157,7 +158,7 @@ export const queueCombatSpecial = (state: GameState): GameState => {
   if (state.activeAction.type !== 'combat') return state;
   const weapon = itemById[state.equipment.weapon ?? ''];
   if (!weapon?.specialAttack) return state;
-  if (state.activeAction.combatState.momentum < 100) return state;
+  if (state.activeAction.combatState.adrenaline < COMBAT_TUNING.adrenalineMax) return state;
   return { ...state, activeAction: { ...state.activeAction, specialQueued: true } };
 };
 

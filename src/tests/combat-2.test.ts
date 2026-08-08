@@ -74,7 +74,7 @@ describe('Combat 2.0 area migration', () => {
     state.unlockedAreas = [oldArea as unknown as AreaId];
     state.activeAction.combatState.enemyHp = 37;
     state.activeAction.combatState.playerAttackMs = 421;
-    state.activeAction.combatState.momentum = 73;
+    state.activeAction.combatState.adrenaline = 73;
     state.activeAction.combatState.eliteModifier = 'swift';
     state.activeAction.combatState.traitState.bleedStacks = 2;
     state.activeAction.specialQueued = true;
@@ -89,7 +89,7 @@ describe('Combat 2.0 area migration', () => {
     expect(migrated.activeAction.combatState).toEqual(combatStateBefore);
     expect(migrated.activeAction.specialQueued).toBe(true);
     expect(migrated.activeAction.pendingStyle).toBe('defensive');
-    expect(migrated.schemaVersion).toBe(10);
+    expect(migrated.schemaVersion).toBe(11);
   });
 
   it('normalizes legacy unlocked area identifiers while retaining a safe default', () => {

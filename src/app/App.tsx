@@ -48,12 +48,12 @@ import type {
 } from '../game/types';
 import { NAVIGATION } from '../content/navigation';
 import { ThreeScene } from '../three/ThreeScene';
+import { formatHealth, formatNumber } from './formatters';
 import { UiEditor } from './UIEditor';
 import { EquipmentScreen } from './EquipmentScreen';
 import { InventoryScreen } from './InventoryScreen';
 import { MiningScreen } from './MiningScreen';
 import { SmithingScreen } from './SmithingScreen';
-import { formatNumber } from './formatters';
 import { ItemIcon } from './ItemIcon';
 import {
   DEFAULT_UI_LAYOUT,
@@ -363,7 +363,7 @@ function Header({
         <span className="header-stat">
           HP{' '}
           <strong>
-            {game.player.currentHp}/{stats.maxHealth}
+            {formatHealth(game.player.currentHp)}/{formatHealth(stats.maxHealth)}
           </strong>
         </span>
         <span className={`save-state ${saveStatus === 'failed' ? 'failed' : ''}`}>
@@ -443,7 +443,7 @@ export function LegacyActionStrip({
           <div className="combat-activity-stat">
             <span>HP</span>
             <strong>
-              <Heart size={13} /> {Math.ceil(game.player.currentHp)} / {combatStats.maxHealth}
+              <Heart size={13} /> {formatHealth(game.player.currentHp)} / {formatHealth(combatStats.maxHealth)}
             </strong>
           </div>
         </div>

@@ -18,6 +18,7 @@ import {
   parseDebugInteger,
 } from '../../game/debug/debugActions';
 import type { AreaId } from '../../game/types';
+import { formatHealth } from '../formatters';
 import { ActionButton, Field, Section } from './DebugComponents';
 import type { PanelProps } from './debugUiTypes';
 
@@ -46,7 +47,7 @@ export function CombatPanel({ game, run, confirm }: PanelProps) {
             ['Active enemy', active?.enemyId ?? 'None'],
             [
               'Player HP',
-              `${game.player.currentHp}/${getDerivedStats(game, active?.style).maxHealth}`,
+              `${formatHealth(game.player.currentHp)}/${formatHealth(getDerivedStats(game, active?.style).maxHealth)}`,
             ],
             [
               'Enemy HP',

@@ -11,7 +11,7 @@ export const saveRecordSchema = z.object({
   updatedAt: z.number(),
   checksum: z.string().min(3),
 });
-const activeCombatStateSchema = z
+const activeCombatStateBaseSchema = z
   .object({
     enemyHp: z.number().finite(),
     playerAttackMs: z.number().finite(),
@@ -20,7 +20,6 @@ const activeCombatStateSchema = z
     enemyMaxHp: z.number().finite().optional(),
     rngSeed: z.number().finite().optional(),
     rngCursor: z.number().finite().optional(),
-    momentum: z.number().finite().optional(),
     eliteModifier: z.string().nullable().optional(),
     eliteAnnounced: z.boolean().optional(),
     traitState: z
@@ -34,6 +33,19 @@ const activeCombatStateSchema = z
     encounterStartedAt: z.number().finite().optional(),
   })
   .passthrough();
+const activeCombatStateSchema = activeCombatStateBaseSchema.extend({
+  adrenaline: z.number().finite(),
+}).superRefine((combatState, context) => {
+  if ('momentum' in combatState)
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['momentum'],
+      message: 'Legacy Momentum field. Use adrenaline.',
+    });
+});
+const legacyActiveCombatStateSchema = activeCombatStateBaseSchema.extend({
+  momentum: z.number().finite().optional(),
+});
 const activeActionSchema = z.union([
   z.object({ type: z.literal('none') }).passthrough(),
   z
@@ -98,7 +110,7 @@ const legacyActiveActionSchema = z.union([
       pendingStyle: z.enum(['accurate', 'aggressive', 'defensive']).nullable().optional(),
       autoSpecial: z.boolean().optional(),
       specialQueued: z.boolean().optional(),
-      combatState: activeCombatStateSchema,
+      combatState: legacyActiveCombatStateSchema,
     })
     .passthrough(),
 ]);

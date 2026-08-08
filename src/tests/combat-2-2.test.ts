@@ -115,7 +115,7 @@ describe('Combat 2.2 stance timing', () => {
     let special = readyCombat();
     special.equipment.weapon = 'bronze-sword';
     if (special.activeAction.type !== 'combat') throw new Error('Expected active combat.');
-    special.activeAction.combatState.momentum = 100;
+    special.activeAction.combatState.adrenaline = 100;
     special = setCombatStyle(special, 'aggressive');
     const specialResult = simulateElapsed(special, 1);
     expect(specialResult.events.some((event) => event.type === 'player-hit' && event.special)).toBe(

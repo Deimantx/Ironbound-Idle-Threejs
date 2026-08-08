@@ -192,14 +192,14 @@ describe('combat event resolution and traits', () => {
   });
 });
 
-describe('momentum, specials, and deterministic chunking', () => {
-  it('gains Momentum only from successful direct combat damage and executes data-driven specials', () => {
+describe('adrenaline, specials, and deterministic chunking', () => {
+  it('gains Adrenaline only from successful direct combat damage and executes data-driven specials', () => {
     const state = configuredCombat();
     state.equipment.weapon = 'bronze-sword';
     if (state.activeAction.type === 'combat') {
       state.activeAction.combatState.playerAttackMs = 0;
       state.activeAction.combatState.enemyAttackMs = 100_000;
-      state.activeAction.combatState.momentum = 100;
+      state.activeAction.combatState.adrenaline = 100;
     }
     const result = simulateElapsed(state, 1);
     const attack = result.events.find((event) => event.type === 'player-hit') as
@@ -208,11 +208,11 @@ describe('momentum, specials, and deterministic chunking', () => {
     expect(result.state.activeAction.type).toBe('combat');
   });
 
-  it('supports a manual special queue without consuming Momentum before the attack', () => {
+  it('supports a manual special queue without consuming Adrenaline before the attack', () => {
     let state = configuredCombat();
     state.equipment.weapon = 'iron-sword';
     state = setCombatAutoSpecial(state, false);
-    if (state.activeAction.type === 'combat') state.activeAction.combatState.momentum = 100;
+    if (state.activeAction.type === 'combat') state.activeAction.combatState.adrenaline = 100;
     state = queueCombatSpecial(state);
     expect(state.activeAction.type === 'combat' && state.activeAction.specialQueued).toBe(true);
   });

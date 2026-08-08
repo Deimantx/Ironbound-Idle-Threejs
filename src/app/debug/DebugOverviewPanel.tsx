@@ -14,6 +14,7 @@ import {
 import { DEBUG_PRESETS } from '../../game/debug/debugPresets';
 import { ActionButton, Field, Section, activeActionLabel, skillLabel } from './DebugComponents';
 import type { PanelProps } from './debugUiTypes';
+import { formatHealth } from '../formatters';
 
 export function OverviewPanel({ game, run, confirm }: PanelProps) {
   const [skillTarget, setSkillTarget] = useState<SkillId | 'all'>('all');
@@ -29,7 +30,7 @@ export function OverviewPanel({ game, run, confirm }: PanelProps) {
         <div className="debug-tools-stat-grid">
           {[
             ['Gold', String(game.gold)],
-            ['HP / Maximum HP', `${game.player.currentHp}/${getDerivedStats(game).maxHealth}`],
+            ['HP / Maximum HP', `${formatHealth(game.player.currentHp)}/${formatHealth(getDerivedStats(game).maxHealth)}`],
             ['Inventory', `${game.inventory.length}/${GAME_CONFIG.inventorySlots}`],
             ['Equipped items', String(Object.keys(game.equipment).length)],
             ['Active action', activeActionLabel(game)],

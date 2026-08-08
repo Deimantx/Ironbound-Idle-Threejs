@@ -270,7 +270,7 @@ export interface ActiveCombatState {
   respawnMs: number;
   rngSeed: number;
   rngCursor: number;
-  momentum: number;
+  adrenaline: number;
   eliteModifier: EliteModifierId | null;
   eliteAnnounced: boolean;
   traitState: CombatTraitState;

@@ -5,6 +5,7 @@ import { formatNumber } from './formatters';
 import { formatEquipmentBonus, getEquipmentBonusLabel } from './equipmentView';
 import { getInventoryDisplayGroup, getInventoryValueLabel } from './inventoryView';
 import { ItemIcon } from './ItemIcon';
+import { SpecialAttackDetails } from './items/SpecialAttackDetails';
 
 export interface InventoryItemDetailsProps {
   stack: InventoryStack;
@@ -117,16 +118,7 @@ export function InventoryItemDetails({
             </div>
           </div>
           <p>{item.specialAttack.description}</p>
-          <div className="inventory-special-attack-meta">
-            <span>{Math.round(item.specialAttack.damageMultiplier * 100)}% damage</span>
-            <span>{Math.round(item.specialAttack.accuracyMultiplier * 100)}% accuracy</span>
-            {item.specialAttack.ignoresFlatDamageReduction && <span>Ignores flat reduction</span>}
-            {item.specialAttack.executeThreshold && (
-              <span>
-                Execute below {Math.round(item.specialAttack.executeThreshold * 100)}% health
-              </span>
-            )}
-          </div>
+          <SpecialAttackDetails special={item.specialAttack} className="inventory-special-attack-meta" />
         </div>
       )}
       <div className="inventory-detail-actions">

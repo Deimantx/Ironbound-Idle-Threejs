@@ -151,6 +151,23 @@ const migrateActivityLogs = (input: GameState): GameState => {
   return next;
 };
 
+const migrateMomentumToAdrenaline = (input: GameState): GameState => {
+  if (input.activeAction.type !== 'combat') return { ...input, schemaVersion: 11 };
+  const rawCombatState = input.activeAction.combatState as unknown as Record<string, unknown>;
+  const legacyValue = rawCombatState.adrenaline ?? rawCombatState.momentum;
+  const adrenaline = Number.isFinite(Number(legacyValue)) ? Number(legacyValue) : 0;
+  const combatState = { ...rawCombatState, adrenaline };
+  delete (combatState as Record<string, unknown>).momentum;
+  return {
+    ...input,
+    activeAction: {
+      ...input.activeAction,
+      combatState: combatState as Extract<GameState['activeAction'], { type: 'combat' }>['combatState'],
+    },
+    schemaVersion: 11,
+  };
+};
+
 const getMigratedArmorId = (itemId: unknown): string | null => {
   if (typeof itemId !== 'string') return null;
   const mapped = LEGACY_ARMOR_ITEM_MAP[itemId] ?? itemId;
@@ -557,7 +574,7 @@ export const migrations: Record<number, SaveMigration> = {
           respawnMs: Math.max(0, Number(oldCombat.respawnMs ?? 0)),
           rngSeed: rng.rngSeed,
           rngCursor: 0,
-          momentum: 0,
+          adrenaline: 0,
           eliteModifier: null,
           eliteAnnounced: true,
           traitState: {
@@ -579,6 +596,7 @@ export const migrations: Record<number, SaveMigration> = {
   8: migrateForgeFuel,
   9: migrateCombatAreas,
   10: migrateActivityLogs,
+  11: migrateMomentumToAdrenaline,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {
@@ -592,6 +610,7 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
     current = migrateSmithing(current);
     current = migrateForgeFuel(current);
   }
+  current = migrateMomentumToAdrenaline(current);
   current = normalizeSkillStates(current);
   current = migrateCombatAreas(current);
   current = migrateActivityLogs(current);

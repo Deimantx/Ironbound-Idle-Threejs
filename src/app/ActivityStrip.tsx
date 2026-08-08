@@ -23,7 +23,7 @@ import { getDerivedStats } from '../game/formulas/statFormulas';
 import { selectCombatSkillXpPerHour } from '../game/selectors/combatSelectors';
 import { useGameStore } from '../game/state/gameStore';
 import type { GameState, ScreenId } from '../game/types';
-import { formatRatePerHour } from './formatters';
+import { formatHealth, formatRatePerHour } from './formatters';
 
 export const actionLabel = (state: GameState): string => {
   const action = state.activeAction;
@@ -276,8 +276,8 @@ const CombatActivityStrip = ({
         <div className="combat-activity-stat">
           <span>YOU</span>
           <strong>
-            <Heart size={13} /> {Math.ceil(Math.max(0, game.player.currentHp))} /{' '}
-            {activeStats.maxHealth}
+            <Heart size={13} /> {formatHealth(game.player.currentHp)} /{' '}
+            {formatHealth(activeStats.maxHealth)}
           </strong>
         </div>
         <div className="combat-activity-stat combat-activity-enemy-hp">
