@@ -75,8 +75,8 @@ export const DEFAULT_MINING_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
 
 export const DEFAULT_SMITHING_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
   smithingOverview: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1 },
-  smithingForge: { column: 1, row: 2, columnSpan: 5, height: 0, scale: 1 },
-  smithingAnvil: { column: 6, row: 2, columnSpan: 7, height: 0, scale: 1 },
+  smithingForge: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1 },
+  smithingAnvil: { column: 1, row: 3, columnSpan: 12, height: 0, scale: 1 },
 };
 
 export const UI_SCREEN_PANELS: Partial<Record<ScreenId, UiPanelDefinition[]>> = {
@@ -250,6 +250,22 @@ const safePanelPosition = (value: unknown, fallback: UiPanelPosition): UiPanelPo
   };
 };
 
+const hasLegacySmithingSplit = (value: unknown): boolean => {
+  if (!value || typeof value !== 'object') return false;
+  const source = value as Record<string, unknown>;
+  const forge = source.smithingForge;
+  const anvil = source.smithingAnvil;
+  if (!forge || typeof forge !== 'object' || !anvil || typeof anvil !== 'object') return false;
+  const forgePosition = forge as Record<string, unknown>;
+  const anvilPosition = anvil as Record<string, unknown>;
+  return (
+    forgePosition.row === anvilPosition.row &&
+    typeof forgePosition.columnSpan === 'number' &&
+    typeof anvilPosition.columnSpan === 'number' &&
+    (forgePosition.columnSpan < 12 || anvilPosition.columnSpan < 12)
+  );
+};
+
 const safeScreenPanelLayout = (
   value: unknown,
   definitions: UiPanelDefinition[],
@@ -278,7 +294,10 @@ export const sanitizeUiLayout = (value: unknown): UiLayout => {
       screen === 'combat'
         ? (storedScreenPanels.combat ?? legacyCombatPanels)
         : storedScreenPanels[screen];
-    screenPanels[screen] = safeScreenPanelLayout(source, definitions);
+    screenPanels[screen] = safeScreenPanelLayout(
+      screen === 'smithing' && hasLegacySmithingSplit(source) ? undefined : source,
+      definitions,
+    );
   }
 
   return {

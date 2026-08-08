@@ -1,6 +1,18 @@
-# Smithing 1.25
+# Smithing 1.3
 
 Smithing has two facilities: the Forge smelts ore into bars, while the Anvil turns bars into equipment and profession tools. Forge and Anvil never run simultaneously. Bronze content remains valid legacy content for old inventories and saves, but Bronze recipes are hidden from normal progression.
+
+## Smithing page structure
+
+The Smithing page is permanently stacked as three full-width panels:
+
+```text
+Active Order
+Forge
+Anvil
+```
+
+The default UI layout uses `smithingOverview` on row 1, `smithingForge` on row 2, and `smithingAnvil` on row 3, each spanning all 12 editor columns. Older locally stored Forge/Anvil 5/7 side-by-side positions are sanitized back to this layout. Forge and Anvil collapse state remains local UI state and their panel slots resize with their measured content.
 
 ## Forge
 
@@ -14,6 +26,8 @@ Forge recipes consume authored ore inputs and abstract fuel units atomically. Co
 Steel Bar now requires two Iron Ore and two abstract fuel units for one bar. The Forge card converts abstract units into the physical selected fuel using that fuel definition's `fuelValue`.
 
 The persistent Forge hopper has a base capacity of 20 physical fuel items. The Forge header owns fuel selection, loaded quantity, estimated loaded-fuel time, Auto-refuel, Load 1/5/10/Fill, and Unload. Fuel staging, craft consumption, inventory, XP, statistics, discovery, and deterministic RNG commit atomically.
+
+Forge browsing uses a compact responsive tile grid rather than wide rows. Active non-legacy bar recipes are ordered by Smithing level, with authored order as the stable tie-breaker. The grid targets four columns on wide desktop, three at medium width, two on tablet, and one on narrow screens. The local `SHOW` control defaults to `All Bars`; `Unlocked` only hides recipes above the current Smithing level and does not change recipe or action state. No Forge metal filter, search, or per-bar accordion is used.
 
 Legacy Bronze Bar retains its historical Copper Ore + Tin Ore requirements, 2.4s interval, and 24 XP without Forge fuel.
 
@@ -53,13 +67,22 @@ Hammer changes are blocked while an Anvil order is active with the message `Stop
 
 ## Tier sections and filters
 
-The Anvil keeps All Metals, Iron, and Steel filters. Iron and Steel sections have keyboard-accessible full-width collapse buttons. Each heading displays live bar stock, for example `IRON - 3,840 bars`. Collapse state is local React UI state only; it is not stored in `GameState` or the save.
+The Anvil filter controls are two separate rows in this order:
+
+```text
+TYPE  [All] [Weapons] [Armor] [Shields] [Tools]
+METAL [All Metals] [Iron] [Steel]
+```
+
+The rows use compact wrapping chips so future item categories and metal tiers can be added without changing the surrounding structure. Iron and Steel sections have keyboard-accessible full-width collapse buttons. Each heading displays live bar stock, for example `IRON · 3,840 bars`. Collapse state is local React UI state only; it is not stored in `GameState` or the save.
 
 All Metals respects each section's local collapse state. Selecting an explicit Iron or Steel filter temporarily forces that tier visible, and returning to All Metals restores the previous collapse state. Bronze remains hidden from active tier headings.
 
 ## Active Order and activity strip
 
-Active Order uses the simple item name, followed by the facility and quantity mode, and no longer repeats `Forging`, `Smelting`, `Next`, or a detailed Anvil Tool block. Forge Active Order retains compact fuel context. The bottom activity strip uses the item name and `Forge` or `Anvil` context; its phase label has no `Next` prefix, and its hammer label remains compact.
+Active Order uses the simple item name, followed by the facility and quantity mode, and no longer repeats `Forging`, `Smelting`, or `Next`. Its lower area is a two-column context grid: `AVAILABLE` plus `TOOL BONUS` for Anvil orders, or `AVAILABLE` plus `FORGE FUEL` for Forge orders. Continuous availability keeps the guaranteed/base estimate internally and displays `~N crafts`; finite modes display exact remaining values when available. Active Anvil orders show the effective hammer name and bonuses, including the no-hammer and pickaxe cases. Active Forge orders show selected fuel, hopper quantity/capacity, and Auto-refuel state without placing loading controls in the order.
+
+The closed Anvil Tool trigger stays in the Anvil header and shows the current tool without repeating its bonus percentages. The opened popover remains detailed with owned quantity, requirements, speed, preservation, and normal equip/unequip actions. The bottom activity strip uses the item name and `Forge` or `Anvil` context; its phase label has no `Next` prefix, and its hammer/fuel label remains compact.
 
 Aggregate estimates use `formatHoursMinutes()` with nearest-minute rounding and no 24-hour wrap. For example, 3,527.8 seconds displays as `00:59`; individual live craft countdowns remain in seconds such as `0.8s`.
 
@@ -85,6 +108,7 @@ The shared online and offline simulation uses the same effective interval, prese
 - `src/content/smithingTools.ts` - registered hammer requirements and bonuses.
 - `src/game/formulas/smithingFormulas.ts` - fuel helpers, hammer resolution, rates, intervals, preservation, estimates, and max craftable.
 - `src/game/systems/equipmentSystem.ts` - authoritative generic tool equip/unequip flow and active-Anvil guard.
+- `src/app/uiLayout.ts` and `src/app/UiPanelSlot.tsx` - stacked full-width Smithing defaults, legacy-layout sanitization, and measured panel sizing.
 - `src/app/SmithingScreen.tsx` and `src/app/ActivityStrip.tsx` - Smithing UI and activity strip.
 - `src/app/formatters.ts` - shared aggregate duration formatting.
 

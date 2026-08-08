@@ -946,8 +946,14 @@ h3 {
   gap: 8px;
   padding-top: 13px;
 }
+.smithing-forge-list {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
 .smithing-forge-card {
   display: grid;
+  height: 100%;
+  align-content: start;
   gap: 8px;
   padding: 10px;
   background: rgba(12, 15, 17, 0.38);
@@ -1082,7 +1088,7 @@ h3 {
 }
 .smithing-anvil-row {
   display: grid;
-  grid-template-columns: minmax(112px, 1fr) minmax(120px, 0.9fr) minmax(95px, 1.1fr) auto;
+  grid-template-columns: minmax(220px, 1.35fr) minmax(180px, 1fr) minmax(210px, 1.2fr) auto;
   align-items: center;
   gap: 8px;
   min-width: 0;
@@ -1096,7 +1102,7 @@ h3 {
 }
 .smithing-anvil-row .smithing-recipe-output strong,
 .smithing-anvil-row .smithing-recipe-output small {
-  max-width: 145px;
+  max-width: 260px;
 }
 .smithing-anvil-row > .button,
 .smithing-forge-card-top > .button {
@@ -1106,21 +1112,49 @@ h3 {
   margin: 13px 0 0;
 }
 .smithing-filter-groups {
+  display: grid;
+  gap: 11px;
+  padding-top: 13px;
+}
+.smithing-filter-group {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+.smithing-filter-label {
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.smithing-filter-group .smithing-filterbar,
+.smithing-browse-control .smithing-filterbar {
+  margin: 0;
+}
+.smithing-browse-control {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px 12px;
-}
-.smithing-filter-groups .smithing-filterbar {
-  margin-bottom: 0;
-}
-.smithing-metal-filterbar {
-  padding-left: 12px;
-  border-left: 1px solid var(--line);
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  padding-top: 13px;
 }
 .smithing-active-order {
   display: grid;
   gap: 14px;
+}
+.smithing-active-order-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+.smithing-active-order-identity > div {
+  min-width: 0;
+}
+.smithing-active-context-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 .smithing-order-grid {
   display: grid;
@@ -1154,9 +1188,6 @@ h3 {
   color: var(--muted);
   font-size: 10px;
 }
-.smithing-order-detail + .smithing-order-detail {
-  margin-top: -7px;
-}
 .smithing-activity-tool {
   overflow: hidden;
   max-width: 190px;
@@ -1164,6 +1195,9 @@ h3 {
 }
 
 @media (max-width: 1200px) {
+  .smithing-forge-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .smithing-anvil-row {
     grid-template-columns: minmax(0, 1fr) auto;
   }
@@ -1180,12 +1214,24 @@ h3 {
 }
 
 @media (max-width: 900px) {
+  .smithing-forge-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .smithing-panel-grid {
     grid-template-columns: minmax(0, 1fr);
   }
   .smithing-panel-grid > .ui-panel-slot {
     grid-column: 1 / -1 !important;
     grid-row: auto !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .smithing-forge-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .smithing-active-context-grid {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -1249,9 +1295,9 @@ h3 {
   .smithing-order-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .smithing-metal-filterbar {
-    padding-left: 0;
-    border-left: 0;
+  .smithing-browse-control {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }
 .smithing-activity-tool,

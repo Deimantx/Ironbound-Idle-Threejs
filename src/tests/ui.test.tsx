@@ -410,6 +410,8 @@ describe('navigation integration', () => {
     expect(screen.getByRole('button', { name: 'Stop smithing' })).toBeInTheDocument();
     expect(screen.getByText('Active Order')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Iron Bar' })).toBeInTheDocument();
+    expect(screen.getByText('FORGE FUEL')).toBeInTheDocument();
+    expect(screen.queryByText('TOOL BONUS')).not.toBeInTheDocument();
     expect(screen.getByText(/^XP to next:/)).toBeInTheDocument();
     expect(screen.getByText(/^ETA:/)).toBeInTheDocument();
     expect(screen.queryByText('Next Iron Bar')).not.toBeInTheDocument();
@@ -430,6 +432,27 @@ describe('navigation integration', () => {
     expect(screen.getAllByText('Quantity:', { selector: 'span' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Continuous' })).toHaveLength(1);
     expect(document.querySelectorAll('.smithing-forge-card')).toHaveLength(2);
+    expect(screen.getByRole('group', { name: 'Forge visibility' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'All Bars' })).toHaveClass('gold');
+    await user.click(screen.getByRole('button', { name: 'Unlocked' }));
+    expect(document.querySelectorAll('.smithing-forge-card')).toHaveLength(1);
+    expect(
+      screen.getByText('Iron Bar', {
+        selector: '.smithing-forge-card .smithing-recipe-output strong',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Steel Bar', {
+        selector: '.smithing-forge-card .smithing-recipe-output strong',
+      }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'All Bars' }));
+    expect(document.querySelectorAll('.smithing-forge-card')).toHaveLength(2);
+    expect(
+      [...document.querySelectorAll('.smithing-filter-groups .smithing-filter-label')].map(
+        (label) => label.textContent,
+      ),
+    ).toEqual(['TYPE', 'METAL']);
     expect(document.querySelectorAll('.smithing-anvil-row').length).toBeGreaterThan(0);
     expect(
       screen.getByText('IRON', { selector: '.smithing-tier-heading span' }),
@@ -551,7 +574,7 @@ describe('navigation integration', () => {
     expect(
       screen.getByRole('button', { name: 'Anvil tool: No Smithing Hammer' }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText('Iron Pick currently equipped')).toHaveLength(1);
+    expect(screen.getByText('Iron Pick equipped')).toBeInTheDocument();
   });
 
   it('shows the consolidated Anvil hammer status without copying it into the overview', async () => {
@@ -568,10 +591,46 @@ describe('navigation integration', () => {
     expect(
       screen.getByRole('button', { name: 'Anvil tool: Iron Smithing Hammer' }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/8% faster · 3% preservation/)).toHaveLength(1);
+    expect(screen.getByText('Equipped')).toBeInTheDocument();
+    expect(screen.queryByText(/8% faster · 3% preservation/)).not.toBeInTheDocument();
     expect(screen.queryByText('TOOL')).not.toBeInTheDocument();
     expect(screen.queryByText('No Smithing Hammer')).not.toBeInTheDocument();
     expect(screen.queryByText(/XP\/hr/)).not.toBeInTheDocument();
+  });
+
+  it('shows Tool Bonus in an active Anvil order and keeps Forge Fuel exclusive to Forge', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Smithing Active Context');
+    game.settings.threeQuality = 'off';
+    game.skills.smithing = { level: 20, xp: getXpForLevel(20) };
+    game.inventory = [
+      { itemId: 'iron-bar', quantity: 11, locked: false },
+      { itemId: 'iron-smithing-hammer', quantity: 1, locked: false },
+    ];
+    game.equipment.tool = 'iron-smithing-hammer';
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
+    await user.click(screen.getByRole('button', { name: 'Continuous' }));
+    const armorOutput = screen.getByText('Iron Armor', {
+      selector: '.smithing-recipe-output strong',
+    });
+    const armorRow = armorOutput.closest('.smithing-anvil-row');
+    expect(armorRow).not.toBeNull();
+    await user.click(
+      within(armorRow as HTMLElement).getByRole('button', { name: 'Start forging' }),
+    );
+
+    const toolContext = screen.getByText('TOOL BONUS').closest('.smithing-order-detail');
+    expect(toolContext).not.toBeNull();
+    expect(
+      within(toolContext as HTMLElement).getByText('Iron Smithing Hammer'),
+    ).toBeInTheDocument();
+    expect(
+      within(toolContext as HTMLElement).getByText(/8% faster · 3% preservation/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('FORGE FUEL')).not.toBeInTheDocument();
   });
 
   it('selects Armor, previews compatible gear, and requires explicit replacement', async () => {

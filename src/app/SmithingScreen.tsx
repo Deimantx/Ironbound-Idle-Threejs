@@ -48,6 +48,7 @@ const quantityOptions: QuantityMode[] = [1, 10, 'all', 'continuous'];
 const outputGroups = ['all', 'weapon', 'armor', 'shield', 'tool'] as const;
 type OutputGroup = (typeof outputGroups)[number];
 type MetalFilter = 'all' | SmithingTier;
+type ForgeVisibility = 'all' | 'unlocked';
 
 const formatSeconds = (milliseconds: number): string => `${(milliseconds / 1000).toFixed(1)}s`;
 const itemName = (itemId: string): string => itemById[itemId]?.name ?? itemId;
@@ -70,7 +71,7 @@ const formatEstimateTitle = (
   mode: QuantityMode,
 ): string => {
   const estimate = getSmithingProductionEstimate(game, recipe, mode);
-  return `Base available: ${estimate.baseCraftsAvailable} crafts · ${formatHoursMinutes(estimate.totalBaseTimeMs)} · ${formatNumber(estimate.totalBaseXp)} XP`;
+  return `${estimate.baseCraftsAvailable} crafts · ${formatHoursMinutes(estimate.totalBaseTimeMs)} · ${formatNumber(estimate.totalBaseXp)} XP`;
 };
 
 function SmithingMaterials({ game, recipe }: { game: GameState; recipe: RecipeDefinition }) {
@@ -385,6 +386,36 @@ function ForgeFuelControl({ game }: { game: GameState }) {
   );
 }
 
+function ForgeVisibilityControl({
+  value,
+  onChange,
+}: {
+  value: ForgeVisibility;
+  onChange: (value: ForgeVisibility) => void;
+}) {
+  return (
+    <div className="smithing-browse-control" role="group" aria-label="Forge visibility">
+      <span className="smithing-filter-label">SHOW</span>
+      <div className="filterbar smithing-filterbar">
+        <button
+          type="button"
+          className={`button ${value === 'all' ? 'gold' : 'ghost'}`}
+          onClick={() => onChange('all')}
+        >
+          All Bars
+        </button>
+        <button
+          type="button"
+          className={`button ${value === 'unlocked' ? 'gold' : 'ghost'}`}
+          onClick={() => onChange('unlocked')}
+        >
+          Unlocked
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function QuantitySelector({
   mode,
   setMode,
@@ -411,6 +442,19 @@ function QuantitySelector({
 const formatHammerStats = (hammer: SmithingToolDefinition): string =>
   `${Math.round(hammer.speedBonus * 100)}% faster · ${Math.round(hammer.materialPreservationChance * 100)}% preservation`;
 
+const getActiveToolBonus = (game: GameState): { name: string; detail: string } => {
+  const hammer = getSmithingHammer(game);
+  if (hammer) return { name: itemName(hammer.itemId), detail: formatHammerStats(hammer) };
+  const equippedToolId = game.equipment.tool;
+  const equippedTool = equippedToolId ? itemById[equippedToolId] : undefined;
+  return {
+    name: 'No Smithing Hammer',
+    detail: equippedTool
+      ? `${equippedTool.name} equipped · No Smithing bonus`
+      : 'Base speed · 0% preservation',
+  };
+};
+
 function AnvilToolControl({ game }: { game: GameState }) {
   const [open, setOpen] = useState(false);
   const equip = useGameStore((store) => store.equip);
@@ -424,12 +468,10 @@ function AnvilToolControl({ game }: { game: GameState }) {
     recipeById[game.activeAction.recipeId]?.category === 'forging';
   const toolLabel = hammer ? itemName(hammer.itemId) : 'No Smithing Hammer';
   const toolDetail = hammer
-    ? formatHammerStats(hammer)
+    ? 'Equipped'
     : equippedTool && !equippedHammer
-      ? `${equippedTool.name} currently equipped`
-      : equippedHammer && game.skills.smithing.level < equippedHammer.requiredSmithingLevel
-        ? `Requires Smithing ${equippedHammer.requiredSmithingLevel}`
-        : 'Base speed · 0% preservation';
+      ? `${equippedTool.name} equipped`
+      : 'Base speed · 0% preservation';
 
   useEffect(() => {
     if (!open) return;
@@ -558,20 +600,28 @@ function ActiveOrder({
   const isForge = recipe.category === 'smelting';
   const selectedFuel = getSelectedForgeFuel(game);
   const fuelState = game.smithing.forgeFuel;
-  const loadedFuelTime = getForgeFuelTimeEstimate(game, recipe);
+  const toolBonus = getActiveToolBonus(game);
   const available =
     action.quantityMode === 'continuous'
-      ? `~${estimate.baseCraftsAvailable} base crafts available`
-      : `${action.remaining ?? 0} remaining`;
+      ? `~${estimate.baseCraftsAvailable} crafts`
+      : `${action.remaining ?? 0} crafts remaining`;
+  const availableDetail =
+    estimate.totalBaseXp > 0
+      ? `${formatNumber(estimate.totalBaseXp)} XP · ${formatHoursMinutes(estimate.totalBaseTimeMs)}`
+      : 'No crafts available';
   return (
     <div className="smithing-active-order">
       <div className="smithing-active-heading">
-        <div>
-          <div className="eyebrow">Active Order</div>
-          <h2>{recipe.name}</h2>
-          <span className="smithing-active-facility">
-            {isForge ? 'Forge' : 'Anvil'} · {formatQuantity(action.quantityMode, action.remaining)}
-          </span>
+        <div className="smithing-active-order-identity">
+          <ItemIcon itemId={recipe.outputItemId} size="lg" />
+          <div>
+            <div className="eyebrow">Active Order</div>
+            <h2>{recipe.name}</h2>
+            <span className="smithing-active-facility">
+              {isForge ? 'Forge' : 'Anvil'} ·{' '}
+              {formatQuantity(action.quantityMode, action.remaining)}
+            </span>
+          </div>
         </div>
         <button className="button danger" onClick={stopAction}>
           Stop
@@ -604,28 +654,37 @@ function ActiveOrder({
           <strong>~{formatRatePerHour(estimate.xpPerHour)} XP/hr</strong>
         </div>
       </div>
-      <div className="smithing-order-detail">
-        <span className="eyebrow">AVAILABLE</span>
-        <strong>{available}</strong>
-        <small>
-          {estimate.totalBaseXp > 0
-            ? `Base output: ${formatNumber(estimate.totalBaseXp)} XP · ${formatHoursMinutes(estimate.totalBaseTimeMs)}`
-            : 'No base crafts available'}
-        </small>
-      </div>
-      {isForge ? (
+      <div className="smithing-active-context-grid">
         <div className="smithing-order-detail">
-          <span className="eyebrow">FUEL</span>
-          <strong>
-            {selectedFuel?.name ?? 'No fuel'} · {fuelState.loadedFuelQuantity} /{' '}
-            {getForgeFuelCapacity(game)} loaded · Auto-refuel {fuelState.autoRefuel ? 'ON' : 'OFF'}
+          <span className="eyebrow">AVAILABLE</span>
+          <strong
+            title={
+              action.quantityMode === 'continuous'
+                ? 'Material preservation may extend Continuous production beyond this estimate.'
+                : undefined
+            }
+          >
+            {available}
           </strong>
-          <small>
-            Estimated fuel time: ~{formatHoursMinutes(loadedFuelTime)} ·{' '}
-            {estimate.baseCraftsAvailable} base crafts from current resources
-          </small>
+          <small>{availableDetail}</small>
         </div>
-      ) : null}
+        {isForge ? (
+          <div className="smithing-order-detail">
+            <span className="eyebrow">FORGE FUEL</span>
+            <strong>
+              {selectedFuel?.name ?? 'No fuel'} · {fuelState.loadedFuelQuantity} /{' '}
+              {getForgeFuelCapacity(game)}
+            </strong>
+            <small>Auto-refuel {fuelState.autoRefuel ? 'ON' : 'OFF'}</small>
+          </div>
+        ) : (
+          <div className="smithing-order-detail">
+            <span className="eyebrow">TOOL BONUS</span>
+            <strong>{toolBonus.name}</strong>
+            <small>{toolBonus.detail}</small>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -638,13 +697,30 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
     iron: false,
     steel: false,
   });
+  const [forgeVisibility, setForgeVisibility] = useState<ForgeVisibility>('all');
   const [filter, setFilter] = useState<OutputGroup>('all');
   const [metalFilter, setMetalFilter] = useState<MetalFilter>('all');
   const stopAction = useGameStore((store) => store.stopAction);
   const levelProgress = getLevelProgress(game.skills.smithing);
   const active = game.activeAction.type === 'smithing' ? game.activeAction : null;
   const activeRecipe = active ? recipeById[active.recipeId] : undefined;
-  const forgeRecipes = useMemo(() => getSmithingRecipesForCategory('smelting'), []);
+  const forgeRecipes = useMemo(
+    () =>
+      getSmithingRecipesForCategory('smelting')
+        .map((recipe, index) => ({ recipe, index }))
+        .sort(
+          (first, second) => first.recipe.level - second.recipe.level || first.index - second.index,
+        )
+        .map(({ recipe }) => recipe),
+    [],
+  );
+  const visibleForgeRecipes = useMemo(
+    () =>
+      forgeVisibility === 'unlocked'
+        ? forgeRecipes.filter((recipe) => game.skills.smithing.level >= recipe.level)
+        : forgeRecipes,
+    [forgeRecipes, forgeVisibility, game.skills.smithing.level],
+  );
   const metalOptions = useMemo<MetalFilter[]>(() => {
     const tiers = new Set<MetalFilter>();
     for (const recipe of ACTIVE_SMITHING_RECIPES) {
@@ -743,17 +819,20 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
               onToggle={() => setForgeCollapsed((value) => !value)}
             />
             {!forgeCollapsed && (
-              <div className="smithing-recipe-list smithing-forge-list">
-                {forgeRecipes.map((recipe) => (
-                  <ForgeRecipeCard
-                    key={recipe.id}
-                    game={game}
-                    recipe={recipe}
-                    mode={mode}
-                    requestAction={requestAction}
-                  />
-                ))}
-              </div>
+              <>
+                <ForgeVisibilityControl value={forgeVisibility} onChange={setForgeVisibility} />
+                <div className="smithing-recipe-list smithing-forge-list">
+                  {visibleForgeRecipes.map((recipe) => (
+                    <ForgeRecipeCard
+                      key={recipe.id}
+                      game={game}
+                      recipe={recipe}
+                      mode={mode}
+                      requestAction={requestAction}
+                    />
+                  ))}
+                </div>
+              </>
             )}
           </section>
         </UiPanelSlot>
@@ -771,36 +850,49 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
             {!anvilCollapsed && (
               <>
                 <div className="smithing-filter-groups">
-                  <div className="filterbar smithing-filterbar" aria-label="Anvil type filters">
-                    {outputGroups.map((option) => (
-                      <button
-                        key={option}
-                        className={`button ${filter === option ? 'gold' : 'ghost'}`}
-                        onClick={() => setFilter(option)}
-                      >
-                        {option === 'all'
-                          ? 'All'
-                          : option === 'armor'
-                            ? 'Armor'
-                            : `${option[0].toUpperCase()}${option.slice(1)}s`}
-                      </button>
-                    ))}
+                  <div
+                    className="smithing-filter-group"
+                    role="group"
+                    aria-label="Anvil type filters"
+                  >
+                    <span className="smithing-filter-label">TYPE</span>
+                    <div className="filterbar smithing-filterbar">
+                      {outputGroups.map((option) => (
+                        <button
+                          type="button"
+                          key={option}
+                          className={`button ${filter === option ? 'gold' : 'ghost'}`}
+                          onClick={() => setFilter(option)}
+                        >
+                          {option === 'all'
+                            ? 'All'
+                            : option === 'armor'
+                              ? 'Armor'
+                              : `${option[0].toUpperCase()}${option.slice(1)}s`}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                   <div
-                    className="filterbar smithing-filterbar smithing-metal-filterbar"
+                    className="smithing-filter-group"
+                    role="group"
                     aria-label="Anvil metal filters"
                   >
-                    {metalOptions.map((option) => (
-                      <button
-                        key={option}
-                        className={`button ${metalFilter === option ? 'gold' : 'ghost'}`}
-                        onClick={() => setMetalFilter(option)}
-                      >
-                        {option === 'all'
-                          ? 'All Metals'
-                          : option[0].toUpperCase() + option.slice(1)}
-                      </button>
-                    ))}
+                    <span className="smithing-filter-label">METAL</span>
+                    <div className="filterbar smithing-filterbar">
+                      {metalOptions.map((option) => (
+                        <button
+                          type="button"
+                          key={option}
+                          className={`button ${metalFilter === option ? 'gold' : 'ghost'}`}
+                          onClick={() => setMetalFilter(option)}
+                        >
+                          {option === 'all'
+                            ? 'All Metals'
+                            : option[0].toUpperCase() + option.slice(1)}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
                 <div className="smithing-recipe-list smithing-anvil-list">

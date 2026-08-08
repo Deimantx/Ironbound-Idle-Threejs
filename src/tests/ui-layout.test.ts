@@ -183,6 +183,24 @@ describe('visual UI layout', () => {
     expect(sanitizeUiLayout(DEFAULT_UI_LAYOUT)).toEqual(DEFAULT_UI_LAYOUT);
   });
 
+  it('uses stacked full-width Smithing panels and resets the legacy five-seven split', () => {
+    expect(DEFAULT_SMITHING_PANEL_LAYOUT).toMatchObject({
+      smithingOverview: { column: 1, row: 1, columnSpan: 12 },
+      smithingForge: { column: 1, row: 2, columnSpan: 12 },
+      smithingAnvil: { column: 1, row: 3, columnSpan: 12 },
+    });
+    const layout = sanitizeUiLayout({
+      screenPanels: {
+        smithing: {
+          smithingOverview: { column: 1, row: 1, columnSpan: 12 },
+          smithingForge: { column: 1, row: 2, columnSpan: 5 },
+          smithingAnvil: { column: 6, row: 2, columnSpan: 7 },
+        },
+      },
+    });
+    expect(layout.screenPanels.smithing).toEqual(DEFAULT_SMITHING_PANEL_LAYOUT);
+  });
+
   it('resolves a panel collision on the intended row direction deterministically', () => {
     const layout = sanitizeUiLayout(DEFAULT_UI_LAYOUT);
     const player = layout.screenPanels.combat?.player;
