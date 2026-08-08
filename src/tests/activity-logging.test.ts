@@ -57,6 +57,39 @@ describe('Activity Logging 2.0', () => {
     ]);
   });
 
+  it('keeps bounded combat and milestone IDs unique for identical events', () => {
+    const state = createNewGame(0, 'Unique IDs', 0);
+    for (let index = 0; index < 120; index += 1)
+      appendCombatLog(state, {
+        kind: 'loot',
+        enemyId: 'forest-rat',
+        itemId: 'rat-tail',
+        quantity: 1,
+        at: 500,
+        encounterStartedAt: 500,
+      });
+    appendCombatLog(state, {
+      kind: 'loot',
+      enemyId: 'forest-rat',
+      itemId: 'rat-tail',
+      quantity: 1,
+      at: 500,
+      encounterStartedAt: 500,
+    });
+    appendCombatLog(state, {
+      kind: 'loot',
+      enemyId: 'forest-rat',
+      itemId: 'rat-tail',
+      quantity: 1,
+      at: 500,
+      encounterStartedAt: 500,
+    });
+    for (let index = 0; index < 55; index += 1)
+      appendMilestone(state, { skillId: 'attack', level: 2, at: 900 });
+    expect(new Set(state.activityLogs.combat.map((entry) => entry.id)).size).toBe(120);
+    expect(new Set(state.activityLogs.milestones.map((entry) => entry.id)).size).toBe(50);
+  });
+
   it('presents typed combat events without parsing a text field', () => {
     const presentation = getCombatLogPresentation({
       id: 'hit-1',

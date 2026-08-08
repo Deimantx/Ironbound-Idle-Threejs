@@ -10,7 +10,9 @@ export const getCombatDamageXp = (damage: number): number =>
 export const getHitpointsDamageXp = (damage: number): number =>
   Math.max(0, Math.floor(damage * HITPOINTS_XP_PER_DAMAGE));
 
-export const getCombatStyleSkill = (style: CombatStyle): SkillId =>
+export const getCombatStyleSkill = (
+  style: CombatStyle,
+): Extract<SkillId, 'attack' | 'strength' | 'defence'> =>
   style === 'accurate' ? 'attack' : style === 'aggressive' ? 'strength' : 'defence';
 
 export const rollInteger = (max: number, random: number): number =>

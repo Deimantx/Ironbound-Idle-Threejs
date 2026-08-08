@@ -7,7 +7,11 @@ import {
   rollDamage,
 } from '../game/formulas/combatFormulas';
 import { getDerivedStats } from '../game/formulas/statFormulas';
-import { startCombat, queueCombatSpecial, setCombatAutoSpecial } from '../game/engine/actionController';
+import {
+  startCombat,
+  queueCombatSpecial,
+  setCombatAutoSpecial,
+} from '../game/engine/actionController';
 import { simulateElapsed } from '../game/engine/simulation';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { COMBAT_TUNING } from '../config/combatTuning';
@@ -22,8 +26,18 @@ import {
 } from '../game/selectors/combatSelectors';
 import type { CombatVisualEvent } from '../game/types';
 
-const configuredCombat = (enemyId: 'forest-rat' | 'goblin-scavenger' | 'grey-wolf' | 'road-bandit' = 'forest-rat', seed = 1) => {
-  const state = startCombat(createNewGame(0, 'Expansion', 0), 'forest-path', enemyId, 'accurate', false, 0);
+const configuredCombat = (
+  enemyId: 'forest-rat' | 'goblin-scavenger' | 'grey-wolf' | 'road-bandit' = 'forest-rat',
+  seed = 1,
+) => {
+  const state = startCombat(
+    createNewGame(0, 'Expansion', 0),
+    'forest-path',
+    enemyId,
+    'accurate',
+    false,
+    0,
+  );
   if (state.activeAction.type === 'combat') {
     state.activeAction.combatState.rngSeed = seed;
     state.activeAction.combatState.rngCursor = 1;
@@ -48,13 +62,17 @@ describe('authoritative combat expansion formulas', () => {
     const state = createNewGame(0, 'No Elites', 0);
     state.settings.huntElites = false;
     const combat = startCombat(state, 'forest-path', 'forest-rat', 'accurate', false, 0);
-    expect(combat.activeAction.type === 'combat' && combat.activeAction.combatState.eliteModifier).toBe(null);
+    expect(
+      combat.activeAction.type === 'combat' && combat.activeAction.combatState.eliteModifier,
+    ).toBe(null);
   });
 
   it('rolls normal damage from one through the displayed maximum', () => {
     for (let index = 0; index < 10_000; index += 1)
       expect(rollDamage(5, index / 10_000)).toBeGreaterThanOrEqual(1);
-    expect(Math.max(...Array.from({ length: 1000 }, (_, index) => rollDamage(5, index / 1000)))).toBe(5);
+    expect(
+      Math.max(...Array.from({ length: 1000 }, (_, index) => rollDamage(5, index / 1000))),
+    ).toBe(5);
     expect(rollDamage(1, 0.99)).toBe(1);
   });
 
@@ -105,11 +123,12 @@ describe('combat event resolution and traits', () => {
       state.activeAction.combatState.enemyAttackMs = 0;
     }
     const result = simulateElapsed(state, 1);
-    expect(result.events.some((event) => event.type === 'enemy-hit' || event.type === 'enemy-miss')).toBe(false);
+    expect(
+      result.events.some((event) => event.type === 'enemy-hit' || event.type === 'enemy-miss'),
+    ).toBe(false);
     expect(result.summary.xpGained.attack).toBe(5);
     const hit = result.events.find((event) => event.type === 'player-hit') as
-      | Extract<CombatVisualEvent, { type: 'player-hit' | 'player-miss' }>
-      | undefined;
+      Extract<CombatVisualEvent, { type: 'player-hit' | 'player-miss' }> | undefined;
     expect(hit?.damage).toBe(1);
   });
 
@@ -126,7 +145,9 @@ describe('combat event resolution and traits', () => {
 
   it('implements the six enemy traits through effective encounter state', () => {
     const rat = configuredCombat();
-    expect(rat.activeAction.type === 'combat' && rat.activeAction.combatState.enemyAttackMs).toBe(1690);
+    expect(rat.activeAction.type === 'combat' && rat.activeAction.combatState.enemyAttackMs).toBe(
+      1690,
+    );
     expect(getEnemyCombatStats(enemyById['goblin-scavenger'], null, 7).maxHit).toBe(6);
     expect(getEnemyCombatStats(enemyById['cave-bat']).defenceRating).toBe(24);
     expect(getEnemyCombatStats(enemyById['stoneback-crab']).flatDamageReduction).toBe(2);
@@ -159,10 +180,15 @@ describe('combat event resolution and traits', () => {
     }
     const result = simulateElapsed(state, 1);
     const bleed = result.events.find((event) => event.type === 'enemy-bleed') as
-      | Extract<CombatVisualEvent, { type: 'enemy-hit' | 'enemy-miss' | 'enemy-bleed' }>
-      | undefined;
+      Extract<CombatVisualEvent, { type: 'enemy-hit' | 'enemy-miss' | 'enemy-bleed' }> | undefined;
     expect(bleed?.damage).toBe(2);
-    expect(result.state.activeAction.type === 'combat' && result.state.activeAction.combatState.traitState.bleedStacks).toBe(1);
+    expect(result.state.activityLogs.combat).toContainEqual(
+      expect.objectContaining({ kind: 'enemy-bleed', damage: 2, enemyId: 'grey-wolf' }),
+    );
+    expect(
+      result.state.activeAction.type === 'combat' &&
+        result.state.activeAction.combatState.traitState.bleedStacks,
+    ).toBe(1);
   });
 });
 
@@ -177,8 +203,7 @@ describe('momentum, specials, and deterministic chunking', () => {
     }
     const result = simulateElapsed(state, 1);
     const attack = result.events.find((event) => event.type === 'player-hit') as
-      | Extract<CombatVisualEvent, { type: 'player-hit' | 'player-miss' }>
-      | undefined;
+      Extract<CombatVisualEvent, { type: 'player-hit' | 'player-miss' }> | undefined;
     expect(attack && attack.special).toBe(true);
     expect(result.state.activeAction.type).toBe('combat');
   });

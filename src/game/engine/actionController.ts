@@ -66,6 +66,7 @@ export const startCombat = (
   autoRepeat: boolean,
   now = Date.now(),
   autoSpecial = true,
+  options: { preservePlayerHp?: boolean } = {},
 ): GameState => {
   const enemy = enemyById[enemyId];
   if (!enemy) return { ...state, activeAction: { type: 'none' }, updatedAt: now };
@@ -74,10 +75,14 @@ export const startCombat = (
   const nextCombatState = spawn.eliteModifier
     ? { ...spawn.combatState, eliteAnnounced: true }
     : spawn.combatState;
+  const maxHealth = getDerivedStats(state, style).maxHealth;
+  const currentHp = options.preservePlayerHp
+    ? Math.min(Math.max(0, state.player.currentHp), maxHealth)
+    : maxHealth;
   const next: GameState = {
     ...state,
     updatedAt: now,
-    player: { ...state.player, currentHp: getDerivedStats(state, style).maxHealth },
+    player: { ...state.player, currentHp },
     activeAction: {
       type: 'combat',
       areaId,
@@ -108,16 +113,39 @@ export const startCombat = (
   return next;
 };
 
+export const switchCombatTarget = (
+  state: GameState,
+  areaId: AreaId,
+  enemyId: EnemyId,
+  style: CombatStyle,
+  autoRepeat: boolean,
+  now = Date.now(),
+  autoSpecial = true,
+): GameState =>
+  startCombat(state, areaId, enemyId, style, autoRepeat, now, autoSpecial, {
+    preservePlayerHp: state.activeAction.type === 'combat',
+  });
+
 export const setCombatStyle = (state: GameState, style: CombatStyle): GameState => {
   if (state.activeAction.type !== 'combat') return state;
   const active = state.activeAction;
   const inEncounter = active.combatState.enemyHp > 0 && active.combatState.respawnMs <= 0;
+  if (!inEncounter)
+    return {
+      ...state,
+      activeAction: { ...active, style, pendingStyle: null },
+    };
+  if (style === active.style)
+    return {
+      ...state,
+      activeAction: { ...active, pendingStyle: null },
+    };
   return {
     ...state,
     activeAction: {
       ...active,
-      style: inEncounter ? active.style : style,
-      pendingStyle: inEncounter ? style : null,
+      style: active.style,
+      pendingStyle: style,
     },
   };
 };

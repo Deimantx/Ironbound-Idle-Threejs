@@ -15,6 +15,15 @@ export const appendCombatLog = (
   entry: RuntimeCombatLogInput<RuntimeCombatLogEntry>,
 ): void => {
   ensureActivityLogs(state);
-  const id = `combat-${entry.kind}-${entry.at}-${state.activityLogs.combat.length}-${entry.enemyId}`;
-  appendBounded(state.activityLogs.combat, { ...entry, id } as RuntimeCombatLogEntry, COMBAT_LOG_LIMIT);
+  const signature = encodeURIComponent(JSON.stringify(entry));
+  const baseId = `combat-${entry.kind}-${entry.at}-${entry.enemyId}-${signature}`;
+  const existingIds = new Set(state.activityLogs.combat.map((current) => current.id));
+  let id = baseId;
+  let collision = 2;
+  while (existingIds.has(id)) id = `${baseId}-${collision++}`;
+  appendBounded(
+    state.activityLogs.combat,
+    { ...entry, id } as RuntimeCombatLogEntry,
+    COMBAT_LOG_LIMIT,
+  );
 };

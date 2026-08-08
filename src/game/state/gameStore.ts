@@ -9,6 +9,7 @@ import {
   setCombatStyle,
   queueCombatSpecial,
   startCombat,
+  switchCombatTarget,
   startMining,
   startSmithing,
 } from '../engine/actionController';
@@ -59,6 +60,13 @@ interface Store {
   unloadForgeFuel: () => void;
   setForgeAutoRefuel: (enabled: boolean) => void;
   startCombat: (
+    areaId: AreaId,
+    enemyId: EnemyId,
+    style: CombatStyle,
+    autoRepeat: boolean,
+    autoSpecial?: boolean,
+  ) => void;
+  switchCombatTarget: (
     areaId: AreaId,
     enemyId: EnemyId,
     style: CombatStyle,
@@ -297,6 +305,26 @@ export const useGameStore = create<Store>((set, get) => ({
         combatSession: emptyCombatSession(enemyId, startedAt, startedAt),
       });
     }
+  },
+  switchCombatTarget: (areaId, enemyId, style, autoRepeat, autoSpecial = true) => {
+    const game = get().game;
+    if (game?.activeAction.type !== 'combat') return;
+    const startedAt = Date.now();
+    const nextGame = switchCombatTarget(
+      game,
+      areaId,
+      enemyId,
+      style,
+      autoRepeat,
+      startedAt,
+      autoSpecial,
+    );
+    nextGame.lastSimulatedAt = startedAt;
+    set({
+      game: nextGame,
+      combatEvents: [],
+      combatSession: emptyCombatSession(enemyId, startedAt, startedAt),
+    });
   },
   setCombatStyle: (style) => {
     const game = get().game;

@@ -350,7 +350,8 @@ const resolveSmithingCycle = (
   addSummaryNumber(summary.completed, `${recipe.category}:${recipe.id}`, 1);
   addSummaryNumber(summary.itemsGained, recipe.outputItemId, recipe.outputQuantity);
   awardXp(state, summary, 'smithing', recipe.xp, at);
-  if (!state.discoveredItems.includes(recipe.outputItemId)) state.discoveredItems.push(recipe.outputItemId);
+  if (!state.discoveredItems.includes(recipe.outputItemId))
+    state.discoveredItems.push(recipe.outputItemId);
   return { ok: true };
 };
 
@@ -553,7 +554,8 @@ const simulateCombat = (
   };
   const stopForPlayerDeath = (
     at: number,
-    cause: { kind: 'enemy-hit'; damage: number; heavy: boolean } | { kind: 'bleed'; damage: number },
+    cause:
+      { kind: 'enemy-hit'; damage: number; heavy: boolean } | { kind: 'bleed'; damage: number },
   ): void => {
     state.statistics.deaths += 1;
     summary.deaths += 1;
@@ -657,7 +659,9 @@ const simulateCombat = (
     combatState.playerAttackMs -= step;
     combatState.enemyAttackMs -= step;
     if (combatState.playerAttackMs <= 0 && combatState.enemyHp > 0) {
-      const playerStats = getDerivedStats(state, action.style);
+      // Capture the style once so a queued style cannot affect any part of this attack.
+      const attackStyle = action.style;
+      const playerStats = getDerivedStats(state, attackStyle);
       const weapon = itemById[state.equipment.weapon ?? ''];
       const special = weapon?.specialAttack;
       const useSpecial = Boolean(
@@ -740,12 +744,17 @@ const simulateCombat = (
         awardXp(
           state,
           summary,
-          getCombatStyleSkill(action.style),
+          getCombatStyleSkill(attackStyle),
           getCombatDamageXp(actualDamage),
           clock,
         );
         awardXp(state, summary, 'hitpoints', getHitpointsDamageXp(actualDamage), clock);
       }
+      // A queued style becomes active only after the complete player attack
+      // (hit, miss, or special) has resolved. This also makes a same-timestamp
+      // enemy attack observe the newly active defensive calculations below.
+      if (action.pendingStyle)
+        action = { ...action, style: action.pendingStyle, pendingStyle: null };
       combatState.playerAttackMs += getDerivedStats(state, action.style).attackIntervalMs;
       if (combatState.enemyHp <= 0) {
         // Resolve a lethal player event before examining the enemy timer. A dead target never retaliates.
@@ -841,6 +850,13 @@ const simulateCombat = (
           damage: bleedDamage,
           at: clock,
         });
+        appendCombatLog(state, {
+          kind: 'enemy-bleed',
+          enemyId: enemy.id,
+          at: clock,
+          encounterStartedAt: combatState.encounterStartedAt,
+          damage: bleedDamage,
+        });
         if (state.player.currentHp <= 0) {
           stopForPlayerDeath(clock, { kind: 'bleed', damage: bleedDamage });
           break;
@@ -907,10 +923,7 @@ const simulateCombat = (
             combatState.traitState.bleedStacks + 1,
           );
         if (state.player.currentHp <= 0) {
-          stopForPlayerDeath(
-            clock,
-            { kind: 'enemy-hit', damage: actualDamage, heavy },
-          );
+          stopForPlayerDeath(clock, { kind: 'enemy-hit', damage: actualDamage, heavy });
           break;
         }
       }

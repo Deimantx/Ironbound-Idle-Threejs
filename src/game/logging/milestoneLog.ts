@@ -12,7 +12,12 @@ export const appendMilestone = (
   entry: Omit<MilestoneLogEntry, 'id' | 'kind'> & { kind?: 'level-up' },
 ): void => {
   ensureActivityLogs(state);
-  const id = `milestone-${entry.at}-${state.activityLogs.milestones.length}-${entry.skillId}-${entry.level}`;
+  const signature = encodeURIComponent(JSON.stringify(entry));
+  const baseId = `milestone-${entry.at}-${entry.skillId}-${entry.level}-${signature}`;
+  const existingIds = new Set(state.activityLogs.milestones.map((current) => current.id));
+  let id = baseId;
+  let collision = 2;
+  while (existingIds.has(id)) id = `${baseId}-${collision++}`;
   appendBounded(
     state.activityLogs.milestones,
     { ...entry, id, kind: 'level-up' },

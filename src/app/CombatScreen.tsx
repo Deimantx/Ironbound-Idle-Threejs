@@ -325,7 +325,7 @@ function StyleControls({
               </span>
               <span>
                 <strong>{info.name}</strong>
-                <small>{queued ? 'Queued — applies next enemy' : info.modifier}</small>
+                <small>{queued ? 'Queued — after current attack' : info.modifier}</small>
               </span>
               {current && <Check size={14} aria-label="Current" />}
             </button>
@@ -614,7 +614,11 @@ function CombatBrowser({
           )}
         </div>
       )}
-      <div id="combat-browser-content" className="combat-browser-content" hidden={!locationsExpanded}>
+      <div
+        id="combat-browser-content"
+        className="combat-browser-content"
+        hidden={!locationsExpanded}
+      >
         <div className="combat-regions-heading">
           <span className="combat-panel-kicker">Regions</span>
           <span className="muted">Greenvale is the first frontier.</span>
@@ -674,17 +678,15 @@ function CombatBrowser({
                   <strong>{candidate.name}</strong>
                   <small>{candidate.identity}</small>
                   <span>Requires Combat Lv {candidate.requiredCombatLevel}</span>
-                  <span>
-                    {candidate.enemyIds.length} {candidate.enemyIds.length === 1 ? 'enemy' : 'enemies'}
-                  </span>
-                  <span>
-                    {unlocked
-                      ? `${candidate.enemyIds.length} ${candidate.enemyIds.length === 1 ? 'enemy' : 'enemies'} · Recommended ${candidate.recommendedLevel[0]}–${candidate.recommendedLevel[1]}`
-                      : `Requires Combat Level ${candidate.requiredCombatLevel}`}
-                  </span>
                 </span>
                 <span className="combat-area-card-status">
-                  {activeFight ? 'Fighting here' : selected ? 'Selected' : unlocked ? 'Available' : 'Locked'}
+                  {activeFight
+                    ? 'Fighting here'
+                    : selected
+                      ? 'Selected'
+                      : unlocked
+                        ? 'Available'
+                        : 'Locked'}
                 </span>
               </button>
             );
@@ -749,8 +751,7 @@ function CombatContentTabs({
 }
 
 function LockedCombatContent({ tab }: { tab: Exclude<CombatContentTab, 'areas'> }) {
-  const label =
-    tab === 'dungeons' ? 'Dungeons' : tab === 'special' ? 'Special Areas' : 'Conquest';
+  const label = tab === 'dungeons' ? 'Dungeons' : tab === 'special' ? 'Special Areas' : 'Conquest';
   return (
     <section className="combat-future-content" role="tabpanel" aria-label={label}>
       <Lock size={19} />
@@ -833,7 +834,7 @@ function TargetAnalysis({
           </span>
           <span className="combat-analysis-style">
             Preview: {getCombatStyleInfo(style).name}
-            {styleIsQueued ? ' · queued' : ''}
+            {styleIsQueued ? ' · queued after current attack' : ''}
           </span>
         </div>
         <div className="combat-analysis-heading-actions">
@@ -900,10 +901,7 @@ function RecentActions({
                 key={entry.id}
               >
                 <time>
-                  {formatCombatLogTime(
-                    entry.at,
-                    entry.encounterStartedAt ?? encounterStartedAt,
-                  )}
+                  {formatCombatLogTime(entry.at, entry.encounterStartedAt ?? encounterStartedAt)}
                 </time>
                 <span className="combat-live-log-icon">
                   <Icon size={12} />
@@ -998,7 +996,7 @@ function LiveCombatResolution({
     effects.push('Heavy Strike incoming');
   if (combatAction?.pendingStyle)
     effects.push(
-      `Style change applies next enemy: ${getCombatStyleInfo(combatAction.pendingStyle).name}`,
+      `Style change after current attack: ${getCombatStyleInfo(combatAction.pendingStyle).name}`,
     );
   const statusIcon =
     status === 'VICTORY' ? (
@@ -1286,7 +1284,7 @@ function LootPanel({
 function getNextUnlockText(game: GameState): { name: string; requirement: string } {
   const next = AREAS.find((area) => !isCombatAreaUnlocked(game, area));
   return next
-    ? { name: next.name, requirement: `Requires Combat Level ${next.requiredCombatLevel}` }
+    ? { name: next.name, requirement: `Requires Combat Lv ${next.requiredCombatLevel}` }
     : {
         name: 'All current areas unlocked',
         requirement: 'Keep training for the next content pass.',
@@ -1537,6 +1535,7 @@ export function CombatScreen({
   const [autoRepeat, setAutoRepeat] = useState(activeAutoRepeat ?? true);
   const [autoSpecial, setAutoSpecial] = useState(activeAutoSpecial ?? true);
   const startCombat = useGameStore((store) => store.startCombat);
+  const switchCombatTarget = useGameStore((store) => store.switchCombatTarget);
   const stopAction = useGameStore((store) => store.stopAction);
   const setCombatStyle = useGameStore((store) => store.setCombatStyle);
   const setCombatAutoRepeat = useGameStore((store) => store.setCombatAutoRepeat);
@@ -1602,7 +1601,7 @@ export function CombatScreen({
   const startSelectedTarget = () => {
     if (startPending.current || locked) return;
     if (active && targetChanged) {
-      startCombat(
+      switchCombatTarget(
         selectedTargetArea.id,
         selectedTarget.id,
         active.pendingStyle ?? active.style,
@@ -1665,7 +1664,9 @@ export function CombatScreen({
       <div className="combat-context-bar combat-redesign-context">
         <div className="combat-context-section">
           <span className="context-kicker">{active ? 'Current fight' : 'Selected target'}</span>
-          <b>{combatRegionById.greenvale.name} · {currentArea.name} · {currentEnemy.name}</b>
+          <b>
+            {combatRegionById.greenvale.name} · {currentArea.name} · {currentEnemy.name}
+          </b>
         </div>
         {targetChanged && (
           <>
@@ -1673,7 +1674,8 @@ export function CombatScreen({
             <div className="combat-context-section selected-next-target">
               <span className="context-kicker">Selected next target</span>
               <b>
-                {combatRegionById.greenvale.name} · {selectedTargetArea.name} · {selectedTarget.name}
+                {combatRegionById.greenvale.name} · {selectedTargetArea.name} ·{' '}
+                {selectedTarget.name}
               </b>
             </div>
           </>

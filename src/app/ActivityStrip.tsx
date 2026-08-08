@@ -18,7 +18,9 @@ import {
   getMiningTool,
 } from '../game/formulas/miningFormulas';
 import { MAX_LEVEL, getLevelProgress } from '../game/formulas/experienceFormulas';
+import { getCombatStyleSkill } from '../game/formulas/combatFormulas';
 import { getDerivedStats } from '../game/formulas/statFormulas';
+import { selectCombatSkillXpPerHour } from '../game/selectors/combatSelectors';
 import { useGameStore } from '../game/state/gameStore';
 import type { GameState, ScreenId } from '../game/types';
 import { formatRatePerHour } from './formatters';
@@ -48,6 +50,12 @@ const formatLevelEta = (xpRemaining: number, xpPerHour: number): string => {
   const minutes = totalMinutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 };
+
+const combatSkillNames = {
+  attack: 'Attack',
+  strength: 'Strength',
+  defence: 'Defence',
+} as const;
 
 interface ActivityLevelProgressProps {
   label: string;
@@ -225,41 +233,127 @@ const CombatActivityStrip = ({
   game,
   now,
   onNavigate,
+  onStop,
 }: {
   game: GameState;
   now: number;
   onNavigate: (screen: ScreenId) => void;
+  onStop: () => void;
 }) => {
   const combatSession = useGameStore((store) => store.combatSession);
   if (game.activeAction.type !== 'combat') return null;
   const action = game.activeAction;
   const enemy = enemyById[action.enemyId];
-  const derivedStats = getDerivedStats(game, action.style);
+  if (!enemy) return null;
+  const activeStats = getDerivedStats(game, action.style);
+  const displayStyle = action.pendingStyle ?? action.style;
+  const skillId = getCombatStyleSkill(displayStyle);
+  const skillName = combatSkillNames[skillId];
+  const levelProgress = getLevelProgress(game.skills[skillId]);
+  const xpToNextLevel = Math.max(0, levelProgress.next - levelProgress.current);
+  const xpPerHour = selectCombatSkillXpPerHour(game, enemy, displayStyle);
   const combatStartedAt = combatSession.startedAt ?? game.updatedAt;
+  const respawning = action.combatState.respawnMs > 0;
+  const enemyHp = Math.ceil(Math.max(0, action.combatState.enemyHp));
+  const enemyMaxHp = Math.max(1, Math.ceil(action.combatState.enemyMaxHp));
+  const enemyHpPercent = Math.round((enemyHp / enemyMaxHp) * 100);
   return (
-    <div className="action-strip combat-strip" data-ui-region="actionStrip">
-      <div className="action-icon">
+    <div className="action-strip combat-strip activity-strip-combat" data-ui-region="actionStrip">
+      <div className="action-icon" aria-hidden="true">
         <Swords size={19} />
       </div>
+      <button
+        className="activity-identity action-main button ghost"
+        onClick={() => onNavigate('combat')}
+        aria-label={`Open Combat: Fighting ${enemy.name}`}
+      >
+        <strong>Fighting {enemy?.name ?? 'enemy'}</strong>
+        <small>
+          {respawning ? 'Enemy defeated · Respawning…' : 'Click to open Live Combat Resolution'}
+        </small>
+      </button>
       <div className="combat-activity-stats" aria-label="Combat activity summary">
         <div className="combat-activity-stat">
-          <span>Combat level</span>
-          <strong>{derivedStats.combatLevel}</strong>
+          <span>YOU</span>
+          <strong>
+            <Heart size={13} /> {Math.ceil(Math.max(0, game.player.currentHp))} /{' '}
+            {activeStats.maxHealth}
+          </strong>
+        </div>
+        <div className="combat-activity-stat combat-activity-enemy-hp">
+          <span>Enemy HP</span>
+          <strong>{respawning ? 'Defeated' : `${enemyHp} / ${enemyMaxHp}`}</strong>
+          <div
+            className="combat-activity-hp-track"
+            role="progressbar"
+            aria-label={`${enemy.name} activity HP`}
+            aria-valuemin={0}
+            aria-valuemax={enemyMaxHp}
+            aria-valuenow={respawning ? 0 : enemyHp}
+            aria-valuetext={
+              respawning ? 'Enemy defeated; respawning' : `${enemyHp} of ${enemyMaxHp} HP`
+            }
+          >
+            <i style={{ width: `${respawning ? 0 : enemyHpPercent}%` }} />
+          </div>
         </div>
         <div className="combat-activity-stat">
-          <span>HP</span>
+          <span>Session kills</span>
+          <strong>{combatSession.enemiesDefeated}</strong>
+        </div>
+        <div className="combat-activity-stat combat-activity-timer">
+          <span>Session time</span>
           <strong>
-            <Heart size={13} /> {Math.ceil(game.player.currentHp)} / {derivedStats.maxHealth}
+            <Timer size={13} /> {formatFightDuration(combatStartedAt, now)}
           </strong>
         </div>
       </div>
-      <button className="action-main button ghost" onClick={() => onNavigate('combat')}>
-        <strong>Fighting {enemy?.name ?? 'enemy'}</strong>
-        <small>Click to open Live Combat Resolution</small>
-      </button>
-      <div className="action-meta action-fight-time">
-        <Timer size={13} /> {formatFightDuration(combatStartedAt, now)}
+      <div className="combat-activity-skill" aria-label={`${skillName} combat training progress`}>
+        <div className="combat-activity-skill-heading">
+          <strong>{skillName}</strong>
+          {action.pendingStyle && <small>After current attack</small>}
+        </div>
+        <ActivityLevelProgress
+          label={skillName}
+          level={game.skills[skillId].level}
+          percent={levelProgress.percent}
+          maxLevel={MAX_LEVEL}
+        />
       </div>
+      <div className="activity-rate-column combat-activity-rate">
+        <span
+          className="activity-rate"
+          title={`Estimated ${skillName} XP per hour including hit chance, damage, and respawn time`}
+        >
+          ~{formatRatePerHour(xpPerHour)} XP/hr
+        </span>
+      </div>
+      <div
+        className="activity-next-column combat-activity-next"
+        aria-label={`${skillName} level estimate`}
+      >
+        {levelProgress.next > 0 ? (
+          <>
+            <span
+              className="activity-xp-next"
+              title={`XP remaining until the next ${skillName} level`}
+            >
+              XP to next: {formatRatePerHour(xpToNextLevel)}
+            </span>
+            <span
+              className="activity-eta"
+              title={`Estimated time until the next ${skillName} level`}
+            >
+              ETA: {formatLevelEta(xpToNextLevel, xpPerHour)}
+            </span>
+          </>
+        ) : (
+          <span className="activity-eta">MAX LEVEL</span>
+        )}
+      </div>
+      <button className="button danger activity-stop" onClick={onStop} aria-label="Stop Combat">
+        Stop Combat
+      </button>
     </div>
   );
 };
@@ -411,7 +505,9 @@ export function ActivityStrip({
       <MiningActivityStrip game={game} now={now} onNavigate={onNavigate} onStop={stopAction} />
     );
   if (action.type === 'combat')
-    return <CombatActivityStrip game={game} now={now} onNavigate={onNavigate} />;
+    return (
+      <CombatActivityStrip game={game} now={now} onNavigate={onNavigate} onStop={stopAction} />
+    );
   if (action.type === 'smithing')
     return (
       <SmithingActivityStrip game={game} now={now} onNavigate={onNavigate} onStop={stopAction} />

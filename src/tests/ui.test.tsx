@@ -1699,11 +1699,19 @@ describe('navigation integration', () => {
     expect(activeCombat?.type === 'combat' ? activeCombat.enemyId : null).toBe('goblin-scavenger');
     expect(screen.getAllByRole('progressbar', { name: 'YOU health' })).toHaveLength(1);
     const activityStats = screen.getByLabelText('Combat activity summary');
-    expect(within(activityStats).getByText('Combat level')).toBeInTheDocument();
+    expect(within(activityStats).getByText('YOU')).toBeInTheDocument();
     expect(within(activityStats).queryByText('Gold')).not.toBeInTheDocument();
-    expect(within(activityStats).getByText('HP')).toBeInTheDocument();
+    expect(within(activityStats).getByText('Enemy HP')).toBeInTheDocument();
+    expect(within(activityStats).getByText('Session kills')).toBeInTheDocument();
     const activityStrip = activityStats.closest('[data-ui-region="actionStrip"]');
     expect(activityStrip).not.toBeNull();
+    expect(within(activityStrip as HTMLElement).getByText('Strength')).toBeInTheDocument();
+    expect(within(activityStrip as HTMLElement).getByText(/XP\/hr/)).toBeInTheDocument();
+    expect(within(activityStrip as HTMLElement).getByText(/XP to next/)).toBeInTheDocument();
+    expect(within(activityStrip as HTMLElement).getByText(/ETA:/)).toBeInTheDocument();
+    expect(
+      within(activityStrip as HTMLElement).getByRole('button', { name: 'Stop Combat' }),
+    ).toBeInTheDocument();
     await waitFor(
       () => expect(within(activityStrip as HTMLElement).getByText(/0:0[1-9]/)).toBeInTheDocument(),
       { timeout: 2500 },
@@ -1721,8 +1729,9 @@ describe('navigation integration', () => {
       { timeout: 2500 },
     );
     expect(within(livePanel).getByRole('button', { name: 'Stop combat' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Stop Combat' })).not.toBeInTheDocument();
-    await user.click(within(livePanel).getByRole('button', { name: 'Stop combat' }));
+    await user.click(
+      within(activityStrip as HTMLElement).getByRole('button', { name: 'Stop Combat' }),
+    );
     expect(useGameStore.getState().game?.activeAction.type).toBe('none');
   });
 
@@ -1817,6 +1826,18 @@ describe('navigation integration', () => {
     expect(screen.getByText('Dungeons are not available yet')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: /Special Areas/ }));
     expect(screen.getByText('Special Areas are not available yet')).toBeInTheDocument();
+  });
+
+  it('keeps combat area cards concise without enemy counts or duplicate requirements', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+    const forestPath = screen.getByRole('button', { name: /Forest Path/ });
+    const wolfDen = screen.getByRole('button', { name: /Wolf Den/ });
+    expect(within(forestPath).queryByText(/\d+ enemies?/)).not.toBeInTheDocument();
+    expect(within(forestPath).getAllByText(/Requires Combat Lv/)).toHaveLength(1);
+    expect(within(wolfDen).queryByText(/\d+ enemies?/)).not.toBeInTheDocument();
+    expect(within(wolfDen).getAllByText(/Requires Combat Lv/)).toHaveLength(1);
   });
 
   it('keeps HP, attack timing, and the live log only in the center panel', async () => {
