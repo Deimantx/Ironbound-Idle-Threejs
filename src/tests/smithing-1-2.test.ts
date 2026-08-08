@@ -256,7 +256,7 @@ describe('Smithing 1.2 Forge fuel', () => {
     const migrated = migrateSave(state, 7);
     const parsed = parseGameState(JSON.stringify(state));
     for (const result of [migrated, parsed]) {
-      expect(result.schemaVersion).toBe(11);
+      expect(result.schemaVersion).toBe(12);
       expect(result.skills.smithing).toEqual({ level: 15, xp: smithingXp });
       expect(result.smithing).toMatchObject({
         rngSeed: 9876,

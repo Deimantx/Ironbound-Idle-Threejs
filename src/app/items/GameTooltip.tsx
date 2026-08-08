@@ -8,6 +8,7 @@ import {
   useState,
   type ReactElement,
   type ReactNode,
+  type Ref,
   type SyntheticEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
@@ -16,6 +17,11 @@ import { getTooltipPosition, type TooltipPlacement } from './tooltipPosition';
 const OPEN_DELAY_MS = 150;
 const CLOSE_DELAY_MS = 80;
 let activeTooltipCloser: (() => void) | null = null;
+
+const assignRef = <T,>(ref: Ref<T> | undefined, value: T | null): void => {
+  if (typeof ref === 'function') ref(value);
+  else if (ref) (ref as { current: T | null }).current = value;
+};
 
 interface TriggerProps {
   ref?: (element: HTMLElement | null) => void;
@@ -126,6 +132,7 @@ export function GameTooltip({
   }, [open, updatePosition]);
 
   if (!isValidElement(children)) return children;
+  const originalRef = (children as ReactElement & { ref?: Ref<HTMLElement> }).ref;
   const originalProps = children.props as TriggerProps & {
     'aria-describedby'?: string;
     'aria-label'?: string;
@@ -140,6 +147,7 @@ export function GameTooltip({
   const trigger = cloneElement(children, {
     ref: (element: HTMLElement | null) => {
       triggerRef.current = element;
+      assignRef(originalRef, element);
     },
     tabIndex: children.props.tabIndex ?? 0,
     'aria-describedby': open ? tooltipId.current : originalProps['aria-describedby'],

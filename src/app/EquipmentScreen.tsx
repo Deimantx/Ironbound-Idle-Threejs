@@ -42,6 +42,7 @@ import { getInventoryValueLabel } from './inventoryView';
 import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
+import { ItemTooltip } from './items/ItemTooltip';
 import type { UiLayout } from './uiLayout';
 
 export interface EquipmentScreenProps {
@@ -150,34 +151,35 @@ function EquipmentSlotCard({
   const item = itemId ? itemById[itemId] : undefined;
   const label = getEquipmentSlotLabel(slot);
   return (
-    <button
-      type="button"
-      className={`equipment-slot-card slot-${slot} ${selected ? 'equipment-slot-selected' : ''} ${!itemId ? 'equipment-slot-empty' : ''}`}
-      onClick={() => onSelect(slot)}
-      title={`Select ${label}`}
-      aria-label={`${label} slot${item ? `, ${item.name}` : ', empty'}`}
-      aria-pressed={selected}
-    >
-      <strong>{label}</strong>
-      {item ? (
-        <>
-          <span className="equipment-item-icon">
-            <ItemIcon itemId={item.id} size="md" />
-          </span>
-          <small>{item.name}</small>
-        </>
-      ) : (
-        <>
-          <span className="equipment-empty-slot-icon">
-            {(() => {
-              const Icon = EMPTY_SLOT_ICONS[slot];
-              return <Icon size={18} aria-hidden="true" />;
-            })()}
-          </span>
-          <span className="empty-slot">Empty</span>
-        </>
-      )}
-    </button>
+    <ItemTooltip item={item} disabled={!item}>
+      <button
+        type="button"
+        className={`equipment-slot-card slot-${slot} ${selected ? 'equipment-slot-selected' : ''} ${!itemId ? 'equipment-slot-empty' : ''}`}
+        onClick={() => onSelect(slot)}
+        aria-label={`${label} slot${item ? `, ${item.name}` : ', empty'}`}
+        aria-pressed={selected}
+      >
+        <strong>{label}</strong>
+        {item ? (
+          <>
+            <span className="equipment-item-icon">
+              <ItemIcon itemId={item.id} size="md" />
+            </span>
+            <small>{item.name}</small>
+          </>
+        ) : (
+          <>
+            <span className="equipment-empty-slot-icon">
+              {(() => {
+                const Icon = EMPTY_SLOT_ICONS[slot];
+                return <Icon size={18} aria-hidden="true" />;
+              })()}
+            </span>
+            <span className="empty-slot">Empty</span>
+          </>
+        )}
+      </button>
+    </ItemTooltip>
   );
 }
 
@@ -541,23 +543,24 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                         const item = itemById[stack.itemId];
                         const selected = selectedCandidateId === stack.itemId;
                         return (
-                          <button
-                            type="button"
-                            className={`equipment-candidate-card ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''}`}
-                            key={stack.itemId}
-                            onClick={() => setSelectedCandidateId(stack.itemId)}
-                            aria-pressed={selected}
-                            aria-label={`Inspect ${item?.name ?? 'Unknown item'}, quantity ${stack.quantity}${stack.locked ? ', locked' : ''}`}
-                          >
-                            <ItemIcon itemId={stack.itemId} size="sm" />
-                            <span>
-                              <strong>{item?.name ?? 'Unknown item'}</strong>
-                              <small>
-                                ×{formatNumber(stack.quantity)}
-                                {stack.locked ? ' · Locked' : ''}
-                              </small>
-                            </span>
-                          </button>
+                          <ItemTooltip item={item} key={stack.itemId}>
+                            <button
+                              type="button"
+                              className={`equipment-candidate-card ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''}`}
+                              onClick={() => setSelectedCandidateId(stack.itemId)}
+                              aria-pressed={selected}
+                              aria-label={`Inspect ${item?.name ?? 'Unknown item'}, quantity ${stack.quantity}${stack.locked ? ', locked' : ''}`}
+                            >
+                              <ItemIcon itemId={stack.itemId} size="sm" />
+                              <span>
+                                <strong>{item?.name ?? 'Unknown item'}</strong>
+                                <small>
+                                  ×{formatNumber(stack.quantity)}
+                                  {stack.locked ? ' · Locked' : ''}
+                                </small>
+                              </span>
+                            </button>
+                          </ItemTooltip>
                         );
                       })}
                     </div>

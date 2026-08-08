@@ -33,6 +33,26 @@ describe('save validation and migration', () => {
   it('round trips a representative current payload through Zod', () => {
     const state = createNewGame(0, 'Archivist');
     expect(parseGameState(JSON.stringify(state)).profileId).toBe(state.profileId);
+    expect(state.settings.showHelpIcons).toBe(true);
+  });
+  it('defaults migrated v11 settings to visible help icons and preserves later toggles', () => {
+    const legacy = structuredClone(createNewGame(0, 'Tooltip Veteran')) as unknown as Record<
+      string,
+      unknown
+    >;
+    legacy.schemaVersion = 11;
+    const settings = legacy.settings as Record<string, unknown>;
+    settings.sound = false;
+    settings.compactNumbers = true;
+    delete settings.showHelpIcons;
+    const migrated = parseGameState(JSON.stringify(legacy));
+    expect(migrated.settings.showHelpIcons).toBe(true);
+    expect(migrated.settings.sound).toBe(false);
+    expect(migrated.settings.compactNumbers).toBe(true);
+
+    migrated.settings.showHelpIcons = false;
+    const reloaded = parseGameState(JSON.stringify(migrated));
+    expect(reloaded.settings.showHelpIcons).toBe(false);
   });
   it('normalizes a current save with stale skill levels during parse', () => {
     const state = createNewGame(0, 'Consistent Archivist');
@@ -56,7 +76,7 @@ describe('save validation and migration', () => {
       { ...state, schemaVersion: 0, settings: { ...state.settings, threeQuality: 'low' } },
       0,
     );
-    expect(migrated.schemaVersion).toBe(11);
+    expect(migrated.schemaVersion).toBe(12);
     expect(migrated.unlockedAreas).toContain('forest-path');
   });
   it('rejects malformed save data', () => {
@@ -87,7 +107,7 @@ describe('save validation and migration', () => {
       },
     } as unknown as GameState['activeAction'];
     const migrated = parseGameState(JSON.stringify(legacy));
-    expect(migrated.schemaVersion).toBe(11);
+    expect(migrated.schemaVersion).toBe(12);
     expect(
       migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.adrenaline,
     ).toBe(0);
@@ -215,7 +235,7 @@ describe('save validation and migration', () => {
       const migrated = migrateSave(state, 5);
       expect(migrated.skills.mining.level).toBe(level);
       expect(migrated.skills.mining.xp).toBe(getXpForLevel(level));
-      expect(migrated.schemaVersion).toBe(11);
+      expect(migrated.schemaVersion).toBe(12);
     }
   });
 
@@ -314,6 +334,6 @@ describe('save validation and migration', () => {
     const reloaded = migrateSave(migrated, migrated.schemaVersion);
     expect(reloaded.skills.mining).toEqual(migrated.skills.mining);
     expect(reloaded.activeAction).toEqual(migrated.activeAction);
-    expect(reloaded.schemaVersion).toBe(11);
+    expect(reloaded.schemaVersion).toBe(12);
   });
 });

@@ -4,6 +4,7 @@ import type { InventoryStack, ItemDefinition } from '../game/types';
 import { formatNumber } from './formatters';
 import type { InventoryDropPosition } from './inventoryOrdering';
 import { ItemIcon } from './ItemIcon';
+import { ItemTooltip } from './items/ItemTooltip';
 
 export interface InventoryItemCardProps {
   stack: InventoryStack;
@@ -37,30 +38,32 @@ export function InventoryItemCard({
   const name = item?.name ?? 'Unknown item';
 
   return (
-    <button
-      ref={cardRef}
-      type="button"
-      className={`item-card inventory-item-card ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''} ${isDragSource ? 'is-drag-source' : ''} ${dropPosition ? `is-drop-${dropPosition}` : ''}`}
-      onClick={(event) => onSelect(stack.itemId, event)}
-      onDragStart={dragEnabled ? (event) => onDragStart?.(event, stack.itemId) : undefined}
-      onDragOver={dragEnabled ? (event) => onDragOver?.(event, stack.itemId) : undefined}
-      onDrop={dragEnabled ? (event) => onDrop?.(event, stack.itemId) : undefined}
-      onDragEnd={dragEnabled ? onDragEnd : undefined}
-      draggable={dragEnabled ? true : undefined}
-      title={name}
-      aria-label={`View ${name}, quantity ${formatNumber(stack.quantity)}${stack.locked ? ', locked' : ''}`}
-      aria-pressed={selected}
-    >
-      <span className="inventory-card-top">
-        <ItemIcon itemId={item?.id ?? stack.itemId} size="md" />
-        <span className="quantity inventory-card-quantity">×{formatNumber(stack.quantity)}</span>
-      </span>
-      <strong>{name}</strong>
-      {stack.locked && (
-        <span className="item-card-lock" title="Locked stack" aria-label="Locked stack">
-          <Lock size={14} aria-hidden="true" />
+    <ItemTooltip item={item}>
+      <button
+        ref={cardRef}
+        type="button"
+        className={`item-card inventory-item-card ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''} ${isDragSource ? 'is-drag-source' : ''} ${dropPosition ? `is-drop-${dropPosition}` : ''}`}
+        onClick={(event) => onSelect(stack.itemId, event)}
+        onDragStart={dragEnabled ? (event) => onDragStart?.(event, stack.itemId) : undefined}
+        onDragOver={dragEnabled ? (event) => onDragOver?.(event, stack.itemId) : undefined}
+        onDrop={dragEnabled ? (event) => onDrop?.(event, stack.itemId) : undefined}
+        onDragEnd={dragEnabled ? onDragEnd : undefined}
+        draggable={dragEnabled ? true : undefined}
+        title={name}
+        aria-label={`View ${name}, quantity ${formatNumber(stack.quantity)}${stack.locked ? ', locked' : ''}`}
+        aria-pressed={selected}
+      >
+        <span className="inventory-card-top">
+          <ItemIcon itemId={item?.id ?? stack.itemId} size="md" />
+          <span className="quantity inventory-card-quantity">×{formatNumber(stack.quantity)}</span>
         </span>
-      )}
-    </button>
+        <strong>{name}</strong>
+        {stack.locked && (
+          <span className="item-card-lock" title="Locked stack" aria-label="Locked stack">
+            <Lock size={14} aria-hidden="true" />
+          </span>
+        )}
+      </button>
+    </ItemTooltip>
   );
 }

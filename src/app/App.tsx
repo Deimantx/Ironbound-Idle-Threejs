@@ -55,6 +55,8 @@ import { InventoryScreen } from './InventoryScreen';
 import { MiningScreen } from './MiningScreen';
 import { SmithingScreen } from './SmithingScreen';
 import { ItemIcon } from './ItemIcon';
+import { ItemTooltip } from './items/ItemTooltip';
+import { EnemyTooltip } from './tooltips/EnemyTooltip';
 import {
   DEFAULT_UI_LAYOUT,
   loadUiLayout,
@@ -181,6 +183,7 @@ function ProfileSelection({
               music: true,
               reducedMotion: false,
               compactNumbers: false,
+              showHelpIcons: true,
               huntElites: true,
               threeQuality: 'low',
             }}
@@ -908,13 +911,15 @@ function CollectionScreen({ game }: { game: GameState }) {
             {ITEMS.map((item) => {
               const found = game.discoveredItems.includes(item.id);
               return (
-                <div className="item-card" key={item.id} style={{ opacity: found ? 1 : 0.58 }}>
-                  <ItemIcon itemId={item.id} discovered={found} size="md" />
-                  <strong>{found ? item.name : '???'}</strong>
-                  <small>
-                    {item.category} · {found ? item.source : 'Source unknown'}
-                  </small>
-                </div>
+                <ItemTooltip item={item} disabled={!found} key={item.id}>
+                  <div className="item-card" style={{ opacity: found ? 1 : 0.58 }}>
+                    <ItemIcon itemId={item.id} discovered={found} size="md" />
+                    <strong>{found ? item.name : '???'}</strong>
+                    <small>
+                      {item.category} · {found ? item.source : 'Source unknown'}
+                    </small>
+                  </div>
+                </ItemTooltip>
               );
             })}
           </div>
@@ -924,14 +929,21 @@ function CollectionScreen({ game }: { game: GameState }) {
             {ENEMIES.map((enemy) => {
               const found = game.discoveredMonsters.includes(enemy.id);
               return (
-                <div className="panel card" key={enemy.id}>
-                  <div className="enemy-art">{found ? '◈' : '?'}</div>
-                  <h3>{found ? enemy.name : 'Unknown foe'}</h3>
-                  <p className="subtle">
-                    {found ? enemy.description : 'Defeat this enemy to reveal its record.'}
-                  </p>
-                  <span className="badge">{game.killCounts[enemy.id] ?? 0} kills</span>
-                </div>
+                <EnemyTooltip
+                  enemy={enemy}
+                  kills={game.killCounts[enemy.id] ?? 0}
+                  disabled={!found}
+                  key={enemy.id}
+                >
+                  <div className="panel card">
+                    <div className="enemy-art">{found ? '◈' : '?'}</div>
+                    <h3>{found ? enemy.name : 'Unknown foe'}</h3>
+                    <p className="subtle">
+                      {found ? enemy.description : 'Defeat this enemy to reveal its record.'}
+                    </p>
+                    <span className="badge">{game.killCounts[enemy.id] ?? 0} kills</span>
+                  </div>
+                </EnemyTooltip>
               );
             })}
           </div>
@@ -1056,6 +1068,7 @@ function SettingsScreen({
             ['music', 'Music'],
             ['reducedMotion', 'Reduced motion'],
             ['compactNumbers', 'Compact numbers'],
+            ['showHelpIcons', 'Show help icons'],
           ].map(([key, label]) => (
             <label className="stat-line" key={key}>
               <span>{label}</span>
@@ -1066,6 +1079,10 @@ function SettingsScreen({
               />
             </label>
           ))}
+          <p className="settings-option-description">
+            Display small help markers beside explained stats and mechanics. Tooltips still work
+            when hidden.
+          </p>
           <label className="stat-line">
             <span>Three.js quality</span>
             <select

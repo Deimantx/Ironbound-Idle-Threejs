@@ -66,6 +66,11 @@ import type {
 import forestRatImage from '../Art/Monsters/ForestRat.png';
 import type { ConfirmDialogOptions } from './ConfirmDialog';
 import { ItemIcon } from './ItemIcon';
+import { ItemTooltip } from './items/ItemTooltip';
+import { GameTooltip } from './items/GameTooltip';
+import { ExplainedTerm } from './tooltips/GameConceptTooltip';
+import { EnemyTooltip } from './tooltips/EnemyTooltip';
+import type { GameConceptId } from './tooltips/gameConcepts';
 import { getEquipmentSlotLabel } from '../game/equipmentSlots';
 import type { CombatEquipmentSlot } from '../game/equipmentSlots';
 import type { UiLayout } from './uiLayout';
@@ -73,7 +78,6 @@ import { UiPanelSlot } from './UiPanelSlot';
 import { getCombatLogPresentation } from './combat/combatLogPresentation';
 import { formatHealth } from './formatters';
 import { getActualDps, getActualKillsPerHour } from './combat/sessionMetrics';
-import { ItemTooltip } from './items/ItemTooltip';
 import { SpecialAttackDetails } from './items/SpecialAttackDetails';
 import { COMBAT_TUNING } from '../config/combatTuning';
 
@@ -219,14 +223,18 @@ function StatLine({
   label,
   value,
   hint,
+  concept,
+  showHelpIcons = true,
 }: {
   label: string;
   value: string | number;
   hint?: string;
+  concept?: GameConceptId;
+  showHelpIcons?: boolean;
 }) {
   return (
-    <div className="combat-stat-line" title={hint}>
-      <span>{label}</span>
+    <div className="combat-stat-line" title={concept ? undefined : hint}>
+      <span>{concept ? <ExplainedTerm concept={concept} label={label} showHelpIcon={showHelpIcons} /> : label}</span>
       <strong>{value}</strong>
     </div>
   );
@@ -318,28 +326,40 @@ function StyleControls({
           const current = style === option;
           const queued = queuedStyle === option && !current;
           return (
-            <button
-              type="button"
-              className={`combat-style-option ${current ? 'selected' : ''} ${queued ? 'queued' : ''}`}
-              aria-pressed={current}
+            <GameTooltip
               key={option}
-              onClick={() => onChange(option)}
+              label={`${info.name} combat style`}
+              content={
+                <div className="concept-tooltip-content">
+                  <strong>{info.name}</strong>
+                  <p>{info.benefit}.</p>
+                  <span>{info.modifier}</span>
+                  <span>Style changes apply after your current attack.</span>
+                </div>
+              }
             >
-              <span className="combat-style-option-icon">
-                {option === 'accurate' ? (
-                  <Crosshair size={14} />
-                ) : option === 'aggressive' ? (
-                  <Zap size={14} />
-                ) : (
-                  <Shield size={14} />
-                )}
-              </span>
-              <span>
-                <strong>{info.name}</strong>
-                <small>{queued ? 'Queued — after current attack' : info.modifier}</small>
-              </span>
-              {current && <Check size={14} aria-label="Current" />}
-            </button>
+              <button
+                type="button"
+                className={`combat-style-option ${current ? 'selected' : ''} ${queued ? 'queued' : ''}`}
+                aria-pressed={current}
+                onClick={() => onChange(option)}
+              >
+                <span className="combat-style-option-icon">
+                  {option === 'accurate' ? (
+                    <Crosshair size={14} />
+                  ) : option === 'aggressive' ? (
+                    <Zap size={14} />
+                  ) : (
+                    <Shield size={14} />
+                  )}
+                </span>
+                <span>
+                  <strong>{info.name}</strong>
+                  <small>{queued ? 'Queued — after current attack' : info.modifier}</small>
+                </span>
+                {current && <Check size={14} aria-label="Current" />}
+              </button>
+            </GameTooltip>
           );
         })}
       </div>
@@ -376,7 +396,12 @@ function PlayerSummaryPanel({
           </div>
           <div>
             <h2 id="player-title">{game.player.name}</h2>
-            <span className="muted">Combat level {stats.combatLevel}</span>
+            <span className="muted">
+              <ExplainedTerm concept="combat-level" showHelpIcon={game.settings.showHelpIcons}>
+                Combat level
+              </ExplainedTerm>{' '}
+              {stats.combatLevel}
+            </span>
           </div>
         </div>
       </div>
@@ -391,10 +416,10 @@ function PlayerSummaryPanel({
         </button>
       </div>
       <div className="combat-stats-grid">
-        <StatLine label="Accuracy" value={Math.round(stats.effectiveAccuracyRating)} />
-        <StatLine label="Damage" value={`1–${stats.effectiveMaxHit}`} />
-        <StatLine label="Defence" value={Math.round(stats.effectiveDefenceRating)} />
-        <StatLine label="Attack speed" value={formatSeconds(stats.attackIntervalMs)} />
+        <StatLine label="Accuracy" value={Math.round(stats.effectiveAccuracyRating)} concept="accuracy" showHelpIcons={game.settings.showHelpIcons} />
+        <StatLine label="Damage" value={`1–${stats.effectiveMaxHit}`} concept="max-hit" showHelpIcons={game.settings.showHelpIcons} />
+        <StatLine label="Defence" value={Math.round(stats.effectiveDefenceRating)} concept="defence" showHelpIcons={game.settings.showHelpIcons} />
+        <StatLine label="Attack speed" value={formatSeconds(stats.attackIntervalMs)} concept="attack-speed" showHelpIcons={game.settings.showHelpIcons} />
       </div>
       <span className="sr-only">Current target: {enemy.name}</span>
     </section>
@@ -473,10 +498,10 @@ function EnemySummaryPanel({
         className="combat-stats-grid combat-enemy-details"
         hidden={!combatDetailsExpanded}
       >
-        <StatLine label="Accuracy" value={enemyStats.accuracyRating} />
-        <StatLine label="Defence" value={enemyStats.defenceRating} />
-        <StatLine label="Maximum hit" value={enemyStats.maxHit} />
-        <StatLine label="Attack interval" value={formatSeconds(enemyStats.attackIntervalMs)} />
+        <StatLine label="Accuracy" value={enemyStats.accuracyRating} concept="accuracy" showHelpIcons={game.settings.showHelpIcons} />
+        <StatLine label="Defence" value={enemyStats.defenceRating} concept="defence" showHelpIcons={game.settings.showHelpIcons} />
+        <StatLine label="Maximum hit" value={enemyStats.maxHit} concept="max-hit" showHelpIcons={game.settings.showHelpIcons} />
+        <StatLine label="Attack interval" value={formatSeconds(enemyStats.attackIntervalMs)} concept="attack-speed" showHelpIcons={game.settings.showHelpIcons} />
         <StatLine label="Base DPS" value={baseEnemyDps.toFixed(1)} />
       </div>
       <div className="combat-panel-note">
@@ -491,19 +516,25 @@ function EnemySummaryPanel({
         </div>
         <div className="combat-drop-list">
           {enemy.loot.slice(0, 3).map((drop) => (
-            <div className="combat-drop-item" key={drop.itemId}>
-              <ItemIcon
-                itemId={drop.itemId}
-                discovered={game.discoveredItems.includes(drop.itemId)}
-                size="xs"
-              />
-              <span>
-                {game.discoveredItems.includes(drop.itemId)
-                  ? itemById[drop.itemId]?.name
-                  : 'Undiscovered'}
-              </span>
-              <small>{displayDropChance(drop.chance)}</small>
-            </div>
+            <ItemTooltip
+              item={itemById[drop.itemId]}
+              disabled={!game.discoveredItems.includes(drop.itemId)}
+              key={drop.itemId}
+            >
+              <div className="combat-drop-item">
+                <ItemIcon
+                  itemId={drop.itemId}
+                  discovered={game.discoveredItems.includes(drop.itemId)}
+                  size="xs"
+                />
+                <span>
+                  {game.discoveredItems.includes(drop.itemId)
+                    ? itemById[drop.itemId]?.name
+                    : 'Undiscovered'}
+                </span>
+                <small>{displayDropChance(drop.chance)}</small>
+              </div>
+            </ItemTooltip>
           ))}
         </div>
       </div>
@@ -543,22 +574,23 @@ function EnemyRoster({
         const status = fighting ? 'Fighting' : selected ? 'Selected' : kills ? 'Defeated' : 'New';
         const action = fighting ? 'Fighting' : activeEnemy ? 'Switch target' : 'Select target';
         return (
-          <button
-            type="button"
-            className={`combat-enemy-card ${selected ? 'selected' : ''} ${fighting ? 'fighting' : ''}`}
-            aria-pressed={selected}
-            aria-label={`${action} ${enemy.name}, level ${enemy.displayLevel}`}
-            key={enemyId}
-            onClick={() => onSelect(enemyId, area.id)}
-          >
-            <CombatPortraitSmall enemy={enemy} />
-            <span className="combat-enemy-card-copy">
-              <strong>{enemy.name}</strong>
-              <span>Lv {enemy.displayLevel}</span>
-              <small>{status}</small>
-            </span>
-            {fighting && <Swords size={14} aria-label="Currently fighting" />}
-          </button>
+          <EnemyTooltip enemy={enemy} kills={kills} key={enemyId}>
+            <button
+              type="button"
+              className={`combat-enemy-card ${selected ? 'selected' : ''} ${fighting ? 'fighting' : ''}`}
+              aria-pressed={selected}
+              aria-label={`${action} ${enemy.name}, level ${enemy.displayLevel}`}
+              onClick={() => onSelect(enemyId, area.id)}
+            >
+              <CombatPortraitSmall enemy={enemy} />
+              <span className="combat-enemy-card-copy">
+                <strong>{enemy.name}</strong>
+                <span>Lv {enemy.displayLevel}</span>
+                <small>{status}</small>
+              </span>
+              {fighting && <Swords size={14} aria-label="Currently fighting" />}
+            </button>
+          </EnemyTooltip>
         );
       })}
     </div>
@@ -871,7 +903,15 @@ function TargetAnalysis({
         <div className="combat-analysis-grid">
           {rows.map(([label, value]) => (
             <div className="combat-analysis-row" key={label}>
-              <span>{label}</span>
+              <span>
+                {label.toLowerCase().includes('chance') ? (
+                  <ExplainedTerm concept="hit-chance" showHelpIcon={game.settings.showHelpIcons}>
+                    {label}
+                  </ExplainedTerm>
+                ) : (
+                  label
+                )}
+              </span>
               <strong>{value}</strong>
             </div>
           ))}
@@ -1085,7 +1125,9 @@ function LiveCombatResolution({
       </div>
       <div className={`combat-adrenaline ${adrenaline >= COMBAT_TUNING.adrenalineMax ? 'ready' : ''}`} aria-label="Adrenaline">
         <div className="combat-adrenaline-head">
-          <span>Adrenaline</span>
+          <ExplainedTerm concept="adrenaline" showHelpIcon={game.settings.showHelpIcons}>
+            Adrenaline
+          </ExplainedTerm>
           <strong>
             {adrenaline} / {COMBAT_TUNING.adrenalineMax}{' '}
             {adrenaline >= COMBAT_TUNING.adrenalineMax ? 'READY' : ''}
@@ -1249,17 +1291,19 @@ function LootPanel({
           const rarity = getLootRarity(drop.chance);
           return (
             <div className="combat-loot-row" key={drop.itemId}>
-              <span className="combat-loot-item">
-                <ItemIcon itemId={drop.itemId} discovered={discovered} size="sm" />
-                <span>
-                  <strong>{discovered ? itemById[drop.itemId]?.name : 'Undiscovered'}</strong>
-                  <small
-                    className={`loot-rarity loot-rarity-${rarity.toLowerCase().replace(' ', '-')}`}
-                  >
-                    {rarity}
-                  </small>
+              <ItemTooltip item={itemById[drop.itemId]} disabled={!discovered}>
+                <span className="combat-loot-item">
+                  <ItemIcon itemId={drop.itemId} discovered={discovered} size="sm" />
+                  <span>
+                    <strong>{discovered ? itemById[drop.itemId]?.name : 'Undiscovered'}</strong>
+                    <small
+                      className={`loot-rarity loot-rarity-${rarity.toLowerCase().replace(' ', '-')}`}
+                    >
+                      {rarity}
+                    </small>
+                  </span>
                 </span>
-              </span>
+              </ItemTooltip>
               <span>
                 {drop.min}–{drop.max}
               </span>

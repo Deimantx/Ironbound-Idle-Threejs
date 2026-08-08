@@ -31,6 +31,9 @@ import { formatDropChance, formatNumber } from './formatters';
 import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
+import { GameTooltip } from './items/GameTooltip';
+import { ItemTooltip } from './items/ItemTooltip';
+import { ExplainedTerm } from './tooltips/GameConceptTooltip';
 import type { UiLayout } from './uiLayout';
 
 export interface MiningScreenProps {
@@ -130,10 +133,10 @@ const ProgressBar = ({
   </div>
 );
 
-const StaminaBar = ({ stamina }: { stamina: number }) => (
+const StaminaBar = ({ stamina, showHelpIcons = true }: { stamina: number; showHelpIcons?: boolean }) => (
   <div className="mining-stamina-block">
     <div className="split">
-      <span>Stamina</span>
+      <ExplainedTerm concept="mining-stamina" showHelpIcon={showHelpIcons}>Stamina</ExplainedTerm>
       <strong>
         {Math.round(stamina)} / {MINING_TUNING.maxStamina}
       </strong>
@@ -155,6 +158,7 @@ const StageTrack = ({
   node: MiningNodeDefinition;
   currentStage: number;
   preview?: boolean;
+  showHelpIcons?: boolean;
 }) => (
   <div className="mining-stage-track" aria-label={`${node.name} stage progression`}>
     {node.stages.map((stage, index) => {
@@ -168,16 +172,27 @@ const StageTrack = ({
             ? 'current'
             : 'future';
       return (
-        <div
-          className={`mining-stage-step mining-stage-step-${state}`}
+        <GameTooltip
           key={stage.id}
-          title={`${stage.name}: ${stage.durability} maximum durability`}
-          aria-current={state === 'current' ? 'step' : undefined}
+          label={`${stage.name} mining stage`}
+          content={
+            <div className="concept-tooltip-content">
+              <strong>{stage.name}</strong>
+              <span>Stage {index + 1} of {node.stages.length}</span>
+              <span>Maximum Durability: {stage.durability}</span>
+              <span>Bonus Drop Modifier: {stage.bonusChanceMultiplier.toFixed(2)}×</span>
+            </div>
+          }
         >
-          <span className="mining-stage-marker">{state === 'complete' ? '✓' : index + 1}</span>
-          <strong>{stage.name}</strong>
-          <small>{stage.durability} durability</small>
-        </div>
+          <div
+            className={`mining-stage-step mining-stage-step-${state}`}
+            aria-current={state === 'current' ? 'step' : undefined}
+          >
+            <span className="mining-stage-marker">{state === 'complete' ? '✓' : index + 1}</span>
+            <strong>{stage.name}</strong>
+            <small>{stage.durability} durability</small>
+          </div>
+        </GameTooltip>
       );
     })}
   </div>
@@ -220,15 +235,17 @@ const ByproductRows = ({
       const currentChance = getMiningStageBonusChance(drop, node.stages[stage] ?? node.stages[0]);
       const owned = getItemQuantity(inventory, drop.itemId);
       return (
-        <div className="mining-reward-row" key={drop.itemId}>
-          <ItemIcon itemId={drop.itemId} size="md" />
-          <div>
-            <strong>{item?.name ?? drop.itemId}</strong>
-            <small>
-              {formatDropChance(currentChance)} chance · Owned {formatNumber(owned)}
-            </small>
+        <ItemTooltip item={item} key={drop.itemId}>
+          <div className="mining-reward-row">
+            <ItemIcon itemId={drop.itemId} size="md" />
+            <div>
+              <strong>{item?.name ?? drop.itemId}</strong>
+              <small>
+                {formatDropChance(currentChance)} chance · Owned {formatNumber(owned)}
+              </small>
+            </div>
           </div>
-        </div>
+        </ItemTooltip>
       );
     })}
   </div>
@@ -368,7 +385,7 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                     </span>
                   )}
                 </div>
-                <StaminaBar stamina={game.mining.stamina} />
+                <StaminaBar stamina={game.mining.stamina} showHelpIcons={game.settings.showHelpIcons} />
               </div>
             </div>
           </section>
@@ -408,14 +425,15 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                     className={`list-row mining-node-card ${locked ? 'locked-card' : ''} ${isSelected ? 'is-selected' : ''} ${isActive ? 'is-active' : ''}`}
                     key={node.id}
                   >
-                    <button
-                      type="button"
-                      className="mining-node-select"
-                      onClick={() => setSelectedNodeId(node.id)}
-                      aria-label={`Inspect ${node.name}`}
-                      aria-pressed={isSelected}
-                    >
-                      <ItemIcon itemId={primary?.id} size="md" />
+                    <ItemTooltip item={primary}>
+                      <button
+                        type="button"
+                        className="mining-node-select"
+                        onClick={() => setSelectedNodeId(node.id)}
+                        aria-label={`Inspect ${node.name}`}
+                        aria-pressed={isSelected}
+                      >
+                        <ItemIcon itemId={primary?.id} size="md" />
                       <span className="row-main">
                         <strong>
                           {node.name}
@@ -435,7 +453,8 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                           {formatRate(rates.xpPerHour)} XP/hr
                         </span>
                       </span>
-                    </button>
+                      </button>
+                    </ItemTooltip>
                     <button
                       type="button"
                       className={`button ${isActive ? 'danger' : locked ? 'ghost' : 'primary'}`}
@@ -479,14 +498,16 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                   {selectedNode.requiredPenetration}
                 </p>
                 <p>{selectedNode.description}</p>
-                <div className="mining-primary-resource">
-                  <ItemIcon itemId={selectedNode.primaryRewardItemId} size="lg" />
-                  <div>
-                    <span>Primary resource</span>
-                    <strong>{itemById[selectedNode.primaryRewardItemId]?.name}</strong>
-                    <small>Owned: {formatNumber(ownedPrimary)}</small>
+                <ItemTooltip item={itemById[selectedNode.primaryRewardItemId]}>
+                  <div className="mining-primary-resource">
+                    <ItemIcon itemId={selectedNode.primaryRewardItemId} size="lg" />
+                    <div>
+                      <span>Primary resource</span>
+                      <strong>{itemById[selectedNode.primaryRewardItemId]?.name}</strong>
+                      <small>Owned: {formatNumber(ownedPrimary)}</small>
+                    </div>
                   </div>
-                </div>
+                </ItemTooltip>
                 <div className="mining-selected-stage-heading">
                   <div>
                     <span>{selectedHasRuntime ? 'Current depth' : 'Untouched deposit'}</span>
@@ -510,7 +531,11 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                   </span>
                 </div>
                 <div className="mining-reward-section">
-                  <div className="eyebrow">Rare Finds</div>
+                  <div className="eyebrow">
+                    <ExplainedTerm concept="bonus-drop" showHelpIcon={game.settings.showHelpIcons}>
+                      Bonus drops
+                    </ExplainedTerm>
+                  </div>
                   {selectedNode.bonusDrops.length > 0 ? (
                     <ByproductRows
                       node={selectedNode}
@@ -526,14 +551,18 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
               <div className="mining-tool-details">
                 <div className="eyebrow">Current pickaxe</div>
                 <h2>{activeTool.itemId ? itemById[activeTool.itemId]?.name : 'No pickaxe'}</h2>
-                <div className="mining-tool-summary">
-                  <ItemIcon itemId={activeTool.itemId || undefined} size="md" />
-                  <div className="mining-stat-grid">
+                <ItemTooltip item={activeTool.itemId ? itemById[activeTool.itemId] : undefined}>
+                  <div className="mining-tool-summary">
+                    <ItemIcon itemId={activeTool.itemId || undefined} size="md" />
+                    <div className="mining-stat-grid">
                     <span>
                       Rock damage<strong>{activeTool.rockDamage}</strong>
                     </span>
                     <span>
-                      Penetration<strong>{activeTool.penetration}</strong>
+                      <ExplainedTerm concept="mining-penetration" showHelpIcon={game.settings.showHelpIcons}>
+                        Penetration
+                      </ExplainedTerm>
+                      <strong>{activeTool.penetration}</strong>
                     </span>
                     <span>
                       Swing time<strong>{formatDuration(activeTool.swingIntervalMs)}</strong>
@@ -544,20 +573,30 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                     <span>
                       Required level<strong>{activeTool.requiredMiningLevel}</strong>
                     </span>
+                    </div>
                   </div>
-                </div>
+                </ItemTooltip>
                 <div className="mining-tool-comparison">
                   <div className="eyebrow">Vs {selectedNode.name}</div>
                   <div className="mining-comparison-row">
-                    <span>Required penetration</span>
+                    <ExplainedTerm concept="mining-penetration" showHelpIcon={game.settings.showHelpIcons}>
+                      Required penetration
+                    </ExplainedTerm>
                     <strong>{selectedNode.requiredPenetration}</strong>
                   </div>
                   <div className="mining-comparison-row">
-                    <span>Your penetration</span>
+                    <ExplainedTerm concept="mining-penetration" showHelpIcon={game.settings.showHelpIcons}>
+                      Your penetration
+                    </ExplainedTerm>
                     <strong>{activeTool.penetration}</strong>
                   </div>
                   <div className="mining-comparison-highlight">
-                    <EffectivenessBadge effectiveness={selectedEffectiveness} />
+                    <span>
+                      <ExplainedTerm concept="mining-effectiveness" showHelpIcon={game.settings.showHelpIcons}>
+                        Effectiveness
+                      </ExplainedTerm>
+                      <EffectivenessBadge effectiveness={selectedEffectiveness} />
+                    </span>
                     <span>
                       Actual damage<strong>{getMiningSwingDamage(activeTool, selectedNode)}</strong>
                     </span>

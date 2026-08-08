@@ -42,6 +42,7 @@ export const createNewGame = (slot: number, name: string, now = Date.now()): Gam
       music: true,
       reducedMotion: false,
       compactNumbers: false,
+      showHelpIcons: true,
       huntElites: true,
       threeQuality: 'high',
     },

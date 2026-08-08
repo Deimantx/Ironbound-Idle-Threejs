@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { itemById } from '../content/items';
 import { formatHealth } from '../app/formatters';
 import { getActualDps, getActualKillsPerHour } from '../app/combat/sessionMetrics';
+import { getCombatLogPresentation } from '../app/combat/combatLogPresentation';
 import { getSpecialAttackEffectRows } from '../app/items/specialAttackPresentation';
 import { getTooltipPosition } from '../app/items/tooltipPosition';
 import { parseGameState } from '../game/persistence/saveSchema';
@@ -22,6 +23,18 @@ describe('Combat 2.3.1 presentation and metrics', () => {
     expect(formatHealth(0)).toBe('0');
     expect(formatHealth(-1)).toBe('0');
     expect(formatHealth(132)).toBe('132');
+  });
+
+  it('rounds fractional combat death damage for the combat log', () => {
+    const presentation = getCombatLogPresentation({
+      id: 'death-1',
+      kind: 'player-defeated',
+      at: 1,
+      enemyId: 'forest-rat',
+      encounterStartedAt: 1,
+      cause: { kind: 'enemy-hit', damage: 1.7851200000000205, heavy: false },
+    });
+    expect(presentation.text).toBe('You were killed by Forest Rat with a hit for 2.');
   });
 
   it('presents special attacks with their actual effects and compounded execute damage', () => {
@@ -51,7 +64,7 @@ describe('Combat 2.3.1 presentation and metrics', () => {
     delete combatState.adrenaline;
     combatState.momentum = 68;
     const parsed = parseGameState(JSON.stringify(state));
-    expect(parsed.schemaVersion).toBe(11);
+    expect(parsed.schemaVersion).toBe(12);
     expect(parsed.activeAction.type === 'combat' && parsed.activeAction.combatState.adrenaline).toBe(68);
     expect(
       parsed.activeAction.type === 'combat' && 'momentum' in parsed.activeAction.combatState,

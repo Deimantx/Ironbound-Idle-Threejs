@@ -6358,6 +6358,93 @@ h3 {
 .item-tooltip-unknown {
   color: #b8c0ba;
 }
+.explained-term {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: inherit;
+  cursor: help;
+  outline: none;
+}
+.explained-term:focus-visible {
+  color: #f0d58a;
+  text-decoration: underline;
+  text-decoration-color: rgba(224, 189, 111, 0.7);
+  text-underline-offset: 2px;
+}
+.explained-term-icon {
+  width: 12px;
+  height: 12px;
+  color: #8f8973;
+  stroke-width: 1.8;
+}
+.explained-term:hover .explained-term-icon,
+.explained-term:focus-visible .explained-term-icon {
+  color: #e0bd6f;
+}
+.concept-tooltip-content,
+.enemy-tooltip-content {
+  display: grid;
+  gap: 5px;
+  min-width: 190px;
+  max-width: 285px;
+}
+.concept-tooltip-content strong,
+.enemy-tooltip-header strong {
+  color: #e1bd6e;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.concept-tooltip-content p,
+.enemy-tooltip-content p {
+  margin: 0;
+  color: #c0c8c1;
+}
+.concept-tooltip-content span,
+.enemy-tooltip-content span {
+  color: #aeb9af;
+}
+.enemy-tooltip-header,
+.enemy-tooltip-stats,
+.enemy-tooltip-trait {
+  display: grid;
+  gap: 3px;
+}
+.enemy-tooltip-header span,
+.enemy-tooltip-kills {
+  color: #87958e;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.enemy-tooltip-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding: 6px 0;
+  border-top: 1px solid rgba(173, 142, 79, 0.26);
+  border-bottom: 1px solid rgba(173, 142, 79, 0.26);
+}
+.enemy-tooltip-stats span {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  font-size: 9px;
+}
+.enemy-tooltip-stats span:last-child {
+  grid-column: 1 / -1;
+}
+.enemy-tooltip-stats strong {
+  color: #e0bf78;
+}
+.enemy-tooltip-trait {
+  padding-top: 1px;
+}
+.settings-option-description {
+  margin: -4px 0 12px;
+  color: var(--text-muted, #87958e);
+  font-size: 11px;
+  line-height: 1.35;
+}
 .combat-analysis {
   display: grid;
   gap: 12px;
@@ -9044,7 +9131,7 @@ h3 {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.activity-strip-combat .combat-activity-enemy-hp {
+.activity-strip-combat .combat-activity-hp {
   gap: 3px;
 }
 .combat-activity-hp-track {
@@ -9094,6 +9181,10 @@ h3 {
 .activity-strip-combat .combat-activity-next {
   flex: 0 1 auto;
   align-self: center;
+}
+.activity-strip-combat .activity-xp-next,
+.activity-strip-combat .activity-eta {
+  font-size: 12px;
 }
 .activity-strip-combat .activity-stop {
   grid-area: stop;

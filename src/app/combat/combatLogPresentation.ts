@@ -24,6 +24,9 @@ export interface CombatLogPresentation {
   important: boolean;
 }
 
+const formatCombatDamage = (damage: number): string =>
+  String(Math.max(0, Math.round(Number.isFinite(damage) ? damage : 0)));
+
 export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresentation => {
   if (entry.kind === 'legacy')
     return {
@@ -38,7 +41,7 @@ export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresen
   switch (entry.kind) {
     case 'player-hit':
       return {
-        text: `You hit ${enemyName} for ${entry.damage}${entry.special ? ' with a special' : ''}.`,
+        text: `You hit ${enemyName} for ${formatCombatDamage(entry.damage)}${entry.special ? ' with a special' : ''}.`,
         label: entry.special ? 'Special' : 'Player hit',
         icon: entry.special ? Zap : Sword,
         category: entry.special ? 'special' : 'player-hit',
@@ -54,7 +57,7 @@ export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresen
       };
     case 'enemy-hit':
       return {
-        text: `${enemyName} hit you for ${entry.damage}${entry.heavy ? ' with a heavy strike' : ''}.`,
+        text: `${enemyName} hit you for ${formatCombatDamage(entry.damage)}${entry.heavy ? ' with a heavy strike' : ''}.`,
         label: entry.heavy ? 'Heavy hit' : 'Enemy hit',
         icon: entry.heavy ? ShieldAlert : Swords,
         category: 'enemy-hit',
@@ -70,7 +73,7 @@ export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresen
       };
     case 'enemy-bleed':
       return {
-        text: `Bleeding bites dealt ${entry.damage} damage.`,
+        text: `Bleeding bites dealt ${formatCombatDamage(entry.damage)} damage.`,
         label: 'Bleed',
         icon: Droplets,
         category: 'enemy-hit',
@@ -122,8 +125,8 @@ export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresen
       return {
         text:
           entry.cause.kind === 'bleed'
-            ? `You were killed by ${enemyName} from bleeding bites for ${entry.cause.damage} damage.`
-            : `You were killed by ${enemyName} with a hit for ${entry.cause.damage}${entry.cause.heavy ? ' from a heavy strike' : ''}.`,
+            ? `You were killed by ${enemyName} from bleeding bites for ${formatCombatDamage(entry.cause.damage)} damage.`
+            : `You were killed by ${enemyName} with a hit for ${formatCombatDamage(entry.cause.damage)}${entry.cause.heavy ? ' from a heavy strike' : ''}.`,
         label: 'Death',
         icon: Skull,
         category: 'death',

@@ -311,6 +311,7 @@ export interface GameSettings {
   music: boolean;
   reducedMotion: boolean;
   compactNumbers: boolean;
+  showHelpIcons: boolean;
   huntElites: boolean;
   threeQuality: 'off' | 'low' | 'high';
 }

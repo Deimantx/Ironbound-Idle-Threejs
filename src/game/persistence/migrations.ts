@@ -534,6 +534,12 @@ const normalizeSkillStates = (input: GameState): GameState => {
   return { ...input, skills };
 };
 
+const migrateHelpIcons = (input: GameState): GameState => ({
+  ...input,
+  settings: { ...input.settings, showHelpIcons: input.settings.showHelpIcons ?? true },
+  schemaVersion: 12,
+});
+
 export const migrations: Record<number, SaveMigration> = {
   1: (input) => ({
     ...input,
@@ -597,6 +603,7 @@ export const migrations: Record<number, SaveMigration> = {
   9: migrateCombatAreas,
   10: migrateActivityLogs,
   11: migrateMomentumToAdrenaline,
+  12: migrateHelpIcons,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {
@@ -614,6 +621,7 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
   current = normalizeSkillStates(current);
   current = migrateCombatAreas(current);
   current = migrateActivityLogs(current);
+  current.settings.showHelpIcons = current.settings.showHelpIcons ?? true;
   const maxHealth = getDerivedStats(current).maxHealth;
   current.player.currentHp = clampHealth(current.player.currentHp, maxHealth);
   current.schemaVersion = GAME_CONFIG.currentSaveVersion;

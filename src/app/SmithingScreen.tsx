@@ -36,6 +36,8 @@ import { formatHoursMinutes, formatNumber, formatRatePerHour } from './formatter
 import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
+import { ItemTooltip } from './items/ItemTooltip';
+import { ExplainedTerm } from './tooltips/GameConceptTooltip';
 import type { UiLayout } from './uiLayout';
 
 export interface SmithingScreenProps {
@@ -79,13 +81,15 @@ function SmithingMaterials({ game, recipe }: { game: GameState; recipe: RecipeDe
   return (
     <div className="smithing-cost-materials">
       {requirements.map((requirement) => (
-        <span className="smithing-material-line" key={requirement.itemId}>
-          <span className="smithing-material-name">{itemName(requirement.itemId)}</span>
-          <strong className="smithing-material-amount">
-            {formatNumber(getItemQuantity(game.inventory, requirement.itemId))} /{' '}
-            {requirement.quantity}
-          </strong>
-        </span>
+        <ItemTooltip item={itemById[requirement.itemId]} key={requirement.itemId}>
+          <span className="smithing-material-line">
+            <span className="smithing-material-name">{itemName(requirement.itemId)}</span>
+            <strong className="smithing-material-amount">
+              {formatNumber(getItemQuantity(game.inventory, requirement.itemId))} /{' '}
+              {requirement.quantity}
+            </strong>
+          </span>
+        </ItemTooltip>
       ))}
     </div>
   );
@@ -144,13 +148,15 @@ export function RecipeOutput({ recipe }: { recipe: RecipeDefinition }) {
   const outputName = itemName(recipe.outputItemId);
   const recipeName = recipe.name.trim();
   return (
-    <div className="smithing-recipe-output">
-      <ItemIcon itemId={recipe.outputItemId} size="md" />
-      <div>
-        <strong>{outputName}</strong>
-        {recipeName !== outputName.trim() && <small>{recipeName}</small>}
+    <ItemTooltip item={itemById[recipe.outputItemId]}>
+      <div className="smithing-recipe-output">
+        <ItemIcon itemId={recipe.outputItemId} size="md" />
+        <div>
+          <strong>{outputName}</strong>
+          {recipeName !== outputName.trim() && <small>{recipeName}</small>}
+        </div>
       </div>
-    </div>
+    </ItemTooltip>
   );
 }
 
@@ -405,26 +411,32 @@ function ForgeFuelControl({
   const forgeRecipes = useMemo(() => getSmithingRecipesForCategory('smelting'), []);
   return (
     <div className="smithing-fuel-control">
-      <button
-        type="button"
-        className="smithing-fuel-trigger"
-        data-smithing-control="fuel"
-        aria-label="Open Forge fuel controls"
-        aria-expanded={open}
-        onClick={() => onOpenChange(!open)}
-      >
-        <span>
-          <strong>Fuel: {selected?.name ?? 'None'}</strong>
-          <small>
-            {fuel.loadedFuelQuantity} / {capacity} loaded · Auto-refuel{' '}
-            {fuel.autoRefuel ? 'ON' : 'OFF'}
-          </small>
-        </span>
-        <ChevronDown size={14} className={open ? 'rotated' : ''} />
-      </button>
+      <ItemTooltip item={selected ? itemById[selected.itemId] : undefined} disabled={!selected}>
+        <button
+          type="button"
+          className="smithing-fuel-trigger"
+          data-smithing-control="fuel"
+          aria-label="Open Forge fuel controls"
+          aria-expanded={open}
+          onClick={() => onOpenChange(!open)}
+        >
+          <span>
+            <strong>Fuel: {selected?.name ?? 'None'}</strong>
+            <small>
+              {fuel.loadedFuelQuantity} / {capacity} loaded · Auto-refuel{' '}
+              {fuel.autoRefuel ? 'ON' : 'OFF'}
+            </small>
+          </span>
+          <ChevronDown size={14} className={open ? 'rotated' : ''} />
+        </button>
+      </ItemTooltip>
       {open && (
         <div className="smithing-fuel-popover" role="dialog" aria-label="Forge fuel controls">
-          <div className="eyebrow">Forge fuel</div>
+          <div className="eyebrow">
+            <ExplainedTerm concept="forge-fuel" showHelpIcon={game.settings.showHelpIcons}>
+              Forge fuel
+            </ExplainedTerm>
+          </div>
           <label>
             Fuel
             <select
@@ -582,6 +594,7 @@ function AnvilToolControl({
     game.activeAction.type === 'smithing' &&
     recipeById[game.activeAction.recipeId]?.category === 'forging';
   const toolLabel = hammer ? itemName(hammer.itemId) : 'No Smithing Hammer';
+  const toolItem = hammer ? itemById[hammer.itemId] : equippedTool;
   const toolDetail = hammer
     ? 'Equipped'
     : equippedTool && !equippedHammer
@@ -599,20 +612,22 @@ function AnvilToolControl({
 
   return (
     <div className="smithing-tool-control">
-      <button
-        type="button"
-        className="smithing-tool-trigger"
-        data-smithing-control="tool"
-        aria-label={`Anvil tool: ${toolLabel}`}
-        aria-expanded={open}
-        onClick={() => onOpenChange(!open)}
-      >
-        <span>
-          <strong>Tool: {toolLabel}</strong>
-          <small>{toolDetail}</small>
-        </span>
-        <ChevronDown size={14} className={open ? 'rotated' : ''} />
-      </button>
+      <ItemTooltip item={toolItem} disabled={!toolItem}>
+        <button
+          type="button"
+          className="smithing-tool-trigger"
+          data-smithing-control="tool"
+          aria-label={`Anvil tool: ${toolLabel}`}
+          aria-expanded={open}
+          onClick={() => onOpenChange(!open)}
+        >
+          <span>
+            <strong>Tool: {toolLabel}</strong>
+            <small>{toolDetail}</small>
+          </span>
+          <ChevronDown size={14} className={open ? 'rotated' : ''} />
+        </button>
+      </ItemTooltip>
       {open && (
         <div className="smithing-tool-popover" role="dialog" aria-label="Anvil tool selector">
           <div className="eyebrow">Anvil tool</div>
@@ -623,6 +638,11 @@ function AnvilToolControl({
           </div>
           <div className="smithing-tool-options">
             <span className="eyebrow">Available hammers</span>
+            <div className="eyebrow">
+              <ExplainedTerm concept="material-preservation" showHelpIcon={game.settings.showHelpIcons}>
+                Material Preservation
+              </ExplainedTerm>
+            </div>
             {SMITHING_TOOLS.map((definition) => {
               const item = itemById[definition.itemId];
               const owned = getItemQuantity(game.inventory, definition.itemId);
@@ -640,34 +660,36 @@ function AnvilToolControl({
                       ? 'Not owned.'
                       : undefined;
               return (
-                <div className="smithing-tool-option" key={definition.itemId}>
-                  <div>
-                    <strong>{item?.name ?? definition.itemId}</strong>
-                    <small>
-                      Owned: {formatNumber(owned)} · Requires Smithing{' '}
-                      {definition.requiredSmithingLevel}
-                    </small>
-                    <small>{formatHammerStats(definition)}</small>
+                <ItemTooltip item={item} key={definition.itemId}>
+                  <div className="smithing-tool-option">
+                    <div>
+                      <strong>{item?.name ?? definition.itemId}</strong>
+                      <small>
+                        Owned: {formatNumber(owned)} · Requires Smithing{' '}
+                        {definition.requiredSmithingLevel}
+                      </small>
+                      <small>{formatHammerStats(definition)}</small>
+                    </div>
+                    <button
+                      type="button"
+                      className="button ghost"
+                      disabled={disabled}
+                      title={reason}
+                      onClick={() => {
+                        equip(definition.itemId);
+                        onOpenChange(false);
+                      }}
+                    >
+                      {isEquipped
+                        ? 'Equipped'
+                        : levelLocked
+                          ? 'Locked'
+                          : notOwned
+                            ? 'Not owned'
+                            : 'Equip'}
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    className="button ghost"
-                    disabled={disabled}
-                    title={reason}
-                    onClick={() => {
-                      equip(definition.itemId);
-                      onOpenChange(false);
-                    }}
-                  >
-                    {isEquipped
-                      ? 'Equipped'
-                      : levelLocked
-                        ? 'Locked'
-                        : notOwned
-                          ? 'Not owned'
-                          : 'Equip'}
-                  </button>
-                </div>
+                </ItemTooltip>
               );
             })}
           </div>
@@ -766,7 +788,11 @@ function ActiveOrder({
           <strong>{recipe.xp} / craft</strong>
         </div>
         <div>
-          <span>RATE</span>
+          <span>
+            RATE · <ExplainedTerm concept="smithing-speed" showHelpIcon={game.settings.showHelpIcons}>
+              Smithing speed
+            </ExplainedTerm>
+          </span>
           <strong>~{formatRatePerHour(estimate.xpPerHour)} XP/hr</strong>
         </div>
       </div>
@@ -786,7 +812,10 @@ function ActiveOrder({
         </div>
         {isForge ? (
           <div className="smithing-order-detail">
-            <span className="eyebrow">FORGE FUEL</span>
+            <span className="eyebrow">
+              <span>FORGE FUEL</span>{' '}
+              <ExplainedTerm concept="forge-fuel" label="Forge fuel" showHelpIcon={game.settings.showHelpIcons} />
+            </span>
             <strong>
               {selectedFuel?.name ?? 'No fuel'} · {fuelState.loadedFuelQuantity} /{' '}
               {getForgeFuelCapacity(game)}
@@ -795,7 +824,10 @@ function ActiveOrder({
           </div>
         ) : (
           <div className="smithing-order-detail">
-            <span className="eyebrow">TOOL BONUS</span>
+            <span className="eyebrow">
+              <span>TOOL BONUS</span>{' '}
+              <ExplainedTerm concept="material-preservation" label="Material Preservation" showHelpIcon={game.settings.showHelpIcons} />
+            </span>
             <strong>{toolBonus.name}</strong>
             <small>{toolBonus.detail}</small>
           </div>

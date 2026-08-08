@@ -1,4 +1,4 @@
-import { Hammer, Heart, Pickaxe, Swords, Timer } from 'lucide-react';
+import { Hammer, Pickaxe, Skull, Swords, Timer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { MINING_TUNING } from '../config/miningTuning';
 import { enemyById } from '../content/enemies';
@@ -254,6 +254,9 @@ const CombatActivityStrip = ({
   const xpPerHour = selectCombatSkillXpPerHour(game, enemy, displayStyle);
   const combatStartedAt = combatSession.startedAt ?? game.updatedAt;
   const respawning = action.combatState.respawnMs > 0;
+  const playerHp = Math.ceil(Math.max(0, game.player.currentHp));
+  const playerMaxHp = Math.max(1, Math.ceil(activeStats.maxHealth));
+  const playerHpPercent = Math.round((playerHp / playerMaxHp) * 100);
   const enemyHp = Math.ceil(Math.max(0, action.combatState.enemyHp));
   const enemyMaxHp = Math.max(1, Math.ceil(action.combatState.enemyMaxHp));
   const enemyHpPercent = Math.round((enemyHp / enemyMaxHp) * 100);
@@ -273,14 +276,22 @@ const CombatActivityStrip = ({
         </small>
       </button>
       <div className="combat-activity-stats" aria-label="Combat activity summary">
-        <div className="combat-activity-stat">
+        <div className="combat-activity-stat combat-activity-hp">
           <span>YOU</span>
-          <strong>
-            <Heart size={13} /> {formatHealth(game.player.currentHp)} /{' '}
-            {formatHealth(activeStats.maxHealth)}
-          </strong>
+          <strong>{formatHealth(playerHp)} / {formatHealth(playerMaxHp)}</strong>
+          <div
+            className="combat-activity-hp-track"
+            role="progressbar"
+            aria-label="Your activity HP"
+            aria-valuemin={0}
+            aria-valuemax={playerMaxHp}
+            aria-valuenow={playerHp}
+            aria-valuetext={`${playerHp} of ${playerMaxHp} HP`}
+          >
+            <i style={{ width: `${playerHpPercent}%` }} />
+          </div>
         </div>
-        <div className="combat-activity-stat combat-activity-enemy-hp">
+        <div className="combat-activity-stat combat-activity-hp combat-activity-enemy-hp">
           <span>Enemy HP</span>
           <strong>{respawning ? 'Defeated' : `${enemyHp} / ${enemyMaxHp}`}</strong>
           <div
@@ -299,7 +310,9 @@ const CombatActivityStrip = ({
         </div>
         <div className="combat-activity-stat">
           <span>Session kills</span>
-          <strong>{combatSession.enemiesDefeated}</strong>
+          <strong>
+            <Skull size={13} aria-hidden="true" /> {combatSession.enemiesDefeated}
+          </strong>
         </div>
         <div className="combat-activity-stat combat-activity-timer">
           <span>Session time</span>

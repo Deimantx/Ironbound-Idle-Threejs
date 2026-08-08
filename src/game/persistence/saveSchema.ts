@@ -271,6 +271,7 @@ const savePayloadShape = {
     music: z.boolean(),
     reducedMotion: z.boolean(),
     compactNumbers: z.boolean(),
+    showHelpIcons: z.boolean(),
     huntElites: z.boolean().optional(),
     threeQuality: z.enum(['off', 'low', 'high']),
   }),
@@ -280,6 +281,7 @@ const savePayloadShape = {
 export const savePayloadSchema = z.object(savePayloadShape);
 export const legacySavePayloadSchema = z.object({
   ...savePayloadShape,
+  settings: savePayloadShape.settings.extend({ showHelpIcons: z.boolean().optional() }),
   activityLogs: activityLogsSchema.optional(),
   log: z.array(legacyLogEntrySchema).optional(),
   smithing: legacySmithingStateSchema.optional(),
