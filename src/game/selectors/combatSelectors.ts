@@ -10,7 +10,7 @@ import {
   getHitChance,
 } from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
-import { hasCombatEffect, hasCombatEffectTag } from '../formulas/combatEffects';
+import { hasCombatEffect, hasCombatEffectKind } from '../formulas/combatEffects';
 import { occupiedSlots } from '../systems/inventorySystem';
 import type {
   AreaId,
@@ -120,7 +120,7 @@ export const selectEnemyCombatEffects = (state: GameState): ActiveCombatEffect[]
   };
   if (enemy.trait.id === 'cornered-fury' && healthRatio <= COMBAT_TUNING.corneredFuryHealthThreshold)
     addDerived('cornered-fury');
-  if (enemy.trait.id === 'blood-scent' && hasCombatEffectTag(selectPlayerCombatEffects(state), 'bleed'))
+  if (enemy.trait.id === 'blood-scent' && hasCombatEffectKind(selectPlayerCombatEffects(state), 'bleed'))
     addDerived('blood-scent');
   if (enemy.trait.id === 'reinforced-plating' && healthRatio > COMBAT_TUNING.reinforcedPlatingHealthThreshold)
     addDerived('reinforced-plating');

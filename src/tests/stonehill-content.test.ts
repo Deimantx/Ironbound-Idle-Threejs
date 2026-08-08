@@ -12,7 +12,8 @@ describe('Stonehill content contract', () => {
     expect(areaById['ruined-watchtower'].enemyIds).toHaveLength(2);
   });
 
-  it('only awards gold from Stonehill Humanoids and resolves every placeholder drop', () => {
+  it('uses the authored Stonehill Gold roster and resolves every placeholder drop', () => {
+    const goldEnemies = new Set(['forsaken-miner', 'stonehill-marauder', 'watchtower-captain']);
     for (const enemyId of [
       'hill-boar',
       'stonehide-ram',
@@ -27,7 +28,7 @@ describe('Stonehill content contract', () => {
       expect(enemy.loot.length).toBeGreaterThanOrEqual(2);
       expect(enemy.loot.length).toBeLessThanOrEqual(4);
       for (const loot of enemy.loot) expect(itemById[loot.itemId]?.category).toBe('drop');
-      expect(Boolean(enemy.gold)).toBe(enemy.tags?.includes('Humanoid') ?? false);
+      expect(Boolean(enemy.gold)).toBe(goldEnemies.has(enemyId));
     }
   });
 });

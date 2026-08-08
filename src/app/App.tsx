@@ -13,11 +13,9 @@ import {
   Skull,
   Swords,
   Timer,
-  Zap,
 } from 'lucide-react';
 import { AREAS, areaById } from '../content/areas';
-import { ENEMIES, enemyById } from '../content/enemies';
-import { ITEMS } from '../content/items';
+import { enemyById } from '../content/enemies';
 import { miningNodeById } from '../content/miningNodes';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { getLevelProgress } from '../game/formulas/experienceFormulas';
@@ -54,9 +52,6 @@ import { EquipmentScreen } from './EquipmentScreen';
 import { InventoryScreen } from './InventoryScreen';
 import { MiningScreen } from './MiningScreen';
 import { SmithingScreen } from './SmithingScreen';
-import { ItemIcon } from './ItemIcon';
-import { ItemTooltip } from './items/ItemTooltip';
-import { EnemyTooltip } from './tooltips/EnemyTooltip';
 import {
   DEFAULT_UI_LAYOUT,
   loadUiLayout,
@@ -69,6 +64,8 @@ import { ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog';
 import { OfflineModal as OfflineReportModal } from './OfflineReport';
 import { ActivityStrip, actionLabel } from './ActivityStrip';
 import { getCombatLogPresentation } from './combat/combatLogPresentation';
+import { CollectionScreen } from './CollectionScreen';
+import { getItemCollectionProgress } from './collection/collectionSelectors';
 
 const DebugMenu = import.meta.env.DEV ? lazy(() => import('./debug/DebugMenu')) : null;
 
@@ -531,6 +528,7 @@ function HomeScreen({
   onNavigate: (screen: ScreenId) => void;
 }) {
   const stats = getDerivedStats(game);
+  const itemProgress = getItemCollectionProgress(game);
   const objectives = [
     {
       text: 'Mine Stone and Iron',
@@ -658,7 +656,7 @@ function HomeScreen({
         <div className="panel stat-card">
           <div className="label">Discoveries</div>
           <div className="value">
-            {game.discoveredItems.length}/{ITEMS.length}
+            {itemProgress.discovered}/{itemProgress.total}
           </div>
           <div className="label">Collection log</div>
         </div>
@@ -864,98 +862,6 @@ function _LegacyCombatScreen({
           </div>
         </section>
       </div>
-    </>
-  );
-}
-
-/* eslint-enable react-hooks/rules-of-hooks */
-function CollectionScreen({ game }: { game: GameState }) {
-  const [tab, setTab] = useState<'items' | 'monsters' | 'skills'>('items');
-  return (
-    <>
-      <div className="screen-heading">
-        <div>
-          <div className="eyebrow">Records of the road</div>
-          <h1>Collection Log</h1>
-          <p className="subtle">
-            First acquisition is permanent. Unknown entries preserve their clues.
-          </p>
-        </div>
-        <span className="badge gold">
-          {game.discoveredItems.length}/{ITEMS.length} items
-        </span>
-      </div>
-      <section className="panel panel-pad">
-        <div className="tabs">
-          <button
-            className={`tab ${tab === 'items' ? 'active' : ''}`}
-            onClick={() => setTab('items')}
-          >
-            Items
-          </button>
-          <button
-            className={`tab ${tab === 'monsters' ? 'active' : ''}`}
-            onClick={() => setTab('monsters')}
-          >
-            Monsters
-          </button>
-          <button
-            className={`tab ${tab === 'skills' ? 'active' : ''}`}
-            onClick={() => setTab('skills')}
-          >
-            Skills / Achievements
-          </button>
-        </div>
-        {tab === 'items' && (
-          <div className="inventory-grid">
-            {ITEMS.map((item) => {
-              const found = game.discoveredItems.includes(item.id);
-              return (
-                <ItemTooltip item={item} disabled={!found} key={item.id}>
-                  <div className="item-card" style={{ opacity: found ? 1 : 0.58 }}>
-                    <ItemIcon itemId={item.id} discovered={found} size="md" />
-                    <strong>{found ? item.name : '???'}</strong>
-                    <small>
-                      {item.category} · {found ? item.source : 'Source unknown'}
-                    </small>
-                  </div>
-                </ItemTooltip>
-              );
-            })}
-          </div>
-        )}
-        {tab === 'monsters' && (
-          <div className="grid grid-3">
-            {ENEMIES.map((enemy) => {
-              const found = game.discoveredMonsters.includes(enemy.id);
-              return (
-                <EnemyTooltip
-                  enemy={enemy}
-                  kills={game.killCounts[enemy.id] ?? 0}
-                  disabled={!found}
-                  key={enemy.id}
-                >
-                  <div className="panel card">
-                    <div className="enemy-art">{found ? '◈' : '?'}</div>
-                    <h3>{found ? enemy.name : 'Unknown foe'}</h3>
-                    <p className="subtle">
-                      {found ? enemy.description : 'Defeat this enemy to reveal its record.'}
-                    </p>
-                    <span className="badge">{game.killCounts[enemy.id] ?? 0} kills</span>
-                  </div>
-                </EnemyTooltip>
-              );
-            })}
-          </div>
-        )}
-        {tab === 'skills' && (
-          <div className="empty">
-            <Zap size={26} />
-            <p>Milestones and mastery records arrive after the first season.</p>
-            <span className="badge locked">Coming after MVP</span>
-          </div>
-        )}
-      </section>
     </>
   );
 }

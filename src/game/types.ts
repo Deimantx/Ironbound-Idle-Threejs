@@ -84,6 +84,15 @@ export type WeaponSpecialId = 'focused-slash' | 'sundering-strike' | 'executione
 export type EnemySpecialId = string;
 export type CombatEffectTarget = 'player' | 'enemy';
 export type CombatEffectPolarity = 'buff' | 'debuff' | 'status';
+export type CombatEffectKind =
+  | 'bleed'
+  | 'stun'
+  | 'defence-debuff'
+  | 'damage-buff'
+  | 'defence-buff'
+  | 'attack-speed-buff'
+  | 'combined-buff'
+  | 'status';
 export type EnemyVisualArchetype = 'rat' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
 export type ZoneVisualTheme =
   | 'forest-path'
@@ -155,13 +164,13 @@ export interface WeaponSpecial {
 
 export interface CombatEffectDefinition {
   id: string;
+  kind: CombatEffectKind;
   name: string;
   polarity: CombatEffectPolarity;
   description: string;
   durationMs?: number | null;
   maxStacks?: number;
   stacking?: 'refresh' | 'stack' | 'replace';
-  tags?: Array<'bleed'>;
   periodicDamage?: {
     intervalMs: number;
     damagePerStack: number;
@@ -343,7 +352,6 @@ export interface EnemyDefinition {
   gold?: [number, number];
   theme: 'rodent' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
   presentation: EnemyPresentation;
-  tags?: string[];
 }
 
 export interface AreaDefinition {

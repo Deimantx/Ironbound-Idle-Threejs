@@ -19,7 +19,7 @@ import {
   advanceCombatEffects,
   getCombatEffectStacks,
   getTimeUntilNextCombatEffectEvent,
-  hasCombatEffectTag,
+  hasCombatEffectKind,
   removeCombatEffectsByEffectId,
   resolveReadyCombatEffectTicks,
 } from '../formulas/combatEffects';
@@ -718,7 +718,7 @@ const simulateCombat = (
       combatState.traitState.lastStandTriggered = true;
     }
     if (enemy.trait.id === 'blood-scent') {
-      if (hasCombatEffectTag(combatState.effects.player, 'bleed'))
+      if (hasCombatEffectKind(combatState.effects.player, 'bleed'))
         applyCombatEffect(combatState.effects, 'blood-scent', 'enemy', { sourceEnemyId: enemy.id });
       else removeCombatEffectsByEffectId(combatState.effects, 'blood-scent', 'enemy');
     }

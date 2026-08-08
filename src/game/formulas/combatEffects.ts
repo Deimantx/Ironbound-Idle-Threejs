@@ -2,6 +2,7 @@ import { combatEffectById } from '../../content/combatEffects';
 import type {
   ActiveCombatEffect,
   CombatEffectDefinition,
+  CombatEffectKind,
   CombatEffectsState,
   CombatEffectTarget,
   EnemyId,
@@ -154,12 +155,12 @@ export const hasCombatEffect = (
   target: CombatEffectTarget = 'player',
 ): boolean => asEffectList(effects, target).some((effect) => effect.effectId === effectId);
 
-export const hasCombatEffectTag = (
+export const hasCombatEffectKind = (
   effects: CombatEffectsState | ActiveCombatEffect[],
-  tag: 'bleed',
+  kind: CombatEffectKind,
   target: CombatEffectTarget = 'player',
 ): boolean =>
-  asEffectList(effects, target).some((effect) => getCombatEffectDefinition(effect.effectId)?.tags?.includes(tag));
+  asEffectList(effects, target).some((effect) => getCombatEffectDefinition(effect.effectId)?.kind === kind);
 
 export const getCombatEffectStacks = (
   effects: CombatEffectsState | ActiveCombatEffect[],

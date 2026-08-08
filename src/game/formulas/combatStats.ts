@@ -1,7 +1,7 @@
 import { COMBAT_TUNING } from '../../config/combatTuning';
 import { enemyById } from '../../content/enemies';
 import { eliteById } from '../../content/elites';
-import { getCombatEffectModifiers, hasCombatEffect, hasCombatEffectTag } from './combatEffects';
+import { getCombatEffectModifiers, hasCombatEffect, hasCombatEffectKind } from './combatEffects';
 import type { ActiveCombatEffect } from '../types';
 import type { EliteModifierId, EnemyDefinition, EnemyId } from '../types';
 
@@ -60,7 +60,7 @@ export const getEnemyCombatStats = (
   }
   if (
     enemy.trait.id === 'blood-scent' &&
-    hasCombatEffectTag(playerEffects, 'bleed') &&
+    hasCombatEffectKind(playerEffects, 'bleed') &&
     !hasCombatEffect(effects, 'blood-scent')
   )
     maxHitMultiplier *= COMBAT_TUNING.bloodScentDamageMultiplier;

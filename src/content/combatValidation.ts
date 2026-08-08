@@ -22,6 +22,8 @@ const STONEHILL_ENEMIES = [
   'watchtower-captain',
 ] as const;
 
+const STONEHILL_GOLD_ENEMIES = new Set(['forsaken-miner', 'stonehill-marauder', 'watchtower-captain']);
+
 const EFFECT_IDS = [
   'cornered-fury',
   'stunned',
@@ -99,8 +101,8 @@ export const validateCombatContent = (): string[] => {
     if (!enemy.trait?.id) errors.push(`${enemyId} is missing its trait.`);
     if (!enemy.specialAttack) errors.push(`${enemyId} is missing its special attack.`);
     if (enemy.loot.length < 2 || enemy.loot.length > 4) errors.push(`${enemyId} must have 2–4 loot entries.`);
-    const humanoid = enemy.tags?.includes('Humanoid') ?? false;
-    if (humanoid !== Boolean(enemy.gold)) errors.push(`${enemyId} has invalid Humanoid gold configuration.`);
+    if (STONEHILL_GOLD_ENEMIES.has(enemyId) !== Boolean(enemy.gold))
+      errors.push(`${enemyId} has invalid Stonehill Gold configuration.`);
     for (const loot of enemy.loot) {
       if (!itemById[loot.itemId]) errors.push(`${enemyId} references missing loot ${loot.itemId}.`);
       else if (expectedDropSources[loot.itemId] !== itemById[loot.itemId].source)

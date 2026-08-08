@@ -4,17 +4,18 @@ import type { CombatEffectDefinition } from '../game/types';
 export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   {
     id: 'bleeding',
+    kind: 'bleed',
     name: 'Bleeding',
     polarity: 'debuff',
     description: 'Takes periodic damage as the bleeding wears off.',
     durationMs: null,
     maxStacks: 3,
     stacking: 'stack',
-    tags: ['bleed'],
     periodicDamage: { intervalMs: 2_000, damagePerStack: 1, ignoresDefence: true },
   },
   {
     id: 'desperate-swing',
+    kind: 'damage-buff',
     name: 'Desperate Swing',
     polarity: 'buff',
     description: 'The enemy deals heavier damage while badly wounded.',
@@ -23,6 +24,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'defence-rend',
+    kind: 'defence-debuff',
     name: 'Defence Rend',
     polarity: 'debuff',
     description: 'Reduces Defence for a short time.',
@@ -32,6 +34,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'enemy-damage-up',
+    kind: 'damage-buff',
     name: 'Empowered Damage',
     polarity: 'buff',
     description: 'Increases outgoing damage.',
@@ -41,6 +44,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'enemy-defence-up',
+    kind: 'defence-buff',
     name: 'Hardened Defence',
     polarity: 'buff',
     description: 'Increases Defence.',
@@ -50,6 +54,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'enemy-attack-speed-up',
+    kind: 'attack-speed-buff',
     name: 'Hastened',
     polarity: 'buff',
     description: 'Shortens the attack interval.',
@@ -59,6 +64,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'enemy-damage-defence-up',
+    kind: 'combined-buff',
     name: 'Battle Trance',
     polarity: 'buff',
     description: 'Increases outgoing damage and Defence.',
@@ -68,6 +74,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'cornered-fury',
+    kind: 'combined-buff',
     name: 'Cornered Fury',
     polarity: 'buff',
     description: 'While badly wounded, deals 15% more damage and attacks 25% faster.',
@@ -77,6 +84,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'stunned',
+    kind: 'stun',
     name: 'Stunned',
     polarity: 'debuff',
     description: 'The next attack is delayed while the stun lasts.',
@@ -85,17 +93,18 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'rending-bleed',
+    kind: 'bleed',
     name: 'Rending Bleed',
     polarity: 'debuff',
     description: 'Bleeds for 2 damage per stack every 2 seconds.',
     durationMs: 8_000,
     maxStacks: 2,
     stacking: 'stack',
-    tags: ['bleed'],
     periodicDamage: { intervalMs: 2_000, damagePerStack: 2, ignoresDefence: true },
   },
   {
     id: 'armour-broken',
+    kind: 'defence-debuff',
     name: 'Armour Broken',
     polarity: 'debuff',
     description: 'Reduces Defence by 25% for 8 seconds.',
@@ -105,17 +114,18 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'raking-wound',
+    kind: 'bleed',
     name: 'Raking Wound',
     polarity: 'debuff',
     description: 'Bleeds for 2 damage every 2 seconds.',
     durationMs: 10_000,
     maxStacks: 1,
     stacking: 'refresh',
-    tags: ['bleed'],
     periodicDamage: { intervalMs: 2_000, damagePerStack: 2, ignoresDefence: true },
   },
   {
     id: 'blood-scent',
+    kind: 'damage-buff',
     name: 'Blood Scent',
     polarity: 'buff',
     description: 'Deals 20% more damage while the player is bleeding.',
@@ -125,6 +135,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'battle-fury',
+    kind: 'damage-buff',
     name: 'Battle Fury',
     polarity: 'buff',
     description: 'Gains 5% damage per stack every 10 seconds, up to 5 stacks.',
@@ -135,6 +146,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'war-cry',
+    kind: 'combined-buff',
     name: 'War Cry',
     polarity: 'buff',
     description: 'Increases damage by 25% and attack speed by 15% for 8 seconds.',
@@ -144,6 +156,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'fortified',
+    kind: 'defence-buff',
     name: 'Fortified',
     polarity: 'buff',
     description: 'Increases Defence by 40% for 8 seconds.',
@@ -153,6 +166,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'reinforced-plating',
+    kind: 'defence-buff',
     name: 'Reinforced Plating',
     polarity: 'buff',
     description: 'While above 50% Health, reduces incoming damage and increases Defence by 20%.',
@@ -162,6 +176,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'last-stand',
+    kind: 'combined-buff',
     name: 'Last Stand',
     polarity: 'buff',
     description: 'While badly wounded, gains 20% Accuracy and attacks 25% faster.',
@@ -171,6 +186,7 @@ export const COMBAT_EFFECTS: CombatEffectDefinition[] = [
   },
   {
     id: 'iron-command',
+    kind: 'combined-buff',
     name: 'Iron Command',
     polarity: 'buff',
     description: 'Increases damage by 25% and Defence by 25% for 10 seconds.',

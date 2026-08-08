@@ -32,7 +32,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'scurry',
       attackAnimation: 'lunge',
     },
-    tags: ['Beast', 'Fast', 'Weak'],
   },
   {
     id: 'goblin-scavenger',
@@ -64,7 +63,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'hunch',
       attackAnimation: 'swipe',
     },
-    tags: ['Humanoid', 'Scavenger'],
   },
   {
     id: 'cave-bat',
@@ -93,7 +91,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'hover',
       attackAnimation: 'swoop',
     },
-    tags: ['Beast', 'Flying', 'Fast'],
   },
   {
     id: 'stoneback-crab',
@@ -122,7 +119,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'heavy',
       attackAnimation: 'claw',
     },
-    tags: ['Beast', 'Armored', 'Slow'],
   },
   {
     id: 'grey-wolf',
@@ -151,7 +147,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'alert',
       attackAnimation: 'pounce',
     },
-    tags: ['Beast', 'Fast'],
   },
   {
     id: 'road-bandit',
@@ -192,7 +187,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'stride',
       attackAnimation: 'slash',
     },
-    tags: ['Humanoid', 'Armored'],
   },
   {
     id: 'hill-boar',
@@ -233,7 +227,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'heavy',
       attackAnimation: 'pounce',
     },
-    tags: ['Beast', 'Heavy'],
   },
   {
     id: 'stonehide-ram',
@@ -277,7 +270,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'heavy',
       attackAnimation: 'pounce',
     },
-    tags: ['Beast', 'Armored', 'Slow'],
   },
   {
     id: 'tunnel-crawler',
@@ -318,7 +310,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'scurry',
       attackAnimation: 'claw',
     },
-    tags: ['Beast', 'Fast', 'Bleed'],
   },
   {
     id: 'forsaken-miner',
@@ -361,7 +352,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'hunch',
       attackAnimation: 'slash',
     },
-    tags: ['Humanoid', 'Armored', 'Miner'],
   },
   {
     id: 'cliff-harpy',
@@ -403,7 +393,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'hover',
       attackAnimation: 'swoop',
     },
-    tags: ['Beast', 'Aerial', 'Evasive'],
   },
   {
     id: 'stonehill-marauder',
@@ -444,7 +433,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'stride',
       attackAnimation: 'slash',
     },
-    tags: ['Humanoid', 'Aggressive', 'Marauder'],
   },
   {
     id: 'ironbound-sentinel',
@@ -484,7 +472,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'heavy',
       attackAnimation: 'slash',
     },
-    tags: ['Construct', 'Armored', 'Slow'],
   },
   {
     id: 'watchtower-captain',
@@ -525,7 +512,6 @@ export const ENEMIES: EnemyDefinition[] = [
       idleAnimation: 'stride',
       attackAnimation: 'slash',
     },
-    tags: ['Humanoid', 'Armored', 'Veteran'],
   },
 ];
 

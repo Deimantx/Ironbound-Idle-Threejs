@@ -85,7 +85,7 @@ import { formatHealth } from './formatters';
 import { getActualDps, getActualKillsPerHour } from './combat/sessionMetrics';
 import { SpecialAttackDetails } from './items/SpecialAttackDetails';
 import { COMBAT_TUNING } from '../config/combatTuning';
-import { formatDamageRange } from './combat/combatPresentation';
+import { formatDamageRange, formatRewardSummary } from './combat/combatPresentation';
 import { EnemySpecialDetails } from './combat/EnemySpecialDetails';
 import { CombatEffectLane } from './combat/CombatEffectLanes';
 
@@ -468,9 +468,7 @@ function EnemySummaryPanel({
           <CombatPortrait enemy={enemy} large ariaLabel={`${enemy.name} target preview`} />
           <div>
             <h2 id="enemy-title">{enemy.name}</h2>
-            <span className="muted">
-              Level {enemy.displayLevel} · {enemy.tags?.[0] ?? 'Unknown type'}
-            </span>
+            <span className="muted">Level {enemy.displayLevel}</span>
             {active?.combatState.eliteModifier && (
               <div className="badge gold" aria-label="Elite enemy">
                 ELITE · {eliteById[active.combatState.eliteModifier].name}
@@ -478,13 +476,6 @@ function EnemySummaryPanel({
             )}
           </div>
         </div>
-      </div>
-      <div className="combat-enemy-tags">
-        {(enemy.tags ?? []).map((tag) => (
-          <span className="combat-tag" key={tag}>
-            {tag}
-          </span>
-        ))}
       </div>
       <p className="combat-enemy-description">{enemy.description}</p>
       <div className="combat-subheading-row">
@@ -904,9 +895,7 @@ function TargetAnalysis({
           <CombatPortrait enemy={enemy} large />
           <span className="combat-analysis-target-copy">
             <strong>{enemy.name}</strong>
-            <span>
-              Enemy Lv {enemy.displayLevel} · {enemy.tags?.join(' · ') ?? enemy.theme}
-            </span>
+              <span>Enemy Lv {enemy.displayLevel}</span>
             <small>{formatNumber(game.killCounts[enemy.id] ?? 0)} lifetime kills</small>
           </span>
           <span className="combat-analysis-style">
@@ -947,10 +936,10 @@ function TargetAnalysis({
         <div className="combat-analysis-trait combat-analysis-trait-emphasized">
           <strong className="combat-analysis-trait-heading">
             <Zap size={16} aria-hidden="true" />
-            Important enemy trait
+            Important enemy trait: {trait.name}
           </strong>
           <span className="combat-analysis-trait-copy">
-            <b>{trait.name}</b> {trait.description}
+            {trait.description}
           </span>
         </div>
         {enemy.specialAttack && (
@@ -1383,17 +1372,16 @@ function LootPanel({
       <div className="combat-rewards-list">
         <span className="combat-panel-kicker">Recent rewards</span>
         {recentLoot.length ? (
-          recentLoot.map((event) => (
-            <div className="combat-reward-row" key={event.id}>
-              <Trophy size={13} />
-              <span>
-                {event.gold > 0 ? `+${event.gold} Gold` : ''}
-                {event.items.length
-                  ? ` · ${event.items.length} item drop${event.items.length === 1 ? '' : 's'}`
-                  : ''}
-              </span>
-            </div>
-          ))
+          recentLoot.map((event) => {
+            const summary = formatRewardSummary(event.gold, event.items.length);
+            if (!summary) return null;
+            return (
+              <div className="combat-reward-row" key={event.id}>
+                <Trophy size={13} />
+                <span>{summary}</span>
+              </div>
+            );
+          })
         ) : (
           <span className="muted">Rewards from this enemy will appear here.</span>
         )}
