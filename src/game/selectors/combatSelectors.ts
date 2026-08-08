@@ -10,6 +10,7 @@ import {
   getHitChance,
 } from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
+import { hasCombatEffect, hasCombatEffectTag } from '../formulas/combatEffects';
 import { occupiedSlots } from '../systems/inventorySystem';
 import type {
   AreaId,
@@ -105,6 +106,26 @@ export const selectEnemyCombatEffects = (state: GameState): ActiveCombatEffect[]
       stacks: 1,
     });
   }
+  const healthRatio = combatState.enemyHp / Math.max(1, combatState.enemyMaxHp);
+  const addDerived = (effectId: string): void => {
+    if (hasCombatEffect(effects, effectId)) return;
+    effects.push({
+      instanceId: `${effectId}-trait`,
+      effectId,
+      target: 'enemy',
+      sourceEnemyId: enemy.id,
+      remainingMs: null,
+      stacks: 1,
+    });
+  };
+  if (enemy.trait.id === 'cornered-fury' && healthRatio <= COMBAT_TUNING.corneredFuryHealthThreshold)
+    addDerived('cornered-fury');
+  if (enemy.trait.id === 'blood-scent' && hasCombatEffectTag(selectPlayerCombatEffects(state), 'bleed'))
+    addDerived('blood-scent');
+  if (enemy.trait.id === 'reinforced-plating' && healthRatio > COMBAT_TUNING.reinforcedPlatingHealthThreshold)
+    addDerived('reinforced-plating');
+  if (enemy.trait.id === 'last-stand' && healthRatio <= COMBAT_TUNING.lastStandHealthThreshold)
+    addDerived('last-stand');
   return effects;
 };
 
@@ -120,6 +141,9 @@ const selectEnemyStats = (state: GameState, enemy: EnemyDefinition) =>
       : 1,
     state.activeAction.type === 'combat' && state.activeAction.enemyId === enemy.id
       ? selectEnemyCombatEffects(state)
+      : [],
+    state.activeAction.type === 'combat' && state.activeAction.enemyId === enemy.id
+      ? selectPlayerCombatEffects(state)
       : [],
   );
 

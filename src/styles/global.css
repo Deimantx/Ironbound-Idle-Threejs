@@ -6302,6 +6302,28 @@ h3 {
   color: #e1bd6e;
   font-size: 11px;
 }
+.enemy-special-kicker.emphasized {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #e36d6d;
+  font-size: 13px;
+  text-transform: none;
+  letter-spacing: normal;
+}
+.enemy-special-kicker.emphasized svg {
+  color: #e36d6d;
+  flex: 0 0 auto;
+}
+.enemy-special-details.emphasized > strong {
+  font-size: 12px;
+}
+.enemy-special-details.emphasized .enemy-special-description {
+  font-size: 12px;
+}
+.enemy-special-details.emphasized .enemy-special-row {
+  font-size: 12px;
+}
 .combat-effect-tooltip span,
 .combat-effect-tooltip p,
 .enemy-special-details span,
@@ -6694,6 +6716,25 @@ h3 {
   padding: 0 8px;
   color: #d5bd82;
   font-size: 12px;
+}
+.combat-analysis-trait.combat-analysis-trait-emphasized {
+  display: grid;
+  gap: 4px;
+}
+.combat-analysis-trait-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #e36d6d;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+.combat-analysis-trait-heading svg {
+  color: #e36d6d;
+  flex: 0 0 auto;
+}
+.combat-analysis-trait-copy b {
+  color: #d5bd82;
 }
 .combat-analysis-trait span,
 .combat-analysis-footnote {

@@ -6,6 +6,7 @@ import { getDerivedStats } from '../formulas/statFormulas';
 import { emptyCombatEffects } from '../formulas/combatEffects';
 import type {
   ActiveCombatState,
+  ActiveCombatEffect,
   CombatStyle,
   EliteModifierId,
   EnemyId,
@@ -34,6 +35,7 @@ export const initializeEnemySpawn = (
   eliteModifier: EliteModifierId | null | undefined = undefined,
   adrenaline = 0,
   encounterStartedAt = Date.now(),
+  playerEffects: ActiveCombatEffect[] = [],
 ): { combatState: ActiveCombatState; eliteModifier: EliteModifierId | null } => {
   const enemy = enemyById[enemyId];
   const modifier = eliteModifier === undefined
@@ -48,7 +50,7 @@ export const initializeEnemySpawn = (
     combatState: {
       enemyHp: stats.maxHealth,
       enemyMaxHp: stats.maxHealth,
-      playerAttackMs: getDerivedStats(state, style).attackIntervalMs,
+      playerAttackMs: getDerivedStats(state, style, playerEffects).attackIntervalMs,
       enemyAttackMs: firstAttackPending
         ? Math.max(COMBAT_TUNING.minimumAttackIntervalMs, stats.attackIntervalMs * COMBAT_TUNING.ratFirstAttackMultiplier)
         : stats.attackIntervalMs,
@@ -57,10 +59,16 @@ export const initializeEnemySpawn = (
       rngCursor: rng.rngCursor,
       adrenaline: Math.max(0, Math.min(COMBAT_TUNING.adrenalineMax, adrenaline)),
       enemySpecialCharge: 0,
-      effects: emptyCombatEffects(),
+      effects: { ...emptyCombatEffects(), player: structuredClone(playerEffects) },
       eliteModifier: modifier,
       eliteAnnounced: false,
-      traitState: { firstAttackPending, enemyAttackCount: 0, bleedStacks: 0 },
+      traitState: {
+        firstAttackPending,
+        enemyAttackCount: 0,
+        bleedStacks: 0,
+        corneredFuryTriggered: false,
+        lastStandTriggered: false,
+      },
       encounterIndex,
       encounterStartedAt,
     },

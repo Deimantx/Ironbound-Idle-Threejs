@@ -118,7 +118,16 @@ export const switchCombatTarget = (
   autoRepeat: boolean,
   now = Date.now(),
   autoSpecial = true,
-): GameState => startCombat(state, areaId, enemyId, style, autoRepeat, now, autoSpecial);
+): GameState => {
+  const playerEffects =
+    state.activeAction.type === 'combat' ? structuredClone(state.activeAction.combatState.effects.player) : [];
+  const next = startCombat(state, areaId, enemyId, style, autoRepeat, now, autoSpecial);
+  if (next.activeAction.type === 'combat') {
+    next.activeAction.combatState.effects.player = playerEffects;
+    next.activeAction.combatState.effects.enemy = [];
+  }
+  return next;
+};
 
 export const setCombatStyle = (state: GameState, style: CombatStyle): GameState => {
   if (state.activeAction.type !== 'combat') return state;

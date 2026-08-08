@@ -1837,7 +1837,7 @@ describe('navigation integration', () => {
       'aria-pressed',
       'true',
     );
-    expect(screen.getByRole('button', { name: 'Stonehill, coming later' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Stonehill' })).not.toBeDisabled();
     expect(screen.getByRole('button', { name: 'Ashmoor, coming later' })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Select target Forest Rat/ })).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: /Dungeons/ }));

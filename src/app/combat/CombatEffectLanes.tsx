@@ -14,6 +14,11 @@ const getEffectLabel = (effect: ActiveCombatEffect): string => {
   return definition?.name ?? effect.effectId;
 };
 
+const formatModifier = (label: string, value: number): string => {
+  const percent = Math.round((value - 1) * 100);
+  return `${label}: ${percent >= 0 ? '+' : ''}${percent}%`;
+};
+
 function CombatEffectTooltip({
   effect,
   children,
@@ -23,7 +28,20 @@ function CombatEffectTooltip({
 }) {
   const definition = getCombatEffectDefinition(effect.effectId);
   const sourceEnemy = effect.sourceEnemyId ? enemyById[effect.sourceEnemyId] : undefined;
-  const sourceSpecial = sourceEnemy?.specialAttack;
+  const sourceSpecial = sourceEnemy && sourceEnemy.specialAttack?.id === effect.sourceSpecialId
+    ? sourceEnemy.specialAttack
+    : undefined;
+  const modifiers = definition?.modifiers;
+  const modifierRows = modifiers
+    ? [
+        modifiers.accuracyMultiplier !== undefined && formatModifier('Accuracy', modifiers.accuracyMultiplier),
+        modifiers.defenceMultiplier !== undefined && formatModifier('Defence', modifiers.defenceMultiplier),
+        modifiers.damageMultiplier !== undefined && formatModifier('Damage', modifiers.damageMultiplier),
+        modifiers.attackIntervalMultiplier !== undefined && formatModifier('Attack interval', modifiers.attackIntervalMultiplier),
+        modifiers.flatDamageReduction !== undefined && `Flat damage reduction: ${modifiers.flatDamageReduction}`,
+      ].filter((row): row is string => Boolean(row))
+    : [];
+  const periodic = definition?.periodicDamage;
   return (
     <GameTooltip
       content={
@@ -32,6 +50,14 @@ function CombatEffectTooltip({
           <span>{definition?.polarity ?? 'status'}</span>
           <p>{definition?.description ?? 'A temporary combat effect.'}</p>
           <span>Stacks: {effect.stacks}</span>
+          {modifierRows.map((row) => <span key={row}>{row}</span>)}
+          {periodic && (
+            <span>
+              Periodic damage: {periodic.damagePerStack} per stack every {periodic.intervalMs / 1000}s
+              {periodic.ignoresDefence ? ' (ignores Defence)' : ''}
+            </span>
+          )}
+          {definition?.stacking && <span>Stacking: {definition.stacking}</span>}
           <span>
             Remaining: {formatRemaining(effect.remainingMs) ?? 'Encounter-long'}
           </span>

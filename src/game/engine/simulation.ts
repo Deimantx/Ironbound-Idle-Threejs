@@ -14,7 +14,15 @@ import {
 } from '../formulas/combatFormulas';
 import { COMBAT_TUNING } from '../../config/combatTuning';
 import { getEnemyCombatStats } from '../formulas/combatStats';
-import { applyCombatEffect, tickCombatEffects } from '../formulas/combatEffects';
+import {
+  applyCombatEffect,
+  advanceCombatEffects,
+  getCombatEffectStacks,
+  getTimeUntilNextCombatEffectEvent,
+  hasCombatEffectTag,
+  removeCombatEffectsByEffectId,
+  resolveReadyCombatEffectTicks,
+} from '../formulas/combatEffects';
 import { initializeEnemySpawn } from './combatEncounter';
 import { addSkillXp } from '../formulas/experienceFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
@@ -509,6 +517,8 @@ const normalizeCombatAction = (
           0,
           Math.min(COMBAT_TUNING.wolfMaxBleedStacks, Math.floor(raw.traitState?.bleedStacks ?? 0)),
         ),
+        corneredFuryTriggered: raw.traitState?.corneredFuryTriggered ?? false,
+        lastStandTriggered: raw.traitState?.lastStandTriggered ?? false,
       },
       encounterIndex: Math.max(1, Math.floor(raw.encounterIndex ?? 1)),
       encounterStartedAt: Number.isFinite(raw.encounterStartedAt)
@@ -572,6 +582,8 @@ const simulateCombat = (
       }
     } else if (event.type === 'enemy-bleed') {
       summary.combatStats.damageTaken += event.damage;
+    } else if (event.type === 'combat-effect-damage' && event.target === 'player') {
+      summary.combatStats.damageTaken += event.damage;
     }
   };
   const stopForPlayerDeath = (
@@ -579,7 +591,14 @@ const simulateCombat = (
     cause:
       | { kind: 'enemy-hit'; damage: number; heavy: boolean }
       | { kind: 'enemy-special'; specialId: string; damage: number }
-      | { kind: 'bleed'; damage: number },
+      | { kind: 'bleed'; damage: number }
+      | {
+          kind: 'combat-effect';
+          effectId: string;
+          sourceEnemyId?: typeof enemy.id;
+          sourceSpecialId?: string;
+          damage: number;
+        },
   ): void => {
     state.statistics.deaths += 1;
     summary.deaths += 1;
@@ -612,6 +631,7 @@ const simulateCombat = (
       undefined,
       combatState.adrenaline,
       at,
+      combatState.effects.player,
     );
     action = { ...action, style, pendingStyle: null, specialQueued: false };
     combatState = spawn.combatState;
@@ -660,14 +680,17 @@ const simulateCombat = (
   const applyEnemySpecialEffects = (
     special: NonNullable<typeof enemy.specialAttack>,
     trigger: 'hit' | 'always',
-  ): number => {
-    let additionalEnemyDelayMs = 0;
+  ): void => {
     for (const effect of special.effects ?? []) {
       if (effect.applyOn !== 'always' && effect.applyOn !== trigger) continue;
-      if (effect.kind === 'attack-progress-pushback') {
+      if (effect.kind === 'player-attack-progress-pushback') {
+        const effectiveInterval = getDerivedStats(state, action.style, combatState.effects.player).attackIntervalMs;
+        combatState.playerAttackMs = Math.min(
+          effectiveInterval,
+          combatState.playerAttackMs + Math.max(0, effectiveInterval * effect.fractionOfAttackInterval),
+        );
+      } else if (effect.kind === 'player-attack-delay') {
         combatState.playerAttackMs += Math.max(0, effect.amountMs);
-      } else if (effect.kind === 'attack-delay') {
-        additionalEnemyDelayMs += Math.max(0, effect.amountMs);
       } else {
         applyCombatEffect(combatState.effects, effect.effectId, effect.target, {
           sourceEnemyId: enemy.id,
@@ -675,18 +698,101 @@ const simulateCombat = (
         });
       }
     }
-    return additionalEnemyDelayMs;
+  };
+  const syncEnemyTraitEffects = (at: number): void => {
+    const healthRatio = combatState.enemyHp / Math.max(1, combatState.enemyMaxHp);
+    if (
+      enemy.trait.id === 'cornered-fury' &&
+      healthRatio <= COMBAT_TUNING.corneredFuryHealthThreshold &&
+      !combatState.traitState.corneredFuryTriggered
+    ) {
+      applyCombatEffect(combatState.effects, 'cornered-fury', 'enemy', { sourceEnemyId: enemy.id });
+      combatState.traitState.corneredFuryTriggered = true;
+    }
+    if (
+      enemy.trait.id === 'last-stand' &&
+      healthRatio <= COMBAT_TUNING.lastStandHealthThreshold &&
+      !combatState.traitState.lastStandTriggered
+    ) {
+      applyCombatEffect(combatState.effects, 'last-stand', 'enemy', { sourceEnemyId: enemy.id });
+      combatState.traitState.lastStandTriggered = true;
+    }
+    if (enemy.trait.id === 'blood-scent') {
+      if (hasCombatEffectTag(combatState.effects.player, 'bleed'))
+        applyCombatEffect(combatState.effects, 'blood-scent', 'enemy', { sourceEnemyId: enemy.id });
+      else removeCombatEffectsByEffectId(combatState.effects, 'blood-scent', 'enemy');
+    }
+    if (enemy.trait.id === 'reinforced-plating') {
+      if (healthRatio > COMBAT_TUNING.reinforcedPlatingHealthThreshold)
+        applyCombatEffect(combatState.effects, 'reinforced-plating', 'enemy', { sourceEnemyId: enemy.id });
+      else removeCombatEffectsByEffectId(combatState.effects, 'reinforced-plating', 'enemy');
+    }
+    if (enemy.trait.id === 'battle-fury') {
+      const desiredStacks = Math.min(
+        COMBAT_TUNING.battleFuryMaxStacks,
+        Math.floor(Math.max(0, at - combatState.encounterStartedAt) / COMBAT_TUNING.battleFuryIntervalMs),
+      );
+      let currentStacks = getCombatEffectStacks(combatState.effects.enemy, 'battle-fury');
+      while (currentStacks < desiredStacks) {
+        applyCombatEffect(combatState.effects, 'battle-fury', 'enemy', {
+          sourceEnemyId: enemy.id,
+          stacks: 1,
+        });
+        currentStacks += 1;
+      }
+    }
+  };
+  const resolvePeriodicEffects = (at: number): boolean => {
+    for (const tick of resolveReadyCombatEffectTicks(combatState.effects)) {
+      if (tick.effect.target !== 'player') continue;
+      const damage = Math.min(Math.max(0, tick.damage), state.player.currentHp);
+      state.player.currentHp = Math.max(0, state.player.currentHp - damage);
+      emit({
+        id: combatEventId('combat-effect-damage', at, rng.rngCursor),
+        type: 'combat-effect-damage',
+        enemyId: enemy.id,
+        effectId: tick.effect.effectId,
+        damage,
+        at,
+        target: 'player',
+      });
+      appendCombatLog(state, {
+        kind: 'combat-effect-damage',
+        enemyId: enemy.id,
+        effectId: tick.effect.effectId,
+        sourceEnemyId: tick.effect.sourceEnemyId,
+        sourceSpecialId: tick.effect.sourceSpecialId,
+        damage,
+        at,
+        encounterStartedAt: combatState.encounterStartedAt,
+      });
+      if (state.player.currentHp <= 0) {
+        stopForPlayerDeath(at, {
+          kind: 'combat-effect',
+          effectId: tick.effect.effectId,
+          sourceEnemyId: tick.effect.sourceEnemyId,
+          sourceSpecialId: tick.effect.sourceSpecialId,
+          damage,
+        });
+        return true;
+      }
+    }
+    return false;
   };
   while (left > 0 && iterations < MAX_COMBAT_SIMULATION_EVENTS) {
     iterations += 1;
     if (combatState.respawnMs > 0) {
-      const step = Math.min(left, combatState.respawnMs);
+      const nextEffectMs = getTimeUntilNextCombatEffectEvent(combatState.effects);
+      const step = Math.min(left, combatState.respawnMs, nextEffectMs ?? Infinity);
       left -= step;
       clock += step;
       combatState.respawnMs -= step;
+      advanceCombatEffects(combatState.effects, step);
+      if (resolvePeriodicEffects(clock)) break;
       if (combatState.respawnMs <= 0) spawnNextEnemy(clock);
       continue;
     }
+    syncEnemyTraitEffects(clock);
     const currentEnemyStats = getEnemyCombatStats(
       enemy,
       combatState.eliteModifier,
@@ -694,20 +800,21 @@ const simulateCombat = (
       state.player.currentHp /
         Math.max(1, getDerivedStats(state, action.style, combatState.effects.player).maxHealth),
       combatState.effects.enemy,
+      combatState.effects.player,
     );
+    const nextEffectMs = getTimeUntilNextCombatEffectEvent(combatState.effects);
     const step = Math.min(
       left,
-      Math.max(
-        1,
-        Math.min(combatState.playerAttackMs || Infinity, combatState.enemyAttackMs || Infinity),
-      ),
+      combatState.playerAttackMs,
+      combatState.enemyAttackMs,
+      nextEffectMs ?? Infinity,
     );
     left -= step;
     clock += step;
     combatState.playerAttackMs -= step;
     combatState.enemyAttackMs -= step;
-    tickCombatEffects(combatState.effects, step);
-      if (combatState.playerAttackMs <= 0 && combatState.enemyHp > 0) {
+    advanceCombatEffects(combatState.effects, step);
+    if (combatState.playerAttackMs <= 0 && combatState.enemyHp > 0) {
       // Capture the style once so a queued style cannot affect any part of this attack.
       const attackStyle = action.style;
       const playerStats = getDerivedStats(state, attackStyle, combatState.effects.player);
@@ -762,6 +869,11 @@ const simulateCombat = (
           encounterStartedAt: combatState.encounterStartedAt,
           special: useSpecial,
         });
+        if (enemy.trait.id === 'elusive-flight')
+          combatState.enemyAttackMs = Math.max(
+            0,
+            combatState.enemyAttackMs - currentEnemyStats.attackIntervalMs * COMBAT_TUNING.elusiveFlightAdvanceFraction,
+          );
       } else {
         const rolled = rollDamage(attackMaxHit, nextCombatRandom(rng));
         const reduced =
@@ -809,8 +921,8 @@ const simulateCombat = (
       // enemy attack observe the newly active defensive calculations below.
       if (action.pendingStyle)
         action = { ...action, style: action.pendingStyle, pendingStyle: null };
-        combatState.playerAttackMs +=
-          getDerivedStats(state, action.style, combatState.effects.player).attackIntervalMs;
+      combatState.playerAttackMs +=
+        getDerivedStats(state, action.style, combatState.effects.player).attackIntervalMs;
       if (combatState.enemyHp <= 0) {
         // Resolve a lethal player event before examining the enemy timer. A dead target never retaliates.
         const eliteModifier = combatState.eliteModifier;
@@ -820,11 +932,14 @@ const simulateCombat = (
         state.killCounts[enemy.id] = (state.killCounts[enemy.id] ?? 0) + 1;
         if (!state.discoveredMonsters.includes(enemy.id)) state.discoveredMonsters.push(enemy.id);
         const enemyRewardStats = getEnemyCombatStats(enemy, eliteModifier, 0);
-        const baseGold =
-          enemy.gold[0] + Math.floor(nextCombatRandom(rng) * (enemy.gold[1] - enemy.gold[0] + 1));
+        const baseGold = enemy.gold
+          ? enemy.gold[0] + Math.floor(nextCombatRandom(rng) * (enemy.gold[1] - enemy.gold[0] + 1))
+          : 0;
         const gold = Math.max(0, Math.round(baseGold * enemyRewardStats.goldMultiplier));
-        state.gold += gold;
-        summary.goldGained += gold;
+        if (enemy.gold) {
+          state.gold += gold;
+          summary.goldGained += gold;
+        }
         emit({
           id: combatEventId('enemy-defeated', clock, rng.rngCursor),
           type: 'enemy-defeated',
@@ -857,13 +972,14 @@ const simulateCombat = (
             itemId: item.itemId,
             quantity: item.quantity,
           });
-        appendCombatLog(state, {
-          kind: 'gold',
-          enemyId: enemy.id,
-          at: clock,
-          encounterStartedAt: combatState.encounterStartedAt,
-          amount: gold,
-        });
+        if (enemy.gold)
+          appendCombatLog(state, {
+            kind: 'gold',
+            enemyId: enemy.id,
+            at: clock,
+            encounterStartedAt: combatState.encounterStartedAt,
+            amount: gold,
+          });
         appendCombatLog(state, {
           kind: 'enemy-defeated',
           enemyId: enemy.id,
@@ -889,6 +1005,8 @@ const simulateCombat = (
         break;
       }
     }
+    syncEnemyTraitEffects(clock);
+    if (combatState.enemyHp > 0 && resolvePeriodicEffects(clock)) break;
     if (combatState.enemyAttackMs <= 0 && combatState.enemyHp > 0) {
       if (enemy.trait.id === 'bleeding-bites' && combatState.traitState.bleedStacks > 0) {
         const bleedDamage = Math.min(
@@ -924,16 +1042,16 @@ const simulateCombat = (
         state.player.currentHp /
           Math.max(1, getDerivedStats(state, action.style, combatState.effects.player).maxHealth),
         combatState.effects.enemy,
+        combatState.effects.player,
       );
       const special = enemy.specialAttack;
       const useSpecial = Boolean(
         special && combatState.enemySpecialCharge >= COMBAT_TUNING.enemySpecialChargeMax,
       );
-      let additionalEnemyDelayMs = 0;
       if (useSpecial && special) {
         combatState.enemySpecialCharge = 0;
         if (special.delivery === 'self') {
-          additionalEnemyDelayMs = applyEnemySpecialEffects(special, 'always');
+          applyEnemySpecialEffects(special, 'always');
           emit({
             id: combatEventId('enemy-special-used', clock, rng.rngCursor),
             type: 'enemy-special-used',
@@ -956,7 +1074,7 @@ const simulateCombat = (
               getDerivedStats(state, action.style, combatState.effects.player).effectiveDefenceRating,
             );
           if (!hit) {
-            additionalEnemyDelayMs = applyEnemySpecialEffects(special, 'always');
+            applyEnemySpecialEffects(special, 'always');
             emit({
               id: combatEventId('enemy-special-miss', clock, rng.rngCursor),
               type: 'enemy-special-miss',
@@ -983,7 +1101,7 @@ const simulateCombat = (
               combatState.adrenaline +
                 (actualDamage > 0 ? COMBAT_TUNING.adrenalinePerDirectDamageTaken : 0),
             );
-            additionalEnemyDelayMs = applyEnemySpecialEffects(special, 'hit');
+            applyEnemySpecialEffects(special, 'hit');
             emit({
               id: combatEventId('enemy-special-hit', clock, rng.rngCursor),
               type: 'enemy-special-hit',
@@ -1087,7 +1205,8 @@ const simulateCombat = (
           state.player.currentHp /
             Math.max(1, getDerivedStats(state, action.style, combatState.effects.player).maxHealth),
           combatState.effects.enemy,
-        ).attackIntervalMs + additionalEnemyDelayMs;
+          combatState.effects.player,
+        ).attackIntervalMs;
     }
   }
   const safetyCapReached = iterations >= MAX_COMBAT_SIMULATION_EVENTS && left > 0;

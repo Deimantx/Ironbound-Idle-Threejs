@@ -1,7 +1,7 @@
 import { COMBAT_TUNING } from '../../config/combatTuning';
 import { enemyById } from '../../content/enemies';
 import { eliteById } from '../../content/elites';
-import { getCombatEffectModifiers } from './combatEffects';
+import { getCombatEffectModifiers, hasCombatEffect, hasCombatEffectTag } from './combatEffects';
 import type { ActiveCombatEffect } from '../types';
 import type { EliteModifierId, EnemyDefinition, EnemyId } from '../types';
 
@@ -25,6 +25,7 @@ export const getEnemyCombatStats = (
   currentHp = enemy.maxHealth,
   playerHealthPercent = 1,
   effects: ActiveCombatEffect[] = [],
+  playerEffects: ActiveCombatEffect[] = [],
 ): EffectiveEnemyStats => {
   const elite = eliteModifier;
   const effectiveMaxHealth = enemy.maxHealth * (eliteModifier ? COMBAT_TUNING.eliteHealthMultiplier : 1);
@@ -32,10 +33,12 @@ export const getEnemyCombatStats = (
   let maxHitMultiplier = 1;
   let defenceMultiplier = 1;
   let intervalMultiplier = 1;
-  let flatDamageReduction = 0;
   let goldMultiplier = 1;
   let lootChanceMultiplier = 1;
   const effectModifiers = getCombatEffectModifiers(effects);
+  let flatDamageReduction = effectModifiers.flatDamageReduction;
+  const corneredHealth = currentHp <= effectiveMaxHealth * COMBAT_TUNING.corneredFuryHealthThreshold;
+  const lastStandHealth = currentHp <= effectiveMaxHealth * COMBAT_TUNING.lastStandHealthThreshold;
 
   let accuracyMultiplier = 1;
   if (
@@ -48,6 +51,27 @@ export const getEnemyCombatStats = (
     maxHitMultiplier *= COMBAT_TUNING.goblinDesperateMaxHitMultiplier;
   if (enemy.trait.id === 'evasive') defenceMultiplier *= COMBAT_TUNING.batDefenceMultiplier;
   if (enemy.trait.id === 'armoured-shell') flatDamageReduction += COMBAT_TUNING.crabFlatReduction;
+  if (enemy.trait.id === 'stonehide') flatDamageReduction += COMBAT_TUNING.stonehideFlatReduction;
+  if (enemy.trait.id === 'patchwork-plate') flatDamageReduction += COMBAT_TUNING.patchworkPlateFlatReduction;
+
+  if (enemy.trait.id === 'cornered-fury' && corneredHealth && !hasCombatEffect(effects, 'cornered-fury')) {
+    maxHitMultiplier *= COMBAT_TUNING.corneredFuryDamageMultiplier;
+    intervalMultiplier *= COMBAT_TUNING.corneredFuryAttackIntervalMultiplier;
+  }
+  if (
+    enemy.trait.id === 'blood-scent' &&
+    hasCombatEffectTag(playerEffects, 'bleed') &&
+    !hasCombatEffect(effects, 'blood-scent')
+  )
+    maxHitMultiplier *= COMBAT_TUNING.bloodScentDamageMultiplier;
+  if (enemy.trait.id === 'reinforced-plating' && currentHp > effectiveMaxHealth * COMBAT_TUNING.reinforcedPlatingHealthThreshold && !hasCombatEffect(effects, 'reinforced-plating')) {
+    defenceMultiplier *= COMBAT_TUNING.reinforcedPlatingDefenceMultiplier;
+    flatDamageReduction += COMBAT_TUNING.reinforcedPlatingFlatReduction;
+  }
+  if (enemy.trait.id === 'last-stand' && lastStandHealth && !hasCombatEffect(effects, 'last-stand')) {
+    accuracyMultiplier *= COMBAT_TUNING.lastStandAccuracyMultiplier;
+    intervalMultiplier *= COMBAT_TUNING.lastStandAttackIntervalMultiplier;
+  }
 
   if (elite === 'savage') maxHitMultiplier *= COMBAT_TUNING.eliteSavageMaxHitMultiplier;
   if (elite === 'armoured') {

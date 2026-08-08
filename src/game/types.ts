@@ -24,9 +24,30 @@ export type EquipmentSlot =
 export type CombatRegionId = 'greenvale' | 'stonehill' | 'ashmoor';
 export type CombatRegionAvailability = 'available' | 'coming-soon';
 export type CombatContentCategory = 'areas' | 'dungeons' | 'special' | 'conquest';
-export type AreaId = 'forest-path' | 'wolf-den' | 'abandoned-camp' | 'old-shrine';
+export type AreaId =
+  | 'forest-path'
+  | 'wolf-den'
+  | 'abandoned-camp'
+  | 'old-shrine'
+  | 'rocky-foothills'
+  | 'abandoned-mine'
+  | 'mountain-pass'
+  | 'ruined-watchtower';
 export type EnemyId =
-  'forest-rat' | 'goblin-scavenger' | 'cave-bat' | 'stoneback-crab' | 'grey-wolf' | 'road-bandit';
+  | 'forest-rat'
+  | 'goblin-scavenger'
+  | 'cave-bat'
+  | 'stoneback-crab'
+  | 'grey-wolf'
+  | 'road-bandit'
+  | 'hill-boar'
+  | 'stonehide-ram'
+  | 'tunnel-crawler'
+  | 'forsaken-miner'
+  | 'cliff-harpy'
+  | 'stonehill-marauder'
+  | 'ironbound-sentinel'
+  | 'watchtower-captain';
 export type MiningNodeId = 'stone-outcrop' | 'iron-vein' | 'coal-seam';
 export type LegacyMiningNodeId = 'copper-vein' | 'tin-vein' | 'mithril-deposit';
 export type RecipeId = string;
@@ -44,14 +65,35 @@ export type ScreenId =
 export type QuantityMode = 1 | 10 | 'all' | 'continuous';
 export type CombatStyle = 'accurate' | 'aggressive' | 'defensive';
 export type EnemyTraitId =
-  'scurry' | 'desperate-swing' | 'evasive' | 'armoured-shell' | 'bleeding-bites' | 'opportunist';
+  | 'scurry'
+  | 'desperate-swing'
+  | 'evasive'
+  | 'armoured-shell'
+  | 'bleeding-bites'
+  | 'opportunist'
+  | 'cornered-fury'
+  | 'stonehide'
+  | 'blood-scent'
+  | 'patchwork-plate'
+  | 'elusive-flight'
+  | 'battle-fury'
+  | 'reinforced-plating'
+  | 'last-stand';
 export type EliteModifierId = 'savage' | 'armoured' | 'swift' | 'wealthy' | 'treasure-touched';
 export type WeaponSpecialId = 'focused-slash' | 'sundering-strike' | 'executioners-cut';
 export type EnemySpecialId = string;
 export type CombatEffectTarget = 'player' | 'enemy';
 export type CombatEffectPolarity = 'buff' | 'debuff' | 'status';
 export type EnemyVisualArchetype = 'rat' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
-export type ZoneVisualTheme = 'forest-path' | 'wolf-den' | 'abandoned-camp' | 'old-shrine';
+export type ZoneVisualTheme =
+  | 'forest-path'
+  | 'wolf-den'
+  | 'abandoned-camp'
+  | 'old-shrine'
+  | 'rocky-foothills'
+  | 'abandoned-mine'
+  | 'mountain-pass'
+  | 'ruined-watchtower';
 
 export interface ItemPresentation {
   iconKey?: string;
@@ -68,7 +110,7 @@ export interface EnemyPresentation {
 }
 
 export interface ZonePresentation {
-  iconKey: 'target' | 'crystal' | 'tree';
+  iconKey: 'target' | 'crystal' | 'tree' | 'mountain';
   theme: ZoneVisualTheme;
   environmentKey: string;
 }
@@ -118,11 +160,19 @@ export interface CombatEffectDefinition {
   description: string;
   durationMs?: number | null;
   maxStacks?: number;
+  stacking?: 'refresh' | 'stack' | 'replace';
+  tags?: Array<'bleed'>;
+  periodicDamage?: {
+    intervalMs: number;
+    damagePerStack: number;
+    ignoresDefence?: boolean;
+  };
   modifiers?: Partial<{
     accuracyMultiplier: number;
     defenceMultiplier: number;
     damageMultiplier: number;
     attackIntervalMultiplier: number;
+    flatDamageReduction: number;
     periodicDamageIntervalMs: number;
   }>;
 }
@@ -135,6 +185,7 @@ export interface ActiveCombatEffect {
   sourceSpecialId?: EnemySpecialId;
   remainingMs: number | null;
   stacks: number;
+  nextTickMs?: number;
   magnitude?: number;
 }
 
@@ -144,8 +195,12 @@ export interface CombatEffectsState {
 }
 
 export type EnemySpecialEffect =
-  | { kind: 'attack-progress-pushback'; amountMs: number; applyOn: 'hit' | 'always' }
-  | { kind: 'attack-delay'; amountMs: number; applyOn: 'hit' | 'always' }
+  | {
+      kind: 'player-attack-progress-pushback';
+      fractionOfAttackInterval: number;
+      applyOn: 'hit' | 'always';
+    }
+  | { kind: 'player-attack-delay'; amountMs: number; applyOn: 'hit' | 'always' }
   | {
       kind: 'apply-combat-effect';
       effectId: string;
@@ -285,7 +340,7 @@ export interface EnemyDefinition {
   };
   specialAttack?: EnemySpecialDefinition;
   loot: LootEntry[];
-  gold: [number, number];
+  gold?: [number, number];
   theme: 'rodent' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
   presentation: EnemyPresentation;
   tags?: string[];
@@ -316,6 +371,8 @@ export interface CombatTraitState {
   firstAttackPending: boolean;
   enemyAttackCount: number;
   bleedStacks: number;
+  corneredFuryTriggered?: boolean;
+  lastStandTriggered?: boolean;
 }
 
 export interface ActiveCombatState {
@@ -385,7 +442,14 @@ export interface MilestoneLogEntry {
 export type CombatDefeatCause =
   | { kind: 'enemy-hit'; damage: number; heavy: boolean }
   | { kind: 'enemy-special'; specialId: EnemySpecialId; damage: number }
-  | { kind: 'bleed'; damage: number };
+  | { kind: 'bleed'; damage: number }
+  | {
+      kind: 'combat-effect';
+      effectId: string;
+      sourceEnemyId?: EnemyId;
+      sourceSpecialId?: EnemySpecialId;
+      damage: number;
+    };
 
 export interface CombatLogBase {
   id: string;
@@ -403,6 +467,13 @@ export type CombatLogEntry =
   | (CombatLogBase & { kind: 'enemy-special-miss'; specialId: EnemySpecialId })
   | (CombatLogBase & { kind: 'enemy-special-used'; specialId: EnemySpecialId })
   | (CombatLogBase & { kind: 'enemy-bleed'; damage: number })
+  | (CombatLogBase & {
+      kind: 'combat-effect-damage';
+      effectId: string;
+      sourceEnemyId?: EnemyId;
+      sourceSpecialId?: EnemySpecialId;
+      damage: number;
+    })
   | (CombatLogBase & {
       kind: 'enemy-defeated';
       gold: number;
@@ -558,6 +629,15 @@ export type CombatVisualEvent =
       enemyId: EnemyId;
       damage: number;
       at: number;
+    }
+  | {
+      id: string;
+      type: 'combat-effect-damage';
+      enemyId: EnemyId;
+      effectId: string;
+      damage: number;
+      at: number;
+      target: CombatEffectTarget;
     }
   | {
       id: string;

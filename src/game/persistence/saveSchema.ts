@@ -42,6 +42,7 @@ const activeCombatEffectSchema = z
     sourceSpecialId: z.string().optional(),
     remainingMs: z.number().finite().nullable(),
     stacks: z.number().int().positive(),
+    nextTickMs: z.number().finite().optional(),
     magnitude: z.number().finite().optional(),
   })
   .passthrough();
@@ -181,6 +182,14 @@ const enemyIdSchema = z.enum([
   'stoneback-crab',
   'grey-wolf',
   'road-bandit',
+  'hill-boar',
+  'stonehide-ram',
+  'tunnel-crawler',
+  'forsaken-miner',
+  'cliff-harpy',
+  'stonehill-marauder',
+  'ironbound-sentinel',
+  'watchtower-captain',
 ]);
 const eliteModifierSchema = z.enum([
   'savage',
@@ -206,6 +215,13 @@ const combatDefeatCauseSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('enemy-hit'), damage: z.number().finite().nonnegative(), heavy: z.boolean() }),
   z.object({ kind: z.literal('enemy-special'), specialId: z.string().min(1), damage: z.number().finite().nonnegative() }),
   z.object({ kind: z.literal('bleed'), damage: z.number().finite().nonnegative() }),
+  z.object({
+    kind: z.literal('combat-effect'),
+    effectId: z.string().min(1),
+    sourceEnemyId: enemyIdSchema.optional(),
+    sourceSpecialId: z.string().min(1).optional(),
+    damage: z.number().finite().nonnegative(),
+  }),
 ]);
 const combatLogEntrySchema = z.discriminatedUnion('kind', [
   z.object({ ...combatLogBaseShape, kind: z.literal('player-hit'), damage: z.number().finite().nonnegative(), special: z.boolean() }),
@@ -216,6 +232,14 @@ const combatLogEntrySchema = z.discriminatedUnion('kind', [
   z.object({ ...combatLogBaseShape, kind: z.literal('enemy-special-miss'), specialId: z.string().min(1) }),
   z.object({ ...combatLogBaseShape, kind: z.literal('enemy-special-used'), specialId: z.string().min(1) }),
   z.object({ ...combatLogBaseShape, kind: z.literal('enemy-bleed'), damage: z.number().finite().nonnegative() }),
+  z.object({
+    ...combatLogBaseShape,
+    kind: z.literal('combat-effect-damage'),
+    effectId: z.string().min(1),
+    sourceEnemyId: enemyIdSchema.optional(),
+    sourceSpecialId: z.string().min(1).optional(),
+    damage: z.number().finite().nonnegative(),
+  }),
   z.object({
     ...combatLogBaseShape,
     kind: z.literal('enemy-defeated'),

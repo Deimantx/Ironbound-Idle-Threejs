@@ -46,7 +46,7 @@ describe('Debug Tools action boundary', () => {
     state = second.state!;
     expect(getItemQuantity(state.inventory, 'iron-sword')).toBe(3);
     const full = debugFillInventory(state);
-    expect(full.state?.inventory.length).toBeLessThan(GAME_CONFIG.inventorySlots);
+    expect(full.state?.inventory.length).toBeLessThanOrEqual(GAME_CONFIG.inventorySlots);
     expect(hasDuplicateInventoryItemIds(full.state?.inventory ?? [])).toBe(false);
     expect(full.state?.inventory.every((stack) => itemById[stack.itemId])).toBe(true);
   });

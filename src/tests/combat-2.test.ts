@@ -22,6 +22,10 @@ describe('Combat 2.0 content hierarchy', () => {
       'Wolf Den',
       'Abandoned Camp',
       'Old Shrine',
+      'Rocky Foothills',
+      'Abandoned Mine',
+      'Mountain Pass',
+      'Ruined Watchtower',
     ]);
     expect(areaById['forest-path'].enemyIds).toEqual(['forest-rat', 'goblin-scavenger']);
     expect(areaById['wolf-den'].enemyIds).toEqual(['grey-wolf']);
@@ -34,6 +38,14 @@ describe('Combat 2.0 content hierarchy', () => {
       'road-bandit': 'abandoned-camp',
       'cave-bat': 'old-shrine',
       'stoneback-crab': 'old-shrine',
+      'hill-boar': 'rocky-foothills',
+      'stonehide-ram': 'rocky-foothills',
+      'tunnel-crawler': 'abandoned-mine',
+      'forsaken-miner': 'abandoned-mine',
+      'cliff-harpy': 'mountain-pass',
+      'stonehill-marauder': 'mountain-pass',
+      'ironbound-sentinel': 'ruined-watchtower',
+      'watchtower-captain': 'ruined-watchtower',
     });
   });
 
@@ -89,7 +101,7 @@ describe('Combat 2.0 area migration', () => {
     expect(migrated.activeAction.combatState).toEqual(combatStateBefore);
     expect(migrated.activeAction.specialQueued).toBe(true);
     expect(migrated.activeAction.pendingStyle).toBe('defensive');
-    expect(migrated.schemaVersion).toBe(13);
+    expect(migrated.schemaVersion).toBe(14);
   });
 
   it('normalizes legacy unlocked area identifiers while retaining a safe default', () => {

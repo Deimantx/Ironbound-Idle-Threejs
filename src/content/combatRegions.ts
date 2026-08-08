@@ -29,8 +29,8 @@ export const COMBAT_REGIONS: CombatRegionDefinition[] = [
     id: 'stonehill',
     name: 'Stonehill',
     description: 'Rocky uplands of old mines, broken roads, and fortified ruins.',
-    areaIds: [],
-    availability: 'coming-soon',
+    areaIds: ['rocky-foothills', 'abandoned-mine', 'mountain-pass', 'ruined-watchtower'],
+    availability: 'available',
     presentation: { accent: '#8a877c', iconKey: 'mountain' },
   },
   {

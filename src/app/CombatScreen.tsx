@@ -58,6 +58,7 @@ import { useGameStore } from '../game/state/gameStore';
 import { getItemQuantity, occupiedSlots } from '../game/systems/inventorySystem';
 import type {
   AreaId,
+  CombatRegionId,
   CombatSessionStats,
   CombatStyle,
   CombatVisualEvent,
@@ -105,6 +106,7 @@ const zoneIcon = {
   target: Target,
   crystal: Gem,
   tree: TreePine,
+  mountain: Mountain,
 };
 
 const regionIcon = {
@@ -614,6 +616,7 @@ function EnemyRoster({
 
 function CombatBrowser({
   game,
+  selectedRegionId,
   selectedArea,
   selectedEnemy,
   activeEnemy,
@@ -622,10 +625,12 @@ function CombatBrowser({
   style,
   styleIsQueued,
   onSelectArea,
+  onSelectRegion,
   onSelectEnemy,
   onToggleLocations,
 }: {
   game: GameState;
+  selectedRegionId: CombatRegionId;
   selectedArea: AreaId;
   selectedEnemy: EnemyId;
   activeEnemy: EnemyId | null;
@@ -634,10 +639,16 @@ function CombatBrowser({
   style: CombatStyle;
   styleIsQueued: boolean;
   onSelectArea: (areaId: AreaId) => void;
+  onSelectRegion: (regionId: CombatRegionId) => void;
   onSelectEnemy: (enemyId: EnemyId, areaId: AreaId) => void;
   onToggleLocations: () => void;
 }) {
-  const region = combatRegionById.greenvale;
+  const region = combatRegionById[selectedRegionId] ?? combatRegionById.greenvale;
+  const sortedAreaIds = [...region.areaIds].sort(
+    (left, right) =>
+      (areaById[left]?.requiredCombatLevel ?? Number.MAX_SAFE_INTEGER) -
+      (areaById[right]?.requiredCombatLevel ?? Number.MAX_SAFE_INTEGER),
+  );
   const area = areaById[selectedArea] ?? areaById['forest-path'];
   const selectedTarget = enemyById[selectedEnemy] ?? enemyById['forest-rat'];
   const currentArea = activeArea ? areaById[activeArea] : null;
@@ -700,10 +711,11 @@ function CombatBrowser({
             return (
               <button
                 type="button"
-                className={`combat-region-card ${available ? 'available selected' : 'coming-soon'}`}
+                className={`combat-region-card ${available ? 'available' : 'coming-soon'} ${candidate.id === selectedRegionId ? 'selected' : ''}`}
                 disabled={!available}
                 aria-label={`${candidate.name}${available ? '' : ', coming later'}`}
                 key={candidate.id}
+                onClick={() => available && onSelectRegion(candidate.id)}
               >
                 <RegionIcon size={17} />
                 <span>
@@ -720,7 +732,7 @@ function CombatBrowser({
           <span>{region.description}</span>
         </div>
         <div className="combat-area-grid" aria-label={`${region.name} combat areas`}>
-          {region.areaIds.map((areaId) => {
+          {sortedAreaIds.map((areaId) => {
             const candidate = areaById[areaId];
             const unlocked = isCombatAreaUnlocked(game, candidate);
             const selected = selectedArea === candidate.id;
@@ -932,13 +944,18 @@ function TargetAnalysis({
             </div>
           ))}
         </div>
-        <div className="combat-analysis-trait">
-          <strong>Important enemy trait: {trait.name}</strong>
-          <span>{trait.description}</span>
+        <div className="combat-analysis-trait combat-analysis-trait-emphasized">
+          <strong className="combat-analysis-trait-heading">
+            <Zap size={16} aria-hidden="true" />
+            Important enemy trait
+          </strong>
+          <span className="combat-analysis-trait-copy">
+            <b>{trait.name}</b> {trait.description}
+          </span>
         </div>
         {enemy.specialAttack && (
           <div className="combat-analysis-trait combat-analysis-special">
-            <EnemySpecialDetails special={enemy.specialAttack} />
+            <EnemySpecialDetails special={enemy.specialAttack} emphasizeLabel />
           </div>
         )}
       </div>
@@ -1350,7 +1367,7 @@ function LootPanel({
             </div>
           );
         })}
-        <div className="combat-loot-row gold">
+        {enemy.gold && <div className="combat-loot-row gold">
           <span className="combat-loot-item">
             <ItemIcon gold size="sm" />
             <span>
@@ -1358,12 +1375,10 @@ function LootPanel({
               <small>Guaranteed</small>
             </span>
           </span>
-          <span>
-            {enemy.gold[0]}–{enemy.gold[1]}
-          </span>
+          <span>{enemy.gold[0]}–{enemy.gold[1]}</span>
           <span>Guaranteed</span>
           <span>{formatNumber(game.gold)}</span>
-        </div>
+        </div>}
       </div>
       <div className="combat-rewards-list">
         <span className="combat-panel-kicker">Recent rewards</span>
@@ -1372,7 +1387,7 @@ function LootPanel({
             <div className="combat-reward-row" key={event.id}>
               <Trophy size={13} />
               <span>
-                +{event.gold} Gold
+                {event.gold > 0 ? `+${event.gold} Gold` : ''}
                 {event.items.length
                   ? ` · ${event.items.length} item drop${event.items.length === 1 ? '' : 's'}`
                   : ''}
@@ -1612,6 +1627,9 @@ export function CombatScreen({
   const [overviewTab, setOverviewTab] = useState<OverviewTab>('overview');
   const [selectedArea, setSelectedArea] = useState<AreaId>(activeAreaId ?? 'forest-path');
   const [selectedEnemy, setSelectedEnemy] = useState<EnemyId>(activeEnemyId ?? 'forest-rat');
+  const [selectedRegionId, setSelectedRegionId] = useState<CombatRegionId>(
+    areaById[activeAreaId ?? 'forest-path']?.regionId ?? 'greenvale',
+  );
   const [style, setStyle] = useState<CombatStyle>(activeStyle ?? 'accurate');
   const [autoRepeat, setAutoRepeat] = useState(activeAutoRepeat ?? true);
   const [autoSpecial, setAutoSpecial] = useState(activeAutoSpecial ?? true);
@@ -1666,6 +1684,7 @@ export function CombatScreen({
       return;
     setSelectedArea(activeAreaId);
     setSelectedEnemy(activeEnemyId);
+    setSelectedRegionId(areaById[activeAreaId]?.regionId ?? 'greenvale');
     setStyle(activeStyle);
     setAutoRepeat(activeAutoRepeat);
     setAutoSpecial(activeAutoSpecial ?? true);
@@ -1677,11 +1696,28 @@ export function CombatScreen({
     // Area and enemy changes are browsing-only while combat is active. The
     // action button applies the selected target to the live encounter.
     setSelectedArea(areaId);
+    setSelectedRegionId(area.regionId);
     setSelectedEnemy(area.enemyIds[0]);
+  };
+
+  const selectRegion = (regionId: CombatRegionId) => {
+    const region = combatRegionById[regionId];
+    const firstAreaId = [...region.areaIds].sort(
+      (left, right) =>
+        (areaById[left]?.requiredCombatLevel ?? Number.MAX_SAFE_INTEGER) -
+        (areaById[right]?.requiredCombatLevel ?? Number.MAX_SAFE_INTEGER),
+    )[0];
+    const area = firstAreaId ? areaById[firstAreaId] : undefined;
+    setSelectedRegionId(regionId);
+    if (area) {
+      setSelectedArea(area.id);
+      setSelectedEnemy(area.enemyIds[0]);
+    }
   };
 
   const selectEnemy = (enemyId: EnemyId, areaId: AreaId) => {
     setSelectedArea(areaId);
+    setSelectedRegionId(areaById[areaId]?.regionId ?? 'greenvale');
     setSelectedEnemy(enemyId);
   };
 
@@ -1760,7 +1796,7 @@ export function CombatScreen({
         <div className="combat-context-section">
           <span className="context-kicker">{active ? 'Current fight' : 'Selected target'}</span>
           <b>
-            {combatRegionById.greenvale.name} · {currentArea.name} · {currentEnemy.name}
+            {combatRegionById[currentArea.regionId].name} · {currentArea.name} · {currentEnemy.name}
           </b>
         </div>
         {targetChanged && (
@@ -1769,7 +1805,7 @@ export function CombatScreen({
             <div className="combat-context-section selected-next-target">
               <span className="context-kicker">Selected next target</span>
               <b>
-                {combatRegionById.greenvale.name} · {selectedTargetArea.name} ·{' '}
+                {combatRegionById[selectedTargetArea.regionId].name} · {selectedTargetArea.name} ·{' '}
                 {selectedTarget.name}
               </b>
             </div>
@@ -1795,6 +1831,7 @@ export function CombatScreen({
           {contentTab === 'areas' ? (
             <CombatBrowser
               game={game}
+              selectedRegionId={selectedRegionId}
               selectedArea={selectedArea}
               selectedEnemy={selectedEnemy}
               activeEnemy={active?.enemyId ?? null}
@@ -1803,6 +1840,7 @@ export function CombatScreen({
               style={nextEncounterStyle}
               styleIsQueued={Boolean(active?.pendingStyle)}
               onSelectArea={selectArea}
+              onSelectRegion={selectRegion}
               onSelectEnemy={selectEnemy}
               onToggleLocations={() => setLocationsExpanded((expanded) => !expanded)}
             />

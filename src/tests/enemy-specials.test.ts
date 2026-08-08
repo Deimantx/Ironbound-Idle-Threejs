@@ -95,7 +95,7 @@ describe('Enemy Specials 1.0', () => {
     delete combatState.enemySpecialCharge;
     delete combatState.effects;
     const migrated = parseGameState(JSON.stringify(legacy));
-    expect(migrated.schemaVersion).toBe(13);
+    expect(migrated.schemaVersion).toBe(14);
     expect(migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.enemySpecialCharge).toBe(0);
     expect(migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.effects).toEqual({ player: [], enemy: [] });
   });

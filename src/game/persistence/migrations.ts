@@ -1,6 +1,7 @@
 import { GAME_CONFIG } from '../../config/gameConfig';
 import { COMBAT_TUNING } from '../../config/combatTuning';
 import { enemyById } from '../../content/enemies';
+import { combatEffectById } from '../../content/combatEffects';
 import { itemById } from '../../content/items';
 import { recipeById } from '../../content/recipes';
 import { createCombatRng } from '../formulas/combatFormulas';
@@ -69,13 +70,25 @@ const COMBAT_AREA_BY_ENEMY: Record<EnemyId, AreaId> = {
   'stoneback-crab': 'old-shrine',
   'grey-wolf': 'wolf-den',
   'road-bandit': 'abandoned-camp',
+  'hill-boar': 'rocky-foothills',
+  'stonehide-ram': 'rocky-foothills',
+  'tunnel-crawler': 'abandoned-mine',
+  'forsaken-miner': 'abandoned-mine',
+  'cliff-harpy': 'mountain-pass',
+  'stonehill-marauder': 'mountain-pass',
+  'ironbound-sentinel': 'ruined-watchtower',
+  'watchtower-captain': 'ruined-watchtower',
 };
 
 const isCurrentAreaId = (value: unknown): value is AreaId =>
   value === 'forest-path' ||
   value === 'wolf-den' ||
   value === 'abandoned-camp' ||
-  value === 'old-shrine';
+  value === 'old-shrine' ||
+  value === 'rocky-foothills' ||
+  value === 'abandoned-mine' ||
+  value === 'mountain-pass' ||
+  value === 'ruined-watchtower';
 
 const migrateCombatAreaId = (areaId: unknown, enemyId: unknown): AreaId => {
   if (typeof enemyId === 'string' && enemyId in COMBAT_AREA_BY_ENEMY)
@@ -590,6 +603,36 @@ const migrateEnemySpecialFoundation = (input: GameState): GameState => {
   };
 };
 
+const migratePeriodicCombatEffects = (input: GameState): GameState => {
+  if (input.activeAction.type !== 'combat') return { ...input, schemaVersion: 14 };
+  const combatState = input.activeAction.combatState;
+  const normalizeLane = (effects: typeof combatState.effects.player) =>
+    effects.map((effect) => {
+      const interval = combatEffectById[effect.effectId]?.periodicDamage?.intervalMs;
+      const nextTickMs = Number(effect.nextTickMs);
+      return interval !== undefined
+        ? {
+            ...effect,
+            nextTickMs: Number.isFinite(nextTickMs) ? Math.max(0, nextTickMs) : interval,
+          }
+        : effect;
+    });
+  return {
+    ...input,
+    activeAction: {
+      ...input.activeAction,
+      combatState: {
+        ...combatState,
+        effects: {
+          player: normalizeLane(combatState.effects.player),
+          enemy: normalizeLane(combatState.effects.enemy),
+        },
+      },
+    },
+    schemaVersion: 14,
+  };
+};
+
 export const migrations: Record<number, SaveMigration> = {
   1: (input) => ({
     ...input,
@@ -657,6 +700,7 @@ export const migrations: Record<number, SaveMigration> = {
   11: migrateMomentumToAdrenaline,
   12: migrateHelpIcons,
   13: migrateEnemySpecialFoundation,
+  14: migratePeriodicCombatEffects,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {
@@ -675,6 +719,7 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
   current = migrateCombatAreas(current);
   current = migrateActivityLogs(current);
   current = migrateEnemySpecialFoundation(current);
+  current = migratePeriodicCombatEffects(current);
   current.settings.showHelpIcons = current.settings.showHelpIcons ?? true;
   const maxHealth = getDerivedStats(current).maxHealth;
   current.player.currentHp = clampHealth(current.player.currentHp, maxHealth);

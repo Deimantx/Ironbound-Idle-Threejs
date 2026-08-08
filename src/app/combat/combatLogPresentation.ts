@@ -14,6 +14,7 @@ import {
 import { enemyById } from '../../content/enemies';
 import { eliteById } from '../../content/elites';
 import { itemById } from '../../content/items';
+import { combatEffectById } from '../../content/combatEffects';
 import type { CombatLogEntry } from '../../game/types';
 
 export interface CombatLogPresentation {
@@ -106,6 +107,16 @@ export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresen
         category: 'enemy-hit',
         important: true,
       };
+    case 'combat-effect-damage': {
+      const effectName = combatEffectById[entry.effectId]?.name ?? entry.effectId;
+      return {
+        text: `${effectName} dealt ${formatCombatDamage(entry.damage)} damage.`,
+        label: 'Combat effect',
+        icon: Droplets,
+        category: 'combat-effect',
+        important: true,
+      };
+    }
     case 'enemy-defeated':
       return {
         text: `${entry.eliteModifier ? `${eliteById[entry.eliteModifier]?.name ?? entry.eliteModifier} ` : ''}${enemyName} defeated.`,
@@ -153,6 +164,8 @@ export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresen
         text:
           entry.cause.kind === 'bleed'
             ? `You were killed by ${enemyName} from bleeding bites for ${formatCombatDamage(entry.cause.damage)} damage.`
+            : entry.cause.kind === 'combat-effect'
+              ? `You were killed by ${combatEffectById[entry.cause.effectId]?.name ?? entry.cause.effectId} for ${formatCombatDamage(entry.cause.damage)} damage.`
             : entry.cause.kind === 'enemy-special'
               ? `You were killed by ${enemyName}'s ${specialName} for ${formatCombatDamage(entry.cause.damage)} damage.`
               : `You were killed by ${enemyName} with a hit for ${formatCombatDamage(entry.cause.damage)}${entry.cause.heavy ? ' from a heavy strike' : ''}.`,

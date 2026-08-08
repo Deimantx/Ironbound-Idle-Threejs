@@ -64,7 +64,7 @@ describe('Combat 2.3.1 presentation and metrics', () => {
     delete combatState.adrenaline;
     combatState.momentum = 68;
     const parsed = parseGameState(JSON.stringify(state));
-    expect(parsed.schemaVersion).toBe(13);
+    expect(parsed.schemaVersion).toBe(14);
     expect(parsed.activeAction.type === 'combat' && parsed.activeAction.combatState.adrenaline).toBe(68);
     expect(
       parsed.activeAction.type === 'combat' && 'momentum' in parsed.activeAction.combatState,
