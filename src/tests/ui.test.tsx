@@ -128,7 +128,7 @@ describe('navigation integration', () => {
     useGameStore.getState().setGame(game);
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'Recent Level Ups' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Recent Progress' })).toBeInTheDocument();
     expect(screen.getByText('Mining reached Level 42')).toBeInTheDocument();
     expect(screen.queryByText('You hit Forest Rat for 4.')).not.toBeInTheDocument();
 
@@ -141,7 +141,7 @@ describe('navigation integration', () => {
   it('keeps an action active while navigating to Inventory', async () => {
     const user = userEvent.setup();
     render(<App />);
-    await user.click(screen.getByRole('button', { name: /Mining/ }));
+    await user.click(within(screen.getByRole('navigation')).getByRole('button', { name: /Mining/ }));
     await user.click(screen.getByRole('button', { name: 'Mine Stone Outcrop' }));
     await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
     expect(screen.getByRole('heading', { name: 'Inventory' })).toBeInTheDocument();

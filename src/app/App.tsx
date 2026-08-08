@@ -1198,7 +1198,7 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
     />
   );
   const content = (
-    <main className="content" data-ui-region="content">
+    <main className={`content ${screen === 'home' ? 'content-home' : ''}`} data-ui-region="content">
       {render()}
     </main>
   );

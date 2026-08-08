@@ -1,11 +1,11 @@
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, Hammer, Pickaxe, Swords } from 'lucide-react';
 import { getDerivedStats } from '../../game/formulas/statFormulas';
 import type { GameState, ScreenId } from '../../game/types';
 import { ThreeScene } from '../../three/ThreeScene';
 import { ItemIcon } from '../ItemIcon';
 import { ItemTooltip } from '../items/ItemTooltip';
 import { ExplainedTerm } from '../tooltips/GameConceptTooltip';
-import { getHomeLoadout } from './homeSelectors';
+import { getHomeLoadout, type HomeActivitySummary } from './homeSelectors';
 
 interface CharacterOverviewProps {
   game: GameState;
@@ -13,6 +13,7 @@ interface CharacterOverviewProps {
   totalLevel: number;
   totalCombatLevels: number;
   totalProfessionLevels: number;
+  activity: HomeActivitySummary;
 }
 
 const metrics = [
@@ -22,9 +23,9 @@ const metrics = [
     concept: 'total-level' as const,
   },
   {
-    key: 'combatLevel',
-    label: 'COMBAT LEVEL',
-    concept: 'combat-level' as const,
+    key: 'totalProfessionLevels',
+    label: 'TOTAL PROFESSION LEVELS',
+    concept: 'total-profession-levels' as const,
   },
   {
     key: 'totalCombatLevels',
@@ -32,9 +33,9 @@ const metrics = [
     concept: 'total-combat-levels' as const,
   },
   {
-    key: 'totalProfessionLevels',
-    label: 'TOTAL PROFESSION LEVELS',
-    concept: 'total-profession-levels' as const,
+    key: 'combatLevel',
+    label: 'COMBAT LEVEL',
+    concept: 'combat-level' as const,
   },
 ] as const;
 
@@ -44,6 +45,7 @@ export function CharacterOverview({
   totalLevel,
   totalCombatLevels,
   totalProfessionLevels,
+  activity,
 }: CharacterOverviewProps) {
   const stats = getDerivedStats(game);
   const values = {
@@ -56,6 +58,7 @@ export function CharacterOverview({
 
   return (
     <section className="panel home-overview" aria-labelledby="character-overview-title">
+      <CurrentActivityStatus activity={activity} onNavigate={onNavigate} />
       <div className="home-panel-heading">
         <div>
           <div className="eyebrow">Character overview</div>
@@ -84,17 +87,14 @@ export function CharacterOverview({
           <div className="home-section-heading">
             <div>
               <div className="eyebrow">Current loadout</div>
-              <h3 id="home-loadout-title">Ready for the next interval</h3>
+              <h3 id="home-loadout-title">Equipped for the frontier</h3>
             </div>
-            <button className="button ghost home-section-link" onClick={() => onNavigate('equipment')}>
-              Equipment <ArrowUpRight size={13} aria-hidden="true" />
-            </button>
           </div>
           <div className="home-loadout-grid">
             {loadout.map(({ slot, label, item }) => {
               const content = (
                 <div className="home-loadout-entry" role="group" aria-label={`${label}: ${item?.name ?? 'Empty'}`}>
-                  <ItemIcon itemId={item?.id} size="sm" />
+                  <ItemIcon itemId={item?.id} size="md" />
                   <span>
                     <small>{label}</small>
                     <strong>{item?.name ?? 'Empty'}</strong>
@@ -116,5 +116,39 @@ export function CharacterOverview({
         </div>
       </div>
     </section>
+  );
+}
+
+function CurrentActivityStatus({
+  activity,
+  onNavigate,
+}: {
+  activity: HomeActivitySummary;
+  onNavigate: (screen: ScreenId) => void;
+}) {
+  const Icon = activity.type === 'combat' ? Swords : activity.type === 'mining' ? Pickaxe : Hammer;
+  const destinationLabel = activity.type === 'combat' ? 'Combat' : activity.type === 'mining' ? 'Mining' : 'Smithing';
+
+  return (
+    <div className={`home-activity-status home-activity-status-${activity.type}`} role="status" aria-labelledby="current-activity-title">
+      <div className="home-activity-status-icon" aria-hidden="true">
+        {activity.type === 'idle' ? <span>·</span> : <Icon size={17} />}
+      </div>
+      <div className="home-activity-status-copy">
+        <div className="eyebrow" id="current-activity-title">Current activity</div>
+        <strong>{activity.title}</strong>
+        {activity.subtitle && <span>{activity.subtitle}</span>}
+        {activity.meta && <small>{activity.meta}</small>}
+      </div>
+      <div className="home-activity-status-end">
+        {activity.destination ? (
+          <button className="button ghost home-activity-action" onClick={() => onNavigate(activity.destination!)}>
+            Return to {destinationLabel} <ArrowUpRight size={14} aria-hidden="true" />
+          </button>
+        ) : (
+          <span className="home-activity-idle-label">No action running</span>
+        )}
+      </div>
+    </div>
   );
 }

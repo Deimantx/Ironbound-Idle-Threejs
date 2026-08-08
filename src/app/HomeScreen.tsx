@@ -1,5 +1,4 @@
-import { ArrowUpRight, Check, Hammer, Pickaxe, Swords } from 'lucide-react';
-import { getDerivedStats } from '../game/formulas/statFormulas';
+import { ArrowUpRight, Check } from 'lucide-react';
 import { getTotalCombatLevels, getTotalLevel, getTotalProfessionLevels } from '../game/progression/progressionSelectors';
 import { useGameStore } from '../game/state/gameStore';
 import type { GameState, ScreenId } from '../game/types';
@@ -22,7 +21,6 @@ export function HomeScreen({
   onNavigate: (screen: ScreenId) => void;
 }) {
   const combatSession = useGameStore((store) => store.combatSession);
-  const stats = getDerivedStats(game);
   const activity = getHomeActivitySummary(game, { combatSession });
   const objectives = getHomeStarterPathObjectives(game);
   const worldRecord = getHomeWorldRecord(game);
@@ -44,14 +42,13 @@ export function HomeScreen({
         </button>
       </div>
 
-      <CurrentActivityCard game={game} activity={activity} onNavigate={onNavigate} />
-
       <CharacterOverview
         game={game}
         onNavigate={onNavigate}
         totalLevel={totalLevel}
         totalCombatLevels={totalCombatLevels}
         totalProfessionLevels={totalProfessionLevels}
+        activity={activity}
       />
 
       <div className="home-progression-grid">
@@ -64,58 +61,8 @@ export function HomeScreen({
         <StarterPath objectives={objectives} onNavigate={onNavigate} />
       </div>
 
-      <div className="home-recent-grid">
-        <RecentProgressPanel
-          title="Recent Combat Progress"
-          description="The latest levels earned in combat skills."
-          entries={recent.combat}
-          empty="No recent combat level-ups yet."
-        />
-        <RecentProgressPanel
-          title="Recent Profession Progress"
-          description="The latest levels earned while gathering and crafting."
-          entries={recent.profession}
-          empty="No recent profession level-ups yet."
-          compatibilityHeading="Recent Level Ups"
-        />
-      </div>
-
-      <div className="home-quiet-summary" aria-label="Character summary">
-        Total Level {totalLevel} · Combat Level {stats.combatLevel} · {formatNumber(game.statistics.totalKills)} enemies defeated
-      </div>
+      <RecentProgress combat={recent.combat} profession={recent.profession} />
     </div>
-  );
-}
-
-function CurrentActivityCard({
-  game,
-  activity,
-  onNavigate,
-}: {
-  game: GameState;
-  activity: ReturnType<typeof getHomeActivitySummary>;
-  onNavigate: (screen: ScreenId) => void;
-}) {
-  const Icon = activity.type === 'combat' ? Swords : activity.type === 'mining' ? Pickaxe : Hammer;
-  return (
-    <section className={`panel home-activity home-activity-${activity.type}`} aria-labelledby="current-activity-title">
-      <div className="home-activity-icon" aria-hidden="true">
-        {activity.type === 'idle' ? <span>·</span> : <Icon size={18} />}
-      </div>
-      <div className="home-activity-copy">
-        <div className="eyebrow" id="current-activity-title">Current activity</div>
-        <h2>{activity.title}</h2>
-        {activity.subtitle && <p className="subtle">{activity.subtitle}</p>}
-        {activity.meta && <small>{activity.meta}</small>}
-      </div>
-      {activity.destination && (
-        <button className="button ghost home-activity-action" onClick={() => onNavigate(activity.destination!)}>
-          Return to {activity.type === 'combat' ? 'Combat' : activity.type === 'mining' ? 'Mining' : 'Smithing'}
-          <ArrowUpRight size={14} aria-hidden="true" />
-        </button>
-      )}
-      {activity.type === 'idle' && game.activeAction.type === 'none' && <span className="badge">No action running</span>}
-    </section>
   );
 }
 
@@ -138,12 +85,28 @@ function WorldRecord({
         </button>
       </div>
       <div className="home-record-grid-inner">
-        <div><span>Enemies defeated</span><strong>{formatNumber(record.totalKills)}</strong></div>
-        <div><span>Items discovered</span><strong>{record.itemProgress.discovered}/{record.itemProgress.total}</strong></div>
-        <div><span>Monsters discovered</span><strong>{record.monsterProgress.discovered}/{record.monsterProgress.total}</strong></div>
-        <div><span>Overall collection</span><strong>{record.overallProgress.percent}%</strong></div>
+        <div className="home-record-primary">
+          <span>Enemies defeated</span>
+          <strong>{formatNumber(record.totalKills)}</strong>
+        </div>
+        <div className="home-record-collection">
+          <div className="eyebrow">Collection</div>
+          <div className="home-record-row"><span>Items</span><strong>{record.itemProgress.discovered}/{record.itemProgress.total}</strong></div>
+          <div className="home-record-row"><span>Monsters</span><strong>{record.monsterProgress.discovered}/{record.monsterProgress.total}</strong></div>
+          <div className="home-record-row"><span>Overall</span><strong>{record.overallProgress.percent}%</strong></div>
+          <div
+            className="home-record-progress"
+            role="progressbar"
+            aria-label="Overall collection progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={record.overallProgress.percent}
+            aria-valuetext={`${record.overallProgress.percent}% overall collection`}
+          >
+            <i style={{ width: `${record.overallProgress.percent}%` }} />
+          </div>
+        </div>
       </div>
-      <p className="subtle">The same eligible world and collection totals shown in the Collection Log.</p>
     </section>
   );
 }
@@ -191,29 +154,42 @@ function StarterPath({
   );
 }
 
-function RecentProgressPanel({
-  title,
-  description,
-  entries,
-  empty,
-  compatibilityHeading,
+function RecentProgress({
+  combat,
+  profession,
 }: {
-  title: string;
-  description: string;
-  entries: GameState['activityLogs']['milestones'];
-  empty: string;
-  compatibilityHeading?: string;
+  combat: GameState['activityLogs']['milestones'];
+  profession: GameState['activityLogs']['milestones'];
 }) {
   return (
-    <section className="panel panel-pad home-recent-panel" aria-label={title}>
+    <section className="panel panel-pad home-recent-progress" aria-labelledby="recent-progress-title">
       <div className="home-panel-heading">
         <div>
-          <div className="eyebrow">Recent progress</div>
-          <h2>{title}</h2>
-          <p className="subtle">{description}</p>
+          <div className="eyebrow">Progression log</div>
+          <h2 id="recent-progress-title">Recent Progress</h2>
+          <p className="subtle">Latest level gains across your skills.</p>
         </div>
       </div>
-      {compatibilityHeading && <h2 className="visually-hidden">{compatibilityHeading}</h2>}
+      <div className="home-recent-columns">
+        <RecentProgressGroup title="Combat" entries={combat} empty="No recent combat level-ups yet." />
+        <RecentProgressGroup title="Professions" entries={profession} empty="No recent profession level-ups yet." />
+      </div>
+    </section>
+  );
+}
+
+function RecentProgressGroup({
+  title,
+  entries,
+  empty,
+}: {
+  title: string;
+  entries: GameState['activityLogs']['milestones'];
+  empty: string;
+}) {
+  return (
+    <div className="home-recent-group">
+      <h3>{title}</h3>
       <div className="home-milestone-list">
         {entries.map((entry) => (
           <div className="home-milestone-row" key={entry.id}>
@@ -224,8 +200,8 @@ function RecentProgressPanel({
             </time>
           </div>
         ))}
-        {entries.length === 0 && <span className="muted">{empty}</span>}
+        {entries.length === 0 && <span className="muted home-milestone-empty">{empty}</span>}
       </div>
-    </section>
+    </div>
   );
 }
