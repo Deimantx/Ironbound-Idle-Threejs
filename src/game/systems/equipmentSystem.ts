@@ -2,6 +2,7 @@ import { itemById } from '../../content/items';
 import { recipeById } from '../../content/recipes';
 import { GAME_CONFIG } from '../../config/gameConfig';
 import { getDerivedStats } from '../formulas/statFormulas';
+import { clampHealth } from './healthSystem';
 import { getMiningToolDefinition } from '../../content/miningTools';
 import { getSmithingHammerDefinition } from '../../content/smithingTools';
 import { addItem, removeItem } from './inventorySystem';
@@ -56,7 +57,10 @@ export const equipItem = (state: GameState, itemId: string): EquipmentResult => 
   return {
     state: {
       ...nextState,
-      player: { ...nextState.player, currentHp: Math.min(nextState.player.currentHp, maxHealth) },
+      player: {
+        ...nextState.player,
+        currentHp: clampHealth(nextState.player.currentHp, maxHealth),
+      },
     },
     ok: true,
     message: `${item.name} equipped.`,
@@ -82,7 +86,10 @@ export const unequipItem = (
   return {
     state: {
       ...nextState,
-      player: { ...nextState.player, currentHp: Math.min(nextState.player.currentHp, maxHealth) },
+      player: {
+        ...nextState.player,
+        currentHp: clampHealth(nextState.player.currentHp, maxHealth),
+      },
     },
     ok: true,
     message: 'Equipment returned to inventory.',

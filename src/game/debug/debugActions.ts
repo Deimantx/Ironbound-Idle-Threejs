@@ -7,6 +7,7 @@ import { MINING_NODES, miningNodeById } from '../../content/miningNodes';
 import { RECIPES, recipeById } from '../../content/recipes';
 import { MAX_LEVEL, getLevelFromXp, getXpForLevel } from '../formulas/experienceFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
+import { clampHealth } from '../systems/healthSystem';
 import {
   createMiningRuntimeState,
   getMiningRuntimeState,
@@ -84,12 +85,12 @@ const failure = (message: string, details?: string[]): DebugActionResult => ({
   details,
 });
 
-const normalizeAfterMutation = (state: GameState, clampHealth = true): GameState => {
+const normalizeAfterMutation = (state: GameState, shouldClampHealth = true): GameState => {
   const next = { ...state, updatedAt: Date.now(), schemaVersion: GAME_CONFIG.currentSaveVersion };
-  if (clampHealth) {
+  if (shouldClampHealth) {
     next.player = {
       ...next.player,
-      currentHp: Math.min(next.player.currentHp, getDerivedStats(next).maxHealth),
+      currentHp: clampHealth(next.player.currentHp, getDerivedStats(next).maxHealth),
     };
   }
   return next;
@@ -490,7 +491,7 @@ export const debugSetHpAboveMaximum = (state: GameState): DebugMutation =>
 
 export const debugClampHp = (state: GameState): DebugMutation =>
   mutate(state, 'Recalculated and clamped HP to the derived maximum.', (next) => {
-    next.player.currentHp = Math.min(next.player.currentHp, getDerivedStats(next).maxHealth);
+    next.player.currentHp = clampHealth(next.player.currentHp, getDerivedStats(next).maxHealth);
   });
 
 export const debugDamagePlayer = (state: GameState, amount: number): DebugMutation => {
@@ -529,7 +530,7 @@ export const debugKillPlayer = (state: GameState): DebugMutation =>
       return { result: failure('The normal Combat death pipeline did not resolve.') };
     return {
       result: success('Resolved player death through the normal Combat death pipeline.', [
-        'Combat stopped and normal post-death HP was restored.',
+        'Combat stopped and partial post-death HP recovery was applied.',
       ]),
       state: combined.state,
       summary: combined.summary,

@@ -40,6 +40,16 @@ describe('save validation and migration', () => {
     const parsed = parseGameState(JSON.stringify(state));
     expect(parsed.skills.smithing).toEqual({ level: getLevelFromXp(220), xp: 220 });
   });
+  it('clamps saved HP to the current maximum without restoring it to full', () => {
+    const state = createNewGame(0, 'Wounded Archivist');
+    state.skills.hitpoints = { level: 4, xp: 0 };
+    state.player.currentHp = 999;
+    const parsed = parseGameState(JSON.stringify(state));
+    expect(parsed.player.currentHp).toBe(getDerivedStats(parsed).maxHealth);
+
+    parsed.player.currentHp = -5;
+    expect(migrateSave(parsed, parsed.schemaVersion).player.currentHp).toBe(0);
+  });
   it('applies the sequential migration entry point to an older fixture', () => {
     const state = createNewGame(0, 'Older');
     const migrated = migrateSave(

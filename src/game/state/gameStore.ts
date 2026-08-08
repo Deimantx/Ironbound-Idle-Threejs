@@ -17,6 +17,7 @@ import { destroyItem, toggleItemLock } from '../systems/inventorySystem';
 import { equipItem, unequipItem } from '../systems/equipmentSystem';
 import { emptyCombatSession } from '../types';
 import { normalizeSkillState } from '../formulas/experienceFormulas';
+import { getClampedPlayerHealth } from '../systems/healthSystem';
 import {
   loadForgeFuel as loadForgeFuelState,
   selectForgeFuel as selectForgeFuelState,
@@ -146,6 +147,7 @@ const appendCombatEvents = (
 
 const normalizeGameSkills = (game: GameState): GameState => ({
   ...game,
+  player: { ...game.player, currentHp: getClampedPlayerHealth(game) },
   skills: Object.fromEntries(
     SKILL_IDS.map((skillId) => [skillId, normalizeSkillState(game.skills[skillId])]),
   ) as GameState['skills'],

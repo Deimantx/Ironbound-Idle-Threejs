@@ -37,4 +37,8 @@ export const COMBAT_TUNING = {
   wealthyGoldMultiplier: 2.5,
   treasureTouchedLootMultiplier: 1.75,
   minimumAttackIntervalMs: 500,
+  /** Base health recovery while idle, mining, or smithing. Combat never recovers HP. */
+  outOfCombatHealthRegenPercentPerSecond: 0.01,
+  /** Health retained after a combat death before normal out-of-combat recovery resumes. */
+  deathRecoveryHealthPercent: 0.25,
 } as const;

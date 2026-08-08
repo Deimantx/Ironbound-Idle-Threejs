@@ -320,36 +320,38 @@ const CombatActivityStrip = ({
           maxLevel={MAX_LEVEL}
         />
       </div>
-      <div className="activity-rate-column combat-activity-rate">
-        <span
-          className="activity-rate"
-          title={`Estimated ${skillName} XP per hour including hit chance, damage, and respawn time`}
+      <div className="combat-activity-progression">
+        <div className="activity-rate-column combat-activity-rate">
+          <span
+            className="activity-rate"
+            title={`Estimated ${skillName} XP per hour including hit chance, damage, and respawn time`}
+          >
+            ~{formatRatePerHour(xpPerHour)} XP/hr
+          </span>
+        </div>
+        <div
+          className="activity-next-column combat-activity-next"
+          aria-label={`${skillName} level estimate`}
         >
-          ~{formatRatePerHour(xpPerHour)} XP/hr
-        </span>
-      </div>
-      <div
-        className="activity-next-column combat-activity-next"
-        aria-label={`${skillName} level estimate`}
-      >
-        {levelProgress.next > 0 ? (
-          <>
-            <span
-              className="activity-xp-next"
-              title={`XP remaining until the next ${skillName} level`}
-            >
-              XP to next: {formatRatePerHour(xpToNextLevel)}
-            </span>
-            <span
-              className="activity-eta"
-              title={`Estimated time until the next ${skillName} level`}
-            >
-              ETA: {formatLevelEta(xpToNextLevel, xpPerHour)}
-            </span>
-          </>
-        ) : (
-          <span className="activity-eta">MAX LEVEL</span>
-        )}
+          {levelProgress.next > 0 ? (
+            <>
+              <span
+                className="activity-xp-next"
+                title={`XP remaining until the next ${skillName} level`}
+              >
+                XP to next: {formatRatePerHour(xpToNextLevel)}
+              </span>
+              <span
+                className="activity-eta"
+                title={`Estimated time until the next ${skillName} level`}
+              >
+                ETA: {formatLevelEta(xpToNextLevel, xpPerHour)}
+              </span>
+            </>
+          ) : (
+            <span className="activity-eta">MAX LEVEL</span>
+          )}
+        </div>
       </div>
       <button className="button danger activity-stop" onClick={onStop} aria-label="Stop Combat">
         Stop Combat

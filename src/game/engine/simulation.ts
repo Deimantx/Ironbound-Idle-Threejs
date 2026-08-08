@@ -17,6 +17,7 @@ import { getEnemyCombatStats } from '../formulas/combatStats';
 import { initializeEnemySpawn } from './combatEncounter';
 import { addSkillXp } from '../formulas/experienceFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
+import { applyDeathRecovery, applyOutOfCombatHealthRecovery } from '../systems/healthSystem';
 import {
   addItem,
   addItemBundle,
@@ -559,9 +560,10 @@ const simulateCombat = (
   ): void => {
     state.statistics.deaths += 1;
     summary.deaths += 1;
-    state.player.currentHp = getDerivedStats(state, action.style).maxHealth;
+    applyDeathRecovery(state, action.style);
     state.activeAction = { type: 'none' };
-    summary.stoppedReason = 'You were defeated and returned safely to the training yard.';
+    summary.stoppedReason =
+      'You were defeated and returned to the training yard with partial health.';
     emit({
       id: combatEventId('player-defeated', at, rng.rngCursor),
       type: 'player-defeated',
@@ -825,7 +827,6 @@ const simulateCombat = (
         }
         combatState.traitState = { firstAttackPending: false, enemyAttackCount: 0, bleedStacks: 0 };
         if (action.autoRepeat) {
-          state.player.currentHp = getDerivedStats(state, action.style).maxHealth;
           combatState.respawnMs = GAME_CONFIG.respawnMs;
           combatState.enemyHp = 0;
           action = { ...action, specialQueued: false };
@@ -961,6 +962,7 @@ export const simulateElapsed = (
 ): { state: GameState; summary: SimulationSummary; events: CombatVisualEvent[] } => {
   const safeElapsed = Math.max(0, Math.min(GAME_CONFIG.offlineCapMs, Math.floor(elapsedMs)));
   const state = clone(input);
+  const startedInCombat = state.activeAction.type === 'combat';
   const summary = emptySummary(safeElapsed);
   summary.offlineContext =
     state.activeAction.type === 'mining'
@@ -993,12 +995,9 @@ export const simulateElapsed = (
       processedElapsedMs = simulateCombat(state, safeElapsed, summary, events).processedElapsedMs;
       break;
     default:
-      if (state.player.currentHp < getDerivedStats(state).maxHealth)
-        state.player.currentHp = Math.min(
-          getDerivedStats(state).maxHealth,
-          state.player.currentHp + Math.floor(safeElapsed / 5000),
-        );
+      break;
   }
+  if (!startedInCombat) applyOutOfCombatHealthRecovery(state, processedElapsedMs);
   summary.processedElapsedMs = processedElapsedMs;
   summary.remainingElapsedMs = Math.max(0, safeElapsed - processedElapsedMs);
   summary.elapsedMs = processedElapsedMs;

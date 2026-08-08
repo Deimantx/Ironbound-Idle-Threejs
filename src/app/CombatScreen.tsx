@@ -48,7 +48,6 @@ import {
   selectPlayerHitChance,
   selectTargetTrait,
   selectPlayerAttackProgress,
-  selectPlayerEstimatedDps,
   isCombatAreaUnlocked,
 } from '../game/selectors/combatSelectors';
 import { useGameStore } from '../game/state/gameStore';
@@ -471,12 +470,6 @@ function EnemySummaryPanel({
       <div className="combat-panel-note">
         <strong>{enemy.trait.name}</strong> — {enemy.trait.description}
       </div>
-      <div className="combat-enemy-kill-count">
-        <Trophy size={15} />
-        <span>
-          <strong>{formatNumber(game.killCounts[enemy.id] ?? 0)}</strong> defeated
-        </span>
-      </div>
       <div className="combat-drop-preview">
         <div className="combat-subheading-row">
           <span className="combat-panel-kicker">Drop preview</span>
@@ -588,6 +581,13 @@ function CombatBrowser({
   const region = combatRegionById.greenvale;
   const area = areaById[selectedArea] ?? areaById['forest-path'];
   const selectedTarget = enemyById[selectedEnemy] ?? enemyById['forest-rat'];
+  const currentArea = activeArea ? areaById[activeArea] : null;
+  const currentTarget = activeEnemy ? enemyById[activeEnemy] : null;
+  const browsingDifferentTarget = Boolean(
+    currentArea &&
+    currentTarget &&
+    (currentArea.id !== area.id || currentTarget.id !== selectedTarget.id),
+  );
   return (
     <section className="combat-locations combat-browser" aria-labelledby="combat-locations-title">
       <div className="combat-section-heading">
@@ -608,9 +608,21 @@ function CombatBrowser({
       </div>
       {!locationsExpanded && (
         <div className="combat-browser-collapsed-summary">
-          <span>{`Areas · ${region.name} · ${area.name} · ${selectedTarget.name}`}</span>
-          {activeArea && (activeArea !== selectedArea || activeEnemy !== selectedEnemy) && (
-            <small>Browsing while fighting {enemyById[activeEnemy ?? 'forest-rat']?.name}</small>
+          {browsingDifferentTarget ? (
+            <>
+              <span>
+                Current {currentArea?.name} · {currentTarget?.name}
+              </span>
+              <small>
+                Selected {area.name} · {selectedTarget.name}
+              </small>
+            </>
+          ) : (
+            <span>
+              {activeEnemy
+                ? `Current ${area.name} · ${selectedTarget.name}`
+                : `Selected ${area.name} · ${selectedTarget.name}`}
+            </span>
           )}
         </div>
       )}
@@ -621,7 +633,6 @@ function CombatBrowser({
       >
         <div className="combat-regions-heading">
           <span className="combat-panel-kicker">Regions</span>
-          <span className="muted">Greenvale is the first frontier.</span>
         </div>
         <div className="combat-region-selector" aria-label="Combat regions">
           {COMBAT_REGIONS.map((candidate) => {
@@ -645,15 +656,9 @@ function CombatBrowser({
             );
           })}
         </div>
-        <div className="combat-region-header">
-          <div className="combat-region-icon">
-            <TreePine size={20} />
-          </div>
-          <div>
-            <div className="combat-panel-kicker">Region</div>
-            <h3>{region.name}</h3>
-            <p>{region.description}</p>
-          </div>
+        <div className="combat-region-description">
+          <strong>{region.name}</strong>
+          <span>{region.description}</span>
         </div>
         <div className="combat-area-grid" aria-label={`${region.name} combat areas`}>
           {region.areaIds.map((areaId) => {
@@ -1035,7 +1040,7 @@ function LiveCombatResolution({
         </div>
         <div className="combat-resolution-side enemy">
           <HealthBar
-            label={enemy.name}
+            label={`ENEMY · ${enemy.name}`}
             current={enemyHp}
             max={combatAction?.combatState.enemyMaxHp ?? enemyStats.maxHealth}
             tone="enemy"
@@ -1367,30 +1372,26 @@ function ProgressionPanel({
   );
 }
 
-function OverviewSummary({
-  game,
-  enemy,
-  session,
-  style,
-  autoRepeat,
-}: {
-  game: GameState;
-  enemy: EnemyDefinition;
-  session: CombatSessionStats;
-  style: CombatStyle;
-  autoRepeat: boolean;
-}) {
-  const stats = getDerivedStats(game, style);
-  const sessionStartedAt =
-    session.startedAt ?? (game.activeAction.type === 'combat' ? game.updatedAt : null);
+function OverviewSummary({ session }: { session: CombatSessionStats }) {
+  const sessionStartedAt = session.startedAt;
   const started = sessionStartedAt ? Math.max(1_000, Date.now() - sessionStartedAt) : 0;
-  const totalXp = Object.values(session.xpGained).reduce((sum, amount) => sum + (amount ?? 0), 0);
   const itemsGained = Object.values(session.lootGained).reduce((sum, amount) => sum + amount, 0);
-  const dps = selectPlayerEstimatedDps(game, enemy, style);
-  const hitRate =
+  const actualDps = started > 0 ? (session.damageDealt * 3_600_000) / started : 0;
+  const playerHitRate =
     session.playerAttacks > 0
       ? `${Math.round((session.playerHits / session.playerAttacks) * 100)}%`
       : '—';
+  const enemyHitRate =
+    session.enemyAttacks > 0
+      ? `${Math.round((session.enemyHits / session.enemyAttacks) * 100)}%`
+      : '—';
+  const specialHitRate =
+    session.specialAttempts > 0
+      ? `${Math.round((session.specialHits / session.specialAttempts) * 100)}%`
+      : '—';
+  const averageKillTime =
+    session.enemiesDefeated > 0 ? formatSeconds(started / session.enemiesDefeated) : '—';
+  const actualKillsPerHour = started > 0 ? (session.enemiesDefeated * 3_600_000) / started : 0;
   return (
     <section className="combat-overview-content" aria-labelledby="session-summary-title">
       <div className="combat-section-heading">
@@ -1402,46 +1403,33 @@ function OverviewSummary({
       </div>
       <div className="combat-overview-columns">
         <div>
-          <span className="combat-panel-kicker">Session totals</span>
-          <strong>{formatDuration(started)}</strong>
-          <small>time active</small>
-          <strong>{formatNumber(session.enemiesDefeated)}</strong>
-          <small>enemies defeated</small>
-          <strong>{formatNumber(totalXp)}</strong>
-          <small>XP gained</small>
+          <span className="combat-panel-kicker">Performance · Actual</span>
+          <strong>{actualDps.toFixed(1)}</strong>
+          <small>actual DPS</small>
+          <strong>{playerHitRate}</strong>
+          <small>player hit rate</small>
+          <strong>{enemyHitRate}</strong>
+          <small>enemy hit rate</small>
+          <strong>{specialHitRate}</strong>
+          <small>special hit rate</small>
         </div>
         <div>
-          <span className="combat-panel-kicker">Performance</span>
-          <strong>{dps.toFixed(1)}</strong>
-          <small>estimated DPS</small>
-          <strong>{hitRate}</strong>
-          <small>actual hit rate</small>
-          <strong>
-            {session.specialHits} / {session.specialAttempts}
-          </strong>
-          <small>special hits</small>
-          <strong>{formatSeconds((enemy.maxHealth / Math.max(0.1, dps)) * 1_000)}</strong>
-          <small>estimated kill time</small>
+          <span className="combat-panel-kicker">Timing · Actual</span>
+          <strong>{averageKillTime}</strong>
+          <small>average kill time</small>
+          <strong>{actualKillsPerHour.toFixed(1)}</strong>
+          <small>actual kills/hour</small>
+          <strong>{formatNumber(session.damageDealt)}</strong>
+          <small>damage dealt</small>
+          <strong>{formatNumber(session.damageTaken)}</strong>
+          <small>damage taken</small>
         </div>
         <div>
-          <span className="combat-panel-kicker">Resources</span>
+          <span className="combat-panel-kicker">Rewards · Actual</span>
           <strong>{formatNumber(session.goldGained)}</strong>
           <small>gold gained</small>
           <strong>{formatNumber(itemsGained)}</strong>
           <small>items gained</small>
-          <strong>
-            {occupiedSlots(game.inventory)} / {GAME_CONFIG.inventorySlots}
-          </strong>
-          <small>inventory slots used</small>
-        </div>
-        <div>
-          <span className="combat-panel-kicker">Status</span>
-          <strong>{autoRepeat ? 'On' : 'Off'}</strong>
-          <small>auto repeat</small>
-          <strong>{getCombatStyleInfo(style).name}</strong>
-          <small>combat style</small>
-          <strong>{stats.maxHealth}</strong>
-          <small>maximum HP</small>
           <strong>{session.eliteEnemiesDefeated}</strong>
           <small>elite kills</small>
         </div>
@@ -1455,7 +1443,6 @@ function CombatOverviewTabs({
   enemy,
   session,
   style,
-  autoRepeat,
   events,
   tab,
   onTabChange,
@@ -1464,7 +1451,6 @@ function CombatOverviewTabs({
   enemy: EnemyDefinition;
   session: CombatSessionStats;
   style: CombatStyle;
-  autoRepeat: boolean;
   events: CombatVisualEvent[];
   tab: OverviewTab;
   onTabChange: (tab: OverviewTab) => void;
@@ -1491,13 +1477,7 @@ function CombatOverviewTabs({
         ))}
       </div>
       {tab === 'overview' ? (
-        <OverviewSummary
-          game={game}
-          enemy={enemy}
-          session={session}
-          style={style}
-          autoRepeat={autoRepeat}
-        />
+        <OverviewSummary session={session} />
       ) : tab === 'loot' ? (
         <LootPanel game={game} enemy={enemy} events={events} />
       ) : (
@@ -1547,6 +1527,8 @@ export function CombatScreen({
   const saveStatus = useGameStore((store) => store.saveStatus);
   const savedAt = useGameStore((store) => store.savedAt);
   const startPending = useRef(false);
+  const previousCombatActive = useRef(Boolean(active));
+  const autoCollapsedCombatRun = useRef(false);
   const currentAreaId = activeAreaId ?? selectedArea;
   const currentEnemyId = activeEnemyId ?? selectedEnemy;
   const currentArea = areaById[currentAreaId] ?? areaById['forest-path'];
@@ -1560,6 +1542,18 @@ export function CombatScreen({
     active?.combatState.encounterStartedAt ?? session.encounterStartedAt ?? session.startedAt;
   const inventoryFull = occupiedSlots(game.inventory) >= GAME_CONFIG.inventorySlots;
   const locked = !isCombatAreaUnlocked(game, selectedTargetArea);
+
+  useEffect(() => {
+    const combatActive = active !== null;
+    if (!combatActive) {
+      autoCollapsedCombatRun.current = false;
+      setLocationsExpanded(true);
+    } else if (!previousCombatActive.current && !autoCollapsedCombatRun.current) {
+      setLocationsExpanded(false);
+      autoCollapsedCombatRun.current = true;
+    }
+    previousCombatActive.current = combatActive;
+  }, [active]);
 
   useEffect(() => {
     if (
@@ -1766,7 +1760,6 @@ export function CombatScreen({
             enemy={currentEnemy}
             session={session}
             style={currentStyle}
-            autoRepeat={activeAutoRepeatValue}
             events={events}
             tab={overviewTab}
             onTabChange={setOverviewTab}

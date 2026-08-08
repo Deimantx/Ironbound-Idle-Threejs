@@ -2,7 +2,7 @@ import { enemyById } from '../../content/enemies';
 import { itemById } from '../../content/items';
 import { recipeById } from '../../content/recipes';
 import { createCombatRngForStart, initializeEnemySpawn } from './combatEncounter';
-import { getDerivedStats } from '../formulas/statFormulas';
+import { getClampedPlayerHealth } from '../systems/healthSystem';
 import { miningNodeById } from '../../content/miningNodes';
 import { createMiningRuntimeState, normalizeMiningState } from '../formulas/miningFormulas';
 import { getSmithingMaxCraftable, getSmithingStartBlockReason } from '../formulas/smithingFormulas';
@@ -66,7 +66,6 @@ export const startCombat = (
   autoRepeat: boolean,
   now = Date.now(),
   autoSpecial = true,
-  options: { preservePlayerHp?: boolean } = {},
 ): GameState => {
   const enemy = enemyById[enemyId];
   if (!enemy) return { ...state, activeAction: { type: 'none' }, updatedAt: now };
@@ -75,10 +74,7 @@ export const startCombat = (
   const nextCombatState = spawn.eliteModifier
     ? { ...spawn.combatState, eliteAnnounced: true }
     : spawn.combatState;
-  const maxHealth = getDerivedStats(state, style).maxHealth;
-  const currentHp = options.preservePlayerHp
-    ? Math.min(Math.max(0, state.player.currentHp), maxHealth)
-    : maxHealth;
+  const currentHp = getClampedPlayerHealth(state);
   const next: GameState = {
     ...state,
     updatedAt: now,
@@ -121,10 +117,7 @@ export const switchCombatTarget = (
   autoRepeat: boolean,
   now = Date.now(),
   autoSpecial = true,
-): GameState =>
-  startCombat(state, areaId, enemyId, style, autoRepeat, now, autoSpecial, {
-    preservePlayerHp: state.activeAction.type === 'combat',
-  });
+): GameState => startCombat(state, areaId, enemyId, style, autoRepeat, now, autoSpecial);
 
 export const setCombatStyle = (state: GameState, style: CombatStyle): GameState => {
   if (state.activeAction.type !== 'combat') return state;

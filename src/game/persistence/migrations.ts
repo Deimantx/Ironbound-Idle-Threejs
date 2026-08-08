@@ -4,6 +4,7 @@ import { itemById } from '../../content/items';
 import { recipeById } from '../../content/recipes';
 import { createCombatRng } from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
+import { clampHealth } from '../systems/healthSystem';
 import {
   createMiningRuntimeState,
   getMiningTool,
@@ -92,9 +93,7 @@ const migrateCombatAreas = (input: GameState): GameState => {
         }
       : activeAction;
   const unlockedAreas = Array.from(
-    new Set(
-      (input.unlockedAreas ?? []).map((areaId) => migrateCombatAreaId(areaId, undefined)),
-    ),
+    new Set((input.unlockedAreas ?? []).map((areaId) => migrateCombatAreaId(areaId, undefined))),
   );
   return {
     ...input,
@@ -288,7 +287,7 @@ const migrateEquipmentAndClampHealth = (input: GameState): GameState => {
   const maxHealth = getDerivedStats(next).maxHealth;
   return {
     ...next,
-    player: { ...next.player, currentHp: Math.min(next.player.currentHp, maxHealth) },
+    player: { ...next.player, currentHp: clampHealth(next.player.currentHp, maxHealth) },
   };
 };
 
@@ -596,6 +595,8 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
   current = normalizeSkillStates(current);
   current = migrateCombatAreas(current);
   current = migrateActivityLogs(current);
+  const maxHealth = getDerivedStats(current).maxHealth;
+  current.player.currentHp = clampHealth(current.player.currentHp, maxHealth);
   current.schemaVersion = GAME_CONFIG.currentSaveVersion;
   return current;
 };

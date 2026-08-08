@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { startCombat, startMining, startSmithing } from '../game/engine/actionController';
 import { simulateElapsed } from '../game/engine/simulation';
 import { createNewGame } from '../game/state/initialState';
-import { getDerivedStats } from '../game/formulas/statFormulas';
 import { addItem, getItemQuantity } from '../game/systems/inventorySystem';
 import { GAME_CONFIG } from '../config/gameConfig';
 
@@ -49,7 +48,7 @@ describe('deterministic action simulation', () => {
     expect(result.state.statistics.totalKills).toBeGreaterThanOrEqual(0);
     expect(result.state.skills.strength.xp).toBeGreaterThanOrEqual(0);
   });
-  it('restores player health when auto-repeat queues the next monster', () => {
+  it('preserves player health when auto-repeat queues the next monster', () => {
     let state = createNewGame(0, 'Repeater');
     state.player.currentHp = 1;
     state = startCombat(state, 'forest-path', 'forest-rat', 'accurate', true);
@@ -69,17 +68,17 @@ describe('deterministic action simulation', () => {
       state.activeAction.combatState.enemyMaxHp = 1;
     }
     const result = simulateElapsed(state, 100);
-    expect(result.state.player.currentHp).toBe(getDerivedStats(result.state).maxHealth);
+    expect(result.state.player.currentHp).toBe(1);
     expect(
       result.state.activeAction.type === 'combat' &&
         result.state.activeAction.combatState.respawnMs,
     ).toBeGreaterThan(0);
   });
-  it('starts a newly selected combat target at full health', () => {
+  it('starts a newly selected combat target with preserved current health', () => {
     const state = createNewGame(0, 'Target Switch');
     state.player.currentHp = 1;
     const next = startCombat(state, 'forest-path', 'goblin-scavenger', 'defensive', false);
-    expect(next.player.currentHp).toBe(getDerivedStats(next).maxHealth);
+    expect(next.player.currentHp).toBe(1);
   });
   it('stops combat and records the killer when the player dies', () => {
     const state = startCombat(
@@ -100,9 +99,11 @@ describe('deterministic action simulation', () => {
     const result = simulateElapsed(state, 20_000);
     expect(result.state.activeAction.type).toBe('none');
     expect(result.state.statistics.deaths).toBe(1);
-    expect(result.state.player.currentHp).toBe(getDerivedStats(result.state).maxHealth);
+    expect(result.state.player.currentHp).toBe(5);
     expect(result.events.some((event) => event.type === 'player-defeated')).toBe(true);
-    const death = result.state.activityLogs.combat.find((entry) => entry.kind === 'player-defeated');
+    const death = result.state.activityLogs.combat.find(
+      (entry) => entry.kind === 'player-defeated',
+    );
     expect(death).toMatchObject({
       kind: 'player-defeated',
       enemyId: 'forest-rat',

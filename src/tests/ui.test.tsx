@@ -1663,6 +1663,9 @@ describe('navigation integration', () => {
     await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
     await user.click(screen.getByRole('button', { name: 'Fight' }));
     await user.click(screen.getByRole('button', { name: 'Open debug menu' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Kill Player' })).toBeInTheDocument(),
+    );
     await user.click(screen.getByRole('button', { name: 'Kill Player' }));
 
     await waitFor(
@@ -1687,6 +1690,7 @@ describe('navigation integration', () => {
     await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
     expect(screen.getByRole('heading', { name: 'Combat' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Combat Browser' })).toBeInTheDocument();
+    expect(screen.queryByText('Greenvale is the first frontier.')).not.toBeInTheDocument();
     const livePanel = screen.getByRole('region', { name: 'Live combat resolution' });
     await user.click(within(livePanel).getByRole('button', { name: 'Combat settings' }));
     expect(within(livePanel).getByRole('checkbox', { name: 'Auto Repeat' })).toBeInTheDocument();
@@ -1697,6 +1701,10 @@ describe('navigation integration', () => {
     const activeCombat = useGameStore.getState().game?.activeAction;
     expect(activeCombat?.type).toBe('combat');
     expect(activeCombat?.type === 'combat' ? activeCombat.enemyId : null).toBe('goblin-scavenger');
+    expect(screen.getByRole('button', { name: 'Show browser' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Show browser' }));
+    act(() => useGameStore.getState().tick(Date.now() + 500));
+    expect(screen.getByRole('button', { name: 'Collapse browser' })).toBeInTheDocument();
     expect(screen.getAllByRole('progressbar', { name: 'YOU health' })).toHaveLength(1);
     const activityStats = screen.getByLabelText('Combat activity summary');
     expect(within(activityStats).getByText('YOU')).toBeInTheDocument();
@@ -1721,18 +1729,26 @@ describe('navigation integration', () => {
       .getByRole('heading', { name: 'Session summary' })
       .closest('section');
     expect(sessionSummaryPanel).not.toBeNull();
-    await waitFor(
-      () =>
-        expect(
-          within(sessionSummaryPanel as HTMLElement).getByText(/0:0[1-9]/),
-        ).toBeInTheDocument(),
-      { timeout: 2500 },
-    );
+    expect(within(sessionSummaryPanel as HTMLElement).getByText('actual DPS')).toBeInTheDocument();
+    expect(
+      within(sessionSummaryPanel as HTMLElement).getByText('damage dealt'),
+    ).toBeInTheDocument();
+    expect(within(sessionSummaryPanel as HTMLElement).getByText('gold gained')).toBeInTheDocument();
+    expect(
+      within(sessionSummaryPanel as HTMLElement).queryByText('time active'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(sessionSummaryPanel as HTMLElement).queryByText('combat style'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(sessionSummaryPanel as HTMLElement).queryByText('inventory slots used'),
+    ).not.toBeInTheDocument();
     expect(within(livePanel).getByRole('button', { name: 'Stop combat' })).toBeInTheDocument();
     await user.click(
       within(activityStrip as HTMLElement).getByRole('button', { name: 'Stop Combat' }),
     );
     expect(useGameStore.getState().game?.activeAction.type).toBe('none');
+    expect(screen.getByRole('button', { name: 'Collapse browser' })).toBeInTheDocument();
   });
 
   it('opens combat settings and toggles elite hunting', async () => {
@@ -1756,6 +1772,7 @@ describe('navigation integration', () => {
     await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
     await user.click(screen.getByRole('button', { name: 'Fight' }));
     expect(useGameStore.getState().game?.activeAction.type).toBe('combat');
+    await user.click(screen.getByRole('button', { name: 'Show browser' }));
     expect(screen.getByRole('img', { name: 'Forest Rat portrait' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Switch target Goblin Scavenger/ }));
     expect(screen.queryByRole('heading', { name: 'Switch target?' })).not.toBeInTheDocument();
@@ -1788,6 +1805,7 @@ describe('navigation integration', () => {
     const before = useGameStore.getState().game?.activeAction;
     expect(before?.type).toBe('combat');
     expect(before?.type === 'combat' ? before.enemyId : null).toBe('forest-rat');
+    await user.click(screen.getByRole('button', { name: 'Show browser' }));
 
     await user.click(screen.getByRole('button', { name: /Old Shrine/ }));
 
@@ -1845,7 +1863,7 @@ describe('navigation integration', () => {
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
     expect(screen.getAllByRole('progressbar', { name: 'YOU health' })).toHaveLength(1);
-    expect(screen.getAllByRole('progressbar', { name: 'Forest Rat health' })).toHaveLength(1);
+    expect(screen.getAllByRole('progressbar', { name: 'ENEMY · Forest Rat health' })).toHaveLength(1);
     expect(screen.getAllByRole('progressbar', { name: 'Next attack' })).toHaveLength(2);
     expect(screen.getByText('Live combat log')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Combat log' })).not.toBeInTheDocument();

@@ -83,16 +83,14 @@ export const loadProfile = async (slot: number): Promise<LoadedProfile | null> =
   const now = Date.now();
   const elapsed = Math.max(0, now - state.lastSimulatedAt);
   const capped = Math.min(elapsed, GAME_CONFIG.offlineCapMs);
-  const simulation =
-    capped > 1000 && state.activeAction.type !== 'none'
-      ? simulateElapsed(state, capped)
-      : { state, summary: null };
-  if (simulation.summary) simulation.summary.offlineCapped = elapsed > capped;
+  const simulation = capped > 0 ? simulateElapsed(state, capped) : { state, summary: null };
+  const offlineSummary = simulation.summary && elapsed > 1000 ? simulation.summary : null;
+  if (offlineSummary) offlineSummary.offlineCapped = elapsed > capped;
   simulation.state.lastSimulatedAt = simulation.summary
     ? state.lastSimulatedAt + simulation.summary.processedElapsedMs
     : now;
   simulation.state.updatedAt = now;
-  return { state: simulation.state, offline: simulation.summary, recovered };
+  return { state: simulation.state, offline: offlineSummary, recovered };
 };
 
 export const listProfiles = async (): Promise<Array<SaveRecord | null>> =>

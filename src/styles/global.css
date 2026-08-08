@@ -5302,6 +5302,25 @@ h3 {
   margin-left: auto;
   color: #c5a967;
 }
+.combat-region-description {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 2px 0 10px;
+  padding: 7px 9px;
+  color: #9eaca4;
+  background: rgba(47, 65, 55, 0.2);
+  border-left: 2px solid #78936e;
+  font-size: 10px;
+}
+.combat-region-description strong {
+  color: #e9e0ca;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.combat-region-description span {
+  min-width: 0;
+}
 .combat-browser-collapsed-summary {
   display: flex;
   align-items: center;
@@ -5313,36 +5332,6 @@ h3 {
 }
 .combat-browser-collapsed-summary small {
   color: #d2b276;
-  font-size: 10px;
-}
-.combat-region-header {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-  padding: 12px;
-  background: rgba(47, 65, 55, 0.24);
-  border: 1px solid #3f5a4b;
-  border-radius: 8px;
-}
-.combat-region-icon {
-  display: grid;
-  place-items: center;
-  flex: 0 0 42px;
-  width: 42px;
-  height: 42px;
-  color: #c4d9bb;
-  background: #2c4639;
-  border: 1px solid #78936e;
-  border-radius: 8px;
-}
-.combat-region-header h3 {
-  margin: 2px 0 3px;
-  color: #e9e0ca;
-  font-size: 15px;
-}
-.combat-region-header p {
-  margin: 0;
-  color: #98a69e;
   font-size: 10px;
 }
 .combat-area-grid {
@@ -6009,25 +5998,6 @@ h3 {
   color: #9cbda2;
   font-size: 9px;
 }
-.combat-enemy-kill-count {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  margin-top: 14px;
-  padding: 9px;
-  color: #c9b178;
-  background: rgba(84, 64, 34, 0.2);
-  border: 1px solid #584832;
-  border-radius: 6px;
-  font-size: 10px;
-}
-.combat-enemy-kill-count svg {
-  color: var(--combat-gold);
-}
-.combat-enemy-kill-count strong {
-  color: #eee1c5;
-  font-size: 15px;
-}
 .combat-drop-preview {
   margin-top: 14px;
 }
@@ -6099,6 +6069,18 @@ h3 {
   gap: 8px;
   margin-top: 15px;
 }
+.combat-redesign .combat-resolution-side {
+  padding: 9px;
+  background: rgba(16, 23, 25, 0.55);
+  border: 1px solid #3e4c50;
+  border-radius: 8px;
+}
+.combat-redesign .combat-resolution-side.player {
+  border-color: #42674f;
+}
+.combat-redesign .combat-resolution-side.enemy {
+  border-color: #70464a;
+}
 .combat-resolution-side {
   min-width: 0;
 }
@@ -6140,7 +6122,7 @@ h3 {
   font-size: 10px;
 }
 .combat-redesign .combat-health-track {
-  height: 14px;
+  height: 17px;
   padding: 1px;
   border: 1px solid #526064;
   box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.22);
@@ -6217,7 +6199,8 @@ h3 {
   padding: 8px 9px;
   color: #c7b378;
   background: rgba(77, 61, 35, 0.2);
-  border: 1px solid #57492f;
+  border: 1px solid #76603a;
+  box-shadow: 0 0 0 1px rgba(224, 189, 111, 0.08);
   border-radius: 6px;
   font-size: 9px;
 }
@@ -6514,7 +6497,7 @@ h3 {
 }
 .combat-overview-columns {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1px;
   margin: 0 16px 16px;
   background: #344044;
@@ -8936,9 +8919,9 @@ h3 {
 .activity-strip-combat {
   display: grid;
   grid-template-columns:
-    38px minmax(145px, 1fr) minmax(330px, 2.25fr) minmax(165px, 1.15fr) minmax(130px, 1fr)
+    38px minmax(145px, 1fr) minmax(330px, 2.25fr) minmax(165px, 1.15fr) minmax(250px, 1.6fr)
     auto;
-  grid-template-areas: 'icon identity summary skill rate next stop';
+  grid-template-areas: 'icon identity summary skill progression stop';
   min-height: max(var(--ui-action-height, 77px), 92px);
   gap: 8px 12px;
 }
@@ -9001,12 +8984,20 @@ h3 {
   font-size: 9px;
   white-space: nowrap;
 }
-.activity-strip-combat .combat-activity-rate {
-  grid-area: rate;
-  align-self: center;
+.activity-strip-combat .combat-activity-progression {
+  display: flex;
+  grid-area: progression;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
 }
+.activity-strip-combat .combat-activity-rate,
 .activity-strip-combat .combat-activity-next {
-  grid-area: next;
+  min-width: 0;
+}
+.activity-strip-combat .combat-activity-rate,
+.activity-strip-combat .combat-activity-next {
+  flex: 0 1 auto;
   align-self: center;
 }
 .activity-strip-combat .activity-stop {
@@ -9020,7 +9011,7 @@ h3 {
     grid-template-areas:
       'icon identity summary stop'
       'icon skill skill stop'
-      'icon rate next next stop';
+      'icon progression progression stop';
     min-height: max(var(--ui-action-height, 77px), 108px);
   }
 }
@@ -9031,13 +9022,18 @@ h3 {
       'icon identity stop'
       'icon summary summary'
       'icon skill skill'
-      'icon rate next';
+      'icon progression progression';
     min-height: max(var(--ui-action-height, 77px), 154px);
     padding: 9px 13px;
     gap: 7px 9px;
   }
   .activity-strip-combat .combat-activity-stats {
     grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .activity-strip-combat .combat-activity-progression {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 9px;
   }
   .activity-strip-combat .combat-activity-stat {
     padding-inline: 4px;
