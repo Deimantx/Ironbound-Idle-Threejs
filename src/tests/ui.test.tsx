@@ -370,7 +370,9 @@ describe('navigation integration', () => {
     render(<App />);
 
     expect(screen.getByText('MAX LEVEL')).toBeInTheDocument();
-    expect(screen.queryByText('101')).not.toBeInTheDocument();
+    const activityStrip = document.querySelector<HTMLElement>('[data-ui-region="actionStrip"]');
+    if (!activityStrip) throw new Error('Activity strip was not rendered');
+    expect(within(activityStrip).queryByText('101')).not.toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Mining level progress' })).toHaveAttribute(
       'aria-valuenow',
       '100',

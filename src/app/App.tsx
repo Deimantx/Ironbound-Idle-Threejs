@@ -1,6 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
-  ArrowUpRight,
   Bug,
   Hammer,
   Heart,
@@ -9,7 +8,6 @@ import {
   Pickaxe,
   Save,
   Settings,
-  Shield,
   Skull,
   Swords,
   Timer,
@@ -18,15 +16,14 @@ import { AREAS, areaById } from '../content/areas';
 import { enemyById } from '../content/enemies';
 import { miningNodeById } from '../content/miningNodes';
 import { GAME_CONFIG } from '../config/gameConfig';
-import { getLevelProgress } from '../game/formulas/experienceFormulas';
 import { getDerivedStats } from '../game/formulas/statFormulas';
+import { getTotalLevel } from '../game/progression/progressionSelectors';
 import { isCombatAreaUnlocked } from '../game/selectors/combatSelectors';
 import { progressRatio } from '../game/engine/simulation';
 import { getMiningRuntimeState, getMiningTool } from '../game/formulas/miningFormulas';
 import { MINING_TUNING } from '../config/miningTuning';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
-import { getItemQuantity } from '../game/systems/inventorySystem';
 import {
   exportProfile,
   importProfile,
@@ -65,7 +62,7 @@ import { OfflineModal as OfflineReportModal } from './OfflineReport';
 import { ActivityStrip, actionLabel } from './ActivityStrip';
 import { getCombatLogPresentation } from './combat/combatLogPresentation';
 import { CollectionScreen } from './CollectionScreen';
-import { getItemCollectionProgress } from './collection/collectionSelectors';
+import { HomeScreen } from './HomeScreen';
 
 const DebugMenu = import.meta.env.DEV ? lazy(() => import('./debug/DebugMenu')) : null;
 
@@ -347,13 +344,13 @@ function Header({
   const stats = getDerivedStats(game);
   const saveStatus = useGameStore((store) => store.saveStatus);
   const savedAt = useGameStore((store) => store.savedAt);
-  const totalLevel = Object.values(game.skills).reduce((total, skill) => total + skill.level, 0);
+  const totalLevel = getTotalLevel(game);
   return (
     <header className="topbar" data-ui-region="header">
       <div>
         <div className="crumb">Character / {game.player.name}</div>
         <div className="character">
-          Level {totalLevel} · Combat {stats.combatLevel}
+          Total {totalLevel} · Combat {stats.combatLevel}
         </div>
       </div>
       <div className="header-stats">
@@ -517,196 +514,6 @@ export function LegacyActionStrip({
         Stop
       </button>
     </div>
-  );
-}
-
-function HomeScreen({
-  game,
-  onNavigate,
-}: {
-  game: GameState;
-  onNavigate: (screen: ScreenId) => void;
-}) {
-  const stats = getDerivedStats(game);
-  const itemProgress = getItemCollectionProgress(game);
-  const objectives = [
-    {
-      text: 'Mine Stone and Iron',
-      done:
-        getItemQuantity(game.inventory, 'stone-ore') > 0 &&
-        getItemQuantity(game.inventory, 'iron-ore') > 0,
-      target: 'mining' as const,
-    },
-    {
-      text: 'Smelt a Bronze Bar',
-      done: getItemQuantity(game.inventory, 'bronze-bar') > 0,
-      target: 'smithing' as const,
-    },
-    {
-      text: 'Forge a Bronze Sword',
-      done: game.discoveredItems.includes('bronze-sword'),
-      target: 'smithing' as const,
-    },
-    { text: 'Equip a Weapon', done: Boolean(game.equipment.weapon), target: 'equipment' as const },
-    {
-      text: 'Defeat a Forest Rat',
-      done: (game.killCounts['forest-rat'] ?? 0) > 0,
-      target: 'combat' as const,
-    },
-  ];
-  return (
-    <>
-      <div className="screen-heading">
-        <div>
-          <div className="eyebrow">The frontier is awake</div>
-          <h1>Good to see you, {game.player.name}.</h1>
-          <p className="subtle">A small forge, a deep mine, and a road that keeps going.</p>
-        </div>
-        <button
-          className="button primary"
-          onClick={() =>
-            onNavigate(
-              game.activeAction.type === 'none'
-                ? 'mining'
-                : game.activeAction.type === 'combat'
-                  ? 'combat'
-                  : game.activeAction.type === 'smithing'
-                    ? 'smithing'
-                    : 'mining',
-            )
-          }
-        >
-          Continue journey →
-        </button>
-      </div>
-      <div className="dashboard-grid">
-        <section className="panel hero">
-          <ThreeScene screen="home" settings={game.settings} theme="#b58b53" />
-          <div className="hero-copy">
-            <span className="badge gold">Current standing</span>
-            <h2 style={{ fontSize: 28, marginTop: 18 }}>
-              {stats.combatLevel < 5 ? 'A spark becomes a craft.' : 'The road opens before you.'}
-            </h2>
-            <p className="subtle">
-              {game.activeAction.type === 'none'
-                ? 'Choose a skill or seek a fight. The world will keep time while you explore.'
-                : `Currently ${actionLabel(game).toLowerCase()}. You can navigate freely while it continues.`}
-            </p>
-            <div className="button-row" style={{ marginTop: 22 }}>
-              <button className="button" onClick={() => onNavigate('combat')}>
-                <Swords size={14} /> Combat
-              </button>
-              <button className="button" onClick={() => onNavigate('equipment')}>
-                <Shield size={14} /> Equipment
-              </button>
-            </div>
-          </div>
-        </section>
-        <section className="panel panel-pad">
-          <div className="split">
-            <div>
-              <div className="eyebrow">Starter path</div>
-              <h2>First embers</h2>
-            </div>
-            <span className="badge">
-              {objectives.filter((objective) => objective.done).length}/{objectives.length}
-            </span>
-          </div>
-          <div>
-            {objectives.map((objective) => (
-              <button
-                className={`objective ${objective.done ? 'done' : ''}`}
-                key={objective.text}
-                onClick={() => onNavigate(objective.target)}
-                style={{
-                  width: '100%',
-                  border: 0,
-                  background: 'transparent',
-                  color: 'inherit',
-                  textAlign: 'left',
-                }}
-              >
-                <span className="objective-check">{objective.done ? '✓' : ''}</span>
-                <span>{objective.text}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
-      <div className="grid grid-4" style={{ marginTop: 16 }}>
-        <div className="panel stat-card">
-          <div className="label">Mining</div>
-          <div className="value">{game.skills.mining.level}</div>
-          <div className="bar">
-            <i style={{ width: `${getLevelProgress(game.skills.mining).percent}%` }} />
-          </div>
-        </div>
-        <div className="panel stat-card">
-          <div className="label">Smithing</div>
-          <div className="value">{game.skills.smithing.level}</div>
-          <div className="bar">
-            <i style={{ width: `${getLevelProgress(game.skills.smithing).percent}%` }} />
-          </div>
-        </div>
-        <div className="panel stat-card">
-          <div className="label">Enemies defeated</div>
-          <div className="value">{formatNumber(game.statistics.totalKills)}</div>
-          <div className="label">The log grows</div>
-        </div>
-        <div className="panel stat-card">
-          <div className="label">Discoveries</div>
-          <div className="value">
-            {itemProgress.discovered}/{itemProgress.total}
-          </div>
-          <div className="label">Collection log</div>
-        </div>
-      </div>
-      <div className="grid grid-2" style={{ marginTop: 16 }}>
-        <section className="panel panel-pad">
-          <div className="split">
-            <h2>Recent Level Ups</h2>
-            <button className="button ghost" onClick={() => onNavigate('collection')}>
-              Collection log
-            </button>
-          </div>
-          <div className="home-milestone-list" style={{ marginTop: 12 }}>
-            {game.activityLogs.milestones.slice(0, 5).map((entry) => (
-              <div className="home-milestone-row" key={entry.id}>
-                <span className="home-milestone-icon" aria-hidden="true">
-                  <ArrowUpRight size={15} />
-                </span>
-                <strong>
-                  {entry.skillId[0].toUpperCase() + entry.skillId.slice(1)} reached Level {entry.level}
-                </strong>
-                <small>
-                  {new Date(entry.at).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </small>
-              </div>
-            ))}
-            {game.activityLogs.milestones.length === 0 && (
-              <span className="muted">No recent level-ups yet.</span>
-            )}
-          </div>
-        </section>
-        <section className="panel panel-pad">
-          <div className="split">
-            <h2>Combat profile</h2>
-            <button className="button ghost" onClick={() => onNavigate('equipment')}>
-              View gear
-            </button>
-          </div>
-          {(['attack', 'strength', 'defence', 'hitpoints'] as const).map((skill) => (
-            <div className="stat-line" key={skill}>
-              <span>{skill[0].toUpperCase() + skill.slice(1)}</span>
-              <strong>{game.skills[skill].level}</strong>
-            </div>
-          ))}
-        </section>
-      </div>
-    </>
   );
 }
 

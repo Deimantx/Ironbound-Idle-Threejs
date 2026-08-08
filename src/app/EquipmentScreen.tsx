@@ -43,6 +43,7 @@ import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
 import { ItemTooltip } from './items/ItemTooltip';
+import { SpecialAttackDetails } from './items/SpecialAttackDetails';
 import {
   formatMiningToolSummary,
   formatSmithingToolSummary,
@@ -656,12 +657,14 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                     <small>Current special</small>
                     <strong>{currentSpecial?.name ?? 'No special attack'}</strong>
                     {currentSpecial && <p>{currentSpecial.description}</p>}
+                    {currentSpecial && <SpecialAttackDetails special={currentSpecial} />}
                   </div>
                   {candidateItem && (
                     <div>
                       <small>Candidate special</small>
                       <strong>{candidateSpecial?.name ?? 'No special attack'}</strong>
                       {candidateSpecial && <p>{candidateSpecial.description}</p>}
+                      {candidateSpecial && <SpecialAttackDetails special={candidateSpecial} />}
                     </div>
                   )}
                 </div>

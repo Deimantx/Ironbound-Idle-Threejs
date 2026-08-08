@@ -10,6 +10,9 @@ export type GameConceptId =
   | 'damage-range'
   | 'attack-speed'
   | 'combat-level'
+  | 'total-level'
+  | 'total-combat-levels'
+  | 'total-profession-levels'
   | 'hit-chance'
   | 'adrenaline'
   | 'flat-damage-reduction'
@@ -80,6 +83,21 @@ export const GAME_CONCEPTS: Record<GameConceptId, GameConceptDefinition> = {
     title: 'Combat Level',
     description: 'A summary of your current combat progression.',
     details: ['Normal combat areas use Combat Level as their unlock requirement.'],
+  },
+  'total-level': {
+    id: 'total-level',
+    title: 'Total Level',
+    description: 'The sum of all currently implemented Combat and Profession skill levels.',
+  },
+  'total-combat-levels': {
+    id: 'total-combat-levels',
+    title: 'Total Combat Levels',
+    description: 'The combined levels of Attack, Strength, Defence, and Hitpoints.',
+  },
+  'total-profession-levels': {
+    id: 'total-profession-levels',
+    title: 'Total Profession Levels',
+    description: 'The combined levels of all currently implemented professions.',
   },
   'hit-chance': {
     id: 'hit-chance',
