@@ -89,7 +89,7 @@ describe('Combat 2.0 area migration', () => {
     expect(migrated.activeAction.combatState).toEqual(combatStateBefore);
     expect(migrated.activeAction.specialQueued).toBe(true);
     expect(migrated.activeAction.pendingStyle).toBe('defensive');
-    expect(migrated.schemaVersion).toBe(9);
+    expect(migrated.schemaVersion).toBe(10);
   });
 
   it('normalizes legacy unlocked area identifiers while retaining a safe default', () => {

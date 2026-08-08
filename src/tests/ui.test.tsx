@@ -99,6 +99,45 @@ describe('navigation integration', () => {
     game.settings.threeQuality = 'off';
     useGameStore.getState().setGame(game);
   });
+  it('isolates Home level-ups from Combat Recent Actions', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Activity Tester');
+    game.activityLogs.milestones = [
+      { id: 'mining-level', kind: 'level-up', skillId: 'mining', level: 42, at: 1_000 },
+    ];
+    game.activityLogs.combat = [
+      {
+        id: 'combat-hit',
+        kind: 'player-hit',
+        enemyId: 'forest-rat',
+        damage: 4,
+        special: false,
+        at: 2_000,
+        encounterStartedAt: 2_000,
+      },
+      {
+        id: 'combat-loot',
+        kind: 'loot',
+        enemyId: 'forest-rat',
+        itemId: 'rat-tail',
+        quantity: 1,
+        at: 3_000,
+        encounterStartedAt: 2_000,
+      },
+    ];
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    expect(screen.getByRole('heading', { name: 'Recent Level Ups' })).toBeInTheDocument();
+    expect(screen.getByText('Mining reached Level 42')).toBeInTheDocument();
+    expect(screen.queryByText('You hit Forest Rat for 4.')).not.toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+    expect(screen.getByText('You hit Forest Rat for 4.')).toBeInTheDocument();
+    expect(screen.getByText('Received 1 Rat Tail.')).toBeInTheDocument();
+    expect(screen.queryByText('Mining reached Level 42')).not.toBeInTheDocument();
+  });
+
   it('keeps an action active while navigating to Inventory', async () => {
     const user = userEvent.setup();
     render(<App />);
@@ -1720,8 +1759,8 @@ describe('navigation integration', () => {
       screen.getByRole('group', { name: 'Selected target: Goblin Scavenger, level 4' }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Important enemy trait: Desperate Swing/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'New target' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'New target' }));
+    expect(screen.getByRole('button', { name: 'Switch to Goblin Scavenger' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Switch to Goblin Scavenger' }));
     const activeCombat = useGameStore.getState().game?.activeAction;
     expect(activeCombat?.type).toBe('combat');
     expect(activeCombat?.type === 'combat' ? activeCombat.enemyId : null).toBe('goblin-scavenger');
@@ -1743,6 +1782,9 @@ describe('navigation integration', () => {
 
     await user.click(screen.getByRole('button', { name: /Old Shrine/ }));
 
+    expect(screen.getByText('Current fight')).toBeInTheDocument();
+    expect(screen.getByText('Selected next target')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Switch to Cave Bat' })).toBeInTheDocument();
     const after = useGameStore.getState().game?.activeAction;
     expect(after?.type).toBe('combat');
     expect(after?.type === 'combat' ? after.areaId : null).toBe('forest-path');
@@ -1768,6 +1810,8 @@ describe('navigation integration', () => {
       'aria-pressed',
       'true',
     );
+    expect(screen.getByRole('button', { name: 'Stonehill, coming later' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Ashmoor, coming later' })).toBeDisabled();
     expect(screen.getByRole('button', { name: /Select target Forest Rat/ })).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: /Dungeons/ }));
     expect(screen.getByText('Dungeons are not available yet')).toBeInTheDocument();

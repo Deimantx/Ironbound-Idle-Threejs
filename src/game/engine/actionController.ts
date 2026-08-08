@@ -6,6 +6,7 @@ import { getDerivedStats } from '../formulas/statFormulas';
 import { miningNodeById } from '../../content/miningNodes';
 import { createMiningRuntimeState, normalizeMiningState } from '../formulas/miningFormulas';
 import { getSmithingMaxCraftable, getSmithingStartBlockReason } from '../formulas/smithingFormulas';
+import { appendCombatLog } from '../logging/combatLog';
 import type { AreaId, CombatStyle, EnemyId, GameState, MiningNodeId, QuantityMode } from '../types';
 
 export const startMining = (
@@ -70,7 +71,10 @@ export const startCombat = (
   if (!enemy) return { ...state, activeAction: { type: 'none' }, updatedAt: now };
   const rng = createCombatRngForStart(state, now, enemyId);
   const spawn = initializeEnemySpawn(state, enemyId, style, rng, 1, undefined, 0, now);
-  return {
+  const nextCombatState = spawn.eliteModifier
+    ? { ...spawn.combatState, eliteAnnounced: true }
+    : spawn.combatState;
+  const next: GameState = {
     ...state,
     updatedAt: now,
     player: { ...state.player, currentHp: getDerivedStats(state, style).maxHealth },
@@ -83,9 +87,25 @@ export const startCombat = (
       autoRepeat,
       autoSpecial,
       specialQueued: false,
-      combatState: spawn.combatState,
+      combatState: nextCombatState,
     },
   };
+  appendCombatLog(next, {
+    kind: 'enemy-spawned',
+    enemyId,
+    at: now,
+    encounterStartedAt: nextCombatState.encounterStartedAt,
+    encounterIndex: nextCombatState.encounterIndex,
+  });
+  if (spawn.eliteModifier)
+    appendCombatLog(next, {
+      kind: 'elite-spawned',
+      enemyId,
+      at: now,
+      encounterStartedAt: nextCombatState.encounterStartedAt,
+      modifier: spawn.eliteModifier,
+    });
+  return next;
 };
 
 export const setCombatStyle = (state: GameState, style: CombatStyle): GameState => {

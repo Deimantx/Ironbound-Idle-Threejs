@@ -215,7 +215,7 @@ describe('Smithing schema 8 migration', () => {
     };
     const xp = state.skills.smithing.xp;
     const migrated = migrateSave(state, 7);
-    expect(migrated.schemaVersion).toBe(9);
+    expect(migrated.schemaVersion).toBe(10);
     expect(migrated.smithing).toMatchObject({
       rngSeed: 1972,
       rngCursor: 9,

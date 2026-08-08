@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
+  ArrowUpRight,
   Bug,
   Hammer,
   Heart,
@@ -65,6 +66,7 @@ import { CombatScreen as RealtimeCombatScreen } from './CombatScreen';
 import { ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog';
 import { OfflineModal as OfflineReportModal } from './OfflineReport';
 import { ActivityStrip, actionLabel } from './ActivityStrip';
+import { getCombatLogPresentation } from './combat/combatLogPresentation';
 
 const DebugMenu = import.meta.env.DEV ? lazy(() => import('./debug/DebugMenu')) : null;
 
@@ -661,28 +663,31 @@ function HomeScreen({
       <div className="grid grid-2" style={{ marginTop: 16 }}>
         <section className="panel panel-pad">
           <div className="split">
-            <h2>Recent activity</h2>
+            <h2>Recent Level Ups</h2>
             <button className="button ghost" onClick={() => onNavigate('collection')}>
               Collection log
             </button>
           </div>
-          <div className="list" style={{ marginTop: 12 }}>
-            {game.log.slice(0, 5).map((entry) => (
-              <div className="list-row" key={entry.id}>
-                <div className="row-main">
-                  <strong>{entry.text}</strong>
-                  <small>
-                    {new Date(entry.at).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </small>
-                </div>
-                <span className={`badge ${entry.tone === 'danger' ? 'locked' : ''}`}>
-                  {entry.tone}
+          <div className="home-milestone-list" style={{ marginTop: 12 }}>
+            {game.activityLogs.milestones.slice(0, 5).map((entry) => (
+              <div className="home-milestone-row" key={entry.id}>
+                <span className="home-milestone-icon" aria-hidden="true">
+                  <ArrowUpRight size={15} />
                 </span>
+                <strong>
+                  {entry.skillId[0].toUpperCase() + entry.skillId.slice(1)} reached Level {entry.level}
+                </strong>
+                <small>
+                  {new Date(entry.at).toLocaleTimeString([], {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </small>
               </div>
             ))}
+            {game.activityLogs.milestones.length === 0 && (
+              <span className="muted">No recent level-ups yet.</span>
+            )}
           </div>
         </section>
         <section className="panel panel-pad">
@@ -1226,12 +1231,15 @@ function DeathModal({
   onClose: () => void;
 }) {
   const enemy = enemyId ? enemyById[enemyId] : undefined;
-  const recentActions = game.log
+  const recentActions = game.activityLogs.combat
     .filter((entry) => sessionStartedAt === null || entry.at >= sessionStartedAt)
     .slice(0, 8);
-  const deathCause =
-    recentActions.find((entry) => entry.text.startsWith('You were killed by'))?.text ??
-    (enemy ? `You were killed by ${enemy.name}.` : 'The final blow ended the fight.');
+  const deathEntry = recentActions.find((entry) => entry.kind === 'player-defeated');
+  const deathCause = deathEntry
+    ? getCombatLogPresentation(deathEntry).text
+    : enemy
+      ? `You were killed by ${enemy.name}.`
+      : 'The final blow ended the fight.';
 
   return (
     <div className="modal-backdrop death-backdrop">
@@ -1258,15 +1266,15 @@ function DeathModal({
           </div>
           <div className="death-action-list">
             {recentActions.length ? (
-              recentActions.map((entry) => (
-                <div className={`death-action ${entry.tone}`} key={entry.id}>
+            recentActions.map((entry) => (
+                <div
+                  className={`death-action ${getCombatLogPresentation(entry).category}`}
+                  key={entry.id}
+                >
                   <time>
-                    {formatFightDuration(
-                      entry.combatEncounterStartedAt ?? encounterStartedAt,
-                      entry.at,
-                    )}
+                    {formatFightDuration(entry.encounterStartedAt ?? encounterStartedAt, entry.at)}
                   </time>
-                  <span>{entry.text}</span>
+                  <span>{getCombatLogPresentation(entry).text}</span>
                 </div>
               ))
             ) : (

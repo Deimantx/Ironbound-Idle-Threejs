@@ -5162,6 +5162,21 @@ h3 {
 .combat-redesign-context {
   margin-bottom: 12px;
 }
+.combat-context-section {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.combat-context-section b {
+  overflow: hidden;
+  color: #e5ddc7;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.selected-next-target b {
+  color: #d8bd7f;
+}
 .combat-context-meta {
   color: #a8b3ad;
   font-size: 10px;
@@ -5225,6 +5240,67 @@ h3 {
 }
 .combat-browser-content {
   padding: 0 14px 14px;
+}
+.combat-regions-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 3px 0 7px;
+}
+.combat-region-selector {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+  margin-bottom: 10px;
+}
+.combat-region-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 9px;
+  color: #a9b4ae;
+  text-align: left;
+  background: #192124;
+  border: 1px solid #344246;
+  border-radius: 7px;
+}
+.combat-region-card.available {
+  color: #dce6d8;
+  background: rgba(47, 65, 55, 0.36);
+  border-color: #78936e;
+}
+.combat-region-card.coming-soon {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+.combat-region-card > svg:first-child {
+  flex: 0 0 auto;
+  color: #c5a967;
+}
+.combat-region-card.coming-soon > svg:first-child {
+  color: #9c9b91;
+}
+.combat-region-card > span {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.combat-region-card strong {
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.combat-region-card small {
+  color: #86938e;
+  font-size: 9px;
+}
+.combat-region-card > svg:last-child {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: #c5a967;
 }
 .combat-browser-collapsed-summary {
   display: flex;
@@ -6064,8 +6140,10 @@ h3 {
   font-size: 10px;
 }
 .combat-redesign .combat-health-track {
-  height: 12px;
+  height: 14px;
   padding: 1px;
+  border: 1px solid #526064;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.22);
 }
 .combat-redesign .combat-health-track i {
   transition: width 0.22s ease;
@@ -6178,6 +6256,26 @@ h3 {
   background: linear-gradient(90deg, #9b7040, #e0bd6f);
   transition: width 0.2s ease;
 }
+.combat-momentum.ready {
+  border-color: #b38c4c;
+  box-shadow: 0 0 0 1px rgba(224, 189, 111, 0.18);
+}
+.combat-momentum.ready .combat-momentum-head strong {
+  color: #f0d58e;
+}
+.combat-live-panel.elite-active .combat-live-status {
+  color: #e1bd6e;
+  text-shadow: 0 0 12px rgba(224, 184, 108, 0.24);
+}
+.combat-live-panel.elite-active .combat-resolution-state {
+  border-color: #8d6d38;
+}
+.combat-redesign .combat-main-action {
+  min-height: 40px;
+  padding-inline: 16px;
+  font-weight: 800;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+}
 .combat-momentum small {
   color: #9da39b;
   line-height: 1.35;
@@ -6198,11 +6296,12 @@ h3 {
   min-width: 150px;
   margin-right: auto;
 }
-.combat-analysis-target .combat-roster-portrait {
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  font-size: 20px;
+.combat-analysis-target .combat-portrait {
+  flex: 0 0 58px;
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  font-size: 28px;
 }
 .combat-analysis-target-copy {
   display: grid;
@@ -6219,6 +6318,10 @@ h3 {
 .combat-analysis-target-copy span {
   color: #9ca9a4;
   font-size: 10px;
+}
+.combat-analysis-target-copy small {
+  color: #c5a967;
+  font-size: 9px;
 }
 .combat-analysis-style {
   color: #c3a86e;
@@ -6349,6 +6452,21 @@ h3 {
 }
 .combat-live-log-entry.player-hit {
   color: #a9c9b2;
+}
+.combat-live-log-entry.special,
+.combat-live-log-entry.elite {
+  color: #e0c783;
+}
+.combat-live-log-entry.loot,
+.combat-live-log-entry.gold {
+  color: #d9c99c;
+}
+.combat-live-log-entry.death {
+  color: #e5aaa2;
+}
+.combat-live-log-entry.spawn,
+.combat-live-log-entry.legacy {
+  color: #aab5b0;
 }
 .combat-live-log-entry time {
   color: #6f7d79;
@@ -6608,6 +6726,41 @@ h3 {
   color: #c3a86e;
   font-size: 9px;
 }
+.home-milestone-list {
+  display: grid;
+  gap: 4px;
+}
+.home-milestone-row {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 4px 6px;
+  background: rgba(47, 65, 55, 0.18);
+  border-radius: 5px;
+}
+.home-milestone-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  color: #c5a967;
+  background: rgba(112, 91, 48, 0.28);
+  border-radius: 50%;
+}
+.home-milestone-row strong {
+  overflow: hidden;
+  color: #dce4dc;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.home-milestone-row small {
+  color: #82908b;
+  font-size: 9px;
+  white-space: nowrap;
+}
 @media (max-width: 1120px) {
   .combat-area-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6644,6 +6797,20 @@ h3 {
   }
   .combat-browser-selection {
     grid-template-columns: 1fr;
+  }
+  .combat-analysis .combat-section-heading {
+    flex-wrap: wrap;
+  }
+  .combat-analysis-target {
+    flex: 1 1 260px;
+    margin-right: 0;
+  }
+  .combat-context-bar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .combat-context-section {
+    flex: 1 1 220px;
   }
   .combat-location-level {
     display: none;
@@ -6702,6 +6869,20 @@ h3 {
   }
   .combat-content-tabs button small {
     display: none;
+  }
+  .combat-region-selector {
+    grid-template-columns: 1fr;
+  }
+  .combat-regions-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .combat-context-section {
+    flex-basis: 100%;
+  }
+  .combat-context-section b {
+    white-space: normal;
   }
   .combat-location-row {
     grid-template-columns: 20px 30px minmax(0, 1fr) auto;

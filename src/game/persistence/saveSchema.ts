@@ -130,8 +130,86 @@ const currentEquipmentSchema = z
           path: [slot],
           message: 'Legacy equipment slot.',
         });
-    }
+      }
   });
+
+const skillIdSchema = z.enum([
+  'attack',
+  'strength',
+  'defence',
+  'hitpoints',
+  'mining',
+  'smithing',
+]);
+const enemyIdSchema = z.enum([
+  'forest-rat',
+  'goblin-scavenger',
+  'cave-bat',
+  'stoneback-crab',
+  'grey-wolf',
+  'road-bandit',
+]);
+const eliteModifierSchema = z.enum([
+  'savage',
+  'armoured',
+  'swift',
+  'wealthy',
+  'treasure-touched',
+]);
+const milestoneLogEntrySchema = z.object({
+  id: z.string().min(1),
+  kind: z.literal('level-up'),
+  at: z.number().finite(),
+  skillId: skillIdSchema,
+  level: z.number().int().positive(),
+});
+const combatLogBaseShape = {
+  id: z.string().min(1),
+  at: z.number().finite(),
+  enemyId: enemyIdSchema,
+  encounterStartedAt: z.number().finite(),
+};
+const combatDefeatCauseSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('enemy-hit'), damage: z.number().finite().nonnegative(), heavy: z.boolean() }),
+  z.object({ kind: z.literal('bleed'), damage: z.number().finite().nonnegative() }),
+]);
+const combatLogEntrySchema = z.discriminatedUnion('kind', [
+  z.object({ ...combatLogBaseShape, kind: z.literal('player-hit'), damage: z.number().finite().nonnegative(), special: z.boolean() }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('player-miss'), special: z.boolean() }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('enemy-hit'), damage: z.number().finite().nonnegative(), heavy: z.boolean() }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('enemy-miss') }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('enemy-bleed'), damage: z.number().finite().nonnegative() }),
+  z.object({
+    ...combatLogBaseShape,
+    kind: z.literal('enemy-defeated'),
+    gold: z.number().finite().nonnegative(),
+    eliteModifier: eliteModifierSchema.nullable(),
+  }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('loot'), itemId: z.string().min(1), quantity: z.number().int().positive() }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('gold'), amount: z.number().finite().nonnegative() }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('elite-spawned'), modifier: eliteModifierSchema }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('enemy-spawned'), encounterIndex: z.number().int().positive() }),
+  z.object({ ...combatLogBaseShape, kind: z.literal('player-defeated'), cause: combatDefeatCauseSchema }),
+  z.object({
+    id: z.string().min(1),
+    kind: z.literal('legacy'),
+    at: z.number().finite(),
+    message: z.string(),
+    encounterStartedAt: z.number().finite(),
+    enemyId: enemyIdSchema.optional(),
+  }),
+]);
+const activityLogsSchema = z.object({
+  milestones: z.array(milestoneLogEntrySchema).max(50),
+  combat: z.array(combatLogEntrySchema).max(120),
+});
+const legacyLogEntrySchema = z.object({
+  id: z.string(),
+  at: z.number(),
+  text: z.string(),
+  tone: z.enum(['neutral', 'success', 'warning', 'danger']),
+  combatEncounterStartedAt: z.number().finite().optional(),
+});
 
 const savePayloadShape = {
   schemaVersion: z.number().int().positive(),
@@ -184,20 +262,14 @@ const savePayloadShape = {
     huntElites: z.boolean().optional(),
     threeQuality: z.enum(['off', 'low', 'high']),
   }),
-  log: z.array(
-    z.object({
-      id: z.string(),
-      at: z.number(),
-      text: z.string(),
-      tone: z.enum(['neutral', 'success', 'warning', 'danger']),
-      combatEncounterStartedAt: z.number().finite().optional(),
-    }),
-  ),
+  activityLogs: activityLogsSchema,
 };
 
 export const savePayloadSchema = z.object(savePayloadShape);
 export const legacySavePayloadSchema = z.object({
   ...savePayloadShape,
+  activityLogs: activityLogsSchema.optional(),
+  log: z.array(legacyLogEntrySchema).optional(),
   smithing: legacySmithingStateSchema.optional(),
   statistics: z.object({
     mined: z.number(),

@@ -45,6 +45,6 @@ export const createNewGame = (slot: number, name: string, now = Date.now()): Gam
       huntElites: true,
       threeQuality: 'high',
     },
-    log: [{ id: `welcome-${now}`, at: now, text: 'The road is yours to forge.', tone: 'neutral' }],
+    activityLogs: { milestones: [], combat: [] },
   };
 };

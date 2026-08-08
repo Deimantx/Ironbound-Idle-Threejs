@@ -6,15 +6,15 @@ import {
   ChevronDown,
   ChevronRight,
   CircleStop,
-  Clock3,
   Crosshair,
   Gem,
+  Flame,
   Lock,
+  Mountain,
   PackageOpen,
   Shield,
   Skull,
   Sparkles,
-  Sword,
   Swords,
   Settings2,
   Target,
@@ -25,7 +25,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { AREAS, areaById } from '../content/areas';
-import { combatRegionById } from '../content/combatRegions';
+import { COMBAT_REGIONS, combatRegionById } from '../content/combatRegions';
 import { enemyById } from '../content/enemies';
 import { eliteById } from '../content/elites';
 import { itemById } from '../content/items';
@@ -71,6 +71,7 @@ import { getEquipmentSlotLabel } from '../game/equipmentSlots';
 import type { CombatEquipmentSlot } from '../game/equipmentSlots';
 import type { UiLayout } from './uiLayout';
 import { UiPanelSlot } from './UiPanelSlot';
+import { getCombatLogPresentation } from './combat/combatLogPresentation';
 
 type CombatContentTab = CombatContentCategory;
 type OverviewTab = 'overview' | 'loot' | 'progression';
@@ -89,6 +90,12 @@ const zoneIcon = {
   target: Target,
   crystal: Gem,
   tree: TreePine,
+};
+
+const regionIcon = {
+  tree: TreePine,
+  mountain: Mountain,
+  flame: Flame,
 };
 
 const enemyGlyph: Record<EnemyDefinition['theme'], string> = {
@@ -221,13 +228,21 @@ function StatLine({
   );
 }
 
-function CombatPortrait({ enemy, large = false }: { enemy: EnemyDefinition; large?: boolean }) {
+function CombatPortrait({
+  enemy,
+  large = false,
+  ariaLabel,
+}: {
+  enemy: EnemyDefinition;
+  large?: boolean;
+  ariaLabel?: string;
+}) {
   const usesForestRatArt = enemy.id === 'forest-rat';
   return (
     <div
       className={`combat-portrait theme-${enemy.theme} ${large ? 'combat-portrait-large' : ''}`}
       role="img"
-      aria-label={`${enemy.name} portrait`}
+      aria-label={ariaLabel ?? `${enemy.name} portrait`}
     >
       {usesForestRatArt ? <img src={forestRatImage} alt="" /> : enemyGlyph[enemy.theme]}
     </div>
@@ -402,7 +417,7 @@ function EnemySummaryPanel({
       <div className="combat-panel-heading">
         <div className="combat-panel-kicker">Enemy</div>
         <div className="combat-enemy-heading-line">
-          <CombatPortrait enemy={enemy} large />
+          <CombatPortrait enemy={enemy} large ariaLabel={`${enemy.name} target preview`} />
           <div>
             <h2 id="enemy-title">{enemy.name}</h2>
             <span className="muted">
@@ -593,13 +608,39 @@ function CombatBrowser({
       </div>
       {!locationsExpanded && (
         <div className="combat-browser-collapsed-summary">
-          <span>Areas Â· {region.name} Â· {area.name} Â· {selectedTarget.name}</span>
+          <span>{`Areas · ${region.name} · ${area.name} · ${selectedTarget.name}`}</span>
           {activeArea && (activeArea !== selectedArea || activeEnemy !== selectedEnemy) && (
             <small>Browsing while fighting {enemyById[activeEnemy ?? 'forest-rat']?.name}</small>
           )}
         </div>
       )}
       <div id="combat-browser-content" className="combat-browser-content" hidden={!locationsExpanded}>
+        <div className="combat-regions-heading">
+          <span className="combat-panel-kicker">Regions</span>
+          <span className="muted">Greenvale is the first frontier.</span>
+        </div>
+        <div className="combat-region-selector" aria-label="Combat regions">
+          {COMBAT_REGIONS.map((candidate) => {
+            const RegionIcon = regionIcon[candidate.presentation.iconKey];
+            const available = candidate.availability === 'available';
+            return (
+              <button
+                type="button"
+                className={`combat-region-card ${available ? 'available selected' : 'coming-soon'}`}
+                disabled={!available}
+                aria-label={`${candidate.name}${available ? '' : ', coming later'}`}
+                key={candidate.id}
+              >
+                <RegionIcon size={17} />
+                <span>
+                  <strong>{candidate.name}</strong>
+                  <small>{available ? 'Active region' : 'Coming later'}</small>
+                </span>
+                {!available && <Lock size={14} aria-hidden="true" />}
+              </button>
+            );
+          })}
+        </div>
         <div className="combat-region-header">
           <div className="combat-region-icon">
             <TreePine size={20} />
@@ -631,11 +672,14 @@ function CombatBrowser({
                 </span>
                 <span className="combat-area-card-copy">
                   <strong>{candidate.name}</strong>
-                  <small>{candidate.description}</small>
+                  <small>{candidate.identity}</small>
                   <span>Requires Combat Lv {candidate.requiredCombatLevel}</span>
                   <span>
+                    {candidate.enemyIds.length} {candidate.enemyIds.length === 1 ? 'enemy' : 'enemies'}
+                  </span>
+                  <span>
                     {unlocked
-                      ? `Recommended ${candidate.recommendedLevel[0]}–${candidate.recommendedLevel[1]}`
+                      ? `${candidate.enemyIds.length} ${candidate.enemyIds.length === 1 ? 'enemy' : 'enemies'} · Recommended ${candidate.recommendedLevel[0]}–${candidate.recommendedLevel[1]}`
                       : `Requires Combat Level ${candidate.requiredCombatLevel}`}
                   </span>
                 </span>
@@ -649,7 +693,7 @@ function CombatBrowser({
         <div className="combat-browser-selection">
           <div className="combat-browser-roster">
             <div className="combat-location-content-heading">
-              <span className="combat-panel-kicker">{area.name} Â· Enemy roster</span>
+              <span className="combat-panel-kicker">{area.name} · Enemy roster</span>
               <span className="muted">Choose a target to preview it.</span>
             </div>
             <EnemyRoster
@@ -779,10 +823,13 @@ function TargetAnalysis({
           role="group"
           aria-label={`Selected target: ${enemy.name}, level ${enemy.displayLevel}`}
         >
-          <CombatPortraitSmall enemy={enemy} />
+          <CombatPortrait enemy={enemy} large />
           <span className="combat-analysis-target-copy">
             <strong>{enemy.name}</strong>
-            <span>Lv {enemy.displayLevel}</span>
+            <span>
+              Enemy Lv {enemy.displayLevel} · {enemy.tags?.join(' · ') ?? enemy.theme}
+            </span>
+            <small>{formatNumber(game.killCounts[enemy.id] ?? 0)} lifetime kills</small>
           </span>
           <span className="combat-analysis-style">
             Preview: {getCombatStyleInfo(style).name}
@@ -803,11 +850,6 @@ function TargetAnalysis({
         </div>
       </div>
       <div id="target-analysis-content" className="combat-analysis-content" hidden={!expanded}>
-        <div className="combat-analysis-lifetime-kills">
-          <Trophy size={14} />
-          <span>Lifetime kills</span>
-          <strong>{formatNumber(game.killCounts[enemy.id] ?? 0)}</strong>
-        </div>
         <div className="combat-analysis-grid">
           {rows.map(([label, value]) => (
             <div className="combat-analysis-row" key={label}>
@@ -825,63 +867,21 @@ function TargetAnalysis({
   );
 }
 
-function getLogPresentation(
-  text: string,
-  tone: GameState['log'][number]['tone'],
-): { label: string; icon: typeof Sword; category: string; important: boolean } {
-  const lower = text.toLowerCase();
-  if (lower.includes('defeated'))
-    return { label: 'Defeat', icon: Skull, category: 'defeat', important: true };
-  if (lower.includes('received') || lower.includes('gold'))
-    return { label: 'Loot', icon: Sparkles, category: 'loot', important: tone === 'success' };
-  if (lower.includes('reached level'))
-    return { label: 'Level', icon: ArrowUpRight, category: 'level', important: true };
-  if (lower.includes('accessible'))
-    return { label: 'Unlock', icon: Trophy, category: 'unlock', important: true };
-  if (lower.includes('hit'))
-    return {
-      label: 'Damage',
-      icon: Sword,
-      category: tone === 'danger' ? 'enemy-hit' : 'player-hit',
-      important: false,
-    };
-  return { label: 'System', icon: Clock3, category: 'system', important: false };
-}
-
 function RecentActions({
   game,
-  enemy,
   sessionStartedAt,
   encounterStartedAt,
 }: {
   game: GameState;
-  enemy: EnemyDefinition;
   sessionStartedAt: number | null;
   encounterStartedAt: number | null;
 }) {
   const entries = useMemo(
     () =>
-      game.log
+      game.activityLogs.combat
         .filter((entry) => sessionStartedAt === null || entry.at >= sessionStartedAt)
-        .filter((entry) => {
-          const lower = entry.text.toLowerCase();
-          return (
-            lower.includes('hit') ||
-            lower.includes('defeated') ||
-            lower.includes('received') ||
-            lower.includes('gold') ||
-            lower.includes('level') ||
-            lower.includes('combat') ||
-            lower.includes('inventory')
-          );
-        })
-        .filter(
-          (entry) =>
-            entry.text.toLowerCase().includes(enemy.name.toLowerCase()) ||
-            !entry.text.toLowerCase().includes('hit'),
-        )
         .slice(0, 8),
-    [game.log, enemy.name, sessionStartedAt],
+    [game.activityLogs.combat, sessionStartedAt],
   );
   return (
     <div className="combat-recent-actions">
@@ -892,7 +892,7 @@ function RecentActions({
       <div className="combat-live-log" aria-live="polite">
         {entries.length ? (
           entries.map((entry) => {
-            const presentation = getLogPresentation(entry.text, entry.tone);
+            const presentation = getCombatLogPresentation(entry);
             const Icon = presentation.icon;
             return (
               <div
@@ -902,13 +902,13 @@ function RecentActions({
                 <time>
                   {formatCombatLogTime(
                     entry.at,
-                    entry.combatEncounterStartedAt ?? encounterStartedAt,
+                    entry.encounterStartedAt ?? encounterStartedAt,
                   )}
                 </time>
                 <span className="combat-live-log-icon">
                   <Icon size={12} />
                 </span>
-                <span>{entry.text}</span>
+                <span>{presentation.text}</span>
               </div>
             );
           })
@@ -1010,7 +1010,7 @@ function LiveCombatResolution({
     );
   return (
     <section
-      className={`combat-live-panel status-${status.toLowerCase().replaceAll(' ', '-')}`}
+      className={`combat-live-panel status-${status.toLowerCase().replaceAll(' ', '-')} ${combatAction?.combatState.eliteModifier ? 'elite-active' : ''}`}
       aria-label="Live combat resolution"
     >
       <div className="combat-live-heading">
@@ -1068,7 +1068,7 @@ function LiveCombatResolution({
           <Sparkles size={13} /> Active effects: {effects.length ? effects.join(' · ') : 'None'}
         </span>
       </div>
-      <div className="combat-momentum" aria-label="Momentum">
+      <div className={`combat-momentum ${momentum >= 100 ? 'ready' : ''}`} aria-label="Momentum">
         <div className="combat-momentum-head">
           <span>Momentum</span>
           <strong>
@@ -1179,7 +1179,6 @@ function LiveCombatResolution({
       </div>
       <RecentActions
         game={game}
-        enemy={enemy}
         sessionStartedAt={sessionStartedAt}
         encounterStartedAt={encounterStartedAt}
       />
@@ -1628,7 +1627,7 @@ export function CombatScreen({
     : inventoryFull && !active
       ? 'Inventory full'
       : active && targetChanged
-        ? 'New target'
+        ? `Switch to ${selectedTarget.name}`
         : active?.combatState.respawnMs
           ? 'Waiting for respawn'
           : active
@@ -1664,14 +1663,21 @@ export function CombatScreen({
         </div>
       </header>
       <div className="combat-context-bar combat-redesign-context">
-        <span>
-          <span className="context-kicker">{active ? 'Current fight' : 'Selected target'}</span>{' '}
-          <b>{combatRegionById.greenvale.name} Â· {currentArea.name}</b>
-        </span>
-        <ChevronRight size={15} />
-        <span>
-          <span className="context-kicker">Target</span> <b>{currentEnemy.name}</b>
-        </span>
+        <div className="combat-context-section">
+          <span className="context-kicker">{active ? 'Current fight' : 'Selected target'}</span>
+          <b>{combatRegionById.greenvale.name} · {currentArea.name} · {currentEnemy.name}</b>
+        </div>
+        {targetChanged && (
+          <>
+            <ChevronRight size={15} />
+            <div className="combat-context-section selected-next-target">
+              <span className="context-kicker">Selected next target</span>
+              <b>
+                {combatRegionById.greenvale.name} · {selectedTargetArea.name} · {selectedTarget.name}
+              </b>
+            </div>
+          </>
+        )}
         <span
           className={`combat-status status-${selectCombatStatus(game).toLowerCase().replaceAll(' ', '-')}`}
         >
@@ -1684,7 +1690,7 @@ export function CombatScreen({
                 : 'Ready'}
         </span>
         <span className="context-spacer" />
-        {targetChanged && <span className="combat-context-meta">Browsing: {selectedTarget.name}</span>}
+        {targetChanged && <span className="combat-context-meta">Switch is explicit</span>}
       </div>
       <CombatContentTabs activeTab={contentTab} onChange={setContentTab} />
       <div className="ui-panel-grid" data-ui-panel-grid="combat">

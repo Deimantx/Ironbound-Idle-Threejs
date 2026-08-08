@@ -9,6 +9,7 @@ import {
   getHitChance,
 } from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
+import { occupiedSlots } from '../systems/inventorySystem';
 import type { AreaId, CombatStyle, EliteModifierId, EnemyDefinition, EnemyId, GameState } from '../types';
 
 export type AttackProgressState = 'idle' | 'active' | 'ready' | 'defeated' | 'respawning';
@@ -224,8 +225,7 @@ export const isCombatAreaUnlocked = (
 
 export const selectCombatStatus = (state: GameState): string => {
   if (state.activeAction.type !== 'combat') {
-    const recent = state.log[0]?.text ?? '';
-    return recent.toLowerCase().includes('inventory is full') ? 'Inventory full' : 'Idle';
+    return occupiedSlots(state.inventory) >= GAME_CONFIG.inventorySlots ? 'Inventory full' : 'Idle';
   }
   if (state.activeAction.combatState.respawnMs > 0) return 'Respawning enemy';
   if (state.activeAction.combatState.enemyHp <= 0) return 'Enemy defeated';

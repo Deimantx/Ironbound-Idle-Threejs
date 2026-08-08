@@ -102,7 +102,12 @@ describe('deterministic action simulation', () => {
     expect(result.state.statistics.deaths).toBe(1);
     expect(result.state.player.currentHp).toBe(getDerivedStats(result.state).maxHealth);
     expect(result.events.some((event) => event.type === 'player-defeated')).toBe(true);
-    expect(result.state.log[0]?.text).toMatch(/You were killed by Forest Rat/);
+    const death = result.state.activityLogs.combat.find((entry) => entry.kind === 'player-defeated');
+    expect(death).toMatchObject({
+      kind: 'player-defeated',
+      enemyId: 'forest-rat',
+      cause: { kind: 'enemy-hit' },
+    });
   });
   it('resets the encounter clock when auto-repeat spawns a new monster', () => {
     const state = startCombat(
@@ -131,7 +136,8 @@ describe('deterministic action simulation', () => {
         : null,
     ).toBeGreaterThan(firstEncounterStartedAt ?? -1);
     expect(
-      result.state.log.find((entry) => entry.text.includes('defeated'))?.combatEncounterStartedAt,
+      result.state.activityLogs.combat.find((entry) => entry.kind === 'enemy-defeated')
+        ?.encounterStartedAt,
     ).toBe(firstEncounterStartedAt);
   });
 });

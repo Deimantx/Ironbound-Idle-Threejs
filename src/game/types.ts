@@ -21,7 +21,8 @@ export type EquipmentSlot =
   | 'ring'
   | 'cape'
   | 'tool';
-export type CombatRegionId = 'greenvale';
+export type CombatRegionId = 'greenvale' | 'stonehill' | 'ashmoor';
+export type CombatRegionAvailability = 'available' | 'coming-soon';
 export type CombatContentCategory = 'areas' | 'dungeons' | 'special' | 'conquest';
 export type AreaId = 'forest-path' | 'wolf-den' | 'abandoned-camp' | 'old-shrine';
 export type EnemyId =
@@ -239,6 +240,7 @@ export interface AreaDefinition {
   regionId: CombatRegionId;
   name: string;
   description: string;
+  identity: string;
   requiredCombatLevel: number;
   enemyIds: EnemyId[];
   accent: string;
@@ -313,7 +315,57 @@ export interface GameSettings {
   threeQuality: 'off' | 'low' | 'high';
 }
 
-export interface GameLogEntry {
+export interface MilestoneLogEntry {
+  id: string;
+  at: number;
+  kind: 'level-up';
+  skillId: SkillId;
+  level: number;
+}
+
+export type CombatDefeatCause =
+  | { kind: 'enemy-hit'; damage: number; heavy: boolean }
+  | { kind: 'bleed'; damage: number };
+
+export interface CombatLogBase {
+  id: string;
+  at: number;
+  enemyId: EnemyId;
+  encounterStartedAt: number;
+}
+
+export type CombatLogEntry =
+  | (CombatLogBase & { kind: 'player-hit'; damage: number; special: boolean })
+  | (CombatLogBase & { kind: 'player-miss'; special: boolean })
+  | (CombatLogBase & { kind: 'enemy-hit'; damage: number; heavy: boolean })
+  | (CombatLogBase & { kind: 'enemy-miss' })
+  | (CombatLogBase & { kind: 'enemy-bleed'; damage: number })
+  | (CombatLogBase & {
+      kind: 'enemy-defeated';
+      gold: number;
+      eliteModifier: EliteModifierId | null;
+    })
+  | (CombatLogBase & { kind: 'loot'; itemId: string; quantity: number })
+  | (CombatLogBase & { kind: 'gold'; amount: number })
+  | (CombatLogBase & { kind: 'elite-spawned'; modifier: EliteModifierId })
+  | (CombatLogBase & { kind: 'enemy-spawned'; encounterIndex: number })
+  | (CombatLogBase & { kind: 'player-defeated'; cause: CombatDefeatCause })
+  | {
+      id: string;
+      kind: 'legacy';
+      at: number;
+      message: string;
+      encounterStartedAt: number;
+      enemyId?: EnemyId;
+    };
+
+export interface ActivityLogsState {
+  milestones: MilestoneLogEntry[];
+  combat: CombatLogEntry[];
+}
+
+/** @deprecated Legacy save-only shape. Runtime state uses ActivityLogsState. */
+export interface LegacyGameLogEntry {
   id: string;
   at: number;
   text: string;
@@ -352,7 +404,7 @@ export interface GameState {
   activeAction: ActiveAction;
   unlockedAreas: AreaId[];
   settings: GameSettings;
-  log: GameLogEntry[];
+  activityLogs: ActivityLogsState;
 }
 
 export interface SimulationSummary {

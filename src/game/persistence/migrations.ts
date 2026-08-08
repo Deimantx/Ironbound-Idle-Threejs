@@ -23,7 +23,17 @@ import {
 } from '../formulas/experienceFormulas';
 import { miningNodeById } from '../../content/miningNodes';
 import { SKILL_IDS } from '../types';
-import type { AreaId, EnemyId, GameState, InventoryStack, SkillId } from '../types';
+import type {
+  ActivityLogsState,
+  AreaId,
+  CombatLogEntry,
+  EnemyId,
+  GameState,
+  InventoryStack,
+  LegacyGameLogEntry,
+  MilestoneLogEntry,
+  SkillId,
+} from '../types';
 
 const LEGACY_MINING_NODE_MAP: Record<string, 'stone-outcrop' | null> = {
   'copper-vein': 'stone-outcrop',
@@ -92,6 +102,54 @@ const migrateCombatAreas = (input: GameState): GameState => {
     unlockedAreas: unlockedAreas.length ? unlockedAreas : ['forest-path'],
     schemaVersion: 9,
   };
+};
+
+const LEGACY_SKILL_NAME_MAP: Record<string, SkillId> = {
+  attack: 'attack',
+  strength: 'strength',
+  defence: 'defence',
+  defense: 'defence',
+  hitpoints: 'hitpoints',
+  mining: 'mining',
+  smithing: 'smithing',
+};
+
+const migrateLegacyLog = (legacyLog: LegacyGameLogEntry[]): ActivityLogsState => {
+  const milestones: MilestoneLogEntry[] = [];
+  const combat: CombatLogEntry[] = [];
+  for (const entry of legacyLog) {
+    const levelUp = entry.text.match(/^([A-Za-z]+) reached level (\d+)\.?$/i);
+    if (levelUp) {
+      const skillId = LEGACY_SKILL_NAME_MAP[levelUp[1].toLowerCase()];
+      const level = Number(levelUp[2]);
+      if (skillId && Number.isInteger(level) && level > 0)
+        milestones.push({ id: entry.id, kind: 'level-up', at: entry.at, skillId, level });
+    }
+    if (Number.isFinite(entry.combatEncounterStartedAt))
+      combat.push({
+        id: entry.id,
+        kind: 'legacy',
+        at: entry.at,
+        message: entry.text,
+        encounterStartedAt: entry.combatEncounterStartedAt!,
+      });
+  }
+  return { milestones: milestones.slice(0, 50), combat: combat.slice(0, 120) };
+};
+
+const migrateActivityLogs = (input: GameState): GameState => {
+  const raw = input as unknown as Record<string, unknown>;
+  const existing = raw.activityLogs as Partial<ActivityLogsState> | undefined;
+  const legacyLog = Array.isArray(raw.log) ? (raw.log as LegacyGameLogEntry[]) : undefined;
+  const activityLogs: ActivityLogsState = existing
+    ? {
+        milestones: Array.isArray(existing.milestones) ? existing.milestones.slice(0, 50) : [],
+        combat: Array.isArray(existing.combat) ? existing.combat.slice(0, 120) : [],
+      }
+    : migrateLegacyLog(legacyLog ?? []);
+  const next = { ...input, activityLogs, schemaVersion: 10 } as GameState;
+  delete (next as unknown as Record<string, unknown>).log;
+  return next;
 };
 
 const getMigratedArmorId = (itemId: unknown): string | null => {
@@ -521,6 +579,7 @@ export const migrations: Record<number, SaveMigration> = {
   7: migrateSmithing,
   8: migrateForgeFuel,
   9: migrateCombatAreas,
+  10: migrateActivityLogs,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {
@@ -536,6 +595,7 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
   }
   current = normalizeSkillStates(current);
   current = migrateCombatAreas(current);
+  current = migrateActivityLogs(current);
   current.schemaVersion = GAME_CONFIG.currentSaveVersion;
   return current;
 };

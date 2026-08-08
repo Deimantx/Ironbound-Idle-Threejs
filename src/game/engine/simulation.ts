@@ -1,7 +1,6 @@
 import { GAME_CONFIG } from '../../config/gameConfig';
 import { areaById } from '../../content/areas';
 import { enemyById } from '../../content/enemies';
-import { eliteById } from '../../content/elites';
 import { itemById } from '../../content/items';
 import { miningNodeById } from '../../content/miningNodes';
 import { recipeById } from '../../content/recipes';
@@ -58,22 +57,12 @@ import type {
   SimulationSummary,
 } from '../types';
 import { emptySummary } from '../types';
+import { appendCombatLog } from '../logging/combatLog';
+import { appendMilestone } from '../logging/milestoneLog';
 
 const clone = (state: GameState): GameState => structuredClone(state);
 const MAX_COMBAT_SIMULATION_EVENTS = 100_000;
 const MAX_COMBAT_VISUAL_EVENTS = 64;
-const addLog = (
-  state: GameState,
-  text: string,
-  tone: GameState['log'][number]['tone'] = 'neutral',
-  at = Date.now(),
-  combatEncounterStartedAt?: number,
-): void => {
-  state.log = [
-    { id: `${at}-${state.log.length}-${text}`, at, text, tone, combatEncounterStartedAt },
-    ...state.log,
-  ].slice(0, 80);
-};
 const addSummaryNumber = (record: Record<string, number>, id: string, amount: number): void => {
   record[id] = (record[id] ?? 0) + amount;
 };
@@ -82,6 +71,7 @@ const awardXp = (
   summary: SimulationSummary,
   skill: SkillId,
   amount: number,
+  at = state.lastSimulatedAt,
 ): void => {
   const gained = Math.max(0, Math.floor(amount));
   if (gained === 0) return;
@@ -89,11 +79,7 @@ const awardXp = (
   const levels = addSkillXp(state.skills, skill, gained);
   if (levels > 0) {
     summary.levelsGained[skill] = (summary.levelsGained[skill] ?? 0) + levels;
-    addLog(
-      state,
-      `${skill[0].toUpperCase()}${skill.slice(1)} reached level ${state.skills[skill].level}.`,
-      'success',
-    );
+    appendMilestone(state, { skillId: skill, level: state.skills[skill].level, at });
   }
 };
 const MAX_MINING_SIMULATION_EVENTS = 100_000;
@@ -130,6 +116,7 @@ const resolveMiningSwing = (
   state: GameState,
   node: MiningNodeDefinition,
   summary: SimulationSummary,
+  at: number,
 ): { ok: boolean; phase: 'swing' | 'rest' | 'respawn' } => {
   const runtime = getMiningRuntimeState(state.mining, node.id);
   const tool = getMiningTool(state);
@@ -178,12 +165,9 @@ const resolveMiningSwing = (
   if (transition.rockDepleted) addSummaryNumber(summary.completed, `mine-rock:${node.id}`, 1);
   for (const reward of bundle) {
     addSummaryNumber(summary.itemsGained, reward.itemId, reward.quantity);
-    if (!state.discoveredItems.includes(reward.itemId)) {
-      state.discoveredItems.push(reward.itemId);
-      addLog(state, `${itemById[reward.itemId]?.name ?? reward.itemId} discovered.`, 'success');
-    }
+    if (!state.discoveredItems.includes(reward.itemId)) state.discoveredItems.push(reward.itemId);
   }
-  awardXp(state, summary, 'mining', getMiningSwingXp(node, effectiveness));
+  awardXp(state, summary, 'mining', getMiningSwingXp(node, effectiveness), at);
   if (transition.rockDepleted) return { ok: true, phase: 'respawn' };
   return { ok: true, phase: state.mining.stamina <= 0 ? 'rest' : 'swing' };
 };
@@ -282,7 +266,7 @@ const simulateMining = (
     remaining -= needed;
     processed += needed;
     currentAction.progressMs = 0;
-    const result = resolveMiningSwing(state, node, summary);
+    const result = resolveMiningSwing(state, node, summary, state.lastSimulatedAt + processed);
     events += 1;
     if (!result.ok) break;
     currentAction.phase = result.phase;
@@ -298,6 +282,7 @@ const resolveSmithingCycle = (
   state: GameState,
   recipe: (typeof recipeById)[string],
   summary: SimulationSummary,
+  at: number,
 ): { ok: true } | { ok: false; reason: string } => {
   for (const input of recipe.inputs) {
     if (input.quantity <= 0 || getItemQuantity(state.inventory, input.itemId) < input.quantity)
@@ -364,15 +349,8 @@ const resolveSmithingCycle = (
   state.statistics[recipe.category === 'smelting' ? 'smelted' : 'forged'] += 1;
   addSummaryNumber(summary.completed, `${recipe.category}:${recipe.id}`, 1);
   addSummaryNumber(summary.itemsGained, recipe.outputItemId, recipe.outputQuantity);
-  awardXp(state, summary, 'smithing', recipe.xp);
-  if (!state.discoveredItems.includes(recipe.outputItemId)) {
-    state.discoveredItems.push(recipe.outputItemId);
-    addLog(
-      state,
-      `${itemById[recipe.outputItemId]?.name ?? recipe.outputItemId} added to the collection.`,
-      'success',
-    );
-  }
+  awardXp(state, summary, 'smithing', recipe.xp, at);
+  if (!state.discoveredItems.includes(recipe.outputItemId)) state.discoveredItems.push(recipe.outputItemId);
   return { ok: true };
 };
 
@@ -428,7 +406,12 @@ const simulateSmithing = (
     }
     remaining -= needed;
     progress = 0;
-    const result = resolveSmithingCycle(state, recipe, summary);
+    const result = resolveSmithingCycle(
+      state,
+      recipe,
+      summary,
+      state.lastSimulatedAt + elapsedMs - remaining,
+    );
     if (!result.ok) {
       state.activeAction = { type: 'none' };
       summary.stoppedReason = result.reason;
@@ -524,9 +507,6 @@ const pushBoundedEvent = (events: CombatVisualEvent[], event: CombatVisualEvent)
   if (events.length >= MAX_COMBAT_VISUAL_EVENTS) events.shift();
   events.push(event);
 };
-const getEliteModifierDisplayName = (modifier: keyof typeof eliteById): string =>
-  eliteById[modifier]?.name ?? modifier;
-
 const simulateCombat = (
   state: GameState,
   elapsedMs: number,
@@ -551,8 +531,6 @@ const simulateCombat = (
   let combatState = action.combatState;
   let clock = state.lastSimulatedAt;
   let iterations = 0;
-  const addCombatLog = (text: string, tone: GameState['log'][number]['tone'], at: number): void =>
-    addLog(state, text, tone, at, combatState.encounterStartedAt);
   const emit = (event: CombatVisualEvent): void => {
     pushBoundedEvent(events, event);
     if (event.type === 'player-hit' || event.type === 'player-miss') {
@@ -573,7 +551,10 @@ const simulateCombat = (
       summary.combatStats.damageTaken += event.damage;
     }
   };
-  const stopForPlayerDeath = (at: number, cause: string): void => {
+  const stopForPlayerDeath = (
+    at: number,
+    cause: { kind: 'enemy-hit'; damage: number; heavy: boolean } | { kind: 'bleed'; damage: number },
+  ): void => {
     state.statistics.deaths += 1;
     summary.deaths += 1;
     state.player.currentHp = getDerivedStats(state, action.style).maxHealth;
@@ -585,8 +566,13 @@ const simulateCombat = (
       enemyId: enemy.id,
       at,
     });
-    addCombatLog('You were defeated. Your belongings are safe.', 'danger', at);
-    addCombatLog(`You were killed by ${enemy.name} ${cause}.`, 'danger', at);
+    appendCombatLog(state, {
+      kind: 'player-defeated',
+      enemyId: enemy.id,
+      at,
+      encounterStartedAt: combatState.encounterStartedAt,
+      cause,
+    });
   };
   const spawnNextEnemy = (at: number): void => {
     const style = action.pendingStyle ?? action.style;
@@ -602,6 +588,13 @@ const simulateCombat = (
     );
     action = { ...action, style, pendingStyle: null, specialQueued: false };
     combatState = spawn.combatState;
+    appendCombatLog(state, {
+      kind: 'enemy-spawned',
+      enemyId: enemy.id,
+      at,
+      encounterStartedAt: combatState.encounterStartedAt,
+      encounterIndex: combatState.encounterIndex,
+    });
     if (spawn.eliteModifier) {
       emit({
         id: combatEventId('elite-spawned', at, rng.rngCursor),
@@ -611,11 +604,13 @@ const simulateCombat = (
         modifier: spawn.eliteModifier,
       });
       combatState.eliteAnnounced = true;
-      addCombatLog(
-        `${enemy.name} spawned as a ${getEliteModifierDisplayName(spawn.eliteModifier)} elite.`,
-        'warning',
+      appendCombatLog(state, {
+        kind: 'elite-spawned',
+        enemyId: enemy.id,
         at,
-      );
+        encounterStartedAt: combatState.encounterStartedAt,
+        modifier: spawn.eliteModifier,
+      });
     }
   };
   if (combatState.eliteModifier && !combatState.eliteAnnounced) {
@@ -627,6 +622,13 @@ const simulateCombat = (
       modifier: combatState.eliteModifier,
     });
     combatState.eliteAnnounced = true;
+    appendCombatLog(state, {
+      kind: 'elite-spawned',
+      enemyId: enemy.id,
+      at: clock,
+      encounterStartedAt: combatState.encounterStartedAt,
+      modifier: combatState.eliteModifier,
+    });
   }
   while (left > 0 && iterations < MAX_COMBAT_SIMULATION_EVENTS) {
     iterations += 1;
@@ -700,7 +702,13 @@ const simulateCombat = (
           at: clock,
           special: useSpecial,
         });
-        addCombatLog(`You missed ${enemy.name}.`, 'neutral', clock);
+        appendCombatLog(state, {
+          kind: 'player-miss',
+          enemyId: enemy.id,
+          at: clock,
+          encounterStartedAt: combatState.encounterStartedAt,
+          special: useSpecial,
+        });
       } else {
         const rolled = rollDamage(attackMaxHit, nextCombatRandom(rng));
         const reduced =
@@ -721,13 +729,22 @@ const simulateCombat = (
           at: clock,
           special: useSpecial,
         });
-        addCombatLog(
-          `You hit ${enemy.name} for ${actualDamage}${useSpecial ? ' with a special' : ''}.`,
-          'neutral',
+        appendCombatLog(state, {
+          kind: 'player-hit',
+          enemyId: enemy.id,
+          at: clock,
+          encounterStartedAt: combatState.encounterStartedAt,
+          damage: actualDamage,
+          special: useSpecial,
+        });
+        awardXp(
+          state,
+          summary,
+          getCombatStyleSkill(action.style),
+          getCombatDamageXp(actualDamage),
           clock,
         );
-        awardXp(state, summary, getCombatStyleSkill(action.style), getCombatDamageXp(actualDamage));
-        awardXp(state, summary, 'hitpoints', getHitpointsDamageXp(actualDamage));
+        awardXp(state, summary, 'hitpoints', getHitpointsDamageXp(actualDamage), clock);
       }
       combatState.playerAttackMs += getDerivedStats(state, action.style).attackIntervalMs;
       if (combatState.enemyHp <= 0) {
@@ -767,14 +784,30 @@ const simulateCombat = (
           gold,
           items: loot.items,
         });
-        const lootText = loot.items.length
-          ? ` Received ${loot.items.map((entry) => `${entry.quantity} ${itemById[entry.itemId]?.name ?? entry.itemId}`).join(', ')}.`
-          : '';
-        addCombatLog(
-          `${eliteModifier ? `${getEliteModifierDisplayName(eliteModifier)} ` : ''}${enemy.name} defeated. +${gold} gold.${lootText}`,
-          'success',
-          clock,
-        );
+        for (const item of loot.items)
+          appendCombatLog(state, {
+            kind: 'loot',
+            enemyId: enemy.id,
+            at: clock,
+            encounterStartedAt: combatState.encounterStartedAt,
+            itemId: item.itemId,
+            quantity: item.quantity,
+          });
+        appendCombatLog(state, {
+          kind: 'gold',
+          enemyId: enemy.id,
+          at: clock,
+          encounterStartedAt: combatState.encounterStartedAt,
+          amount: gold,
+        });
+        appendCombatLog(state, {
+          kind: 'enemy-defeated',
+          enemyId: enemy.id,
+          at: clock,
+          encounterStartedAt: combatState.encounterStartedAt,
+          gold,
+          eliteModifier,
+        });
         if (!loot.ok) {
           state.activeAction = { type: 'none' };
           summary.stoppedReason =
@@ -809,7 +842,7 @@ const simulateCombat = (
           at: clock,
         });
         if (state.player.currentHp <= 0) {
-          stopForPlayerDeath(clock, `from bleeding bites for ${bleedDamage} damage`);
+          stopForPlayerDeath(clock, { kind: 'bleed', damage: bleedDamage });
           break;
         }
       }
@@ -832,7 +865,12 @@ const simulateCombat = (
           damage: 0,
           at: clock,
         });
-        addCombatLog(`${enemy.name} missed you.`, 'neutral', clock);
+        appendCombatLog(state, {
+          kind: 'enemy-miss',
+          enemyId: enemy.id,
+          at: clock,
+          encounterStartedAt: combatState.encounterStartedAt,
+        });
       } else {
         const maxHit = heavy
           ? Math.max(1, Math.round(enemyStats.maxHit * COMBAT_TUNING.banditHeavyMaxHitMultiplier))
@@ -852,11 +890,14 @@ const simulateCombat = (
           damage: actualDamage,
           at: clock,
         });
-        addCombatLog(
-          `${enemy.name} hit you for ${actualDamage}${heavy ? ' with a heavy strike' : ''}.`,
-          'danger',
-          clock,
-        );
+        appendCombatLog(state, {
+          kind: 'enemy-hit',
+          enemyId: enemy.id,
+          at: clock,
+          encounterStartedAt: combatState.encounterStartedAt,
+          damage: actualDamage,
+          heavy,
+        });
         if (
           enemy.trait.id === 'bleeding-bites' &&
           nextCombatRandom(rng) < COMBAT_TUNING.wolfBleedChance
@@ -868,7 +909,7 @@ const simulateCombat = (
         if (state.player.currentHp <= 0) {
           stopForPlayerDeath(
             clock,
-            `with a hit for ${actualDamage}${heavy ? ' from a heavy strike' : ''}`,
+            { kind: 'enemy-hit', damage: actualDamage, heavy },
           );
           break;
         }
