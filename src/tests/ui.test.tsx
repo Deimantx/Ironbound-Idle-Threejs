@@ -454,6 +454,10 @@ describe('navigation integration', () => {
       ),
     ).toEqual(['TYPE', 'METAL']);
     expect(document.querySelectorAll('.smithing-anvil-row').length).toBeGreaterThan(0);
+    expect(screen.queryByText(/1 output/)).not.toBeInTheDocument();
+    expect(
+      document.querySelector('.smithing-anvil-row .smithing-material-amount'),
+    ).toBeInTheDocument();
     expect(
       screen.getByText('IRON', { selector: '.smithing-tier-heading span' }),
     ).toBeInTheDocument();
@@ -487,7 +491,9 @@ describe('navigation integration', () => {
     await user.click(screen.getByRole('button', { name: 'All Metals' }));
     await user.click(screen.getByRole('button', { name: 'Weapons' }));
     await user.click(screen.getByRole('button', { name: 'Iron' }));
-    expect(screen.getByText('Iron Sword')).toBeInTheDocument();
+    expect(
+      screen.getByText('Iron Sword', { selector: '.smithing-recipe-output strong' }),
+    ).toBeInTheDocument();
     expect(screen.queryByText('Iron Armor')).not.toBeInTheDocument();
 
     const forgeHeader = screen.getByRole('button', { name: 'Collapse Forge' });
@@ -598,18 +604,26 @@ describe('navigation integration', () => {
 
     await user.click(screen.getAllByRole('button', { name: /Smithing/ })[0]);
     expect(document.querySelector('.smithing-tier-heading small')).toHaveTextContent('3,840');
-    expect(screen.getByText('Iron Sword')).toBeInTheDocument();
-    expect(screen.getByText('Steel Sword')).toBeInTheDocument();
+    expect(
+      screen.getByText('Iron Sword', { selector: '.smithing-recipe-output strong' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Steel Sword', { selector: '.smithing-recipe-output strong' }),
+    ).toBeInTheDocument();
 
     const ironHeading = screen.getByRole('button', { name: 'Collapse iron recipes' });
     await user.click(ironHeading);
     expect(ironHeading).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByText('Iron Sword')).not.toBeInTheDocument();
-    expect(screen.getByText('Steel Sword')).toBeInTheDocument();
+    expect(
+      screen.getByText('Steel Sword', { selector: '.smithing-recipe-output strong' }),
+    ).toBeInTheDocument();
     expect(useGameStore.getState().game?.inventory).toEqual(game.inventory);
 
     await user.click(screen.getByRole('button', { name: 'Iron' }));
-    expect(screen.getByText('Iron Sword')).toBeInTheDocument();
+    expect(
+      screen.getByText('Iron Sword', { selector: '.smithing-recipe-output strong' }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Collapse iron recipes' })).toHaveAttribute(
       'aria-expanded',
       'true',

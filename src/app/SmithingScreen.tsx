@@ -80,8 +80,8 @@ function SmithingMaterials({ game, recipe }: { game: GameState; recipe: RecipeDe
     <div className="smithing-cost-materials">
       {requirements.map((requirement) => (
         <span className="smithing-material-line" key={requirement.itemId}>
-          <span>{itemName(requirement.itemId)}</span>
-          <strong>
+          <span className="smithing-material-name">{itemName(requirement.itemId)}</span>
+          <strong className="smithing-material-amount">
             {formatNumber(getItemQuantity(game.inventory, requirement.itemId))} /{' '}
             {requirement.quantity}
           </strong>
@@ -146,9 +146,7 @@ function RecipeOutput({ recipe }: { recipe: RecipeDefinition }) {
       <ItemIcon itemId={recipe.outputItemId} size="md" />
       <div>
         <strong>{itemName(recipe.outputItemId)}</strong>
-        <small>
-          {recipe.name} · {recipe.outputQuantity} output
-        </small>
+        <small>{recipe.name}</small>
       </div>
     </div>
   );
