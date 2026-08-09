@@ -50,6 +50,7 @@ export function HomeScreen({
             totalCombatLevels={totalCombatLevels}
             totalProfessionLevels={totalProfessionLevels}
             activity={activity}
+            uiLayout={uiLayout}
           />
         </UiPanelSlot>
         <UiPanelSlot screen="home" id="homeCombatProgression" layout={uiLayout}>

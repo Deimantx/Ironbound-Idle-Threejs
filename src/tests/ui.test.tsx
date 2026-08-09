@@ -82,6 +82,19 @@ const mockHomeGeometry = () => {
     if (!panel) throw new Error(`Home panel ${id} was not rendered`);
     vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(panelRect);
   });
+  const nestedGrid = document.querySelector<HTMLElement>('[data-ui-panel-region-grid="homeOverview"]');
+  if (!nestedGrid) throw new Error('Home nested region grid was not rendered');
+  vi.spyOn(nestedGrid, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 1200, 220));
+  const nestedGeometry: Record<string, DOMRect> = {
+    homeOverviewActivity: rect(0, 0, 1200, 92),
+    homeOverviewStats: rect(0, 92, 878, 110),
+    homeOverviewCharacter: rect(900, 92, 300, 110),
+  };
+  Object.entries(nestedGeometry).forEach(([id, nestedRect]) => {
+    const region = document.querySelector<HTMLElement>(`[data-ui-panel-region="${id}"]`);
+    if (!region) throw new Error(`Home nested region ${id} was not rendered`);
+    vi.spyOn(region, 'getBoundingClientRect').mockReturnValue(nestedRect);
+  });
 };
 
 const dispatchPointer = (
@@ -1570,6 +1583,123 @@ describe('navigation integration', () => {
     expect(within(editor).getByRole('button', { name: /Character overview/ })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Close UI editor' }));
     expect(screen.queryByRole('dialog', { name: 'Edit game UI' })).not.toBeInTheDocument();
+  });
+
+  it('edits Home Overview nested regions through the hierarchy', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    expect(document.querySelector('[data-ui-panel-region-grid="homeOverview"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-ui-panel-region="homeOverviewActivity"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-ui-panel-region="homeOverviewStats"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-ui-panel-region="homeOverviewCharacter"]')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Character overview/ }));
+    expect(within(editor).getByRole('button', { name: /Current Activity/ })).toBeInTheDocument();
+    expect(within(editor).getByRole('button', { name: /Character Visual/ })).toBeInTheDocument();
+
+    await user.click(within(editor).getByRole('button', { name: /Stats/ }));
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Region width' }), {
+      target: { value: '8' },
+    });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.home.homeOverview.regions.homeOverviewStats.columnSpan).toBe(8);
+    });
+
+    await user.click(within(editor).getByRole('button', { name: /Character overview/ }));
+    await user.selectOptions(within(editor).getByRole('combobox', { name: 'Layout preset' }), '50 / 50');
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.home.homeOverview.regions.homeOverviewStats.columnSpan).toBe(6);
+      expect(stored.panelRegions.home.homeOverview.regions.homeOverviewCharacter.columnSpan).toBe(6);
+    });
+
+    await user.click(within(editor).getByRole('button', { name: /Character Visual/ }));
+    const visible = within(editor).getByRole('checkbox', { name: 'Visible' });
+    await user.click(visible);
+    await waitFor(() => {
+      expect(document.querySelector('[data-ui-panel-region="homeOverviewCharacter"]')).toHaveStyle({ display: 'none' });
+      expect(within(editor).getAllByRole('button', { name: /Character Visual/ }).length).toBeGreaterThan(0);
+    });
+    await user.click(within(editor).getByRole('button', { name: 'Undo UI change' }));
+    await waitFor(() => expect(visible).toBeChecked());
+
+    await user.click(within(editor).getByRole('button', { name: /Character overview/ }));
+    await user.click(within(editor).getByRole('button', { name: /Lock Character overview/ }));
+    await user.click(within(editor).getByRole('button', { name: /Character Visual/ }));
+    expect(within(editor).getByRole('checkbox', { name: 'Visible' })).toBeDisabled();
+    await user.click(within(editor).getByRole('button', { name: /Character overview/ }));
+    await user.click(within(editor).getByRole('button', { name: /Unlock Character overview/ }));
+
+    await user.click(editor.querySelector('.ui-editor-tree-panel .ui-editor-region') as HTMLElement);
+    await user.click(within(editor).getByRole('button', { name: 'Reset Character overview' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.home.homeOverview.regions.homeOverviewStats.columnSpan).toBe(9);
+      expect(stored.panelRegions.home.homeOverview.regions.homeOverviewCharacter.visible).toBe(true);
+    });
+  });
+
+  it('persists and resets selected panel appearance overrides', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Character overview/ }));
+    fireEvent.change(within(editor).getByLabelText('Background'), { target: { value: '#123456' } });
+    fireEvent.change(within(editor).getByLabelText('Border color'), { target: { value: '#654321' } });
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Border width' }), {
+      target: { value: '4' },
+    });
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Corner radius' }), {
+      target: { value: '24' },
+    });
+    await user.click(within(editor).getByRole('checkbox', { name: 'Panel shadow' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelAppearances.home.homeOverview).toEqual({
+        background: '#123456',
+        borderColor: '#654321',
+        borderWidth: 4,
+        radius: 24,
+        shadow: false,
+      });
+    });
+    await user.click(within(editor).getByRole('button', { name: 'Reset Character overview' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelAppearances?.home?.homeOverview).toBeUndefined();
+    });
+  });
+
+  it('resizes a Home nested region with the internal grid handle', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    mockHomeGeometry();
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Character overview/ }));
+    await user.click(within(editor).getByRole('button', { name: /Stats/ }));
+    const handle = screen.getByRole('button', { name: 'Resize Stats width' });
+    dispatchPointer(handle, 'pointerdown', {
+      pointerId: 11,
+      clientX: 878,
+      clientY: 140,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointermove', {
+      pointerId: 11,
+      clientX: 578,
+      clientY: 140,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointerup', { pointerId: 11, clientX: 578, clientY: 140 });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.home.homeOverview.regions.homeOverviewStats.columnSpan).toBe(6);
+    });
   });
 
   it('supports Home history, panel locking, direct resize, and screen reset', async () => {

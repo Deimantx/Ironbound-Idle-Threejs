@@ -3,6 +3,9 @@ import { getDerivedStats } from '../../game/formulas/statFormulas';
 import type { GameState, ScreenId } from '../../game/types';
 import { ThreeScene } from '../../three/ThreeScene';
 import { ExplainedTerm } from '../tooltips/GameConceptTooltip';
+import { UiPanelRegionGrid } from '../UiPanelRegionGrid';
+import { UiPanelRegionSlot } from '../UiPanelRegionSlot';
+import type { UiLayout } from '../uiLayout';
 import type { HomeActivitySummary } from './homeSelectors';
 
 interface CharacterOverviewProps {
@@ -12,6 +15,7 @@ interface CharacterOverviewProps {
   totalCombatLevels: number;
   totalProfessionLevels: number;
   activity: HomeActivitySummary;
+  uiLayout: UiLayout;
 }
 
 const metrics = [
@@ -44,6 +48,7 @@ export function CharacterOverview({
   totalCombatLevels,
   totalProfessionLevels,
   activity,
+  uiLayout,
 }: CharacterOverviewProps) {
   const stats = getDerivedStats(game);
   const values = {
@@ -55,32 +60,61 @@ export function CharacterOverview({
 
   return (
     <section className="panel home-overview" aria-labelledby="character-overview-title">
-      <CurrentActivityStatus activity={activity} onNavigate={onNavigate} />
-      <div className="home-panel-heading">
-        <div>
-          <div className="eyebrow">Character overview</div>
-          <h2 id="character-overview-title">Your standing on the frontier</h2>
-        </div>
-      </div>
-      <div className="home-overview-metric-row">
-        <div className="home-overview-metrics">
-          {metrics.map((metric) => (
-            <div className="home-overview-metric" key={metric.key}>
-              <span className="home-metric-label">
-                <ExplainedTerm
-                  concept={metric.concept}
-                  label={metric.label}
-                  showHelpIcon={game.settings.showHelpIcons}
-                />
-              </span>
-              <strong>{values[metric.key]}</strong>
+      <UiPanelRegionGrid
+        screen="home"
+        panelId="homeOverview"
+        layout={uiLayout}
+        className="home-overview-layout"
+      >
+        <UiPanelRegionSlot
+          screen="home"
+          panelId="homeOverview"
+          regionId="homeOverviewActivity"
+          layout={uiLayout}
+          className="home-overview-activity-region"
+        >
+          <CurrentActivityStatus activity={activity} onNavigate={onNavigate} />
+          <div className="home-panel-heading">
+            <div>
+              <div className="eyebrow">Character overview</div>
+              <h2 id="character-overview-title">Your standing on the frontier</h2>
             </div>
-          ))}
-        </div>
-        <div className="home-character-visual" aria-label="Character scene">
-          <ThreeScene screen="home" settings={game.settings} theme="#b58b53" />
-        </div>
-      </div>
+          </div>
+        </UiPanelRegionSlot>
+        <UiPanelRegionSlot
+          screen="home"
+          panelId="homeOverview"
+          regionId="homeOverviewStats"
+          layout={uiLayout}
+          className="home-overview-stats-region"
+        >
+          <div className="home-overview-metrics">
+            {metrics.map((metric) => (
+              <div className="home-overview-metric" key={metric.key}>
+                <span className="home-metric-label">
+                  <ExplainedTerm
+                    concept={metric.concept}
+                    label={metric.label}
+                    showHelpIcon={game.settings.showHelpIcons}
+                  />
+                </span>
+                <strong>{values[metric.key]}</strong>
+              </div>
+            ))}
+          </div>
+        </UiPanelRegionSlot>
+        <UiPanelRegionSlot
+          screen="home"
+          panelId="homeOverview"
+          regionId="homeOverviewCharacter"
+          layout={uiLayout}
+          className="home-overview-character-region"
+        >
+          <div className="home-character-visual" aria-label="Character scene">
+            <ThreeScene screen="home" settings={game.settings} theme="#b58b53" />
+          </div>
+        </UiPanelRegionSlot>
+      </UiPanelRegionGrid>
     </section>
   );
 }

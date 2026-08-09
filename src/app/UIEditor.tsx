@@ -16,14 +16,30 @@ import {
   UI_EDITOR_COMPACT_QUERY,
   UI_EDITOR_GRID_ROW_HEIGHT,
   UI_REGIONS,
+  getUiPanelAppearance,
+  getUiPanelInternalLayout,
+  getUiPanelRegions,
+  resetUiPanel,
+  resetUiPanelRegion,
   resetUiLayoutScreen,
   resetUiLayout,
   type UiLayout,
+  type UiPanelAppearance,
+  type UiPanelInternalLayout,
   type UiPanelId,
   type UiPanelPosition,
+  type UiPanelRegionId,
+  type UiPanelRegionPosition,
   type UiRegion,
 } from './uiLayout';
-import { canEditPanelLayout, clampPanelColumnSpan, clampPanelHeight, snapGridDelta } from './uiEditorGeometry';
+import {
+  canEditPanelLayout,
+  clampNestedColumnSpan,
+  clampPanelColumnSpan,
+  clampPanelHeight,
+  findAvailableNestedRegionPosition,
+  snapGridDelta,
+} from './uiEditorGeometry';
 import type { ScreenId } from '../game/types';
 
 interface UiEditorProps {
@@ -43,10 +59,14 @@ interface RegionBox {
 interface EditorBoxes {
   regions: Partial<Record<UiRegion, RegionBox>>;
   panels: Partial<Record<UiPanelId, RegionBox>>;
+  nestedRegions: Partial<Record<string, RegionBox>>;
   grid?: RegionBox;
 }
 
-type SelectedTarget = { kind: 'region'; id: UiRegion } | { kind: 'panel'; id: UiPanelId };
+type SelectedTarget =
+  | { kind: 'region'; id: UiRegion }
+  | { kind: 'panel'; id: UiPanelId }
+  | { kind: 'panelRegion'; panelId: UiPanelId; id: UiPanelRegionId };
 
 interface GridMetrics {
   left: number;
@@ -69,16 +89,27 @@ interface DragState {
 
 type ResizeDirection = 'width' | 'height' | 'corner';
 
-interface ResizeState {
-  target: UiPanelId;
-  direction: ResizeDirection;
-  startX: number;
-  startY: number;
-  pointerId: number;
-  handle: HTMLButtonElement;
-  original: UiPanelPosition;
-  gridMetrics: GridMetrics;
-}
+type ResizeState =
+  | {
+      target: { kind: 'panel'; id: UiPanelId };
+      direction: ResizeDirection;
+      startX: number;
+      startY: number;
+      pointerId: number;
+      handle: HTMLButtonElement;
+      original: UiPanelPosition;
+      gridMetrics: GridMetrics;
+    }
+  | {
+      target: { kind: 'panelRegion'; panelId: UiPanelId; id: UiPanelRegionId };
+      direction: 'width';
+      startX: number;
+      startY: number;
+      pointerId: number;
+      handle: HTMLButtonElement;
+      original: UiPanelRegionPosition;
+      gridMetrics: GridMetrics;
+    };
 
 const numberLabel = (value: number): string =>
   Number.isInteger(value) ? `${value}px` : `${Math.round(value * 100)}%`;
@@ -146,6 +177,44 @@ const getGridRow = (metrics: GridMetrics, top: number): number => {
   return clamp(row, 1, 12);
 };
 
+const getNestedGridMetrics = (
+  screen: ScreenId,
+  panelId: UiPanelId,
+  internal: ReturnType<typeof getUiPanelInternalLayout>,
+  measuredRegions: Partial<Record<string, RegionBox>>,
+): GridMetrics | null => {
+  const grid = document.querySelector<HTMLElement>(
+    `[data-ui-panel-region-grid="${panelId}"][data-ui-panel-region-screen="${screen}"]`,
+  );
+  if (!grid) return null;
+  const rect = grid.getBoundingClientRect();
+  if (!Number.isFinite(rect.left) || !Number.isFinite(rect.top) || rect.width <= 0) return null;
+  const computed = window.getComputedStyle(grid);
+  const columnGap = Number.parseFloat(computed.columnGap) || 0;
+  const columns =
+    computed.gridTemplateColumns
+      .match(/[\d.]+px/g)
+      ?.map(Number)
+      .filter((value) => Number.isFinite(value) && value > 0) ?? [];
+  const fallbackColumnWidth = (rect.width - columnGap * 11) / 12;
+  const columnWidth = columns.length >= 12 ? columns[0] : fallbackColumnWidth;
+  const columnStep = columnWidth + columnGap;
+  if (!Number.isFinite(columnStep) || columnStep <= 0) return null;
+  const rowStarts = Array.from({ length: 12 }, () => Number.NaN);
+  for (const region of getUiPanelRegions(screen, panelId)) {
+    const position = internal.regions[region.id];
+    const box = measuredRegions[`${panelId}:${region.id}`];
+    if (!position || !box || position.row < 1 || position.row > 12) continue;
+    rowStarts[position.row - 1] = box.top - rect.top;
+  }
+  if (!Number.isFinite(rowStarts[0])) rowStarts[0] = 0;
+  const rowStep = Number.parseFloat(computed.gridAutoRows) || 80;
+  for (let index = 1; index < rowStarts.length; index += 1) {
+    if (!Number.isFinite(rowStarts[index])) rowStarts[index] = rowStarts[index - 1] + rowStep;
+  }
+  return { left: rect.left, top: rect.top, columnStep, rowStarts };
+};
+
 const panelOverlaps = (first: UiPanelPosition, second: UiPanelPosition): boolean =>
   first.row === second.row &&
   first.column < second.column + second.columnSpan &&
@@ -204,7 +273,8 @@ export const findAvailablePanelPosition = (
 
 export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
   const [selected, setSelected] = useState<SelectedTarget>({ kind: 'region', id: 'content' });
-  const [boxes, setBoxes] = useState<EditorBoxes>({ regions: {}, panels: {} });
+  const [boxes, setBoxes] = useState<EditorBoxes>({ regions: {}, panels: {}, nestedRegions: {} });
+  const [expandedPanels, setExpandedPanels] = useState<Record<UiPanelId, boolean>>({});
   const [compactViewport, setCompactViewport] = useState(() =>
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       ? window.matchMedia(UI_EDITOR_COMPACT_QUERY).matches
@@ -390,6 +460,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     const measure = () => {
       const regions: Partial<Record<UiRegion, RegionBox>> = {};
       const panels: Partial<Record<UiPanelId, RegionBox>> = {};
+      const nestedRegions: Partial<Record<string, RegionBox>> = {};
       const gridElement = document.querySelector<HTMLElement>(`[data-ui-panel-grid="${screen}"]`);
       const gridRect = gridElement?.getBoundingClientRect();
       for (const region of UI_REGIONS) {
@@ -413,11 +484,25 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
           width: rect.width,
           height: rect.height,
         };
+        for (const region of getUiPanelRegions(screen, panel.id)) {
+          const nestedElement = document.querySelector<HTMLElement>(
+            `[data-ui-panel-region="${region.id}"][data-ui-panel-owner="${panel.id}"]`,
+          );
+          if (!nestedElement) continue;
+          const nestedRect = nestedElement.getBoundingClientRect();
+          if (nestedRect.width <= 0 || nestedRect.height <= 0) continue;
+          nestedRegions[`${panel.id}:${region.id}`] = {
+            left: nestedRect.left,
+            top: nestedRect.top,
+            width: nestedRect.width,
+            height: nestedRect.height,
+          };
+        }
       }
       const grid = gridRect
         ? { left: gridRect.left, top: gridRect.top, width: gridRect.width, height: gridRect.height }
         : undefined;
-      setBoxes({ regions, panels, grid });
+      setBoxes({ regions, panels, nestedRegions, grid });
     };
     const scheduleMeasure = () => {
       if (frame !== null) return;
@@ -436,6 +521,13 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       ),
       ...panelDefinitions.map((panel) =>
         document.querySelector<HTMLElement>(`[data-ui-panel="${panel.id}"]`),
+      ),
+      ...panelDefinitions.flatMap((panel) =>
+        getUiPanelRegions(screen, panel.id).map((region) =>
+          document.querySelector<HTMLElement>(
+            `[data-ui-panel-region="${region.id}"][data-ui-panel-owner="${panel.id}"]`,
+          ),
+        ),
       ),
       document.querySelector<HTMLElement>(`[data-ui-panel-grid="${screen}"]`),
     ].filter((element): element is HTMLElement => Boolean(element));
@@ -488,6 +580,42 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         });
         return;
       }
+      if (active.target.kind === 'panelRegion' && active.gridMetrics) {
+        const owner = currentPanelLayout[active.target.panelId];
+        const internal = getUiPanelInternalLayout(currentLayout, currentScreen, active.target.panelId);
+        const current = internal.regions[active.target.id];
+        if (!owner || owner.locked || !current) return;
+        const desiredLeft = clientX - (active.grabOffsetX ?? 0);
+        const desiredTop = clientY - (active.grabOffsetY ?? 0);
+        const column = clamp(
+          Math.round((desiredLeft - active.gridMetrics.left) / active.gridMetrics.columnStep) + 1,
+          1,
+          13 - current.columnSpan,
+        );
+        const row = getGridRow(active.gridMetrics, desiredTop);
+        const position = findAvailableNestedRegionPosition(
+          currentLayout,
+          currentScreen,
+          active.target.panelId,
+          active.target.id,
+          { ...current, column, row, order: internal.direction === 'stack' ? row : current.order },
+        );
+        if (position.column === current.column && position.row === current.row) return;
+        syncLayout({
+          ...currentLayout,
+          panelRegions: {
+            ...currentLayout.panelRegions,
+            [currentScreen]: {
+              ...(currentLayout.panelRegions[currentScreen] ?? {}),
+              [active.target.panelId]: {
+                ...internal,
+                regions: { ...internal.regions, [active.target.id]: position },
+              },
+            },
+          },
+        });
+        return;
+      }
       if (active.target.kind !== 'panel' || !active.gridMetrics) return;
       const current = currentPanelLayout[active.target.id];
       if (!current) return;
@@ -521,7 +649,40 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       if (!active) return;
       const currentLayout = layoutRef.current;
       const currentScreen = screenRef.current;
-      const current = currentLayout.screenPanels[currentScreen]?.[active.target];
+      if (active.target.kind === 'panelRegion') {
+        const owner = currentLayout.screenPanels[currentScreen]?.[active.target.panelId];
+        const internal = getUiPanelInternalLayout(currentLayout, currentScreen, active.target.panelId);
+        const current = internal.regions[active.target.id];
+        if (!owner || owner.locked || !current) return;
+        const deltaX = clientX - active.startX;
+        const columnDelta = snapGridDelta(deltaX, active.gridMetrics.columnStep);
+        const nextSpan = clampNestedColumnSpan(
+          currentLayout,
+          currentScreen,
+          active.target.panelId,
+          active.target.id,
+          active.original.columnSpan + columnDelta,
+        );
+        if (nextSpan === current.columnSpan) return;
+        syncLayout({
+          ...currentLayout,
+          panelRegions: {
+            ...currentLayout.panelRegions,
+            [currentScreen]: {
+              ...(currentLayout.panelRegions[currentScreen] ?? {}),
+              [active.target.panelId]: {
+                ...internal,
+                regions: {
+                  ...internal.regions,
+                  [active.target.id]: { ...current, columnSpan: nextSpan },
+                },
+              },
+            },
+          },
+        });
+        return;
+      }
+      const current = currentLayout.screenPanels[currentScreen]?.[active.target.id];
       if (!current || current.locked) return;
       const deltaX = clientX - active.startX;
       const deltaY = clientY - active.startY;
@@ -532,7 +693,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
           : clampPanelColumnSpan(
               currentLayout,
               currentScreen,
-              active.target,
+              active.target.id,
               active.original.columnSpan + columnDelta,
             );
       const nextHeight =
@@ -546,7 +707,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
           ...currentLayout.screenPanels,
           [currentScreen]: {
             ...(currentLayout.screenPanels[currentScreen] ?? EMPTY_PANEL_LAYOUT),
-            [active.target]: {
+            [active.target.id]: {
               ...current,
               columnSpan: nextSpan,
               height: nextHeight,
@@ -628,6 +789,30 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       };
       return;
     }
+    if (target.kind === 'panelRegion') {
+      const owner = panelLayout[target.panelId];
+      if (compactViewport || !owner || owner.locked) return;
+      const internal = getUiPanelInternalLayout(layoutRef.current, screen, target.panelId);
+      const measuredRegions =
+        Object.keys(boxesRef.current.nestedRegions).length > 0
+          ? boxesRef.current.nestedRegions
+          : boxes.nestedRegions;
+      const box = measuredRegions[`${target.panelId}:${target.id}`];
+      const gridMetrics = getNestedGridMetrics(screen, target.panelId, internal, measuredRegions);
+      if (!box || !gridMetrics) return;
+      event.currentTarget.setPointerCapture?.(event.pointerId);
+      drag.current = {
+        target,
+        startX: event.clientX,
+        startY: event.clientY,
+        pointerId: event.pointerId,
+        handle: event.currentTarget,
+        grabOffsetX: event.clientX - box.left,
+        grabOffsetY: event.clientY - box.top,
+        gridMetrics,
+      };
+      return;
+    }
     const measuredPanels =
       Object.keys(boxesRef.current.panels).length > 0 ? boxesRef.current.panels : boxes.panels;
     const box = measuredPanels[target.id];
@@ -663,8 +848,39 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     if (!position || !gridMetrics) return;
     event.currentTarget.setPointerCapture?.(event.pointerId);
     resize.current = {
-      target: panelId,
+      target: { kind: 'panel', id: panelId },
       direction,
+      startX: event.clientX,
+      startY: event.clientY,
+      pointerId: event.pointerId,
+      handle: event.currentTarget,
+      original: { ...position },
+      gridMetrics,
+    };
+  };
+
+  const beginNestedResize = (
+    panelId: UiPanelId,
+    regionId: UiPanelRegionId,
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setSelected({ kind: 'panelRegion', panelId, id: regionId });
+    const owner = panelLayout[panelId];
+    if (compactViewport || !owner || owner.locked) return;
+    const internal = getUiPanelInternalLayout(layoutRef.current, screen, panelId);
+    const measuredRegions =
+      Object.keys(boxesRef.current.nestedRegions).length > 0
+        ? boxesRef.current.nestedRegions
+        : boxes.nestedRegions;
+    const gridMetrics = getNestedGridMetrics(screen, panelId, internal, measuredRegions);
+    const position = internal.regions[regionId];
+    if (!position || !gridMetrics) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    resize.current = {
+      target: { kind: 'panelRegion', panelId, id: regionId },
+      direction: 'width',
       startX: event.clientX,
       startY: event.clientY,
       pointerId: event.pointerId,
@@ -711,6 +927,141 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     });
   };
 
+  const updateNestedRegion = (
+    key: keyof Pick<UiPanelRegionPosition, 'column' | 'row' | 'columnSpan' | 'visible'>,
+    value: number | boolean,
+  ) => {
+    if (selected.kind !== 'panelRegion') return;
+    const currentLayout = layoutRef.current;
+    const owner = currentLayout.screenPanels[screen]?.[selected.panelId];
+    if (owner?.locked) return;
+    const internal = getUiPanelInternalLayout(currentLayout, screen, selected.panelId);
+    const current = internal.regions[selected.id];
+    if (!current) return;
+    let next = { ...current, [key]: value } as UiPanelRegionPosition;
+    if (key === 'columnSpan') {
+      next.columnSpan = clampNestedColumnSpan(
+        currentLayout,
+        screen,
+        selected.panelId,
+        selected.id,
+        Number(value),
+      );
+      next.column = Math.min(next.column, 13 - next.columnSpan);
+    }
+    if (key === 'column' || key === 'row' || key === 'columnSpan') {
+      if (key === 'row' && internal.direction === 'stack') next.order = Number(value);
+      next = findAvailableNestedRegionPosition(
+        currentLayout,
+        screen,
+        selected.panelId,
+        selected.id,
+        next,
+      );
+    }
+    commitLayout({
+      ...currentLayout,
+      panelRegions: {
+        ...currentLayout.panelRegions,
+        [screen]: {
+          ...(currentLayout.panelRegions[screen] ?? {}),
+          [selected.panelId]: {
+            ...internal,
+            regions: { ...internal.regions, [selected.id]: next },
+          },
+        },
+      },
+    });
+  };
+
+  const updateInternalLayout = (
+    key: 'gap' | 'padding',
+    value: number,
+  ) => {
+    if (selected.kind !== 'panel') return;
+    const currentLayout = layoutRef.current;
+    const currentPanel = currentLayout.screenPanels[screen]?.[selected.id];
+    if (currentPanel?.locked) return;
+    const internal = getUiPanelInternalLayout(currentLayout, screen, selected.id);
+    commitLayout({
+      ...currentLayout,
+      panelRegions: {
+        ...currentLayout.panelRegions,
+        [screen]: {
+          ...(currentLayout.panelRegions[screen] ?? {}),
+          [selected.id]: { ...internal, [key]: value },
+        },
+      },
+    });
+  };
+
+  const updatePanelAppearance = <K extends keyof UiPanelAppearance>(
+    key: K,
+    value: UiPanelAppearance[K] | undefined,
+  ) => {
+    if (selected.kind !== 'panel') return;
+    const currentLayout = layoutRef.current;
+    const appearance = getUiPanelAppearance(currentLayout, screen, selected.id);
+    if (value === undefined) delete appearance[key];
+    else appearance[key] = value;
+    const appearances = { ...(currentLayout.panelAppearances[screen] ?? {}) };
+    if (Object.keys(appearance).length > 0) appearances[selected.id] = appearance;
+    else delete appearances[selected.id];
+    commitLayout({
+      ...currentLayout,
+      panelAppearances: {
+        ...currentLayout.panelAppearances,
+        [screen]: appearances,
+      },
+    });
+  };
+
+  const applyHomeOverviewPreset = (preset: string) => {
+    if (selected.kind !== 'panel' || selected.id !== 'homeOverview') return;
+    const currentLayout = layoutRef.current;
+    const currentPanel = currentLayout.screenPanels[screen]?.[selected.id];
+    if (currentPanel?.locked) return;
+    const internal = getUiPanelInternalLayout(currentLayout, screen, selected.id);
+    const activity = internal.regions.homeOverviewActivity;
+    const stats = internal.regions.homeOverviewStats;
+    const character = internal.regions.homeOverviewCharacter;
+    if (!activity || !stats || !character) return;
+    const next: UiPanelInternalLayout = { ...internal, direction: 'grid' };
+    if (preset === 'Stacked') {
+      next.direction = 'stack';
+      next.regions = {
+        ...internal.regions,
+        homeOverviewActivity: { ...activity, column: 1, columnSpan: 12, row: 1, order: 1 },
+        homeOverviewStats: { ...stats, column: 1, columnSpan: 12, row: 2, order: 2 },
+        homeOverviewCharacter: { ...character, column: 1, columnSpan: 12, row: 3, order: 3 },
+      };
+    } else {
+      const statsSpan = preset === '50 / 50' ? 6 : preset === '67 / 33' ? 8 : 9;
+      next.regions = {
+        ...internal.regions,
+        homeOverviewActivity: { ...activity, column: 1, columnSpan: 12, row: 1, order: 1 },
+        homeOverviewStats: { ...stats, column: 1, columnSpan: statsSpan, row: 2, order: 2 },
+        homeOverviewCharacter: {
+          ...character,
+          column: statsSpan + 1,
+          columnSpan: 12 - statsSpan,
+          row: 2,
+          order: 3,
+        },
+      };
+    }
+    commitLayout({
+      ...currentLayout,
+      panelRegions: {
+        ...currentLayout.panelRegions,
+        [screen]: {
+          ...(currentLayout.panelRegions[screen] ?? {}),
+          [selected.id]: next,
+        },
+      },
+    }, 'immediate');
+  };
+
   const resetRegion = () => {
     if (selected.kind !== 'region') return;
     const currentLayout = layoutRef.current;
@@ -721,6 +1072,13 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         [selected.id]: { x: 0, y: 0 },
       },
     });
+  };
+
+  const resetNestedRegion = () => {
+    if (selected.kind !== 'panelRegion') return;
+    const owner = layoutRef.current.screenPanels[screen]?.[selected.panelId];
+    if (owner?.locked) return;
+    commitLayout(resetUiPanelRegion(layoutRef.current, screen, selected.panelId, selected.id), 'immediate');
   };
 
   const centerPanel = () => {
@@ -753,20 +1111,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
 
   const resetPanel = () => {
     if (selected.kind !== 'panel') return;
-    const currentLayout = layoutRef.current;
-    const currentPanelLayout = currentLayout.screenPanels[screen] ?? EMPTY_PANEL_LAYOUT;
-    const definition = panelDefinitions.find((panel) => panel.id === selected.id);
-    if (!definition) return;
-    commitLayout({
-      ...currentLayout,
-      screenPanels: {
-        ...currentLayout.screenPanels,
-        [screen]: {
-          ...currentPanelLayout,
-          [selected.id]: { ...definition.defaultPosition },
-        },
-      },
-    });
+    commitLayout(resetUiPanel(layoutRef.current, screen, selected.id), 'immediate');
   };
 
   const togglePanelLock = () => {
@@ -797,11 +1142,26 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       ? (UI_REGIONS.find((region) => region.id === selected.id) ?? UI_REGIONS[0])
       : null;
   const selectedPanel =
-    selected.kind === 'panel'
-      ? (panelDefinitions.find((panel) => panel.id === selected.id) ?? panelDefinitions[0])
+    selected.kind === 'panel' || selected.kind === 'panelRegion'
+      ? (panelDefinitions.find((panel) => panel.id === (selected.kind === 'panel' ? selected.id : selected.panelId)) ?? panelDefinitions[0])
       : null;
   const selectedOffset = selectedRegion ? layout.offsets[selectedRegion.id] : null;
   const selectedPanelPosition = selectedPanel ? panelLayout[selectedPanel.id] : null;
+  const selectedInternalLayout = selectedPanel
+    ? getUiPanelInternalLayout(layout, screen, selectedPanel.id)
+    : null;
+  const selectedNestedRegion =
+    selected.kind === 'panelRegion'
+      ? (getUiPanelRegions(screen, selected.panelId).find((region) => region.id === selected.id) ?? null)
+      : null;
+  const selectedNestedPosition =
+    selected.kind === 'panelRegion' && selectedInternalLayout
+      ? selectedInternalLayout.regions[selected.id] ?? null
+      : null;
+  const selectedAppearance =
+    selected.kind === 'panel' && selectedPanel
+      ? getUiPanelAppearance(layout, screen, selectedPanel.id)
+      : null;
   const panelsVisible = panelDefinitions.length > 0;
 
   return (
@@ -903,6 +1263,56 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
           </div>
         );
       })}
+      {panelDefinitions.flatMap((panel) => {
+        const expanded = expandedPanels[panel.id] || (selected.kind === 'panelRegion' && selected.panelId === panel.id);
+        if (!expanded) return [];
+        const ownerPosition = panelLayout[panel.id];
+        if (!ownerPosition) return [];
+        return getUiPanelRegions(screen, panel.id).flatMap((region) => {
+          const box = boxes.nestedRegions[`${panel.id}:${region.id}`];
+          if (!box) return [];
+          const position = getUiPanelInternalLayout(layout, screen, panel.id).regions[region.id];
+          if (!position || !position.visible) return [];
+          const target = { kind: 'panelRegion', panelId: panel.id, id: region.id } as const;
+          const isSelected = selected.kind === 'panelRegion' && selected.panelId === panel.id && selected.id === region.id;
+          const locked = ownerPosition.locked;
+          return [
+            <div
+              className={`ui-editor-target ui-editor-nested-target ${isSelected ? 'selected' : ''} ${locked ? 'locked' : ''}`}
+              key={`${panel.id}:${region.id}`}
+              style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
+            >
+              <button
+                className={`ui-editor-target-label ${locked || compactViewport ? 'disabled' : ''}`}
+                onClick={() => {
+                  setExpandedPanels((current) => ({ ...current, [panel.id]: true }));
+                  setSelected(target);
+                }}
+                onPointerDown={(event) => beginDrag(target, event)}
+                aria-disabled={locked || compactViewport}
+                title={
+                  compactViewport
+                    ? 'Nested editing is available above 900px viewport width'
+                    : locked
+                      ? 'Unlock the parent panel to edit this region'
+                      : `Drag to move ${region.label}`
+                }
+              >
+                <GripVertical size={13} /> {region.label}
+              </button>
+              {isSelected && !locked && !compactViewport && (
+                <button
+                  type="button"
+                  className="ui-editor-resize-handle right nested"
+                  aria-label={`Resize ${region.label} width`}
+                  title={`Resize ${region.label} width`}
+                  onPointerDown={(event) => beginNestedResize(panel.id, region.id, event)}
+                />
+              )}
+            </div>,
+          ];
+        });
+      })}
 
       <aside className="ui-editor-panel panel" role="dialog" aria-label="Edit game UI">
         <div className="ui-editor-heading">
@@ -940,6 +1350,76 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
           <strong>{screenLabel.toUpperCase()}</strong>
           <small>{panelDefinitions.length} editable panels</small>
         </div>
+
+        {selected.kind === 'panel' && selectedPanel && selectedAppearance && (
+          <div className="ui-editor-section">
+            <div className="ui-editor-section-title">
+              <Palette size={15} /> Panel appearance
+            </div>
+            <p className="muted ui-editor-inherit-note">
+              Unset values inherit the global editor appearance.
+            </p>
+            <EditorColor
+              label="Background"
+              value={selectedAppearance.background ?? layout.panel}
+              onChange={(value) => updatePanelAppearance('background', value)}
+            />
+            {selectedAppearance.background && (
+              <button className="button ghost ui-editor-small-button" onClick={() => updatePanelAppearance('background', undefined)}>
+                Use global background
+              </button>
+            )}
+            <EditorColor
+              label="Border color"
+              value={selectedAppearance.borderColor ?? '#354047'}
+              onChange={(value) => updatePanelAppearance('borderColor', value)}
+            />
+            {selectedAppearance.borderColor && (
+              <button className="button ghost ui-editor-small-button" onClick={() => updatePanelAppearance('borderColor', undefined)}>
+                Use global border color
+              </button>
+            )}
+            <EditorRange
+              label="Border width"
+              value={selectedAppearance.borderWidth ?? 1}
+              min={0}
+              max={4}
+              suffix="px"
+              onChange={(value) => updatePanelAppearance('borderWidth', value)}
+            />
+            {selectedAppearance.borderWidth !== undefined && (
+              <button className="button ghost ui-editor-small-button" onClick={() => updatePanelAppearance('borderWidth', undefined)}>
+                Use global border width
+              </button>
+            )}
+            <EditorRange
+              label="Corner radius"
+              value={selectedAppearance.radius ?? layout.panelRadius}
+              min={0}
+              max={28}
+              suffix="px"
+              onChange={(value) => updatePanelAppearance('radius', value)}
+            />
+            {selectedAppearance.radius !== undefined && (
+              <button className="button ghost ui-editor-small-button" onClick={() => updatePanelAppearance('radius', undefined)}>
+                Use global radius
+              </button>
+            )}
+            <label className="ui-editor-check-row">
+              <span>Panel shadow</span>
+              <input
+                type="checkbox"
+                checked={selectedAppearance.shadow ?? true}
+                onChange={(event) => updatePanelAppearance('shadow', event.target.checked)}
+              />
+            </label>
+            {selectedAppearance.shadow !== undefined && (
+              <button className="button ghost ui-editor-small-button" onClick={() => updatePanelAppearance('shadow', undefined)}>
+                Use global shadow
+              </button>
+            )}
+          </div>
+        )}
 
         <div className="ui-editor-section">
           <div className="ui-editor-section-title">
@@ -1027,24 +1507,77 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
                 {panelDefinitions.map((panel) => {
                   const position = panelLayout[panel.id];
                   if (!position) return null;
+                  const nestedRegions = getUiPanelRegions(screen, panel.id);
+                  const expanded = expandedPanels[panel.id] ?? false;
+                  const panelSelected =
+                    (selected.kind === 'panel' && selected.id === panel.id) ||
+                    (selected.kind === 'panelRegion' && selected.panelId === panel.id);
                   return (
-                    <button
-                      className={`ui-editor-region ${selected.kind === 'panel' && selected.id === panel.id ? 'selected' : ''}`}
-                      key={panel.id}
-                      onClick={() => setSelected({ kind: 'panel', id: panel.id })}
-                    >
-                      <span>
-                        <strong>{panel.label}</strong>
-                        <small>{panel.description}</small>
-                      </span>
-                      <small>
-                        C{position.column} · R{position.row}
-                      </small>
-                    </button>
+                    <div className="ui-editor-tree-node" key={panel.id}>
+                      <div className={`ui-editor-tree-panel ${panelSelected ? 'selected' : ''}`}>
+                        <button
+                          className="ui-editor-region"
+                          onClick={() => {
+                            setSelected({ kind: 'panel', id: panel.id });
+                            if (nestedRegions.length > 0) {
+                              setExpandedPanels((current) => ({ ...current, [panel.id]: true }));
+                            }
+                          }}
+                        >
+                          <span>
+                            <strong>{panel.label}</strong>
+                            <small>{panel.description}</small>
+                          </span>
+                          <small>
+                            {position.locked ? 'Locked · ' : ''}C{position.column} · R{position.row}
+                          </small>
+                        </button>
+                        {nestedRegions.length > 0 && (
+                          <button
+                            type="button"
+                            className="ui-editor-tree-toggle"
+                            aria-label={expanded ? 'Collapse nested contents' : 'Expand nested contents'}
+                            onClick={() => setExpandedPanels((current) => ({ ...current, [panel.id]: !expanded }))}
+                          >
+                            {expanded ? '▾' : '▸'}
+                          </button>
+                        )}
+                      </div>
+                      {expanded && nestedRegions.length > 0 && (
+                        <div className="ui-editor-tree-children">
+                          {nestedRegions.map((region) => {
+                            const regionPosition = getUiPanelInternalLayout(layout, screen, panel.id).regions[region.id];
+                            if (!regionPosition) return null;
+                            const regionSelected =
+                              selected.kind === 'panelRegion' &&
+                              selected.panelId === panel.id &&
+                              selected.id === region.id;
+                            return (
+                              <button
+                                className={`ui-editor-region ui-editor-nested-region-row ${regionSelected ? 'selected' : ''}`}
+                                key={region.id}
+                                onClick={() => {
+                                  setExpandedPanels((current) => ({ ...current, [panel.id]: true }));
+                                  setSelected({ kind: 'panelRegion', panelId: panel.id, id: region.id });
+                                }}
+                              >
+                                <span>
+                                  <strong>{region.label}</strong>
+                                  <small>{regionPosition.visible ? region.description : 'Hidden · ' + region.description}</small>
+                                </span>
+                                <small>
+                                  C{regionPosition.column} · R{regionPosition.row} · W{regionPosition.columnSpan}
+                                </small>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
-              {selectedPanel && selectedPanelPosition && (
+              {selected.kind === 'panel' && selectedPanel && selectedPanelPosition && (
                 <>
                   <div className="ui-editor-nudge-row">
                     <button className="button" onClick={centerPanel} disabled={selectedPanelPosition.locked}>
@@ -1117,7 +1650,107 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
                       onChange={(value) => updatePanel('scale', value)}
                     />
                   </div>
+                  {selectedInternalLayout && getUiPanelRegions(screen, selectedPanel.id).length > 0 && (
+                    <div className="ui-editor-panel-controls ui-editor-internal-controls">
+                      <div className="ui-editor-subsection-title">Internal layout</div>
+                      <button
+                        className="button ghost"
+                        onClick={() => setExpandedPanels((current) => ({
+                          ...current,
+                          [selectedPanel.id]: !(current[selectedPanel.id] ?? false),
+                        }))}
+                      >
+                        {expandedPanels[selectedPanel.id] ? 'Hide contents' : 'Edit contents'}
+                      </button>
+                      <EditorSelect
+                        label="Layout preset"
+                        value={
+                          selectedInternalLayout.direction === 'stack'
+                            ? 'Stacked'
+                            : selectedInternalLayout.regions.homeOverviewStats?.columnSpan === 6
+                              ? '50 / 50'
+                              : selectedInternalLayout.regions.homeOverviewStats?.columnSpan === 8
+                                ? '67 / 33'
+                                : selectedInternalLayout.regions.homeOverviewStats?.columnSpan === 9
+                                  ? 'Default'
+                                  : 'Custom'
+                        }
+                        options={['Default', '75 / 25', '67 / 33', '50 / 50', 'Stacked']}
+                        disabled={selectedPanelPosition.locked}
+                        onChange={applyHomeOverviewPreset}
+                      />
+                      <EditorRange
+                        label="Internal gap"
+                        value={selectedInternalLayout.gap}
+                        min={0}
+                        max={32}
+                        suffix="px"
+                        disabled={selectedPanelPosition.locked}
+                        onChange={(value) => updateInternalLayout('gap', value)}
+                      />
+                      <EditorRange
+                        label="Internal padding"
+                        value={selectedInternalLayout.padding}
+                        min={0}
+                        max={40}
+                        suffix="px"
+                        disabled={selectedPanelPosition.locked}
+                        onChange={(value) => updateInternalLayout('padding', value)}
+                      />
+                    </div>
+                  )}
                 </>
+              )}
+              {selected.kind === 'panelRegion' && selectedNestedRegion && selectedNestedPosition && selectedPanel && (
+                <div className="ui-editor-panel-controls ui-editor-nested-controls">
+                  <div className="ui-editor-subsection-title">Selected region</div>
+                  <div className="ui-editor-selection-summary">
+                    <strong>{selectedNestedRegion.label}</strong>
+                    <small>Owner: {selectedPanel.label}</small>
+                  </div>
+                  {compactViewport && (
+                    <p className="ui-editor-warning" role="note">
+                      Nested drag and resize are available above 900px. The precise controls remain available here.
+                    </p>
+                  )}
+                  <label className="ui-editor-check-row">
+                    <span>Visible</span>
+                    <input
+                      type="checkbox"
+                      checked={selectedNestedPosition.visible}
+                      disabled={selectedPanelPosition?.locked || selectedNestedRegion.canHide === false}
+                      onChange={(event) => updateNestedRegion('visible', event.target.checked)}
+                    />
+                  </label>
+                  <EditorRange
+                    label="Column"
+                    value={selectedNestedPosition.column}
+                    min={1}
+                    max={13 - selectedNestedPosition.columnSpan}
+                    disabled={selectedPanelPosition?.locked}
+                    onChange={(value) => updateNestedRegion('column', value)}
+                  />
+                  <EditorRange
+                    label="Row"
+                    value={selectedNestedPosition.row}
+                    min={1}
+                    max={12}
+                    disabled={selectedPanelPosition?.locked}
+                    onChange={(value) => updateNestedRegion('row', value)}
+                  />
+                  <EditorRange
+                    label="Region width"
+                    value={selectedNestedPosition.columnSpan}
+                    min={1}
+                    max={12}
+                    suffix=" columns"
+                    disabled={selectedPanelPosition?.locked}
+                    onChange={(value) => updateNestedRegion('columnSpan', value)}
+                  />
+                  <button className="button ghost" onClick={resetNestedRegion} disabled={selectedPanelPosition?.locked}>
+                    Reset {selectedNestedRegion.label}
+                  </button>
+                </div>
               )}
             </>
           ) : (
@@ -1281,8 +1914,38 @@ function EditorColor({
   return (
     <label className="ui-editor-color">
       <span>{label}</span>
-      <input type="color" value={value} onChange={(event) => onChange(event.target.value)} />
+      <input
+        type="color"
+        aria-label={label}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+      />
       <code>{value}</code>
+    </label>
+  );
+}
+
+function EditorSelect({
+  label,
+  value,
+  options,
+  disabled = false,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  disabled?: boolean;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="ui-editor-select">
+      <span>{label}</span>
+      <select aria-label={label} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
+        {options.map((option) => (
+          <option key={option} value={option}>{option}</option>
+        ))}
+      </select>
     </label>
   );
 }

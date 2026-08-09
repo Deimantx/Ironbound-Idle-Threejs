@@ -11,7 +11,13 @@ import {
   DEFAULT_COLLECTION_PANEL_LAYOUT,
   DEFAULT_SETTINGS_PANEL_LAYOUT,
   DEFAULT_HELP_PANEL_LAYOUT,
+  DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT,
   getUiPanels,
+  getUiPanelAppearance,
+  getUiPanelInternalLayout,
+  getUiPanelRegions,
+  resetUiPanel,
+  resetUiPanelRegion,
   resetUiLayoutScreen,
   resetUiLayout,
   sanitizeUiLayout,
@@ -22,11 +28,13 @@ import {
   clampPanelColumnSpan,
   clampPanelHeight,
   snapGridDelta,
+  clampNestedColumnSpan,
+  findAvailableNestedRegionPosition,
 } from '../app/uiEditorGeometry';
 
 describe('visual UI layout', () => {
   it('exposes panel definitions by active screen', () => {
-    expect(UI_LAYOUT_VERSION).toBe(2);
+    expect(UI_LAYOUT_VERSION).toBe(3);
     expect(getUiPanels('home')).toHaveLength(4);
     expect(getUiPanels('combat')).toHaveLength(5);
     expect(getUiPanels('combat').map((panel) => panel.id)).toEqual([
@@ -301,5 +309,118 @@ describe('visual UI layout', () => {
       'settings',
       'help',
     ]);
+  });
+
+  it('migrates Phase 1 layouts to v3 without losing panel state', () => {
+    const layout = sanitizeUiLayout({
+      version: 2,
+      accent: '#123456',
+      offsets: { content: { x: 12, y: -8 } },
+      screenPanels: {
+        home: {
+          homeOverview: { column: 2, row: 4, columnSpan: 8, scale: 1.2, locked: true },
+        },
+      },
+    });
+    expect(layout.version).toBe(3);
+    expect(layout.accent).toBe('#123456');
+    expect(layout.offsets.content).toEqual({ x: 12, y: -8 });
+    expect(layout.screenPanels.home?.homeOverview).toMatchObject({
+      column: 2,
+      row: 4,
+      columnSpan: 8,
+      scale: 1.2,
+      locked: true,
+    });
+    expect(getUiPanelRegions('home', 'homeOverview').map((region) => region.id)).toEqual([
+      'homeOverviewActivity',
+      'homeOverviewStats',
+      'homeOverviewCharacter',
+    ]);
+    expect(getUiPanelInternalLayout(layout, 'home', 'homeOverview').regions).toEqual(
+      DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT.regions,
+    );
+    expect(getUiPanelAppearance(layout, 'home', 'homeOverview')).toEqual({});
+  });
+
+  it('sanitizes nested layout and panel appearance overrides', () => {
+    const layout = sanitizeUiLayout({
+      panelRegions: {
+        home: {
+          homeOverview: {
+            direction: 'invalid',
+            gap: 99,
+            padding: -4,
+            regions: {
+              homeOverviewStats: { column: 99, columnSpan: 99, row: 99, visible: false },
+            },
+          },
+        },
+      },
+      panelAppearances: {
+        home: {
+          homeOverview: {
+            background: 'not-a-color',
+            borderColor: '#123456',
+            borderWidth: 9,
+            radius: -4,
+            shadow: false,
+          },
+        },
+      },
+    });
+    const internal = getUiPanelInternalLayout(layout, 'home', 'homeOverview');
+    expect(internal.direction).toBe('grid');
+    expect(internal.gap).toBe(32);
+    expect(internal.padding).toBe(0);
+    expect(internal.regions.homeOverviewStats).toMatchObject({
+      column: 12,
+      columnSpan: 1,
+      row: 12,
+      visible: false,
+    });
+    expect(getUiPanelAppearance(layout, 'home', 'homeOverview')).toEqual({
+      borderColor: '#123456',
+      borderWidth: 4,
+      radius: 0,
+      shadow: false,
+    });
+  });
+
+  it('clamps nested widths and resolves internal grid collisions', () => {
+    const layout = sanitizeUiLayout(DEFAULT_UI_LAYOUT);
+    expect(clampNestedColumnSpan(layout, 'home', 'homeOverview', 'homeOverviewStats', 12)).toBe(9);
+    const moved = findAvailableNestedRegionPosition(
+      layout,
+      'home',
+      'homeOverview',
+      'homeOverviewCharacter',
+      { ...layout.panelRegions.home!.homeOverview.regions.homeOverviewCharacter, column: 1 },
+    );
+    expect(moved).toMatchObject({ row: 2, column: 10, columnSpan: 3 });
+  });
+
+  it('resets nested regions, panel appearance, and panel layout together', () => {
+    const custom = sanitizeUiLayout({
+      screenPanels: { home: { homeOverview: { column: 3, row: 4, locked: true } } },
+      panelRegions: {
+        home: {
+          homeOverview: {
+            regions: {
+              homeOverviewCharacter: { column: 1, columnSpan: 12, row: 5, visible: false },
+            },
+          },
+        },
+      },
+      panelAppearances: { home: { homeOverview: { background: '#123456', shadow: false } } },
+    });
+    const regionReset = resetUiPanelRegion(custom, 'home', 'homeOverview', 'homeOverviewCharacter');
+    expect(getUiPanelInternalLayout(regionReset, 'home', 'homeOverview').regions.homeOverviewCharacter).toEqual(
+      DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT.regions.homeOverviewCharacter,
+    );
+    const panelReset = resetUiPanel(custom, 'home', 'homeOverview');
+    expect(panelReset.screenPanels.home).toEqual(DEFAULT_HOME_PANEL_LAYOUT);
+    expect(panelReset.panelRegions.home?.homeOverview).toEqual(DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT);
+    expect(panelReset.panelAppearances.home ?? {}).toEqual({});
   });
 });

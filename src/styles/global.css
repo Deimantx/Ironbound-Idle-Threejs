@@ -670,6 +670,14 @@ h3 {
   border-radius: var(--ui-panel-radius, var(--radius));
   box-shadow: var(--shadow);
 }
+.ui-panel-slot > .ui-panel-scale-content > .panel,
+.ui-panel-slot > .ui-panel-scale-content > * > .panel {
+  background: var(--ui-panel-local-background, var(--ui-panel-color, var(--panel)));
+  border-color: var(--ui-panel-local-border, var(--line));
+  border-width: var(--ui-panel-local-border-width, 1px);
+  border-radius: var(--ui-panel-local-radius, var(--ui-panel-radius, var(--radius)));
+  box-shadow: var(--ui-panel-local-shadow, var(--shadow));
+}
 .panel-pad {
   padding: 19px;
 }
@@ -2745,6 +2753,23 @@ h3 {
 .ui-editor-panel-target {
   border-color: rgba(140, 169, 195, 0.78);
 }
+.ui-editor-nested-target {
+  z-index: 42;
+  border: 1px dotted rgba(125, 174, 210, 0.82);
+  border-radius: 5px;
+}
+.ui-editor-nested-target.selected {
+  border-color: #8ca9c3;
+  box-shadow: 0 0 0 2px rgba(140, 169, 195, 0.2);
+}
+.ui-editor-nested-target .ui-editor-target-label {
+  top: 5px;
+  left: 5px;
+  border-color: #8ca9c3;
+  background: #101c25;
+  color: #c7d9e8;
+  font-size: 10px;
+}
 .ui-editor-panel-target .ui-editor-target-label {
   border-color: var(--blue);
   background: #111b24;
@@ -2855,7 +2880,7 @@ h3 {
   top: 16px;
   right: 16px;
   bottom: 16px;
-  width: min(350px, calc(100vw - 32px));
+  width: min(390px, calc(100vw - 32px));
   overflow: auto;
   padding: 18px;
   background: rgba(19, 24, 27, 0.98);
@@ -2955,6 +2980,103 @@ h3 {
 .ui-editor-region small {
   color: var(--muted);
   font-size: 10px;
+}
+.ui-editor-tree-node {
+  min-width: 0;
+}
+.ui-editor-tree-panel {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+.ui-editor-tree-panel > .ui-editor-region {
+  flex: 1;
+}
+.ui-editor-tree-panel.selected > .ui-editor-region {
+  border-color: var(--gold);
+  background: #2a251c;
+}
+.ui-editor-tree-toggle {
+  width: 28px;
+  flex: 0 0 28px;
+  border: 1px solid #303b3e;
+  border-radius: 7px;
+  background: #111618;
+  color: var(--gold);
+  font-size: 16px;
+  line-height: 1;
+}
+.ui-editor-tree-toggle:hover,
+.ui-editor-tree-toggle:focus-visible {
+  border-color: var(--gold);
+}
+.ui-editor-tree-children {
+  display: grid;
+  gap: 5px;
+  margin: 5px 0 0 17px;
+  padding-left: 8px;
+  border-left: 1px solid #465256;
+}
+.ui-editor-nested-region-row {
+  padding: 7px 8px;
+  background: #101b21;
+}
+.ui-editor-nested-region-row strong::before {
+  content: '↳ ';
+  color: #8ca9c3;
+}
+.ui-editor-subsection-title {
+  margin-bottom: 9px;
+  color: #c9d9e8;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.ui-editor-selection-summary {
+  display: grid;
+  gap: 2px;
+  margin: 8px 0 12px;
+}
+.ui-editor-selection-summary small,
+.ui-editor-inherit-note {
+  font-size: 10px;
+}
+.ui-editor-check-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 11px 0;
+  color: #cbd0cd;
+  font-size: 12px;
+}
+.ui-editor-check-row input {
+  accent-color: var(--gold);
+}
+.ui-editor-small-button {
+  margin: -4px 0 8px;
+  font-size: 10px;
+}
+.ui-editor-select {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  color: #cbd0cd;
+  font-size: 12px;
+}
+.ui-editor-select select {
+  width: 100%;
+  border: 1px solid #465256;
+  border-radius: 6px;
+  padding: 7px 8px;
+  background: #111618;
+  color: var(--text);
+}
+.ui-editor-select select:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
 }
 .ui-editor-nudge-row {
   display: flex;
@@ -6319,6 +6441,27 @@ h3 {
 .ui-panel-slot > .combat-overview {
   margin-bottom: 0;
 }
+.ui-panel-region-grid {
+  --ui-panel-region-gap: 0px;
+  --ui-panel-region-padding: 0px;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--ui-panel-region-gap);
+  padding: var(--ui-panel-region-padding);
+  min-width: 0;
+  container-type: inline-size;
+}
+.ui-panel-region-grid[data-ui-panel-region-direction='stack'] {
+  grid-auto-flow: row;
+}
+.ui-panel-region-slot {
+  min-width: 0;
+  min-height: 0;
+}
+.ui-panel-region-slot > * {
+  width: 100%;
+  min-width: 0;
+}
 .combat-dashboard-panel,
 .combat-live-panel {
   min-width: 0;
@@ -7686,6 +7829,9 @@ h3 {
   border-color: #303b3e;
   border-top: 1px solid #303b3e;
 }
+.ui-panel-slot > .ui-panel-scale-content > .home-overview {
+  border-top: var(--ui-panel-local-border-width, 1px) solid var(--ui-panel-local-border, #303b3e);
+}
 .home-activity-status {
   position: relative;
   display: grid;
@@ -7762,13 +7908,14 @@ h3 {
 .home-panel-heading h3 {
   margin-bottom: 0;
 }
-.home-overview > .home-panel-heading h2 {
+.home-overview .home-panel-heading h2 {
   font-size: 22px;
 }
 .home-panel-heading p {
   margin: 7px 0 0;
 }
 .home-overview-metrics {
+  container-type: inline-size;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0;
@@ -7778,6 +7925,18 @@ h3 {
   border-top: 1px solid #3a4547;
   border-bottom: 1px solid #3a4547;
   background: rgba(14, 19, 21, 0.22);
+}
+@container (max-width: 620px) {
+  .home-overview-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .home-overview-metric:nth-child(3) {
+    border-left: 0;
+    border-top: 1px solid #354145;
+  }
+  .home-overview-metric:nth-child(4) {
+    border-top: 1px solid #354145;
+  }
 }
 .home-overview-metric {
   min-width: 0;
@@ -7813,6 +7972,16 @@ h3 {
   grid-template-columns: minmax(0, 1fr) minmax(150px, 23%);
   gap: 22px;
   align-items: stretch;
+}
+.home-overview-layout {
+  column-gap: var(--ui-panel-region-gap);
+  row-gap: 0;
+}
+.home-overview-layout[data-ui-panel-region-direction='stack'] {
+  row-gap: var(--ui-panel-region-gap);
+}
+.home-overview-activity-region {
+  min-width: 0;
 }
 .home-character-visual {
   position: relative;
@@ -8136,6 +8305,14 @@ h3 {
   }
 }
 @media (max-width: 900px) {
+  .ui-panel-region-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .ui-panel-region-slot {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
   .home-overview-metric-row {
     grid-template-columns: minmax(0, 1fr) minmax(130px, 27%);
   }

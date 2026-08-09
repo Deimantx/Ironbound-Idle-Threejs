@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import type { ScreenId } from '../game/types';
 import {
   getUiPanels,
+  getUiPanelAppearance,
   UI_EDITOR_COMPACT_QUERY,
   type UiLayout,
   type UiPanelId,
@@ -70,13 +71,25 @@ export function UiPanelSlot({ screen, id, layout, children }: UiPanelSlotProps) 
   const scale = compactViewport ? 1 : position.scale;
   const hasMeasurement = contentHeight > 0;
   const reservedHeight = Math.max(position.height, contentHeight) * scale;
+  const appearance = getUiPanelAppearance(layout, screen, id);
+  const appearanceStyle = {
+    ...(appearance.background ? { '--ui-panel-local-background': appearance.background } : {}),
+    ...(appearance.borderColor ? { '--ui-panel-local-border': appearance.borderColor } : {}),
+    ...(appearance.borderWidth !== undefined
+      ? { '--ui-panel-local-border-width': `${appearance.borderWidth}px` }
+      : {}),
+    ...(appearance.radius !== undefined ? { '--ui-panel-local-radius': `${appearance.radius}px` } : {}),
+    ...(appearance.shadow !== undefined
+      ? { '--ui-panel-local-shadow': appearance.shadow ? 'var(--shadow)' : 'none' }
+      : {}),
+  } as CSSProperties;
 
   return (
     <div
       className="ui-panel-slot"
       data-ui-panel={id}
       data-ui-panel-locked={position.locked ? 'true' : 'false'}
-      style={getPanelStyle(position, reservedHeight)}
+      style={{ ...getPanelStyle(position, reservedHeight), ...appearanceStyle }}
     >
       <div
         ref={contentRef}

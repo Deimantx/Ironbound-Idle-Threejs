@@ -1,12 +1,14 @@
 import type { ScreenId } from '../game/types';
 
 export const UI_LAYOUT_STORAGE_KEY = 'ironbound-idle-ui-layout';
-export const UI_LAYOUT_VERSION = 2;
+export const UI_LAYOUT_VERSION = 3;
 export const UI_EDITOR_COMPACT_QUERY = '(max-width: 900px)';
 export const UI_EDITOR_GRID_ROW_HEIGHT = 80;
 
 export type UiRegion = 'sidebar' | 'header' | 'content' | 'actionStrip';
 export type UiPanelId = string;
+export type UiPanelRegionId = string;
+export type UiPanelInternalDirection = 'grid' | 'stack';
 
 export interface UiOffset {
   x: number;
@@ -29,6 +31,44 @@ export interface UiPanelDefinition {
   defaultPosition: UiPanelPosition;
 }
 
+export interface UiPanelRegionPosition {
+  order: number;
+  column: number;
+  columnSpan: number;
+  row: number;
+  visible: boolean;
+}
+
+export interface UiPanelInternalLayout {
+  direction: UiPanelInternalDirection;
+  gap: number;
+  padding: number;
+  regions: Record<UiPanelRegionId, UiPanelRegionPosition>;
+}
+
+export interface UiPanelRegionDefinition {
+  id: UiPanelRegionId;
+  label: string;
+  description: string;
+  defaultPosition: UiPanelRegionPosition;
+  canHide?: boolean;
+}
+
+export interface UiPanelRegionRegistryEntry {
+  panelId: UiPanelId;
+  label: string;
+  regions: UiPanelRegionDefinition[];
+  defaultLayout: UiPanelInternalLayout;
+}
+
+export interface UiPanelAppearance {
+  background?: string;
+  borderColor?: string;
+  borderWidth?: number;
+  radius?: number;
+  shadow?: boolean;
+}
+
 export interface UiLayout {
   version: number;
   sidebarWidth: number;
@@ -42,6 +82,8 @@ export interface UiLayout {
   panel: string;
   offsets: Record<UiRegion, UiOffset>;
   screenPanels: Partial<Record<ScreenId, Record<UiPanelId, UiPanelPosition>>>;
+  panelRegions: Partial<Record<ScreenId, Record<UiPanelId, UiPanelInternalLayout>>>;
+  panelAppearances: Partial<Record<ScreenId, Record<UiPanelId, UiPanelAppearance>>>;
 }
 
 export const UI_REGIONS: Array<{ id: UiRegion; label: string; description: string }> = [
@@ -274,10 +316,111 @@ export const UI_SCREEN_PANELS: Partial<Record<ScreenId, UiPanelDefinition[]>> = 
   ],
 };
 
+export const DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 22,
+  padding: 0,
+  regions: {
+    homeOverviewActivity: {
+      order: 1,
+      column: 1,
+      columnSpan: 12,
+      row: 1,
+      visible: true,
+    },
+    homeOverviewStats: {
+      order: 2,
+      column: 1,
+      columnSpan: 9,
+      row: 2,
+      visible: true,
+    },
+    homeOverviewCharacter: {
+      order: 3,
+      column: 10,
+      columnSpan: 3,
+      row: 2,
+      visible: true,
+    },
+  },
+};
+
+export const UI_PANEL_REGION_REGISTRY: Partial<
+  Record<ScreenId, Partial<Record<UiPanelId, UiPanelRegionRegistryEntry>>>
+> = {
+  home: {
+    homeOverview: {
+      panelId: 'homeOverview',
+      label: 'Character overview contents',
+      defaultLayout: DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT,
+      regions: [
+        {
+          id: 'homeOverviewActivity',
+          label: 'Current Activity',
+          description: 'The latest combat, mining, or smithing activity',
+          defaultPosition: DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT.regions.homeOverviewActivity,
+          canHide: true,
+        },
+        {
+          id: 'homeOverviewStats',
+          label: 'Stats',
+          description: 'Character level and derived metrics',
+          defaultPosition: DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT.regions.homeOverviewStats,
+          canHide: true,
+        },
+        {
+          id: 'homeOverviewCharacter',
+          label: 'Character Visual',
+          description: 'The Three.js character scene',
+          defaultPosition: DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT.regions.homeOverviewCharacter,
+          canHide: true,
+        },
+      ],
+    },
+  },
+};
+
 const EMPTY_UI_PANELS: UiPanelDefinition[] = [];
 
 export const getUiPanels = (screen: ScreenId): UiPanelDefinition[] =>
   UI_SCREEN_PANELS[screen] ?? EMPTY_UI_PANELS;
+
+const EMPTY_PANEL_REGIONS: UiPanelRegionDefinition[] = [];
+
+export const getUiPanelRegionRegistry = (
+  screen: ScreenId,
+  panelId: UiPanelId,
+): UiPanelRegionRegistryEntry | undefined => UI_PANEL_REGION_REGISTRY[screen]?.[panelId];
+
+export const getUiPanelRegions = (
+  screen: ScreenId,
+  panelId: UiPanelId,
+): UiPanelRegionDefinition[] => getUiPanelRegionRegistry(screen, panelId)?.regions ?? EMPTY_PANEL_REGIONS;
+
+const cloneInternalLayout = (layout: UiPanelInternalLayout): UiPanelInternalLayout => ({
+  direction: layout.direction,
+  gap: layout.gap,
+  padding: layout.padding,
+  regions: Object.fromEntries(
+    Object.entries(layout.regions).map(([id, position]) => [id, { ...position }]),
+  ),
+});
+
+export const getUiPanelInternalLayout = (
+  layout: UiLayout,
+  screen: ScreenId,
+  panelId: UiPanelId,
+): UiPanelInternalLayout => {
+  const stored = layout.panelRegions[screen]?.[panelId];
+  const fallback = getUiPanelRegionRegistry(screen, panelId)?.defaultLayout;
+  return cloneInternalLayout(stored ?? fallback ?? { direction: 'grid', gap: 0, padding: 0, regions: {} });
+};
+
+export const getUiPanelAppearance = (
+  layout: UiLayout,
+  screen: ScreenId,
+  panelId: UiPanelId,
+): UiPanelAppearance => ({ ...(layout.panelAppearances[screen]?.[panelId] ?? {}) });
 
 export const DEFAULT_UI_LAYOUT: UiLayout = {
   version: UI_LAYOUT_VERSION,
@@ -296,6 +439,12 @@ export const DEFAULT_UI_LAYOUT: UiLayout = {
     content: { x: 0, y: 0 },
     actionStrip: { x: 0, y: 0 },
   },
+  panelRegions: {
+    home: {
+      homeOverview: cloneInternalLayout(DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT),
+    },
+  },
+  panelAppearances: {},
   screenPanels: {
     home: DEFAULT_HOME_PANEL_LAYOUT,
     combat: DEFAULT_COMBAT_PANEL_LAYOUT,
@@ -342,17 +491,71 @@ const safePanelPosition = (value: unknown, fallback: UiPanelPosition): UiPanelPo
   };
 };
 
+const safeRegionPosition = (
+  value: unknown,
+  fallback: UiPanelRegionPosition,
+): UiPanelRegionPosition => {
+  if (!value || typeof value !== 'object') return { ...fallback };
+  const record = value as Record<string, unknown>;
+  const column = Math.round(clamp(record.column, 1, 12, fallback.column));
+  return {
+    order: Math.round(clamp(record.order, 1, 100, fallback.order)),
+    column,
+    row: Math.round(clamp(record.row, 1, 12, fallback.row)),
+    columnSpan: Math.round(
+      clamp(record.columnSpan, 1, 13 - column, Math.min(fallback.columnSpan, 13 - column)),
+    ),
+    visible: typeof record.visible === 'boolean' ? record.visible : fallback.visible,
+  };
+};
+
+const safePanelInternalLayout = (
+  value: unknown,
+  fallback: UiPanelInternalLayout,
+): UiPanelInternalLayout => {
+  const source = value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+  const storedRegions = source.regions && typeof source.regions === 'object'
+    ? (source.regions as Record<string, unknown>)
+    : {};
+  return {
+    direction: source.direction === 'stack' ? 'stack' : 'grid',
+    gap: Math.round(clamp(source.gap, 0, 32, fallback.gap)),
+    padding: Math.round(clamp(source.padding, 0, 40, fallback.padding)),
+    regions: Object.fromEntries(
+      Object.entries(fallback.regions).map(([id, defaultPosition]) => [
+        id,
+        safeRegionPosition(storedRegions[id], defaultPosition),
+      ]),
+    ),
+  };
+};
+
+const safePanelAppearance = (value: unknown): UiPanelAppearance => {
+  if (!value || typeof value !== 'object') return {};
+  const source = value as Record<string, unknown>;
+  const appearance: UiPanelAppearance = {};
+  if (typeof source.background === 'string' && /^#[0-9a-f]{6}$/i.test(source.background)) {
+    appearance.background = source.background;
+  }
+  if (typeof source.borderColor === 'string' && /^#[0-9a-f]{6}$/i.test(source.borderColor)) {
+    appearance.borderColor = source.borderColor;
+  }
+  if (source.borderWidth !== undefined) appearance.borderWidth = clamp(source.borderWidth, 0, 4, 1);
+  if (source.radius !== undefined) appearance.radius = clamp(source.radius, 0, 28, 12);
+  if (typeof source.shadow === 'boolean') appearance.shadow = source.shadow;
+  return appearance;
+};
+
 export const migrateUiLayout = (value: unknown): unknown => {
   if (!value || typeof value !== 'object') return value;
   const source = value as Record<string, unknown>;
-  const version = typeof source.version === 'number' && Number.isFinite(source.version)
-    ? Math.floor(source.version)
-    : 1;
-  if (version >= UI_LAYOUT_VERSION) return { ...source, version: UI_LAYOUT_VERSION };
-  return {
+  const migrated: Record<string, unknown> = {
     ...source,
     version: UI_LAYOUT_VERSION,
   };
+  if (!('panelRegions' in source)) migrated.panelRegions = DEFAULT_UI_LAYOUT.panelRegions;
+  if (!('panelAppearances' in source)) migrated.panelAppearances = DEFAULT_UI_LAYOUT.panelAppearances;
+  return migrated;
 };
 
 const hasLegacySmithingSplit = (value: unknown): boolean => {
@@ -392,6 +595,10 @@ export const sanitizeUiLayout = (value: unknown): UiLayout => {
   const storedScreenPanels = (record.screenPanels ?? {}) as Record<string, unknown>;
   const legacyCombatPanels = record.combatPanels;
   const screenPanels: Partial<Record<ScreenId, Record<UiPanelId, UiPanelPosition>>> = {};
+  const storedPanelRegions = (record.panelRegions ?? {}) as Record<string, unknown>;
+  const panelRegions: Partial<Record<ScreenId, Record<UiPanelId, UiPanelInternalLayout>>> = {};
+  const storedPanelAppearances = (record.panelAppearances ?? {}) as Record<string, unknown>;
+  const panelAppearances: Partial<Record<ScreenId, Record<UiPanelId, UiPanelAppearance>>> = {};
 
   for (const [screen, definitions] of Object.entries(UI_SCREEN_PANELS) as Array<
     [ScreenId, UiPanelDefinition[]]
@@ -404,6 +611,35 @@ export const sanitizeUiLayout = (value: unknown): UiLayout => {
       screen === 'smithing' && hasLegacySmithingSplit(source) ? undefined : source,
       definitions,
     );
+
+    const storedRegionsForScreen = storedPanelRegions[screen];
+    const regionSource = storedRegionsForScreen && typeof storedRegionsForScreen === 'object'
+      ? (storedRegionsForScreen as Record<string, unknown>)
+      : {};
+    const registeredRegions = UI_PANEL_REGION_REGISTRY[screen];
+    if (registeredRegions) {
+      panelRegions[screen] = {};
+      for (const [panelId, entry] of Object.entries(registeredRegions)) {
+        if (!entry) continue;
+        panelRegions[screen][panelId] = safePanelInternalLayout(
+          regionSource[panelId],
+          entry.defaultLayout,
+        );
+      }
+    }
+
+    const storedAppearancesForScreen = storedPanelAppearances[screen];
+    const appearanceSource = storedAppearancesForScreen && typeof storedAppearancesForScreen === 'object'
+      ? (storedAppearancesForScreen as Record<string, unknown>)
+      : {};
+    const sanitizedAppearances = Object.fromEntries(
+      definitions
+        .map((panel) => [panel.id, safePanelAppearance(appearanceSource[panel.id])] as const)
+        .filter(([, appearance]) => Object.keys(appearance).length > 0),
+    );
+    if (Object.keys(sanitizedAppearances).length > 0) {
+      panelAppearances[screen] = sanitizedAppearances;
+    }
   }
 
   return {
@@ -429,12 +665,78 @@ export const sanitizeUiLayout = (value: unknown): UiLayout => {
       actionStrip: safeOffset(offsets.actionStrip, DEFAULT_UI_LAYOUT.offsets.actionStrip),
     },
     screenPanels,
+    panelRegions,
+    panelAppearances,
   };
+};
+
+export const resetUiPanelRegion = (
+  layout: UiLayout,
+  screen: ScreenId,
+  panelId: UiPanelId,
+  regionId: UiPanelRegionId,
+): UiLayout => {
+  const registry = getUiPanelRegionRegistry(screen, panelId);
+  const defaultPosition = registry?.defaultLayout.regions[regionId];
+  if (!defaultPosition) return sanitizeUiLayout(layout);
+  const internal = getUiPanelInternalLayout(layout, screen, panelId);
+  return sanitizeUiLayout({
+    ...layout,
+    panelRegions: {
+      ...layout.panelRegions,
+      [screen]: {
+        ...(layout.panelRegions[screen] ?? {}),
+        [panelId]: {
+          ...internal,
+          regions: {
+            ...internal.regions,
+            [regionId]: { ...defaultPosition },
+          },
+        },
+      },
+    },
+  });
+};
+
+export const resetUiPanel = (layout: UiLayout, screen: ScreenId, panelId: UiPanelId): UiLayout => {
+  const definition = getUiPanels(screen).find((panel) => panel.id === panelId);
+  if (!definition) return sanitizeUiLayout(layout);
+  const appearances = { ...(layout.panelAppearances[screen] ?? {}) };
+  delete appearances[panelId];
+  return sanitizeUiLayout({
+    ...layout,
+    screenPanels: {
+      ...layout.screenPanels,
+      [screen]: {
+        ...(layout.screenPanels[screen] ?? {}),
+        [panelId]: { ...definition.defaultPosition },
+      },
+    },
+    panelRegions: {
+      ...layout.panelRegions,
+      [screen]: {
+        ...(layout.panelRegions[screen] ?? {}),
+        ...(getUiPanelRegionRegistry(screen, panelId)
+          ? { [panelId]: cloneInternalLayout(getUiPanelRegionRegistry(screen, panelId)!.defaultLayout) }
+          : {}),
+      },
+    },
+    panelAppearances: {
+      ...layout.panelAppearances,
+      [screen]: appearances,
+    },
+  });
 };
 
 export const resetUiLayoutScreen = (layout: UiLayout, screen: ScreenId): UiLayout => {
   const defaults = DEFAULT_UI_LAYOUT.screenPanels[screen];
   if (!defaults) return sanitizeUiLayout(layout);
+  const nestedDefaults = Object.fromEntries(
+    Object.entries(UI_PANEL_REGION_REGISTRY[screen] ?? {}).map(([panelId, entry]) => [
+      panelId,
+      cloneInternalLayout(entry!.defaultLayout),
+    ]),
+  );
   return sanitizeUiLayout({
     ...layout,
     screenPanels: {
@@ -442,6 +744,14 @@ export const resetUiLayoutScreen = (layout: UiLayout, screen: ScreenId): UiLayou
       [screen]: Object.fromEntries(
         Object.entries(defaults).map(([id, position]) => [id, { ...position }]),
       ),
+    },
+    panelRegions: {
+      ...layout.panelRegions,
+      [screen]: nestedDefaults,
+    },
+    panelAppearances: {
+      ...layout.panelAppearances,
+      [screen]: {},
     },
   });
 };
