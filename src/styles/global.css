@@ -2780,9 +2780,11 @@ h3 {
 .ui-editor-resize-handle {
   position: absolute;
   z-index: 2;
+  display: block;
   padding: 0;
   border: 0;
   background: transparent;
+  pointer-events: auto;
   touch-action: none;
   user-select: none;
 }
@@ -2792,12 +2794,15 @@ h3 {
   background: var(--gold);
   opacity: 0.82;
   box-shadow: 0 0 0 1px rgba(15, 18, 20, 0.75);
+  transition:
+    opacity 0.12s ease,
+    box-shadow 0.12s ease;
 }
 .ui-editor-resize-handle.right {
-  top: 10px;
-  right: -6px;
-  bottom: 10px;
-  width: 12px;
+  top: 8px;
+  right: -8px;
+  bottom: 8px;
+  width: 16px;
   cursor: ew-resize;
 }
 .ui-editor-resize-handle.right::after {
@@ -2807,10 +2812,10 @@ h3 {
   border-radius: 3px;
 }
 .ui-editor-resize-handle.bottom {
-  right: 10px;
-  bottom: -6px;
-  left: 10px;
-  height: 12px;
+  right: 8px;
+  bottom: -8px;
+  left: 8px;
+  height: 16px;
   cursor: ns-resize;
 }
 .ui-editor-resize-handle.bottom::after {
@@ -2820,22 +2825,33 @@ h3 {
   border-radius: 3px;
 }
 .ui-editor-resize-handle.corner {
-  right: -7px;
-  bottom: -7px;
-  width: 16px;
-  height: 16px;
+  right: -10px;
+  bottom: -10px;
+  z-index: 3;
+  width: 20px;
+  height: 20px;
   cursor: nwse-resize;
 }
 .ui-editor-resize-handle.corner::after {
-  width: 9px;
-  height: 9px;
-  margin: 3px;
+  width: 11px;
+  height: 11px;
+  margin: 4px;
   border: 1px solid rgba(238, 217, 172, 0.92);
   border-radius: 50%;
+}
+.ui-editor-resize-handle:hover::after,
+.ui-editor-resize-handle:active::after {
+  opacity: 1;
+  box-shadow: 0 0 0 2px rgba(213, 170, 98, 0.26);
+}
+.ui-editor-resize-handle:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
 }
 .ui-editor-panel {
   pointer-events: auto;
   position: fixed;
+  z-index: 60;
   top: 16px;
   right: 16px;
   bottom: 16px;
@@ -7667,10 +7683,11 @@ h3 {
 }
 .home-overview {
   padding: 20px;
-  border-color: rgba(181, 139, 83, 0.6);
-  border-top: 2px solid rgba(181, 139, 83, 0.72);
+  border-color: #303b3e;
+  border-top: 1px solid #303b3e;
 }
 .home-activity-status {
+  position: relative;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
@@ -7678,18 +7695,28 @@ h3 {
   margin: -20px -20px 22px;
   padding: 11px 20px 12px;
   border-bottom: 1px solid #303b3e;
-  border-left: 2px solid var(--gold);
+  border-left: 0;
   background: rgba(14, 19, 21, 0.28);
 }
+.home-activity-status::before {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 8px;
+  width: 2px;
+  content: '';
+  border-radius: 99px;
+  background: var(--home-activity-accent, var(--gold));
+}
 .home-activity-status-idle {
-  border-left-color: #697276;
+  --home-activity-accent: #697276;
 }
 .home-activity-status-combat {
-  border-left-color: var(--home-progression-accent);
+  --home-activity-accent: var(--home-progression-accent);
 }
 .home-activity-status-mining,
 .home-activity-status-smithing {
-  border-left-color: var(--home-progression-accent);
+  --home-activity-accent: var(--home-progression-accent);
 }
 .home-activity-status-icon {
   display: grid;

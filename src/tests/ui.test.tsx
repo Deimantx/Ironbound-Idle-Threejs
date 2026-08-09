@@ -1635,6 +1635,9 @@ describe('navigation integration', () => {
       expect(stored.screenPanels.home.homeCombatProgression.locked).toBe(true);
     });
     expect(within(editor).getByRole('slider', { name: 'Panel width' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Resize Combat progression width' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Resize Combat progression height' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Resize Combat progression' })).not.toBeInTheDocument();
     dispatchPointer(document.querySelector('[title="Panel is locked. Unlock it to move or resize it."]') as HTMLElement, 'pointerdown', {
       pointerId: 4,
       clientX: 180,
@@ -1648,6 +1651,8 @@ describe('navigation integration', () => {
     await user.click(within(editor).getByRole('button', { name: 'Unlock Combat progression' }));
 
     const widthHandle = screen.getByRole('button', { name: 'Resize Combat progression width' });
+    expect(screen.getByRole('button', { name: 'Resize Combat progression height' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Resize Combat progression' })).toBeInTheDocument();
     dispatchPointer(widthHandle, 'pointerdown', {
       pointerId: 5,
       clientX: 500,
@@ -1664,6 +1669,45 @@ describe('navigation integration', () => {
     await waitFor(() => {
       const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
       expect(stored.screenPanels.home.homeCombatProgression.columnSpan).toBe(1);
+    });
+
+    dispatchPointer(screen.getByRole('button', { name: 'Resize Combat progression height' }), 'pointerdown', {
+      pointerId: 6,
+      clientX: 500,
+      clientY: 400,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointermove', {
+      pointerId: 6,
+      clientX: 500,
+      clientY: 520,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointerup', { pointerId: 6, clientX: 500, clientY: 520 });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.screenPanels.home.homeCombatProgression.height).toBe(120);
+    });
+
+    dispatchPointer(screen.getByRole('button', { name: 'Resize Combat progression' }), 'pointerdown', {
+      pointerId: 7,
+      clientX: 500,
+      clientY: 400,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointermove', {
+      pointerId: 7,
+      clientX: 700,
+      clientY: 500,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointerup', { pointerId: 7, clientX: 700, clientY: 500 });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.screenPanels.home.homeCombatProgression).toMatchObject({
+        columnSpan: 3,
+        height: 220,
+      });
     });
 
     await user.click(within(editor).getByRole('button', { name: 'Reset Home layout' }));
@@ -1844,6 +1888,9 @@ describe('navigation integration', () => {
       ).toBeInTheDocument();
       const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
       await user.click(within(editor).getByRole('button', { name: /^Player/ }));
+      expect(screen.queryByRole('button', { name: 'Resize Player width' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Resize Player height' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: 'Resize Player' })).not.toBeInTheDocument();
       const playerHandle = document.querySelector<HTMLButtonElement>(
         '[title="Panel dragging is available above 900px viewport width"]',
       );
