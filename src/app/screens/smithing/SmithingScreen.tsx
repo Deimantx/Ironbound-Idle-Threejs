@@ -770,7 +770,7 @@ function ActiveOrder({
       <div className="smithing-active-progress">
         <div className="split">
           <span>{itemName(recipe.outputItemId)}</span>
-          <strong>{formatSeconds(remainingMs)}</strong>
+          <strong className="ui-stat-compact">{formatSeconds(remainingMs)}</strong>
         </div>
         <div className="bar">
           <i style={{ width: `${progress}%` }} />
@@ -802,6 +802,7 @@ function ActiveOrder({
         <div className="smithing-order-detail">
           <span className="eyebrow">AVAILABLE</span>
           <strong
+            className="ui-stat-compact"
             title={
               action.quantityMode === 'continuous'
                 ? 'Material preservation may extend Continuous production beyond this estimate.'

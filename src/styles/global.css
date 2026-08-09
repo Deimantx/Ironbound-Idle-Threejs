@@ -2769,6 +2769,8 @@ h3 {
   --font-size-button: 12px;
   --font-size-navigation: 16px;
   --font-size-stat: 26px;
+  --font-size-button-compact: clamp(9px, calc(12px * 0.84), 16px);
+  --font-size-stat-compact: clamp(10px, calc(26px * 0.5), 18px);
   --font-weight-page-title: 700;
   --font-weight-panel-title: 700;
   --font-weight-subheading: 700;
@@ -2779,6 +2781,8 @@ h3 {
   --font-weight-button: 600;
   --font-weight-navigation: 400;
   --font-weight-stat: 700;
+  --font-weight-button-compact: 600;
+  --font-weight-stat-compact: 700;
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -10994,4 +10998,129 @@ h3 {
   .mining-overview-layout .scene-frame {
     min-height: 190px;
   }
+}
+
+/* Phase 3C.1 semantic typography coverage.
+ * These compact variants are derived from the editor-controlled Button and Stat
+ * masters. They keep dense gameplay metrics readable without making every
+ * numeric string a headline, and they deliberately avoid editor/debug chrome.
+ */
+.ui-stat-value {
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat);
+  font-weight: var(--font-weight-stat);
+  line-height: var(--line-height-stat);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.ui-stat-compact {
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.ui-button-compact {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-button-compact);
+  font-weight: var(--font-weight-button-compact);
+  line-height: var(--line-height-button);
+}
+
+/* Prominent Home and collection totals use the full Stat master. */
+.stat-card .value,
+.home-overview-metric strong,
+.home-record-stat strong,
+.collection-summary-stat strong {
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat);
+  font-weight: var(--font-weight-stat);
+  line-height: var(--line-height-stat);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Repeated gameplay metrics and dense numeric summaries use compact Stat. */
+.header-stat strong,
+.action-fight-time,
+.combat-level-badge strong,
+.combat-health-head strong,
+.attack-progress-head > span:last-child,
+.combat-stat-line strong,
+.combat-training-focus > strong,
+.combat-xp-row b,
+.combat-enemy-special-head > strong,
+.combat-adrenaline-head > strong,
+.combat-session-stat-grid strong,
+.combat-overview-columns strong,
+.combat-analysis-row strong,
+.combat-analysis-lifetime-kills strong,
+.combat-metric strong,
+.combat-activity-stat strong,
+.summary-stat strong,
+.home-record-row strong,
+.home-skill-tile-heading b,
+.equipment-stat-comparison-row strong,
+.inventory-card-quantity,
+.inventory-bonus strong,
+.inventory-details-metadata .ui-stat-compact,
+.mining-level-header strong,
+.mining-overview-status strong,
+.mining-active-stats strong,
+.mining-detail-meta strong,
+.mining-comparison-row strong,
+.mining-comparison-highlight > span > strong,
+.mining-stat-grid strong,
+.smithing-recipe-meta strong,
+.smithing-material-amount,
+.smithing-fuel-cost strong,
+.smithing-fuel-popover-stats strong,
+.smithing-fuel-estimates strong,
+.smithing-order-grid strong,
+.smithing-order-detail .ui-stat-compact,
+.offline-gain-row strong,
+.offline-progress-row strong,
+.activity-level-current,
+.activity-level-next,
+.activity-rate,
+.activity-xp-next,
+.activity-eta,
+.activity-phase-time,
+.activity-stamina strong {
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Custom game controls that do not use the shared .button primitive. */
+.combat-content-tabs button span,
+.combat-overview-tabs button,
+.combat-locations-toggle,
+.combat-text-link,
+.combat-style-option strong,
+.log-filters button,
+.equipment-profession-toggle > span:first-child,
+.smithing-fuel-trigger > span,
+.smithing-fuel-trigger > span strong,
+.smithing-tool-trigger > span,
+.smithing-tool-trigger > span strong,
+.smithing-tier-heading {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-button-compact);
+  font-weight: var(--font-weight-button-compact);
+  line-height: var(--line-height-button);
+}
+
+/* These compact action buttons have local density rules that previously
+ * bypassed the editor-controlled Button role. */
+.smithing-tool-option .button,
+.smithing-fuel-actions .button {
+  font-size: var(--font-size-button-compact);
+  font-weight: var(--font-weight-button-compact);
+}
+
+.combat-redesign .combat-main-action {
+  font-weight: var(--font-weight-button);
 }

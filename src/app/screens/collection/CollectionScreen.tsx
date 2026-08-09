@@ -415,7 +415,7 @@ function ItemCollectionDetails({
       </div>
       <p className="collection-detail-description">{item.description}</p>
       <div className="collection-detail-meta">
-        <div className="collection-detail-row"><span>Owned</span><strong>{formatNumber(getItemQuantity(game.inventory, item.id))}</strong></div>
+        <div className="collection-detail-row"><span>Owned</span><strong className="ui-stat-compact">{formatNumber(getItemQuantity(game.inventory, item.id))}</strong></div>
         <div className="collection-detail-source">
           <div className="collection-detail-row"><span>Source</span><strong>{item.source}</strong></div>
           {sourceNavigation && (
@@ -433,7 +433,7 @@ function ItemCollectionDetails({
         <div className="collection-detail-section">
           <span className="item-tooltip-kicker">Bonuses</span>
           {bonuses.map(([key, value]) => (
-            <span key={key}>{getEquipmentBonusLabel(key)} <strong>{formatEquipmentBonus(key, value as number)}</strong></span>
+            <span key={key}>{getEquipmentBonusLabel(key)} <strong className="ui-stat-compact">{formatEquipmentBonus(key, value as number)}</strong></span>
           ))}
         </div>
       )}

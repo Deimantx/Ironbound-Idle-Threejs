@@ -51,7 +51,7 @@ export function InventoryItemDetails({
         </p>
         <div className="stat-line">
           <span>Quantity</span>
-          <strong>{formatNumber(stack.quantity)}</strong>
+          <strong className="ui-stat-compact">{formatNumber(stack.quantity)}</strong>
         </div>
       </section>
     );
@@ -75,7 +75,7 @@ export function InventoryItemDetails({
       <dl className="inventory-details-metadata">
         <div className="stat-line">
           <dt>Quantity</dt>
-          <dd>{formatNumber(stack.quantity)}</dd>
+          <dd className="ui-stat-compact">{formatNumber(stack.quantity)}</dd>
         </div>
         {item.source && (
           <div className="stat-line inventory-source-row">
@@ -103,7 +103,7 @@ export function InventoryItemDetails({
             {bonuses.map(([key, value]) => (
               <div className="inventory-bonus" key={key}>
                 <span>{getEquipmentBonusLabel(key)}</span>
-                <strong>{formatEquipmentBonus(key, value as number)}</strong>
+                <strong className="ui-stat-compact">{formatEquipmentBonus(key, value as number)}</strong>
               </div>
             ))}
           </div>
