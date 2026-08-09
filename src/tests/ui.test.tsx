@@ -85,10 +85,29 @@ const mockHomeGeometry = () => {
   const nestedGrid = document.querySelector<HTMLElement>('[data-ui-panel-region-grid="homeOverview"]');
   if (!nestedGrid) throw new Error('Home nested region grid was not rendered');
   vi.spyOn(nestedGrid, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 1200, 220));
+  const nestedGridGeometry: Record<string, DOMRect> = {
+    homeCombatProgression: rect(0, 292, 588, 240),
+    homeProfessionProgression: rect(600, 292, 588, 240),
+    homeWorldRecord: rect(0, 544, 1200, 220),
+  };
+  Object.entries(nestedGridGeometry).forEach(([id, nestedGridRect]) => {
+    const gridElement = document.querySelector<HTMLElement>(`[data-ui-panel-region-grid="${id}"]`);
+    if (!gridElement) throw new Error(`Home nested region grid ${id} was not rendered`);
+    vi.spyOn(gridElement, 'getBoundingClientRect').mockReturnValue(nestedGridRect);
+  });
   const nestedGeometry: Record<string, DOMRect> = {
     homeOverviewActivity: rect(0, 0, 1200, 92),
     homeOverviewStats: rect(0, 92, 878, 110),
     homeOverviewCharacter: rect(900, 92, 300, 110),
+    homeCombatProgressionHeading: rect(0, 292, 588, 42),
+    homeCombatProgressionBoard: rect(0, 334, 588, 126),
+    homeCombatProgressionRecent: rect(0, 460, 588, 72),
+    homeProfessionProgressionHeading: rect(600, 292, 588, 42),
+    homeProfessionProgressionBoard: rect(600, 334, 588, 126),
+    homeProfessionProgressionRecent: rect(600, 460, 588, 72),
+    homeWorldRecordHeading: rect(0, 544, 1200, 42),
+    homeWorldRecordLifetimeStats: rect(0, 586, 1200, 82),
+    homeWorldRecordCollection: rect(0, 668, 1200, 96),
   };
   Object.entries(nestedGeometry).forEach(([id, nestedRect]) => {
     const region = document.querySelector<HTMLElement>(`[data-ui-panel-region="${id}"]`);
@@ -1639,6 +1658,196 @@ describe('navigation integration', () => {
       const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
       expect(stored.panelRegions.home.homeOverview.regions.homeOverviewStats.columnSpan).toBe(9);
       expect(stored.panelRegions.home.homeOverview.regions.homeOverviewCharacter.visible).toBe(true);
+    });
+  });
+
+  it('exposes and edits nested regions across the remaining Home panels', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    mockHomeGeometry();
+
+    const nestedRegions = {
+      homeCombatProgression: [
+        'homeCombatProgressionHeading',
+        'homeCombatProgressionBoard',
+        'homeCombatProgressionRecent',
+      ],
+      homeProfessionProgression: [
+        'homeProfessionProgressionHeading',
+        'homeProfessionProgressionBoard',
+        'homeProfessionProgressionRecent',
+      ],
+      homeWorldRecord: [
+        'homeWorldRecordHeading',
+        'homeWorldRecordLifetimeStats',
+        'homeWorldRecordCollection',
+      ],
+    };
+    for (const [panelId, regionIds] of Object.entries(nestedRegions)) {
+      expect(document.querySelector(`[data-ui-panel-region-grid="${panelId}"]`)).toBeInTheDocument();
+      for (const regionId of regionIds) {
+        const region = document.querySelector(`[data-ui-panel-region="${regionId}"]`);
+        expect(region).toHaveAttribute('data-ui-panel-owner', panelId);
+      }
+    }
+
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Combat progression/ }));
+    expect(within(editor).getByRole('button', { name: /Heading/ })).toBeInTheDocument();
+    expect(within(editor).getByRole('button', { name: /Skill Board/ })).toBeInTheDocument();
+    expect(within(editor).getByRole('button', { name: /Recent Combat/ })).toBeInTheDocument();
+    await user.click(within(editor).getByRole('button', { name: /Recent Combat/ }));
+    expect(within(editor).getByText('Owner: Combat progression')).toBeInTheDocument();
+    expect(within(editor).getByRole('slider', { name: 'Region width' })).toBeInTheDocument();
+
+    await user.click(within(editor).getByRole('button', { name: /Profession progression/ }));
+    expect(within(editor).getByRole('button', { name: /Recent Profession/ })).toBeInTheDocument();
+    await user.click(within(editor).getByRole('button', { name: /Recent Profession/ }));
+    expect(within(editor).getByText('Owner: Profession progression')).toBeInTheDocument();
+
+    await user.click(within(editor).getByRole('button', { name: /World record/ }));
+    await user.selectOptions(within(editor).getByRole('combobox', { name: 'Layout preset' }), '50-50');
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.home.homeWorldRecord.regions.homeWorldRecordLifetimeStats.columnSpan).toBe(6);
+      expect(stored.panelRegions.home.homeWorldRecord.regions.homeWorldRecordCollection.columnSpan).toBe(6);
+    });
+    await user.click(within(editor).getByRole('button', { name: /Collection Progress.*Items/ }));
+    await user.click(within(editor).getByRole('checkbox', { name: 'Visible' }));
+    await waitFor(() => {
+      expect(document.querySelector('[data-ui-panel-region="homeWorldRecordCollection"]')).toHaveStyle({ display: 'none' });
+    });
+    expect(within(editor).getByRole('button', { name: /Collection Progress.*Items/ })).toBeInTheDocument();
+    await user.click(within(editor).getByRole('button', { name: 'Undo UI change' }));
+    await waitFor(() => expect(within(editor).getByRole('checkbox', { name: 'Visible' })).toBeChecked());
+  });
+
+  it('moves and resizes new Home nested regions with history', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    mockHomeGeometry();
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Combat progression/ }));
+    await user.click(within(editor).getByRole('button', { name: /Recent Combat/ }));
+
+    const recentHandle = screen.getByTitle('Drag to move Recent Combat');
+    dispatchPointer(recentHandle, 'pointerdown', {
+      pointerId: 21,
+      clientX: 30,
+      clientY: 500,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointermove', {
+      pointerId: 21,
+      clientX: 100,
+      clientY: 600,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointerup', { pointerId: 21, clientX: 100, clientY: 600 });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.home.homeCombatProgression.regions.homeCombatProgressionRecent.row).toBe(4);
+    });
+    await user.click(within(editor).getByRole('button', { name: 'Undo UI change' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.home.homeCombatProgression.regions.homeCombatProgressionRecent.row).toBe(3);
+    });
+    await user.click(within(editor).getByRole('button', { name: 'Redo UI change' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.home.homeCombatProgression.regions.homeCombatProgressionRecent.row).toBe(4);
+    });
+
+    await user.click(within(editor).getByRole('button', { name: /Skill Board/ }));
+    const boardHandle = screen.getByRole('button', { name: 'Resize Skill Board width' });
+    dispatchPointer(boardHandle, 'pointerdown', {
+      pointerId: 22,
+      clientX: 580,
+      clientY: 390,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointermove', {
+      pointerId: 22,
+      clientX: 380,
+      clientY: 390,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointerup', { pointerId: 22, clientX: 380, clientY: 390 });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.home.homeCombatProgression.regions.homeCombatProgressionBoard.columnSpan).toBe(8);
+    });
+  });
+
+  it('locks and resets a Home nested panel without affecting other screens', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /World record/ }));
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Internal gap' }), {
+      target: { value: '18' },
+    });
+    fireEvent.change(within(editor).getByLabelText('Background'), { target: { value: '#123456' } });
+    await user.click(within(editor).getByRole('button', { name: /Collection Progress.*Items/ }));
+    await user.click(within(editor).getByRole('checkbox', { name: 'Visible' }));
+    await user.click(within(editor).getByRole('button', { name: /World record/ }));
+    await user.click(within(editor).getByRole('button', { name: 'Lock World record' }));
+    await user.click(within(editor).getByRole('button', { name: /Collection Progress.*Items/ }));
+    expect(within(editor).getByRole('checkbox', { name: 'Visible' })).toBeDisabled();
+    expect(within(editor).getByRole('slider', { name: 'Region width' })).toBeDisabled();
+
+    await user.click(within(editor).getByRole('button', { name: /World record/ }));
+    await user.click(within(editor).getByRole('button', { name: /Unlock World record/ }));
+    await user.click(within(editor).getByRole('button', { name: 'Reset World record' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.home.homeWorldRecord).toMatchObject({
+        direction: 'grid',
+        gap: 0,
+        padding: 0,
+      });
+      expect(stored.panelRegions.home.homeWorldRecord.regions.homeWorldRecordCollection.visible).toBe(true);
+      expect(stored.panelAppearances?.home?.homeWorldRecord).toBeUndefined();
+    });
+  });
+
+  it('resets all Home nested panels and appearance overrides together', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+
+    await user.click(within(editor).getByRole('button', { name: /Combat progression/ }));
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Internal gap' }), {
+      target: { value: '18' },
+    });
+    fireEvent.change(within(editor).getByLabelText('Background'), { target: { value: '#123456' } });
+    await user.click(within(editor).getByRole('button', { name: /Recent Combat/ }));
+    await user.click(within(editor).getByRole('checkbox', { name: 'Visible' }));
+
+    await user.click(within(editor).getByRole('button', { name: /Profession progression/ }));
+    await user.selectOptions(within(editor).getByRole('combobox', { name: 'Layout preset' }), 'board-recent-columns');
+
+    await user.click(within(editor).getByRole('button', { name: /World record/ }));
+    await user.click(within(editor).getByRole('button', { name: /Collection Progress.*Items/ }));
+    await user.click(within(editor).getByRole('checkbox', { name: 'Visible' }));
+
+    await user.click(within(editor).getByRole('button', { name: /Character overview/ }));
+    await user.selectOptions(within(editor).getByRole('combobox', { name: 'Layout preset' }), '50-50');
+    await user.click(within(editor).getByRole('button', { name: 'Reset Home layout' }));
+
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.home.homeOverview.regions.homeOverviewStats.columnSpan).toBe(9);
+      expect(stored.panelRegions.home.homeCombatProgression.gap).toBe(0);
+      expect(stored.panelRegions.home.homeCombatProgression.regions.homeCombatProgressionRecent.visible).toBe(true);
+      expect(stored.panelRegions.home.homeProfessionProgression.regions.homeProfessionProgressionBoard.columnSpan).toBe(12);
+      expect(stored.panelRegions.home.homeWorldRecord.regions.homeWorldRecordCollection.visible).toBe(true);
+      expect(stored.panelAppearances?.home).toBeUndefined();
     });
   });
 

@@ -68,7 +68,7 @@ import type {
   ScreenId,
   CombatContentCategory,
 } from '../game/types';
-import forestRatImage from '../Art/Monsters/ForestRat.png';
+import forestRatImage from '../Assets/Art/Monsters/ForestRat.png';
 import type { ConfirmDialogOptions } from './ConfirmDialog';
 import { ItemIcon } from './ItemIcon';
 import { ItemTooltip } from './items/ItemTooltip';

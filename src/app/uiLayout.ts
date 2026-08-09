@@ -54,11 +54,18 @@ export interface UiPanelRegionDefinition {
   canHide?: boolean;
 }
 
+export interface UiPanelRegionPreset {
+  id: string;
+  label: string;
+  layout: UiPanelInternalLayout;
+}
+
 export interface UiPanelRegionRegistryEntry {
   panelId: UiPanelId;
   label: string;
   regions: UiPanelRegionDefinition[];
   defaultLayout: UiPanelInternalLayout;
+  presets?: UiPanelRegionPreset[];
 }
 
 export interface UiPanelAppearance {
@@ -345,6 +352,128 @@ export const DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT: UiPanelInternalLayout = {
   },
 };
 
+export const DEFAULT_HOME_COMBAT_PROGRESSION_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    homeCombatProgressionHeading: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    homeCombatProgressionBoard: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+    homeCombatProgressionRecent: { order: 3, column: 1, columnSpan: 12, row: 3, visible: true },
+  },
+};
+
+export const DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    homeProfessionProgressionHeading: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    homeProfessionProgressionBoard: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+    homeProfessionProgressionRecent: { order: 3, column: 1, columnSpan: 12, row: 3, visible: true },
+  },
+};
+
+export const DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    homeWorldRecordHeading: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    homeWorldRecordLifetimeStats: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+    homeWorldRecordCollection: { order: 3, column: 1, columnSpan: 12, row: 3, visible: true },
+  },
+};
+
+const withRegionPositionUpdates = (
+  base: UiPanelInternalLayout,
+  updates: Partial<Record<UiPanelRegionId, Partial<UiPanelRegionPosition>>>,
+  direction: UiPanelInternalDirection = base.direction,
+): UiPanelInternalLayout => ({
+  direction,
+  gap: base.gap,
+  padding: base.padding,
+  regions: Object.fromEntries(
+    Object.entries(base.regions).map(([id, position]) => [id, { ...position, ...(updates[id] ?? {}) }]),
+  ),
+});
+
+const stackedRegionLayout = (base: UiPanelInternalLayout): UiPanelInternalLayout =>
+  withRegionPositionUpdates(
+    base,
+    Object.fromEntries(
+      Object.keys(base.regions).map((id, index) => [
+        id,
+        { column: 1, columnSpan: 12, row: index + 1, order: index + 1 },
+      ]),
+    ),
+    'stack',
+  );
+
+const splitRegionLayout = (
+  base: UiPanelInternalLayout,
+  firstRegionId: UiPanelRegionId,
+  secondRegionId: UiPanelRegionId,
+  firstSpan: number,
+): UiPanelInternalLayout =>
+  withRegionPositionUpdates(base, {
+    [firstRegionId]: { column: 1, columnSpan: firstSpan, row: 2 },
+    [secondRegionId]: { column: firstSpan + 1, columnSpan: 12 - firstSpan, row: 2 },
+  });
+
+const homeOverviewRatioLayout = (statsSpan: number): UiPanelInternalLayout =>
+  withRegionPositionUpdates(DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT, {
+    homeOverviewStats: { column: 1, columnSpan: statsSpan, row: 2 },
+    homeOverviewCharacter: { column: statsSpan + 1, columnSpan: 12 - statsSpan, row: 2 },
+  });
+
+const homeOverviewPresets: UiPanelRegionPreset[] = [
+  { id: 'default', label: 'Default', layout: DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT },
+  { id: '75-25', label: '75 / 25', layout: homeOverviewRatioLayout(9) },
+  { id: '67-33', label: '67 / 33', layout: homeOverviewRatioLayout(8) },
+  { id: '50-50', label: '50 / 50', layout: homeOverviewRatioLayout(6) },
+  { id: 'stacked', label: 'Stacked', layout: stackedRegionLayout(DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT) },
+];
+
+const homeProgressionPresets = (
+  base: UiPanelInternalLayout,
+  boardId: UiPanelRegionId,
+  recentId: UiPanelRegionId,
+): UiPanelRegionPreset[] => [
+  { id: 'default', label: 'Default', layout: base },
+  {
+    id: 'board-recent-columns',
+    label: 'Board + Recent Columns',
+    layout: splitRegionLayout(base, boardId, recentId, 8),
+  },
+  { id: 'stacked', label: 'Stacked', layout: stackedRegionLayout(base) },
+];
+
+const homeWorldRecordPresets: UiPanelRegionPreset[] = [
+  { id: 'default', label: 'Default', layout: DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT },
+  {
+    id: 'split-record',
+    label: 'Split Record',
+    layout: splitRegionLayout(
+      DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT,
+      'homeWorldRecordLifetimeStats',
+      'homeWorldRecordCollection',
+      7,
+    ),
+  },
+  {
+    id: '50-50',
+    label: '50 / 50',
+    layout: splitRegionLayout(
+      DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT,
+      'homeWorldRecordLifetimeStats',
+      'homeWorldRecordCollection',
+      6,
+    ),
+  },
+  { id: 'stacked', label: 'Stacked', layout: stackedRegionLayout(DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT) },
+];
+
 export const UI_PANEL_REGION_REGISTRY: Partial<
   Record<ScreenId, Partial<Record<UiPanelId, UiPanelRegionRegistryEntry>>>
 > = {
@@ -353,6 +482,7 @@ export const UI_PANEL_REGION_REGISTRY: Partial<
       panelId: 'homeOverview',
       label: 'Character overview contents',
       defaultLayout: DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT,
+      presets: homeOverviewPresets,
       regions: [
         {
           id: 'homeOverviewActivity',
@@ -377,6 +507,101 @@ export const UI_PANEL_REGION_REGISTRY: Partial<
         },
       ],
     },
+    homeCombatProgression: {
+      panelId: 'homeCombatProgression',
+      label: 'Combat progression contents',
+      defaultLayout: DEFAULT_HOME_COMBAT_PROGRESSION_INTERNAL_LAYOUT,
+      presets: homeProgressionPresets(
+        DEFAULT_HOME_COMBAT_PROGRESSION_INTERNAL_LAYOUT,
+        'homeCombatProgressionBoard',
+        'homeCombatProgressionRecent',
+      ),
+      regions: [
+        {
+          id: 'homeCombatProgressionHeading',
+          label: 'Heading',
+          description: 'Panel title and Combat section label',
+          defaultPosition: DEFAULT_HOME_COMBAT_PROGRESSION_INTERNAL_LAYOUT.regions.homeCombatProgressionHeading,
+          canHide: true,
+        },
+        {
+          id: 'homeCombatProgressionBoard',
+          label: 'Skill Board',
+          description: 'Hitpoints and melee progression groups',
+          defaultPosition: DEFAULT_HOME_COMBAT_PROGRESSION_INTERNAL_LAYOUT.regions.homeCombatProgressionBoard,
+          canHide: true,
+        },
+        {
+          id: 'homeCombatProgressionRecent',
+          label: 'Recent Combat',
+          description: 'Latest combat level-up milestones',
+          defaultPosition: DEFAULT_HOME_COMBAT_PROGRESSION_INTERNAL_LAYOUT.regions.homeCombatProgressionRecent,
+          canHide: true,
+        },
+      ],
+    },
+    homeProfessionProgression: {
+      panelId: 'homeProfessionProgression',
+      label: 'Profession progression contents',
+      defaultLayout: DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT,
+      presets: homeProgressionPresets(
+        DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT,
+        'homeProfessionProgressionBoard',
+        'homeProfessionProgressionRecent',
+      ),
+      regions: [
+        {
+          id: 'homeProfessionProgressionHeading',
+          label: 'Heading',
+          description: 'Panel title and Professions section label',
+          defaultPosition: DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT.regions.homeProfessionProgressionHeading,
+          canHide: true,
+        },
+        {
+          id: 'homeProfessionProgressionBoard',
+          label: 'Skill Board',
+          description: 'Mining and Smithing progression groups',
+          defaultPosition: DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT.regions.homeProfessionProgressionBoard,
+          canHide: true,
+        },
+        {
+          id: 'homeProfessionProgressionRecent',
+          label: 'Recent Profession',
+          description: 'Latest profession level-up milestones',
+          defaultPosition: DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT.regions.homeProfessionProgressionRecent,
+          canHide: true,
+        },
+      ],
+    },
+    homeWorldRecord: {
+      panelId: 'homeWorldRecord',
+      label: 'World record contents',
+      defaultLayout: DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT,
+      presets: homeWorldRecordPresets,
+      regions: [
+        {
+          id: 'homeWorldRecordHeading',
+          label: 'Heading',
+          description: 'World Record title and Collection navigation action',
+          defaultPosition: DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT.regions.homeWorldRecordHeading,
+          canHide: true,
+        },
+        {
+          id: 'homeWorldRecordLifetimeStats',
+          label: 'Lifetime Stats',
+          description: 'Enemies defeated, total items gained, and time played',
+          defaultPosition: DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT.regions.homeWorldRecordLifetimeStats,
+          canHide: true,
+        },
+        {
+          id: 'homeWorldRecordCollection',
+          label: 'Collection Progress',
+          description: 'Items, monsters, overall completion, and progress bar',
+          defaultPosition: DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT.regions.homeWorldRecordCollection,
+          canHide: true,
+        },
+      ],
+    },
   },
 };
 
@@ -396,6 +621,37 @@ export const getUiPanelRegions = (
   screen: ScreenId,
   panelId: UiPanelId,
 ): UiPanelRegionDefinition[] => getUiPanelRegionRegistry(screen, panelId)?.regions ?? EMPTY_PANEL_REGIONS;
+
+const EMPTY_PANEL_PRESETS: UiPanelRegionPreset[] = [];
+
+export const getUiPanelRegionPresets = (
+  screen: ScreenId,
+  panelId: UiPanelId,
+): UiPanelRegionPreset[] => getUiPanelRegionRegistry(screen, panelId)?.presets ?? EMPTY_PANEL_PRESETS;
+
+const internalLayoutsMatch = (first: UiPanelInternalLayout, second: UiPanelInternalLayout): boolean =>
+  first.direction === second.direction &&
+  first.gap === second.gap &&
+  first.padding === second.padding &&
+  Object.keys(first.regions).every((id) => {
+    const firstPosition = first.regions[id];
+    const secondPosition = second.regions[id];
+    return (
+      secondPosition &&
+      firstPosition.order === secondPosition.order &&
+      firstPosition.column === secondPosition.column &&
+      firstPosition.columnSpan === secondPosition.columnSpan &&
+      firstPosition.row === secondPosition.row &&
+      firstPosition.visible === secondPosition.visible
+    );
+  });
+
+export const getUiPanelRegionPreset = (
+  screen: ScreenId,
+  panelId: UiPanelId,
+  layout: UiPanelInternalLayout,
+): UiPanelRegionPreset | undefined =>
+  getUiPanelRegionPresets(screen, panelId).find((preset) => internalLayoutsMatch(preset.layout, layout));
 
 const cloneInternalLayout = (layout: UiPanelInternalLayout): UiPanelInternalLayout => ({
   direction: layout.direction,
@@ -442,6 +698,9 @@ export const DEFAULT_UI_LAYOUT: UiLayout = {
   panelRegions: {
     home: {
       homeOverview: cloneInternalLayout(DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT),
+      homeCombatProgression: cloneInternalLayout(DEFAULT_HOME_COMBAT_PROGRESSION_INTERNAL_LAYOUT),
+      homeProfessionProgression: cloneInternalLayout(DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT),
+      homeWorldRecord: cloneInternalLayout(DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT),
     },
   },
   panelAppearances: {},

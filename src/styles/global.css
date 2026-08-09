@@ -7980,6 +7980,16 @@ h3 {
 .home-overview-layout[data-ui-panel-region-direction='stack'] {
   row-gap: var(--ui-panel-region-gap);
 }
+.home-progression-layout,
+.home-world-record-layout {
+  row-gap: var(--ui-panel-region-gap);
+}
+.home-progression-board-region,
+.home-progression-recent-region,
+.home-world-record-lifetime-region,
+.home-world-record-collection-region {
+  container-type: inline-size;
+}
 .home-overview-activity-region {
   min-width: 0;
 }
@@ -8252,6 +8262,26 @@ h3 {
   height: 100%;
   border-radius: inherit;
   background: var(--gold);
+}
+@container (max-width: 540px) {
+  .home-progression-group-melee .home-skill-tile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .home-record-stat-strip {
+    grid-template-columns: 1fr;
+  }
+  .home-record-stat + .home-record-stat {
+    padding-top: 10px;
+    border-top: 1px solid #354145;
+    border-left: 0;
+  }
+}
+@container (max-width: 380px) {
+  .home-progression-group-melee .home-skill-tile-grid,
+  .home-progression-group-professions .home-skill-tile-grid,
+  .home-record-collection-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .home-milestone-list {
   display: grid;

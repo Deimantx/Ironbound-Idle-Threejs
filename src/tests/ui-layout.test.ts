@@ -12,9 +12,13 @@ import {
   DEFAULT_SETTINGS_PANEL_LAYOUT,
   DEFAULT_HELP_PANEL_LAYOUT,
   DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT,
+  DEFAULT_HOME_COMBAT_PROGRESSION_INTERNAL_LAYOUT,
+  DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT,
+  DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT,
   getUiPanels,
   getUiPanelAppearance,
   getUiPanelInternalLayout,
+  getUiPanelRegionPresets,
   getUiPanelRegions,
   resetUiPanel,
   resetUiPanelRegion,
@@ -69,6 +73,28 @@ describe('visual UI layout', () => {
       'smithingForge',
       'smithingAnvil',
     ]);
+  });
+
+  it('registers stable nested definitions for every Home panel', () => {
+    const expected = {
+      homeOverview: ['homeOverviewActivity', 'homeOverviewStats', 'homeOverviewCharacter'],
+      homeCombatProgression: [
+        'homeCombatProgressionHeading',
+        'homeCombatProgressionBoard',
+        'homeCombatProgressionRecent',
+      ],
+      homeProfessionProgression: [
+        'homeProfessionProgressionHeading',
+        'homeProfessionProgressionBoard',
+        'homeProfessionProgressionRecent',
+      ],
+      homeWorldRecord: ['homeWorldRecordHeading', 'homeWorldRecordLifetimeStats', 'homeWorldRecordCollection'],
+    } as const;
+
+    for (const [panelId, regionIds] of Object.entries(expected)) {
+      expect(getUiPanelRegions('home', panelId).map((region) => region.id)).toEqual(regionIds);
+      expect(getUiPanelRegionPresets('home', panelId).length).toBeGreaterThan(0);
+    }
   });
 
   it('migrates legacy layouts into the current version and backfills new panels and locks', () => {
@@ -339,6 +365,15 @@ describe('visual UI layout', () => {
     ]);
     expect(getUiPanelInternalLayout(layout, 'home', 'homeOverview').regions).toEqual(
       DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT.regions,
+    );
+    expect(getUiPanelInternalLayout(layout, 'home', 'homeCombatProgression')).toEqual(
+      DEFAULT_HOME_COMBAT_PROGRESSION_INTERNAL_LAYOUT,
+    );
+    expect(getUiPanelInternalLayout(layout, 'home', 'homeProfessionProgression')).toEqual(
+      DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT,
+    );
+    expect(getUiPanelInternalLayout(layout, 'home', 'homeWorldRecord')).toEqual(
+      DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT,
     );
     expect(getUiPanelAppearance(layout, 'home', 'homeOverview')).toEqual({});
   });

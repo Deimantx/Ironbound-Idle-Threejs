@@ -10,6 +10,9 @@ import {
 import type { ReactNode } from 'react';
 import type { SkillId, GameState, ScreenId } from '../../game/types';
 import { formatNumber } from '../formatters';
+import { UiPanelRegionGrid } from '../UiPanelRegionGrid';
+import { UiPanelRegionSlot } from '../UiPanelRegionSlot';
+import type { UiLayout } from '../uiLayout';
 import type { SkillProgressSummary } from './homeSelectors';
 import {
   getCombatSkillProgress,
@@ -197,45 +200,113 @@ function PanelHeading({
   );
 }
 
-export function CombatProgression({ game, onNavigate }: { game: GameState; onNavigate: (screen: ScreenId) => void }) {
+export function CombatProgression({
+  game,
+  onNavigate,
+  uiLayout,
+}: {
+  game: GameState;
+  onNavigate: (screen: ScreenId) => void;
+  uiLayout: UiLayout;
+}) {
   const recent = getHomeRecentProgress(game);
   return (
     <section className="panel panel-pad home-progression-panel home-combat-progression" aria-labelledby="combat-progression-title">
-      <PanelHeading
-        eyebrow="Combat"
-        title="Combat Progression"
-        id="combat-progression-title"
-        icon={<Swords size={16} />}
-      />
-      <ProgressionBoard
-        groups={combatBoardGroups}
-        skills={getCombatSkillProgress(game)}
-        destination="combat"
-        onNavigate={onNavigate}
-      />
-      <RecentProgressRows title="Recent Combat" entries={recent.combat} empty="No recent combat level-ups." />
+      <UiPanelRegionGrid screen="home" panelId="homeCombatProgression" layout={uiLayout} className="home-progression-layout">
+        <UiPanelRegionSlot
+          screen="home"
+          panelId="homeCombatProgression"
+          regionId="homeCombatProgressionHeading"
+          layout={uiLayout}
+          className="home-progression-heading-region"
+        >
+          <PanelHeading
+            eyebrow="Combat"
+            title="Combat Progression"
+            id="combat-progression-title"
+            icon={<Swords size={16} />}
+          />
+        </UiPanelRegionSlot>
+        <UiPanelRegionSlot
+          screen="home"
+          panelId="homeCombatProgression"
+          regionId="homeCombatProgressionBoard"
+          layout={uiLayout}
+          className="home-progression-board-region"
+        >
+          <ProgressionBoard
+            groups={combatBoardGroups}
+            skills={getCombatSkillProgress(game)}
+            destination="combat"
+            onNavigate={onNavigate}
+          />
+        </UiPanelRegionSlot>
+        <UiPanelRegionSlot
+          screen="home"
+          panelId="homeCombatProgression"
+          regionId="homeCombatProgressionRecent"
+          layout={uiLayout}
+          className="home-progression-recent-region"
+        >
+          <RecentProgressRows title="Recent Combat" entries={recent.combat} empty="No recent combat level-ups." />
+        </UiPanelRegionSlot>
+      </UiPanelRegionGrid>
     </section>
   );
 }
 
-export function ProfessionProgression({ game, onNavigate }: { game: GameState; onNavigate: (screen: ScreenId) => void }) {
+export function ProfessionProgression({
+  game,
+  onNavigate,
+  uiLayout,
+}: {
+  game: GameState;
+  onNavigate: (screen: ScreenId) => void;
+  uiLayout: UiLayout;
+}) {
   const recent = getHomeRecentProgress(game);
   return (
     <section className="panel panel-pad home-progression-panel home-profession-progression" aria-labelledby="profession-progression-title">
-      <PanelHeading
-        eyebrow="Professions"
-        title="Profession Progression"
-        id="profession-progression-title"
-        icon={<Hammer size={16} />}
-      />
-      <ProgressionBoard
-        groups={professionBoardGroups}
-        skills={getProfessionSkillProgress(game)}
-        destination="mining"
-        destinationBySkill={{ mining: 'mining', smithing: 'smithing' }}
-        onNavigate={onNavigate}
-      />
-      <RecentProgressRows title="Recent Profession" entries={recent.profession} empty="No recent profession level-ups." />
+      <UiPanelRegionGrid screen="home" panelId="homeProfessionProgression" layout={uiLayout} className="home-progression-layout">
+        <UiPanelRegionSlot
+          screen="home"
+          panelId="homeProfessionProgression"
+          regionId="homeProfessionProgressionHeading"
+          layout={uiLayout}
+          className="home-progression-heading-region"
+        >
+          <PanelHeading
+            eyebrow="Professions"
+            title="Profession Progression"
+            id="profession-progression-title"
+            icon={<Hammer size={16} />}
+          />
+        </UiPanelRegionSlot>
+        <UiPanelRegionSlot
+          screen="home"
+          panelId="homeProfessionProgression"
+          regionId="homeProfessionProgressionBoard"
+          layout={uiLayout}
+          className="home-progression-board-region"
+        >
+          <ProgressionBoard
+            groups={professionBoardGroups}
+            skills={getProfessionSkillProgress(game)}
+            destination="mining"
+            destinationBySkill={{ mining: 'mining', smithing: 'smithing' }}
+            onNavigate={onNavigate}
+          />
+        </UiPanelRegionSlot>
+        <UiPanelRegionSlot
+          screen="home"
+          panelId="homeProfessionProgression"
+          regionId="homeProfessionProgressionRecent"
+          layout={uiLayout}
+          className="home-progression-recent-region"
+        >
+          <RecentProgressRows title="Recent Profession" entries={recent.profession} empty="No recent profession level-ups." />
+        </UiPanelRegionSlot>
+      </UiPanelRegionGrid>
     </section>
   );
 }

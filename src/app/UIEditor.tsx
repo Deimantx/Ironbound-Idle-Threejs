@@ -18,6 +18,8 @@ import {
   UI_REGIONS,
   getUiPanelAppearance,
   getUiPanelInternalLayout,
+  getUiPanelRegionPreset,
+  getUiPanelRegionPresets,
   getUiPanelRegions,
   resetUiPanel,
   resetUiPanelRegion,
@@ -25,7 +27,6 @@ import {
   resetUiLayout,
   type UiLayout,
   type UiPanelAppearance,
-  type UiPanelInternalLayout,
   type UiPanelId,
   type UiPanelPosition,
   type UiPanelRegionId,
@@ -1016,47 +1017,34 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     });
   };
 
-  const applyHomeOverviewPreset = (preset: string) => {
-    if (selected.kind !== 'panel' || selected.id !== 'homeOverview') return;
+  const applyPanelPreset = (presetId: string) => {
+    if (selected.kind !== 'panel') return;
     const currentLayout = layoutRef.current;
     const currentPanel = currentLayout.screenPanels[screen]?.[selected.id];
     if (currentPanel?.locked) return;
-    const internal = getUiPanelInternalLayout(currentLayout, screen, selected.id);
-    const activity = internal.regions.homeOverviewActivity;
-    const stats = internal.regions.homeOverviewStats;
-    const character = internal.regions.homeOverviewCharacter;
-    if (!activity || !stats || !character) return;
-    const next: UiPanelInternalLayout = { ...internal, direction: 'grid' };
-    if (preset === 'Stacked') {
-      next.direction = 'stack';
-      next.regions = {
-        ...internal.regions,
-        homeOverviewActivity: { ...activity, column: 1, columnSpan: 12, row: 1, order: 1 },
-        homeOverviewStats: { ...stats, column: 1, columnSpan: 12, row: 2, order: 2 },
-        homeOverviewCharacter: { ...character, column: 1, columnSpan: 12, row: 3, order: 3 },
-      };
-    } else {
-      const statsSpan = preset === '50 / 50' ? 6 : preset === '67 / 33' ? 8 : 9;
-      next.regions = {
-        ...internal.regions,
-        homeOverviewActivity: { ...activity, column: 1, columnSpan: 12, row: 1, order: 1 },
-        homeOverviewStats: { ...stats, column: 1, columnSpan: statsSpan, row: 2, order: 2 },
-        homeOverviewCharacter: {
-          ...character,
-          column: statsSpan + 1,
-          columnSpan: 12 - statsSpan,
-          row: 2,
-          order: 3,
-        },
-      };
-    }
+    const preset = getUiPanelRegionPresets(screen, selected.id).find(({ id }) => id === presetId);
+    if (!preset) return;
+    const currentInternal = getUiPanelInternalLayout(currentLayout, screen, selected.id);
     commitLayout({
       ...currentLayout,
       panelRegions: {
         ...currentLayout.panelRegions,
         [screen]: {
           ...(currentLayout.panelRegions[screen] ?? {}),
-          [selected.id]: next,
+          [selected.id]: {
+            direction: preset.layout.direction,
+            gap: preset.layout.gap,
+            padding: preset.layout.padding,
+            regions: Object.fromEntries(
+              Object.entries(preset.layout.regions).map(([id, position]) => [
+                id,
+                {
+                  ...position,
+                  visible: currentInternal.regions[id]?.visible ?? position.visible,
+                },
+              ]),
+            ),
+          },
         },
       },
     }, 'immediate');
@@ -1158,6 +1146,12 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     selected.kind === 'panelRegion' && selectedInternalLayout
       ? selectedInternalLayout.regions[selected.id] ?? null
       : null;
+  const selectedPanelPresets = selectedPanel
+    ? getUiPanelRegionPresets(screen, selectedPanel.id)
+    : [];
+  const selectedPanelPreset = selectedPanel && selectedInternalLayout
+    ? getUiPanelRegionPreset(screen, selectedPanel.id, selectedInternalLayout)
+    : undefined;
   const selectedAppearance =
     selected.kind === 'panel' && selectedPanel
       ? getUiPanelAppearance(layout, screen, selectedPanel.id)
@@ -1664,20 +1658,13 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
                       </button>
                       <EditorSelect
                         label="Layout preset"
-                        value={
-                          selectedInternalLayout.direction === 'stack'
-                            ? 'Stacked'
-                            : selectedInternalLayout.regions.homeOverviewStats?.columnSpan === 6
-                              ? '50 / 50'
-                              : selectedInternalLayout.regions.homeOverviewStats?.columnSpan === 8
-                                ? '67 / 33'
-                                : selectedInternalLayout.regions.homeOverviewStats?.columnSpan === 9
-                                  ? 'Default'
-                                  : 'Custom'
-                        }
-                        options={['Default', '75 / 25', '67 / 33', '50 / 50', 'Stacked']}
+                        value={selectedPanelPreset?.id ?? 'custom'}
+                        options={[
+                          ...selectedPanelPresets.map((preset) => ({ value: preset.id, label: preset.label })),
+                          ...(selectedPanelPreset ? [] : [{ value: 'custom', label: 'Custom' }]),
+                        ]}
                         disabled={selectedPanelPosition.locked}
-                        onChange={applyHomeOverviewPreset}
+                        onChange={applyPanelPreset}
                       />
                       <EditorRange
                         label="Internal gap"
@@ -1934,7 +1921,7 @@ function EditorSelect({
 }: {
   label: string;
   value: string;
-  options: string[];
+  options: Array<{ value: string; label: string }>;
   disabled?: boolean;
   onChange: (value: string) => void;
 }) {
@@ -1943,7 +1930,7 @@ function EditorSelect({
       <span>{label}</span>
       <select aria-label={label} value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)}>
         {options.map((option) => (
-          <option key={option} value={option}>{option}</option>
+          <option key={option.value} value={option.value}>{option.label}</option>
         ))}
       </select>
     </label>
