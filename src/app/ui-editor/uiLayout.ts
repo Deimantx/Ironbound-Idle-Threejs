@@ -1,7 +1,14 @@
 import type { ScreenId } from '../../game/types';
+import {
+  cloneUiTypography,
+  DEFAULT_UI_TYPOGRAPHY,
+  sanitizeUiTypography,
+  type UiTypography,
+  type UiTypographyRoleId,
+} from './typography';
 
 export const UI_LAYOUT_STORAGE_KEY = 'ironbound-idle-ui-layout';
-export const UI_LAYOUT_VERSION = 3;
+export const UI_LAYOUT_VERSION = 4;
 export const UI_EDITOR_COMPACT_QUERY = '(max-width: 900px)';
 export const UI_EDITOR_GRID_ROW_HEIGHT = 80;
 
@@ -76,6 +83,13 @@ export interface UiPanelAppearance {
   shadow?: boolean;
 }
 
+export type {
+  UiTypography,
+  UiTypographyRole,
+  UiTypographyRoleId,
+} from './typography';
+export { DEFAULT_UI_TYPOGRAPHY } from './typography';
+
 export interface UiLayout {
   version: number;
   sidebarWidth: number;
@@ -91,6 +105,7 @@ export interface UiLayout {
   screenPanels: Partial<Record<ScreenId, Record<UiPanelId, UiPanelPosition>>>;
   panelRegions: Partial<Record<ScreenId, Record<UiPanelId, UiPanelInternalLayout>>>;
   panelAppearances: Partial<Record<ScreenId, Record<UiPanelId, UiPanelAppearance>>>;
+  typography: UiTypography;
 }
 
 export const UI_REGIONS: Array<{ id: UiRegion; label: string; description: string }> = [
@@ -1261,6 +1276,7 @@ export const DEFAULT_UI_LAYOUT: UiLayout = {
     },
   },
   panelAppearances: {},
+  typography: cloneUiTypography(DEFAULT_UI_TYPOGRAPHY),
   screenPanels: {
     home: DEFAULT_HOME_PANEL_LAYOUT,
     combat: DEFAULT_COMBAT_PANEL_LAYOUT,
@@ -1371,6 +1387,7 @@ export const migrateUiLayout = (value: unknown): unknown => {
   };
   if (!('panelRegions' in source)) migrated.panelRegions = DEFAULT_UI_LAYOUT.panelRegions;
   if (!('panelAppearances' in source)) migrated.panelAppearances = DEFAULT_UI_LAYOUT.panelAppearances;
+  if (!('typography' in source)) migrated.typography = cloneUiTypography(DEFAULT_UI_TYPOGRAPHY);
   return migrated;
 };
 
@@ -1483,8 +1500,28 @@ export const sanitizeUiLayout = (value: unknown): UiLayout => {
     screenPanels,
     panelRegions,
     panelAppearances,
+    typography: sanitizeUiTypography(record.typography),
   };
 };
+
+export const resetUiTypographyRole = (
+  layout: UiLayout,
+  roleId: UiTypographyRoleId,
+): UiLayout => sanitizeUiLayout({
+  ...layout,
+  typography: {
+    ...layout.typography,
+    roles: {
+      ...layout.typography.roles,
+      [roleId]: { ...DEFAULT_UI_TYPOGRAPHY.roles[roleId] },
+    },
+  },
+});
+
+export const resetUiTypography = (layout: UiLayout): UiLayout => sanitizeUiLayout({
+  ...layout,
+  typography: cloneUiTypography(DEFAULT_UI_TYPOGRAPHY),
+});
 
 export const resetUiPanelRegion = (
   layout: UiLayout,
@@ -1577,7 +1614,10 @@ export const resetUiLayout = (): UiLayout => sanitizeUiLayout(DEFAULT_UI_LAYOUT)
 export const loadUiLayout = (): UiLayout => {
   try {
     const raw = window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY);
-    return raw ? sanitizeUiLayout(JSON.parse(raw)) : DEFAULT_UI_LAYOUT;
+    if (!raw) return DEFAULT_UI_LAYOUT;
+    const layout = sanitizeUiLayout(JSON.parse(raw));
+    saveUiLayout(layout);
+    return layout;
   } catch {
     return DEFAULT_UI_LAYOUT;
   }

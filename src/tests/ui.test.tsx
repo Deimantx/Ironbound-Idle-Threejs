@@ -1628,6 +1628,70 @@ describe('navigation integration', () => {
     expect(screen.queryByRole('dialog', { name: 'Edit game UI' })).not.toBeInTheDocument();
   });
 
+  it('edits global typography with persistence, reset, and history isolation', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    expect(within(editor).getByText('Typography')).toBeInTheDocument();
+    const typographySection = within(editor).getByText('Typography').closest('summary');
+    expect(typographySection).not.toBeNull();
+    await user.click(typographySection as HTMLElement);
+    expect(within(editor).getByText('Headings')).toBeInTheDocument();
+    expect(within(editor).getByText('Text')).toBeInTheDocument();
+    expect(within(editor).getByText('Interface')).toBeInTheDocument();
+
+    const getRoleEditor = (label: string): HTMLElement => {
+      const roleEditor = Array.from(editor.querySelectorAll<HTMLElement>('.ui-editor-typography-role'))
+        .find((element) => element.querySelector('strong')?.textContent === label);
+      if (!roleEditor) throw new Error(`Typography role ${label} was not rendered`);
+      return roleEditor;
+    };
+
+    fireEvent.change(within(getRoleEditor('Panel Title')).getByRole('slider', { name: 'Size' }), {
+      target: { value: '27' },
+    });
+    fireEvent.change(within(getRoleEditor('Panel Title')).getByRole('slider', { name: 'Weight' }), {
+      target: { value: '650' },
+    });
+    fireEvent.change(within(getRoleEditor('Body')).getByRole('slider', { name: 'Size' }), {
+      target: { value: '22' },
+    });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.typography.roles.panelTitle).toEqual({ size: 27, weight: 650 });
+      expect(stored.typography.roles.body.size).toBe(22);
+      expect(document.querySelector('.app')).toHaveStyle({
+        '--font-size-panel-title': '27px',
+        '--font-weight-panel-title': '650',
+      });
+    });
+
+    await user.click(within(getRoleEditor('Panel Title')).getByRole('button', { name: 'Reset Panel Title' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.typography.roles.panelTitle).toEqual({ size: 20, weight: 700 });
+      expect(stored.typography.roles.body.size).toBe(22);
+    });
+
+    await user.click(within(editor).getByRole('button', { name: 'Reset Typography' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.typography.roles.panelTitle).toEqual({ size: 20, weight: 700 });
+      expect(stored.typography.roles.body).toEqual({ size: 16, weight: 400 });
+    });
+    await user.click(within(editor).getByRole('button', { name: 'Undo UI change' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.typography.roles.body.size).toBe(22);
+    });
+    await user.click(within(editor).getByRole('button', { name: 'Redo UI change' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.typography.roles.body.size).toBe(16);
+    });
+  });
+
   it('edits Home Overview nested regions through the hierarchy', async () => {
     const user = userEvent.setup();
     render(<App />);

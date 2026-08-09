@@ -32,6 +32,7 @@ import {
   saveUiLayout,
   type UiLayout,
 } from './ui-editor/uiLayout';
+import { getTypographyCssVariables } from './ui-editor/typography';
 import { CombatScreen as RealtimeCombatScreen } from './screens/combat/CombatScreen';
 import { ConfirmDialog, type ConfirmDialogOptions } from './components/ConfirmDialog';
 import { OfflineModal as OfflineReportModal } from './components/OfflineReport';
@@ -94,6 +95,7 @@ const getUiStyle = (layout: UiLayout): CSSProperties =>
     '--ui-content-y': `${layout.offsets.content.y}px`,
     '--ui-action-x': `${layout.offsets.actionStrip.x}px`,
     '--ui-action-y': `${layout.offsets.actionStrip.y}px`,
+    ...getTypographyCssVariables(layout.typography),
   }) as CSSProperties;
 
 function ProfileSelection({

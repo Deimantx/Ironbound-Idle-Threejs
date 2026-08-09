@@ -2739,6 +2739,28 @@ h3 {
 }
 
 .ui-editor-layer {
+  /* Editor chrome stays recoverable when game typography is customized. */
+  --font-size-page-title-max: 38px;
+  --font-size-page-title: clamp(25px, 3vw, var(--font-size-page-title-max));
+  --font-size-panel-title: 20px;
+  --font-size-subheading: 15px;
+  --font-size-body: 16px;
+  --font-size-description: 13px;
+  --font-size-small: 10px;
+  --font-size-eyebrow: 11px;
+  --font-size-button: 12px;
+  --font-size-navigation: 16px;
+  --font-size-stat: 26px;
+  --font-weight-page-title: 700;
+  --font-weight-panel-title: 700;
+  --font-weight-subheading: 700;
+  --font-weight-body: 400;
+  --font-weight-description: 400;
+  --font-weight-small: 400;
+  --font-weight-eyebrow: 400;
+  --font-weight-button: 600;
+  --font-weight-navigation: 400;
+  --font-weight-stat: 700;
   position: fixed;
   inset: 0;
   z-index: 40;
@@ -2991,6 +3013,22 @@ h3 {
   font-weight: 700;
   margin-bottom: 10px;
 }
+.ui-editor-typography-section > summary.ui-editor-section-title {
+  list-style: none;
+  cursor: pointer;
+}
+.ui-editor-typography-section > summary.ui-editor-section-title::-webkit-details-marker {
+  display: none;
+}
+.ui-editor-typography-section > summary.ui-editor-section-title::after {
+  content: '▸';
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 14px;
+}
+.ui-editor-typography-section[open] > summary.ui-editor-section-title::after {
+  content: '▾';
+}
 .ui-editor-region-list {
   display: grid;
   gap: 6px;
@@ -3161,6 +3199,46 @@ h3 {
 .ui-editor-range input:disabled {
   cursor: not-allowed;
   opacity: 0.42;
+}
+.ui-editor-typography-group + .ui-editor-typography-group {
+  margin-top: 17px;
+  padding-top: 13px;
+  border-top: 1px solid #263235;
+}
+.ui-editor-typography-role {
+  margin: 12px 0 16px;
+  padding: 9px 10px 2px;
+  border: 1px solid #2d393d;
+  border-radius: 7px;
+  background: rgba(15, 21, 23, 0.62);
+}
+.ui-editor-typography-role-heading {
+  display: grid;
+  gap: 3px;
+}
+.ui-editor-typography-role-heading strong {
+  color: #e8e5dd;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ui-editor-typography-role-heading small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
+}
+.ui-editor-typography-role .ui-editor-range {
+  margin: 10px 0;
+}
+.ui-editor-typography-role .ui-editor-small-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ui-editor-typography-reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 3px;
 }
 .ui-editor-reset-section .button {
   display: inline-flex;

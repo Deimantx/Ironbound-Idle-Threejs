@@ -11,7 +11,8 @@
   --font-family-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
 
   /* Typography — sizes */
-  --font-size-page-title: clamp(25px, 3vw, 38px);
+  --font-size-page-title-max: 38px;
+  --font-size-page-title: clamp(25px, 3vw, var(--font-size-page-title-max));
   --font-size-panel-title: 20px;
   --font-size-subheading: 15px;
   --font-size-body: 16px;

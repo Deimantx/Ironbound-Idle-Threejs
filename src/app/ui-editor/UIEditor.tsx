@@ -7,6 +7,7 @@ import {
   Palette,
   Redo2,
   RotateCcw,
+  Type,
   Unlock,
   Undo2,
   X,
@@ -25,6 +26,8 @@ import {
   resetUiPanelRegion,
   resetUiLayoutScreen,
   resetUiLayout,
+  resetUiTypography,
+  resetUiTypographyRole,
   type UiLayout,
   type UiPanelAppearance,
   type UiPanelId,
@@ -33,6 +36,11 @@ import {
   type UiPanelRegionPosition,
   type UiRegion,
 } from './uiLayout';
+import {
+  UI_TYPOGRAPHY_GROUPS,
+  UI_TYPOGRAPHY_ROLE_DEFINITIONS,
+  type UiTypographyRoleId,
+} from './typography';
 import {
   canEditPanelLayout,
   clampNestedColumnSpan,
@@ -276,6 +284,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
   const [selected, setSelected] = useState<SelectedTarget>({ kind: 'region', id: 'content' });
   const [boxes, setBoxes] = useState<EditorBoxes>({ regions: {}, panels: {}, nestedRegions: {} });
   const [expandedPanels, setExpandedPanels] = useState<Record<UiPanelId, boolean>>({});
+  const [typographyOpen, setTypographyOpen] = useState(false);
   const [compactViewport, setCompactViewport] = useState(() =>
     typeof window !== 'undefined' && typeof window.matchMedia === 'function'
       ? window.matchMedia(UI_EDITOR_COMPACT_QUERY).matches
@@ -905,6 +914,35 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
   ) => {
     const currentLayout = layoutRef.current;
     commitLayout({ ...currentLayout, [key]: value });
+  };
+
+  const updateTypographyRole = (
+    roleId: UiTypographyRoleId,
+    key: 'size' | 'weight',
+    value: number,
+  ) => {
+    const currentLayout = layoutRef.current;
+    commitLayout({
+      ...currentLayout,
+      typography: {
+        ...currentLayout.typography,
+        roles: {
+          ...currentLayout.typography.roles,
+          [roleId]: {
+            ...currentLayout.typography.roles[roleId],
+            [key]: value,
+          },
+        },
+      },
+    });
+  };
+
+  const resetTypographyRole = (roleId: UiTypographyRoleId) => {
+    commitLayout(resetUiTypographyRole(layoutRef.current, roleId), 'immediate');
+  };
+
+  const resetTypography = () => {
+    commitLayout(resetUiTypography(layoutRef.current), 'immediate');
   };
 
   const updatePanel = (key: keyof UiPanelPosition, value: number) => {
@@ -1803,6 +1841,74 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
           />
         </div>
 
+        <details className="ui-editor-section ui-editor-typography-section" open={typographyOpen}>
+          <summary
+            className="ui-editor-section-title"
+            onClick={(event) => {
+              event.preventDefault();
+              setTypographyOpen((open) => !open);
+            }}
+          >
+            <Type size={15} /> Typography
+          </summary>
+          {typographyOpen && (
+            <>
+              <p className="muted ui-editor-inherit-note">
+                Global semantic text controls. Page Title size is the responsive desktop maximum.
+              </p>
+              {UI_TYPOGRAPHY_GROUPS.map((group) => (
+                <div className="ui-editor-typography-group" key={group.label}>
+                  <div className="ui-editor-subsection-title">{group.label}</div>
+                  {group.roles.map((roleId) => {
+                    const definition = UI_TYPOGRAPHY_ROLE_DEFINITIONS.find(({ id }) => id === roleId);
+                    if (!definition) return null;
+                    const role = layout.typography.roles[roleId];
+                    return (
+                      <div className="ui-editor-typography-role" key={roleId}>
+                        <div className="ui-editor-typography-role-heading">
+                          <strong>{definition.label}</strong>
+                          <small>{definition.description}</small>
+                        </div>
+                        <EditorRange
+                          label="Size"
+                          value={role.size}
+                          min={definition.minSize}
+                          max={definition.maxSize}
+                          step={definition.sizeStep}
+                          suffix="px"
+                          onPointerDown={flushHistory}
+                          onPointerUp={flushHistory}
+                          onChange={(value) => updateTypographyRole(roleId, 'size', value)}
+                        />
+                        <EditorRange
+                          label="Weight"
+                          value={role.weight}
+                          min={definition.minWeight}
+                          max={definition.maxWeight}
+                          step={definition.weightStep}
+                          suffix=""
+                          onPointerDown={flushHistory}
+                          onPointerUp={flushHistory}
+                          onChange={(value) => updateTypographyRole(roleId, 'weight', value)}
+                        />
+                        <button
+                          className="button ghost ui-editor-small-button"
+                          onClick={() => resetTypographyRole(roleId)}
+                        >
+                          <RotateCcw size={12} /> Reset {definition.label}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+              <button className="button ui-editor-typography-reset" onClick={resetTypography}>
+                <RotateCcw size={13} /> Reset Typography
+              </button>
+            </>
+          )}
+        </details>
+
         <div className="ui-editor-section">
           <div className="ui-editor-section-title">
             <Palette size={15} /> Colors
@@ -1857,6 +1963,8 @@ function EditorRange({
   suffix = '',
   displayValue,
   disabled = false,
+  onPointerDown,
+  onPointerUp,
   onChange,
 }: {
   label: string;
@@ -1867,6 +1975,8 @@ function EditorRange({
   suffix?: string;
   displayValue?: string;
   disabled?: boolean;
+  onPointerDown?: () => void;
+  onPointerUp?: () => void;
   onChange: (value: number) => void;
 }) {
   return (
@@ -1883,6 +1993,8 @@ function EditorRange({
         step={step}
         value={value}
         disabled={disabled}
+        onPointerDown={onPointerDown}
+        onPointerUp={onPointerUp}
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </label>
