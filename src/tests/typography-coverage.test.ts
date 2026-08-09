@@ -1,19 +1,51 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_UI_TYPOGRAPHY,
+  getCompactButtonSize,
+  getCompactStatSize,
   getTypographyCssVariables,
   UI_TYPOGRAPHY_ROLE_IDS,
 } from '../app/ui-editor/typography';
 
 describe('semantic typography coverage', () => {
-  it('keeps compact variants derived outside the persisted typography schema', () => {
+  it('keeps compact variants outside the persisted typography schema', () => {
     const variables = getTypographyCssVariables(DEFAULT_UI_TYPOGRAPHY);
 
+    expect(Object.keys(DEFAULT_UI_TYPOGRAPHY)).toEqual(['fontFamilies', 'roles']);
     expect(Object.keys(DEFAULT_UI_TYPOGRAPHY.roles)).toEqual(UI_TYPOGRAPHY_ROLE_IDS);
-    expect(variables).not.toHaveProperty('--font-size-button-compact');
-    expect(variables).not.toHaveProperty('--font-size-stat-compact');
-    expect(variables).not.toHaveProperty('--font-weight-button-compact');
-    expect(variables).not.toHaveProperty('--font-weight-stat-compact');
+    expect(variables).toHaveProperty('--font-size-button-compact');
+    expect(variables).toHaveProperty('--font-size-stat-compact');
+    expect(variables).toHaveProperty('--font-weight-button-compact');
+    expect(variables).toHaveProperty('--font-weight-stat-compact');
+  });
+
+  it('maps Stat and Button master sizes to runtime compact values', () => {
+    expect([14, 20, 26, 34, 42].map(getCompactStatSize)).toEqual([10, 11, 14, 19, 22]);
+    expect([9, 12, 16, 20].map(getCompactButtonSize)).toEqual([9, 10, 13, 16]);
+
+    const typography = {
+      ...DEFAULT_UI_TYPOGRAPHY,
+      roles: {
+        ...DEFAULT_UI_TYPOGRAPHY.roles,
+        button: { size: 20, weight: 800 },
+        stat: { size: 42, weight: 550 },
+      },
+      fontFamilies: {
+        ...DEFAULT_UI_TYPOGRAPHY.fontFamilies,
+        stat: 'dmMono' as const,
+      },
+    };
+    expect(getTypographyCssVariables(typography)).toMatchObject({
+      '--font-size-button': '20px',
+      '--font-size-button-compact': '16px',
+      '--font-weight-button': '800',
+      '--font-weight-button-compact': '800',
+      '--font-size-stat': '42px',
+      '--font-size-stat-compact': '22px',
+      '--font-weight-stat': '500',
+      '--font-weight-stat-compact': '500',
+      '--font-family-stat': "'DM Mono', ui-monospace, SFMono-Regular, Consolas, monospace",
+    });
   });
 
   it('maps all ten editor roles to their master semantic variables', () => {

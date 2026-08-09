@@ -194,6 +194,12 @@ const definitionByRole = Object.fromEntries(
 const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, value));
 
+export const getCompactStatSize = (masterSize: number): number =>
+  clamp(Math.round(masterSize * 0.55), 10, 22);
+
+export const getCompactButtonSize = (masterSize: number): number =>
+  clamp(Math.round(masterSize * 0.84), 9, 16);
+
 const safeNumber = (value: unknown, fallback: number): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 
@@ -269,5 +275,9 @@ export const getTypographyCssVariables = (
     variables[sizeVariable] = `${role.size}px`;
     variables[`--font-weight-${cssName}`] = String(resolveFontWeight(fontId, role.weight));
   }
+  variables['--font-size-stat-compact'] = `${getCompactStatSize(typography.roles.stat.size)}px`;
+  variables['--font-weight-stat-compact'] = variables['--font-weight-stat'];
+  variables['--font-size-button-compact'] = `${getCompactButtonSize(typography.roles.button.size)}px`;
+  variables['--font-weight-button-compact'] = variables['--font-weight-button'];
   return variables;
 };

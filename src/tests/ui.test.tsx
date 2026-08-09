@@ -1684,13 +1684,35 @@ describe('navigation integration', () => {
     fireEvent.change(within(getRoleEditor('Body')).getByRole('slider', { name: 'Size' }), {
       target: { value: '22' },
     });
+    fireEvent.change(within(getRoleEditor('Stat Values')).getByRole('slider', { name: 'Size' }), {
+      target: { value: '42' },
+    });
+    fireEvent.change(within(getRoleEditor('Stat Values')).getByRole('slider', { name: 'Weight' }), {
+      target: { value: '800' },
+    });
+    fireEvent.change(within(getRoleEditor('Button')).getByRole('slider', { name: 'Size' }), {
+      target: { value: '20' },
+    });
+    fireEvent.change(within(getRoleEditor('Button')).getByRole('slider', { name: 'Weight' }), {
+      target: { value: '800' },
+    });
     await waitFor(() => {
       const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
       expect(stored.typography.roles.panelTitle).toEqual({ size: 27, weight: 650 });
       expect(stored.typography.roles.body.size).toBe(22);
+      expect(stored.typography.roles.stat).toEqual({ size: 42, weight: 800 });
+      expect(stored.typography.roles.button).toEqual({ size: 20, weight: 800 });
       expect(document.querySelector('.app')).toHaveStyle({
         '--font-size-panel-title': '27px',
         '--font-weight-panel-title': '600',
+        '--font-size-stat': '42px',
+        '--font-size-stat-compact': '22px',
+        '--font-weight-stat': '800',
+        '--font-weight-stat-compact': '800',
+        '--font-size-button': '20px',
+        '--font-size-button-compact': '16px',
+        '--font-weight-button': '800',
+        '--font-weight-button-compact': '800',
       });
     });
 
@@ -1713,6 +1735,18 @@ describe('navigation integration', () => {
       const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
       expect(stored.typography.roles.panelTitle).toEqual({ size: 20, weight: 700 });
       expect(stored.typography.roles.body).toEqual({ size: 16, weight: 400 });
+      expect(stored.typography.roles.stat).toEqual({ size: 26, weight: 700 });
+      expect(stored.typography.roles.button).toEqual({ size: 12, weight: 600 });
+      expect(document.querySelector('.app')).toHaveStyle({
+        '--font-size-stat': '26px',
+        '--font-size-stat-compact': '14px',
+        '--font-weight-stat': '700',
+        '--font-weight-stat-compact': '700',
+        '--font-size-button': '12px',
+        '--font-size-button-compact': '10px',
+        '--font-weight-button': '600',
+        '--font-weight-button-compact': '600',
+      });
     });
     await user.click(within(editor).getByRole('button', { name: 'Undo UI change' }));
     await waitFor(() => {

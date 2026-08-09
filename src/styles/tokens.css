@@ -25,9 +25,9 @@
   --font-size-button: 12px;
   --font-size-navigation: 16px;
   --font-size-stat: 26px;
-  /* Internal density variants derived from the editor-controlled masters. */
-  --font-size-button-compact: clamp(9px, calc(var(--font-size-button) * 0.84), 16px);
-  --font-size-stat-compact: clamp(10px, calc(var(--font-size-stat) * 0.5), 18px);
+  /* Runtime-derived density fallbacks; the app root replaces these values. */
+  --font-size-button-compact: 10px;
+  --font-size-stat-compact: 14px;
 
   /* Typography — weights */
   --font-weight-page-title: 700;
@@ -40,8 +40,8 @@
   --font-weight-button: 600;
   --font-weight-navigation: 400;
   --font-weight-stat: 700;
-  --font-weight-button-compact: var(--font-weight-button);
-  --font-weight-stat-compact: var(--font-weight-stat);
+  --font-weight-button-compact: 600;
+  --font-weight-stat-compact: 700;
 
   /* Typography — line heights */
   --line-height-page-title: 1.1;

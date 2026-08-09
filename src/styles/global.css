@@ -2769,8 +2769,8 @@ h3 {
   --font-size-button: 12px;
   --font-size-navigation: 16px;
   --font-size-stat: 26px;
-  --font-size-button-compact: clamp(9px, calc(12px * 0.84), 16px);
-  --font-size-stat-compact: clamp(10px, calc(26px * 0.5), 18px);
+  --font-size-button-compact: 10px;
+  --font-size-stat-compact: 14px;
   --font-weight-page-title: 700;
   --font-weight-panel-title: 700;
   --font-weight-subheading: 700;
