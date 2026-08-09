@@ -8,6 +8,9 @@
     BlinkMacSystemFont,
     'Segoe UI',
     sans-serif;
+  --font-family-heading: var(--font-family-ui);
+  --font-family-body: var(--font-family-ui);
+  --font-family-stat: var(--font-family-ui);
   --font-family-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
 
   /* Typography — sizes */

@@ -1,3 +1,15 @@
+import {
+  cloneUiFontFamilies,
+  DEFAULT_UI_FONT_FAMILIES,
+  getUiFontDefinition,
+  resolveFontWeight,
+  sanitizeUiFontFamilies,
+  type UiFontFamilies,
+  type UiFontRoleId,
+} from './fontRegistry';
+
+export type { UiFontFamilies, UiFontId, UiFontRoleId } from './fontRegistry';
+
 export const UI_TYPOGRAPHY_ROLE_IDS = [
   'pageTitle',
   'panelTitle',
@@ -21,6 +33,7 @@ export interface UiTypographyRole {
 export type UiTypographyRoleRecord = Record<UiTypographyRoleId, UiTypographyRole>;
 
 export interface UiTypography {
+  fontFamilies: UiFontFamilies;
   roles: UiTypographyRoleRecord;
 }
 
@@ -159,6 +172,7 @@ export const UI_TYPOGRAPHY_GROUPS: Array<{
 ];
 
 export const DEFAULT_UI_TYPOGRAPHY: UiTypography = {
+  fontFamilies: cloneUiFontFamilies(DEFAULT_UI_FONT_FAMILIES),
   roles: {
     pageTitle: { size: 38, weight: 700 },
     panelTitle: { size: 20, weight: 700 },
@@ -203,6 +217,7 @@ const sanitizeRole = (
 };
 
 export const cloneUiTypography = (typography: UiTypography): UiTypography => ({
+  fontFamilies: cloneUiFontFamilies(typography.fontFamilies),
   roles: Object.fromEntries(
     UI_TYPOGRAPHY_ROLE_IDS.map((id) => [id, { ...typography.roles[id] }]),
   ) as UiTypographyRoleRecord,
@@ -214,6 +229,7 @@ export const sanitizeUiTypography = (value: unknown): UiTypography => {
     ? (source.roles as Record<string, unknown>)
     : {};
   return {
+    fontFamilies: sanitizeUiFontFamilies(source.fontFamilies),
     roles: Object.fromEntries(
       UI_TYPOGRAPHY_ROLE_IDS.map((id) => [
         id,
@@ -225,14 +241,33 @@ export const sanitizeUiTypography = (value: unknown): UiTypography => {
 
 export const getTypographyCssVariables = (
   typography: UiTypography,
-): Record<string, string> => Object.fromEntries(
-  UI_TYPOGRAPHY_ROLE_IDS.flatMap((id) => {
+): Record<string, string> => {
+  const fontFamilies = sanitizeUiFontFamilies(typography.fontFamilies ?? DEFAULT_UI_FONT_FAMILIES);
+  const fontRoleByTypographyRole: Record<UiTypographyRoleId, UiFontRoleId> = {
+    pageTitle: 'heading',
+    panelTitle: 'heading',
+    subheading: 'heading',
+    body: 'body',
+    description: 'body',
+    small: 'body',
+    eyebrow: 'body',
+    button: 'body',
+    navigation: 'body',
+    stat: 'stat',
+  };
+  const variables: Record<string, string> = {
+    '--font-family-ui': getUiFontDefinition(fontFamilies.body).cssFamily,
+    '--font-family-heading': getUiFontDefinition(fontFamilies.heading).cssFamily,
+    '--font-family-body': getUiFontDefinition(fontFamilies.body).cssFamily,
+    '--font-family-stat': getUiFontDefinition(fontFamilies.stat).cssFamily,
+  };
+  for (const id of UI_TYPOGRAPHY_ROLE_IDS) {
     const role = typography.roles[id];
     const cssName = cssRoleName(id);
+    const fontId = fontFamilies[fontRoleByTypographyRole[id]];
     const sizeVariable = id === 'pageTitle' ? '--font-size-page-title-max' : `--font-size-${cssName}`;
-    return [
-      [sizeVariable, `${role.size}px`],
-      [`--font-weight-${cssName}`, String(role.weight)],
-    ];
-  }),
-);
+    variables[sizeVariable] = `${role.size}px`;
+    variables[`--font-weight-${cssName}`] = String(resolveFontWeight(fontId, role.weight));
+  }
+  return variables;
+};

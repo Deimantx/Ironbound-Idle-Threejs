@@ -26,6 +26,7 @@ import {
   resetUiPanelRegion,
   resetUiLayoutScreen,
   resetUiLayout,
+  resetUiFontFamilies,
   resetUiTypography,
   resetUiTypographyRole,
   sanitizeUiLayout,
@@ -34,6 +35,7 @@ import {
   DEFAULT_UI_TYPOGRAPHY,
   getTypographyCssVariables,
   UI_TYPOGRAPHY_ROLE_DEFINITIONS,
+  type UiTypography,
 } from '../app/ui-editor/typography';
 import { findAvailablePanelPosition } from '../app/ui-editor/UIEditor';
 import type { ScreenId } from '../game/types';
@@ -48,7 +50,7 @@ import {
 
 describe('visual UI layout', () => {
   it('exposes panel definitions by active screen', () => {
-    expect(UI_LAYOUT_VERSION).toBe(4);
+    expect(UI_LAYOUT_VERSION).toBe(5);
     expect(getUiPanels('home')).toHaveLength(4);
     expect(getUiPanels('combat')).toHaveLength(5);
     expect(getUiPanels('combat').map((panel) => panel.id)).toEqual([
@@ -377,6 +379,7 @@ describe('visual UI layout', () => {
   it('sanitizes malformed typography without exposing unknown roles', () => {
     const layout = sanitizeUiLayout({
       typography: {
+        fontFamilies: { heading: 'interDisplay', body: 'unknown', stat: null },
         roles: {
           pageTitle: { size: 999, weight: 9999 },
           panelTitle: { size: -5, weight: -100 },
@@ -390,9 +393,14 @@ describe('visual UI layout', () => {
     expect(layout.typography.roles.panelTitle).toEqual({ size: 14, weight: 100 });
     expect(layout.typography.roles.body).toEqual(DEFAULT_UI_TYPOGRAPHY.roles.body);
     expect(Object.keys(layout.typography.roles)).toEqual(Object.keys(DEFAULT_UI_TYPOGRAPHY.roles));
+    expect(layout.typography.fontFamilies).toEqual({
+      heading: 'interDisplay',
+      body: 'inter',
+      stat: 'inter',
+    });
   });
 
-  it('preserves v3 custom layout data while adding v4 typography defaults idempotently', () => {
+  it('preserves v3 custom layout data while adding v5 typography defaults idempotently', () => {
     const v3 = {
       version: 3,
       sidebarWidth: 314,
@@ -420,7 +428,7 @@ describe('visual UI layout', () => {
       panelAppearances: { home: { homeOverview: { background: '#654321', shadow: false } } },
     };
     const migrated = sanitizeUiLayout(v3);
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.sidebarWidth).toBe(314);
     expect(migrated.headerHeight).toBe(88);
     expect(migrated.contentPadding).toBe(41);
@@ -446,34 +454,63 @@ describe('visual UI layout', () => {
     expect(sanitizeUiLayout(JSON.parse(JSON.stringify(migrated)))).toEqual(migrated);
   });
 
-  it('writes a sanitized v3 layout back as v4 during load', () => {
+  it('writes a sanitized v3 layout back as v5 during load', () => {
     window.localStorage.setItem(
       UI_LAYOUT_STORAGE_KEY,
       JSON.stringify({ version: 3, sidebarWidth: 314 }),
     );
     const loaded = loadUiLayout();
     const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
-    expect(loaded.version).toBe(4);
+    expect(loaded.version).toBe(5);
     expect(loaded.sidebarWidth).toBe(314);
-    expect(stored.version).toBe(4);
+    expect(stored.version).toBe(5);
     expect(stored.typography).toEqual(DEFAULT_UI_TYPOGRAPHY);
     window.localStorage.removeItem(UI_LAYOUT_STORAGE_KEY);
   });
 
+  it('migrates v4 typography to v5 without losing stored role values', () => {
+    const v4 = {
+      ...DEFAULT_UI_LAYOUT,
+      version: 4,
+      typography: {
+        roles: {
+          ...DEFAULT_UI_TYPOGRAPHY.roles,
+          pageTitle: { size: 51, weight: 650 },
+          stat: { size: 34, weight: 850 },
+        },
+      },
+    };
+    const migrated = sanitizeUiLayout(v4);
+
+    expect(migrated.version).toBe(5);
+    expect(migrated.typography.roles.pageTitle).toEqual({ size: 51, weight: 650 });
+    expect(migrated.typography.roles.stat).toEqual({ size: 34, weight: 850 });
+    expect(migrated.typography.fontFamilies).toEqual(DEFAULT_UI_TYPOGRAPHY.fontFamilies);
+    expect(sanitizeUiLayout(JSON.parse(JSON.stringify(migrated)))).toEqual(migrated);
+  });
+
   it('maps typography roles to semantic CSS variables and keeps page titles responsive', () => {
-    const typography = {
+    const typography: UiTypography = {
       ...DEFAULT_UI_TYPOGRAPHY,
       roles: {
         ...DEFAULT_UI_TYPOGRAPHY.roles,
         pageTitle: { size: 47, weight: 650 },
         panelTitle: { size: 27, weight: 650 },
       },
+      fontFamilies: {
+        heading: 'interDisplay',
+        body: 'inter',
+        stat: 'interDisplay',
+      },
     };
     expect(getTypographyCssVariables(typography)).toMatchObject({
+      '--font-family-heading': "'Inter Display', 'Inter', ui-sans-serif, system-ui, sans-serif",
+      '--font-family-body': "'Inter', ui-sans-serif, system-ui, sans-serif",
+      '--font-family-stat': "'Inter Display', 'Inter', ui-sans-serif, system-ui, sans-serif",
       '--font-size-page-title-max': '47px',
-      '--font-weight-page-title': '650',
+      '--font-weight-page-title': '600',
       '--font-size-panel-title': '27px',
-      '--font-weight-panel-title': '650',
+      '--font-weight-panel-title': '600',
     });
   });
 
@@ -482,6 +519,7 @@ describe('visual UI layout', () => {
       accent: '#123456',
       screenPanels: { home: { homeOverview: { column: 4, row: 4, columnSpan: 5 } } },
       typography: {
+        fontFamilies: { heading: 'interDisplay', body: 'interDisplay', stat: 'interDisplay' },
         roles: {
           pageTitle: { size: 50, weight: 850 },
           navigation: { size: 20, weight: 650 },
@@ -491,6 +529,10 @@ describe('visual UI layout', () => {
     const roleReset = resetUiTypographyRole(custom, 'pageTitle');
     expect(roleReset.typography.roles.pageTitle).toEqual(DEFAULT_UI_TYPOGRAPHY.roles.pageTitle);
     expect(roleReset.typography.roles.navigation).toEqual(custom.typography.roles.navigation);
+
+    const fontReset = resetUiFontFamilies(custom);
+    expect(fontReset.typography.fontFamilies).toEqual(DEFAULT_UI_TYPOGRAPHY.fontFamilies);
+    expect(fontReset.typography.roles).toEqual(custom.typography.roles);
 
     const allReset = resetUiTypography(custom);
     expect(allReset.typography).toEqual(DEFAULT_UI_TYPOGRAPHY);
@@ -533,6 +575,7 @@ describe('visual UI layout', () => {
   it('keeps screen resets isolated and clamps direct resize geometry', () => {
     const custom = sanitizeUiLayout({
       typography: {
+        fontFamilies: { heading: 'interDisplay', body: 'interDisplay', stat: 'interDisplay' },
         roles: {
           navigation: { size: 20, weight: 650 },
         },
@@ -554,6 +597,7 @@ describe('visual UI layout', () => {
       columnSpan: 8,
     });
     expect(reset.typography.roles.navigation).toEqual({ size: 20, weight: 650 });
+    expect(reset.typography.fontFamilies).toEqual(custom.typography.fontFamilies);
 
     expect(snapGridDelta(37, 12)).toBe(3);
     expect(clampPanelHeight(-10)).toBe(0);
@@ -580,7 +624,7 @@ describe('visual UI layout', () => {
     ]);
   });
 
-  it('migrates Phase 1 layouts to v4 without losing panel state', () => {
+  it('migrates Phase 1 layouts to v5 without losing panel state', () => {
     const layout = sanitizeUiLayout({
       version: 2,
       accent: '#123456',
@@ -591,7 +635,7 @@ describe('visual UI layout', () => {
         },
       },
     });
-    expect(layout.version).toBe(4);
+    expect(layout.version).toBe(5);
     expect(layout.accent).toBe('#123456');
     expect(layout.offsets.content).toEqual({ x: 12, y: -8 });
     expect(layout.screenPanels.home?.homeOverview).toMatchObject({

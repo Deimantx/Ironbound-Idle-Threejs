@@ -52,6 +52,7 @@
 }
 .collection-summary-stat strong {
   font-size: 18px;
+  font-family: var(--font-family-stat);
   color: #f1dfbb;
 }
 .collection-summary-overall {
@@ -441,7 +442,7 @@
 }
 html,
 body {
-  font-family: var(--font-family-ui);
+  font-family: var(--font-family-body);
   font-optical-sizing: auto;
 }
 body {
@@ -457,7 +458,7 @@ button,
 input,
 select {
   font: inherit;
-  font-family: var(--font-family-ui);
+  font-family: var(--font-family-body);
   font-optical-sizing: auto;
 }
 button {
@@ -620,6 +621,7 @@ select:focus-visible {
   color: var(--text);
   font-size: 14px;
   font-weight: var(--font-weight-stat);
+  font-family: var(--font-family-stat);
   font-variant-numeric: tabular-nums lining-nums;
   margin-left: 5px;
 }
@@ -652,6 +654,11 @@ h2,
 h3,
 p {
   margin-top: 0;
+}
+h1,
+h2,
+h3 {
+  font-family: var(--font-family-heading);
 }
 h1 {
   font-size: var(--font-size-page-title);
@@ -691,6 +698,7 @@ h3 {
   line-height: var(--line-height-description);
 }
 .numeric {
+  font-family: var(--font-family-stat);
   font-variant-numeric: tabular-nums lining-nums;
 }
 .panel {
@@ -776,6 +784,7 @@ h3 {
   font-size: var(--font-size-stat);
   font-weight: var(--font-weight-stat);
   line-height: var(--line-height-stat);
+  font-family: var(--font-family-stat);
   font-variant-numeric: tabular-nums lining-nums;
   color: #f4dba6;
   margin: 6px 0;
@@ -844,6 +853,7 @@ h3 {
   gap: 3px;
   color: #e9dfc8;
   font-size: 12px;
+  font-family: var(--font-family-stat);
   font-variant-numeric: tabular-nums;
 }
 .combat-activity-stat strong svg {
@@ -875,6 +885,7 @@ h3 {
   align-items: center;
   justify-content: flex-end;
   gap: 5px;
+  font-family: var(--font-family-stat);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
@@ -2413,6 +2424,7 @@ h3 {
 }
 .stat-line strong {
   color: #f2d49a;
+  font-family: var(--font-family-stat);
 }
 .toast {
   position: fixed;
@@ -2555,6 +2567,7 @@ h3 {
   color: var(--gold);
   font-size: 18px;
   font-weight: var(--font-weight-stat);
+  font-family: var(--font-family-stat);
   font-variant-numeric: tabular-nums lining-nums;
 }
 .empty {
@@ -2740,6 +2753,11 @@ h3 {
 
 .ui-editor-layer {
   /* Editor chrome stays recoverable when game typography is customized. */
+  --font-family-ui: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-family-heading: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-family-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-family-stat: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-family-ui);
   --font-size-page-title-max: 38px;
   --font-size-page-title: clamp(25px, 3vw, var(--font-size-page-title-max));
   --font-size-panel-title: 20px;
@@ -3204,6 +3222,23 @@ h3 {
   margin-top: 17px;
   padding-top: 13px;
   border-top: 1px solid #263235;
+}
+.ui-editor-typography-fonts {
+  margin-bottom: 17px;
+  padding-bottom: 13px;
+  border-bottom: 1px solid #263235;
+}
+.ui-editor-font-role {
+  margin: 10px 0 14px;
+}
+.ui-editor-font-role .ui-editor-select {
+  margin: 0 0 3px;
+}
+.ui-editor-font-role small {
+  display: block;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.35;
 }
 .ui-editor-typography-role {
   margin: 12px 0 16px;
@@ -5902,6 +5937,7 @@ h3 {
   gap: 4px;
   color: #e9dfc8;
   font-size: 14px;
+  font-family: var(--font-family-stat);
   font-variant-numeric: tabular-nums;
 }
 .combat-header-stat strong svg {

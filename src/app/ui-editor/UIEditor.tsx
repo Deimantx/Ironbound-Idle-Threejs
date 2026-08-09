@@ -26,6 +26,7 @@ import {
   resetUiPanelRegion,
   resetUiLayoutScreen,
   resetUiLayout,
+  resetUiFontFamilies,
   resetUiTypography,
   resetUiTypographyRole,
   type UiLayout,
@@ -36,6 +37,12 @@ import {
   type UiPanelRegionPosition,
   type UiRegion,
 } from './uiLayout';
+import {
+  UI_FONT_REGISTRY_ENTRIES,
+  UI_FONT_ROLE_DEFINITIONS,
+  type UiFontId,
+  type UiFontRoleId,
+} from './fontRegistry';
 import {
   UI_TYPOGRAPHY_GROUPS,
   UI_TYPOGRAPHY_ROLE_DEFINITIONS,
@@ -939,6 +946,24 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
 
   const resetTypographyRole = (roleId: UiTypographyRoleId) => {
     commitLayout(resetUiTypographyRole(layoutRef.current, roleId), 'immediate');
+  };
+
+  const updateFontFamily = (roleId: UiFontRoleId, fontId: UiFontId) => {
+    const currentLayout = layoutRef.current;
+    commitLayout({
+      ...currentLayout,
+      typography: {
+        ...currentLayout.typography,
+        fontFamilies: {
+          ...currentLayout.typography.fontFamilies,
+          [roleId]: fontId,
+        },
+      },
+    });
+  };
+
+  const resetFontFamilies = () => {
+    commitLayout(resetUiFontFamilies(layoutRef.current), 'immediate');
   };
 
   const resetTypography = () => {
@@ -1856,6 +1881,26 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
               <p className="muted ui-editor-inherit-note">
                 Global semantic text controls. Page Title size is the responsive desktop maximum.
               </p>
+              <div className="ui-editor-typography-fonts">
+                <div className="ui-editor-subsection-title">Font Families</div>
+                {UI_FONT_ROLE_DEFINITIONS.map((definition) => (
+                  <div className="ui-editor-font-role" key={definition.id}>
+                    <EditorSelect
+                      label={definition.label}
+                      value={layout.typography.fontFamilies[definition.id]}
+                      options={UI_FONT_REGISTRY_ENTRIES.map((font) => ({
+                        value: font.id,
+                        label: font.label,
+                      }))}
+                      onChange={(value) => updateFontFamily(definition.id, value as UiFontId)}
+                    />
+                    <small>{definition.description}</small>
+                  </div>
+                ))}
+                <button className="button ghost ui-editor-small-button" onClick={resetFontFamilies}>
+                  <RotateCcw size={12} /> Reset Font Families
+                </button>
+              </div>
               {UI_TYPOGRAPHY_GROUPS.map((group) => (
                 <div className="ui-editor-typography-group" key={group.label}>
                   <div className="ui-editor-subsection-title">{group.label}</div>

@@ -1640,6 +1640,29 @@ describe('navigation integration', () => {
     expect(within(editor).getByText('Headings')).toBeInTheDocument();
     expect(within(editor).getByText('Text')).toBeInTheDocument();
     expect(within(editor).getByText('Interface')).toBeInTheDocument();
+    expect(within(editor).getByText('Font Families')).toBeInTheDocument();
+    expect(within(editor).getByRole('combobox', { name: 'Heading Font' })).toBeInTheDocument();
+    expect(within(editor).getByRole('combobox', { name: 'Body / UI Font' })).toBeInTheDocument();
+    expect(within(editor).getByRole('combobox', { name: 'Stat / Numeric Font' })).toBeInTheDocument();
+
+    await user.selectOptions(within(editor).getByRole('combobox', { name: 'Heading Font' }), 'interDisplay');
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.typography.fontFamilies.heading).toBe('interDisplay');
+      expect(document.querySelector('.app')).toHaveStyle({
+        '--font-family-heading': "'Inter Display', 'Inter', ui-sans-serif, system-ui, sans-serif",
+      });
+    });
+    await user.click(within(editor).getByRole('button', { name: 'Undo UI change' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.typography.fontFamilies.heading).toBe('inter');
+    });
+    await user.click(within(editor).getByRole('button', { name: 'Redo UI change' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.typography.fontFamilies.heading).toBe('interDisplay');
+    });
 
     const getRoleEditor = (label: string): HTMLElement => {
       const roleEditor = Array.from(editor.querySelectorAll<HTMLElement>('.ui-editor-typography-role'))
@@ -1663,7 +1686,7 @@ describe('navigation integration', () => {
       expect(stored.typography.roles.body.size).toBe(22);
       expect(document.querySelector('.app')).toHaveStyle({
         '--font-size-panel-title': '27px',
-        '--font-weight-panel-title': '650',
+        '--font-weight-panel-title': '600',
       });
     });
 
@@ -1671,6 +1694,13 @@ describe('navigation integration', () => {
     await waitFor(() => {
       const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
       expect(stored.typography.roles.panelTitle).toEqual({ size: 20, weight: 700 });
+      expect(stored.typography.roles.body.size).toBe(22);
+    });
+
+    await user.click(within(editor).getByRole('button', { name: 'Reset Font Families' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.typography.fontFamilies).toEqual({ heading: 'inter', body: 'inter', stat: 'inter' });
       expect(stored.typography.roles.body.size).toBe(22);
     });
 

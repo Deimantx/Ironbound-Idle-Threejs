@@ -1,4 +1,5 @@
 import type { ScreenId } from '../../game/types';
+import { cloneUiFontFamilies, DEFAULT_UI_FONT_FAMILIES } from './fontRegistry';
 import {
   cloneUiTypography,
   DEFAULT_UI_TYPOGRAPHY,
@@ -8,7 +9,7 @@ import {
 } from './typography';
 
 export const UI_LAYOUT_STORAGE_KEY = 'ironbound-idle-ui-layout';
-export const UI_LAYOUT_VERSION = 4;
+export const UI_LAYOUT_VERSION = 5;
 export const UI_EDITOR_COMPACT_QUERY = '(max-width: 900px)';
 export const UI_EDITOR_GRID_ROW_HEIGHT = 80;
 
@@ -84,6 +85,9 @@ export interface UiPanelAppearance {
 }
 
 export type {
+  UiFontFamilies,
+  UiFontId,
+  UiFontRoleId,
   UiTypography,
   UiTypographyRole,
   UiTypographyRoleId,
@@ -1515,6 +1519,14 @@ export const resetUiTypographyRole = (
       ...layout.typography.roles,
       [roleId]: { ...DEFAULT_UI_TYPOGRAPHY.roles[roleId] },
     },
+  },
+});
+
+export const resetUiFontFamilies = (layout: UiLayout): UiLayout => sanitizeUiLayout({
+  ...layout,
+  typography: {
+    ...layout.typography,
+    fontFamilies: cloneUiFontFamilies(DEFAULT_UI_FONT_FAMILIES),
   },
 });
 
