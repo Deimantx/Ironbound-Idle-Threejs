@@ -1,6 +1,7 @@
 import type { ScreenId } from '../game/types';
 
 export const UI_LAYOUT_STORAGE_KEY = 'ironbound-idle-ui-layout';
+export const UI_LAYOUT_VERSION = 2;
 export const UI_EDITOR_COMPACT_QUERY = '(max-width: 900px)';
 export const UI_EDITOR_GRID_ROW_HEIGHT = 80;
 
@@ -18,6 +19,7 @@ export interface UiPanelPosition {
   columnSpan: number;
   height: number;
   scale: number;
+  locked: boolean;
 }
 
 export interface UiPanelDefinition {
@@ -28,6 +30,7 @@ export interface UiPanelDefinition {
 }
 
 export interface UiLayout {
+  version: number;
   sidebarWidth: number;
   headerHeight: number;
   contentPadding: number;
@@ -49,36 +52,84 @@ export const UI_REGIONS: Array<{ id: UiRegion; label: string; description: strin
 ];
 
 export const DEFAULT_COMBAT_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
-  combatLocations: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1 },
-  player: { column: 1, row: 2, columnSpan: 3, height: 0, scale: 1 },
-  liveCombat: { column: 4, row: 2, columnSpan: 6, height: 0, scale: 1 },
-  enemy: { column: 10, row: 2, columnSpan: 3, height: 0, scale: 1 },
-  combatOverview: { column: 1, row: 3, columnSpan: 12, height: 0, scale: 1 },
+  combatLocations: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1, locked: false },
+  player: { column: 1, row: 2, columnSpan: 3, height: 0, scale: 1, locked: false },
+  liveCombat: { column: 4, row: 2, columnSpan: 6, height: 0, scale: 1, locked: false },
+  enemy: { column: 10, row: 2, columnSpan: 3, height: 0, scale: 1, locked: false },
+  combatOverview: { column: 1, row: 3, columnSpan: 12, height: 0, scale: 1, locked: false },
 };
 
 export const DEFAULT_INVENTORY_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
-  inventoryToolbar: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1 },
-  inventoryBank: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1 },
+  inventoryToolbar: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1, locked: false },
+  inventoryBank: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1, locked: false },
 };
 
 export const DEFAULT_EQUIPMENT_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
-  equipmentLoadout: { column: 1, row: 1, columnSpan: 7, height: 0, scale: 1 },
-  equipmentStats: { column: 8, row: 1, columnSpan: 5, height: 0, scale: 1 },
+  equipmentLoadout: { column: 1, row: 1, columnSpan: 7, height: 0, scale: 1, locked: false },
+  equipmentStats: { column: 8, row: 1, columnSpan: 5, height: 0, scale: 1, locked: false },
 };
 
 export const DEFAULT_MINING_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
-  miningOverview: { column: 1, row: 1, columnSpan: 5, height: 0, scale: 1 },
-  miningNodes: { column: 6, row: 1, columnSpan: 7, height: 0, scale: 1 },
-  miningDetails: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1 },
+  miningOverview: { column: 1, row: 1, columnSpan: 5, height: 0, scale: 1, locked: false },
+  miningNodes: { column: 6, row: 1, columnSpan: 7, height: 0, scale: 1, locked: false },
+  miningDetails: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1, locked: false },
 };
 
 export const DEFAULT_SMITHING_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
-  smithingOverview: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1 },
-  smithingForge: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1 },
-  smithingAnvil: { column: 1, row: 3, columnSpan: 12, height: 0, scale: 1 },
+  smithingOverview: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1, locked: false },
+  smithingForge: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1, locked: false },
+  smithingAnvil: { column: 1, row: 3, columnSpan: 12, height: 0, scale: 1, locked: false },
+};
+
+export const DEFAULT_HOME_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
+  homeOverview: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1, locked: false },
+  homeCombatProgression: { column: 1, row: 2, columnSpan: 6, height: 0, scale: 1, locked: false },
+  homeProfessionProgression: { column: 7, row: 2, columnSpan: 6, height: 0, scale: 1, locked: false },
+  homeWorldRecord: { column: 1, row: 3, columnSpan: 12, height: 0, scale: 1, locked: false },
+};
+
+export const DEFAULT_COLLECTION_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
+  collectionSummary: { column: 1, row: 1, columnSpan: 12, height: 0, scale: 1, locked: false },
+  collectionBrowser: { column: 1, row: 2, columnSpan: 12, height: 0, scale: 1, locked: false },
+};
+
+export const DEFAULT_SETTINGS_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
+  settingsSave: { column: 1, row: 1, columnSpan: 6, height: 0, scale: 1, locked: false },
+  settingsPresentation: { column: 7, row: 1, columnSpan: 6, height: 0, scale: 1, locked: false },
+};
+
+export const DEFAULT_HELP_PANEL_LAYOUT: Record<string, UiPanelPosition> = {
+  helpGameplay: { column: 1, row: 1, columnSpan: 6, height: 0, scale: 1, locked: false },
+  helpSaveInventory: { column: 7, row: 1, columnSpan: 6, height: 0, scale: 1, locked: false },
 };
 
 export const UI_SCREEN_PANELS: Partial<Record<ScreenId, UiPanelDefinition[]>> = {
+  home: [
+    {
+      id: 'homeOverview',
+      label: 'Character overview',
+      description: 'Character metrics, activity, and Three.js visual',
+      defaultPosition: DEFAULT_HOME_PANEL_LAYOUT.homeOverview,
+    },
+    {
+      id: 'homeCombatProgression',
+      label: 'Combat progression',
+      description: 'Combat levels and progression milestones',
+      defaultPosition: DEFAULT_HOME_PANEL_LAYOUT.homeCombatProgression,
+    },
+    {
+      id: 'homeProfessionProgression',
+      label: 'Profession progression',
+      description: 'Mining and Smithing progression',
+      defaultPosition: DEFAULT_HOME_PANEL_LAYOUT.homeProfessionProgression,
+    },
+    {
+      id: 'homeWorldRecord',
+      label: 'World record',
+      description: 'Collection progress and lifetime records',
+      defaultPosition: DEFAULT_HOME_PANEL_LAYOUT.homeWorldRecord,
+    },
+  ],
   combat: [
     {
       id: 'combatLocations',
@@ -179,6 +230,48 @@ export const UI_SCREEN_PANELS: Partial<Record<ScreenId, UiPanelDefinition[]>> = 
       defaultPosition: DEFAULT_SMITHING_PANEL_LAYOUT.smithingAnvil,
     },
   ],
+  collection: [
+    {
+      id: 'collectionSummary',
+      label: 'Collection summary',
+      description: 'Completion progress for items and monsters',
+      defaultPosition: DEFAULT_COLLECTION_PANEL_LAYOUT.collectionSummary,
+    },
+    {
+      id: 'collectionBrowser',
+      label: 'Collection browser',
+      description: 'Tabs, filters, search, and collection details',
+      defaultPosition: DEFAULT_COLLECTION_PANEL_LAYOUT.collectionBrowser,
+    },
+  ],
+  settings: [
+    {
+      id: 'settingsSave',
+      label: 'Save controls',
+      description: 'Save, export, import, profile, and character actions',
+      defaultPosition: DEFAULT_SETTINGS_PANEL_LAYOUT.settingsSave,
+    },
+    {
+      id: 'settingsPresentation',
+      label: 'Presentation',
+      description: 'Sound, motion, numbers, help icons, and Three.js quality',
+      defaultPosition: DEFAULT_SETTINGS_PANEL_LAYOUT.settingsPresentation,
+    },
+  ],
+  help: [
+    {
+      id: 'helpGameplay',
+      label: 'Gameplay and time',
+      description: 'Actions, elapsed time, and offline progress',
+      defaultPosition: DEFAULT_HELP_PANEL_LAYOUT.helpGameplay,
+    },
+    {
+      id: 'helpSaveInventory',
+      label: 'Save and inventory',
+      description: 'Save safety and inventory guidance',
+      defaultPosition: DEFAULT_HELP_PANEL_LAYOUT.helpSaveInventory,
+    },
+  ],
 };
 
 const EMPTY_UI_PANELS: UiPanelDefinition[] = [];
@@ -187,6 +280,7 @@ export const getUiPanels = (screen: ScreenId): UiPanelDefinition[] =>
   UI_SCREEN_PANELS[screen] ?? EMPTY_UI_PANELS;
 
 export const DEFAULT_UI_LAYOUT: UiLayout = {
+  version: UI_LAYOUT_VERSION,
   sidebarWidth: 236,
   headerHeight: 70,
   contentPadding: 28,
@@ -203,11 +297,15 @@ export const DEFAULT_UI_LAYOUT: UiLayout = {
     actionStrip: { x: 0, y: 0 },
   },
   screenPanels: {
+    home: DEFAULT_HOME_PANEL_LAYOUT,
     combat: DEFAULT_COMBAT_PANEL_LAYOUT,
     inventory: DEFAULT_INVENTORY_PANEL_LAYOUT,
     equipment: DEFAULT_EQUIPMENT_PANEL_LAYOUT,
     mining: DEFAULT_MINING_PANEL_LAYOUT,
     smithing: DEFAULT_SMITHING_PANEL_LAYOUT,
+    collection: DEFAULT_COLLECTION_PANEL_LAYOUT,
+    settings: DEFAULT_SETTINGS_PANEL_LAYOUT,
+    help: DEFAULT_HELP_PANEL_LAYOUT,
   },
 };
 
@@ -240,6 +338,20 @@ const safePanelPosition = (value: unknown, fallback: UiPanelPosition): UiPanelPo
     ),
     height: Math.round(clamp(record.height, 0, 900, fallback.height)),
     scale: clamp(record.scale, 0.5, 1.5, fallback.scale),
+    locked: typeof record.locked === 'boolean' ? record.locked : false,
+  };
+};
+
+export const migrateUiLayout = (value: unknown): unknown => {
+  if (!value || typeof value !== 'object') return value;
+  const source = value as Record<string, unknown>;
+  const version = typeof source.version === 'number' && Number.isFinite(source.version)
+    ? Math.floor(source.version)
+    : 1;
+  if (version >= UI_LAYOUT_VERSION) return { ...source, version: UI_LAYOUT_VERSION };
+  return {
+    ...source,
+    version: UI_LAYOUT_VERSION,
   };
 };
 
@@ -273,8 +385,9 @@ const safeScreenPanelLayout = (
 };
 
 export const sanitizeUiLayout = (value: unknown): UiLayout => {
-  if (!value || typeof value !== 'object') return DEFAULT_UI_LAYOUT;
-  const record = value as Record<string, unknown>;
+  const migrated = migrateUiLayout(value);
+  if (!migrated || typeof migrated !== 'object') return DEFAULT_UI_LAYOUT;
+  const record = migrated as Record<string, unknown>;
   const offsets = (record.offsets ?? {}) as Record<string, unknown>;
   const storedScreenPanels = (record.screenPanels ?? {}) as Record<string, unknown>;
   const legacyCombatPanels = record.combatPanels;
@@ -294,6 +407,7 @@ export const sanitizeUiLayout = (value: unknown): UiLayout => {
   }
 
   return {
+    version: UI_LAYOUT_VERSION,
     sidebarWidth: clamp(record.sidebarWidth, 170, 360, DEFAULT_UI_LAYOUT.sidebarWidth),
     headerHeight: clamp(record.headerHeight, 52, 110, DEFAULT_UI_LAYOUT.headerHeight),
     contentPadding: clamp(record.contentPadding, 10, 54, DEFAULT_UI_LAYOUT.contentPadding),
@@ -317,6 +431,22 @@ export const sanitizeUiLayout = (value: unknown): UiLayout => {
     screenPanels,
   };
 };
+
+export const resetUiLayoutScreen = (layout: UiLayout, screen: ScreenId): UiLayout => {
+  const defaults = DEFAULT_UI_LAYOUT.screenPanels[screen];
+  if (!defaults) return sanitizeUiLayout(layout);
+  return sanitizeUiLayout({
+    ...layout,
+    screenPanels: {
+      ...layout.screenPanels,
+      [screen]: Object.fromEntries(
+        Object.entries(defaults).map(([id, position]) => [id, { ...position }]),
+      ),
+    },
+  });
+};
+
+export const resetUiLayout = (): UiLayout => sanitizeUiLayout(DEFAULT_UI_LAYOUT);
 
 export const loadUiLayout = (): UiLayout => {
   try {

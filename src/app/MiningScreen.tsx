@@ -31,6 +31,7 @@ import { formatDropChance, formatNumber } from './formatters';
 import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
+import { UiPanelGrid } from './UiPanelGrid';
 import { GameTooltip } from './items/GameTooltip';
 import { ItemTooltip } from './items/ItemTooltip';
 import { ExplainedTerm } from './tooltips/GameConceptTooltip';
@@ -309,7 +310,7 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
           </div>
         }
       />
-      <div className="ui-panel-grid mining-panel-grid" data-ui-panel-grid="mining">
+      <UiPanelGrid screen="mining" className="mining-panel-grid">
         <UiPanelSlot screen="mining" id="miningOverview" layout={uiLayout}>
           <section className="panel scene-panel mining-overview-panel mining-active-panel">
             <ThreeScene
@@ -643,7 +644,7 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
             </div>
           </section>
         </UiPanelSlot>
-      </div>
+      </UiPanelGrid>
     </>
   );
 }

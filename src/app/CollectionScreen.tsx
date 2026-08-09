@@ -21,6 +21,9 @@ import { SpecialAttackDetails } from './items/SpecialAttackDetails';
 import { EnemySpecialDetails } from './combat/EnemySpecialDetails';
 import { EnemyTooltip } from './tooltips/EnemyTooltip';
 import { formatDamageRange } from './combat/combatPresentation';
+import { UiPanelGrid } from './UiPanelGrid';
+import { UiPanelSlot } from './UiPanelSlot';
+import { DEFAULT_UI_LAYOUT, type UiLayout } from './uiLayout';
 import {
   collectionEnemyMatchesSearch,
   collectionItemMatchesSearch,
@@ -687,9 +690,11 @@ function MonsterCollectionDetails({ enemy, game }: { enemy?: EnemyDefinition; ga
 export function CollectionScreen({
   game,
   onNavigate,
+  uiLayout = DEFAULT_UI_LAYOUT,
 }: {
   game: GameState;
   onNavigate: (screen: ScreenId) => void;
+  uiLayout?: UiLayout;
 }) {
   const [tab, setTab] = useState<CollectionTab>('items');
   return (
@@ -701,24 +706,30 @@ export function CollectionScreen({
           <p className="subtle">Records of creatures and items discovered across Ironbound.</p>
         </div>
       </div>
-      <CollectionSummary game={game} />
-      <section className="panel panel-pad collection-panel">
-        <div className="tabs" role="tablist" aria-label="Collection categories">
-          {(['items', 'monsters'] as CollectionTab[]).map((option) => (
-            <button
-              type="button"
-              role="tab"
-              aria-selected={tab === option}
-              className={`tab ${tab === option ? 'active' : ''}`}
-              onClick={() => setTab(option)}
-              key={option}
-            >
-              {option === 'items' ? 'Items' : 'Monsters'}
-            </button>
-          ))}
-        </div>
-        {tab === 'items' ? <ItemCollection game={game} onNavigate={onNavigate} /> : <MonsterCollection game={game} />}
-      </section>
+      <UiPanelGrid screen="collection" className="collection-panel-grid">
+        <UiPanelSlot screen="collection" id="collectionSummary" layout={uiLayout}>
+          <CollectionSummary game={game} />
+        </UiPanelSlot>
+        <UiPanelSlot screen="collection" id="collectionBrowser" layout={uiLayout}>
+          <section className="panel panel-pad collection-panel">
+            <div className="tabs" role="tablist" aria-label="Collection categories">
+              {(['items', 'monsters'] as CollectionTab[]).map((option) => (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === option}
+                  className={`tab ${tab === option ? 'active' : ''}`}
+                  onClick={() => setTab(option)}
+                  key={option}
+                >
+                  {option === 'items' ? 'Items' : 'Monsters'}
+                </button>
+              ))}
+            </div>
+            {tab === 'items' ? <ItemCollection game={game} onNavigate={onNavigate} /> : <MonsterCollection game={game} />}
+          </section>
+        </UiPanelSlot>
+      </UiPanelGrid>
     </div>
   );
 }

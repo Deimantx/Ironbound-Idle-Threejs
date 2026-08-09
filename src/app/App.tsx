@@ -45,13 +45,16 @@ import { NAVIGATION } from '../content/navigation';
 import { ThreeScene } from '../three/ThreeScene';
 import { formatHealth, formatNumber } from './formatters';
 import { UiEditor } from './UIEditor';
+import { UiPanelGrid } from './UiPanelGrid';
+import { UiPanelSlot } from './UiPanelSlot';
 import { EquipmentScreen } from './EquipmentScreen';
 import { InventoryScreen } from './InventoryScreen';
 import { MiningScreen } from './MiningScreen';
 import { SmithingScreen } from './SmithingScreen';
 import {
-  DEFAULT_UI_LAYOUT,
   loadUiLayout,
+  resetUiLayoutScreen,
+  resetUiLayout,
   sanitizeUiLayout,
   saveUiLayout,
   type UiLayout,
@@ -677,10 +680,12 @@ function SettingsScreen({
   game,
   onProfiles,
   onDelete,
+  uiLayout,
 }: {
   game: GameState;
   onProfiles: () => void;
   onDelete: () => void;
+  uiLayout: UiLayout;
 }) {
   const saveNow = useGameStore((store) => store.saveNow);
   const setSettings = useGameStore((store) => store.setSettings);
@@ -722,8 +727,9 @@ function SettingsScreen({
           <p className="subtle">Controls for this browser profile and its presentation.</p>
         </div>
       </div>
-      <div className="grid grid-2">
-        <section className="panel panel-pad">
+      <UiPanelGrid screen="settings" className="settings-panel-grid">
+        <UiPanelSlot screen="settings" id="settingsSave" layout={uiLayout}>
+          <section className="panel panel-pad">
           <h2>Save controls</h2>
           <div className="button-row" style={{ margin: '15px 0' }}>
             <button className="button primary" onClick={() => void saveNow()}>
@@ -773,8 +779,10 @@ function SettingsScreen({
               Delete current character
             </button>
           </div>
-        </section>
-        <section className="panel panel-pad">
+          </section>
+        </UiPanelSlot>
+        <UiPanelSlot screen="settings" id="settingsPresentation" layout={uiLayout}>
+          <section className="panel panel-pad">
           <h2>Presentation</h2>
           {[
             ['sound', 'Sound effects'],
@@ -812,8 +820,9 @@ function SettingsScreen({
               <option value="high">High</option>
             </select>
           </label>
-        </section>
-      </div>
+          </section>
+        </UiPanelSlot>
+      </UiPanelGrid>
       {confirmation && (
         <ConfirmDialog
           title={confirmation.title}
@@ -852,7 +861,7 @@ function LockedScreen({ name, description }: { name: string; description?: strin
     </div>
   );
 }
-function HelpScreen() {
+function HelpScreen({ uiLayout }: { uiLayout: UiLayout }) {
   return (
     <>
       <div className="screen-heading">
@@ -862,8 +871,9 @@ function HelpScreen() {
           <p className="subtle">A short guide to the systems currently in your hands.</p>
         </div>
       </div>
-      <div className="grid grid-2">
-        <section className="panel panel-pad">
+      <UiPanelGrid screen="help" className="help-panel-grid">
+        <UiPanelSlot screen="help" id="helpGameplay" layout={uiLayout}>
+          <section className="panel panel-pad">
           <h2>How time works</h2>
           <p className="subtle">
             Mining, smithing, and combat use elapsed time rather than animation frames. Start one
@@ -874,8 +884,10 @@ function HelpScreen() {
             On load, the last simulated timestamp is replayed for up to 24 hours. Actions stop
             safely when materials, inventory, or combat survivability run out.
           </p>
-        </section>
-        <section className="panel panel-pad">
+          </section>
+        </UiPanelSlot>
+        <UiPanelSlot screen="help" id="helpSaveInventory" layout={uiLayout}>
+          <section className="panel panel-pad">
           <h2>Keeping your save safe</h2>
           <p className="subtle">
             Autosave runs about every ten seconds and when the tab is hidden. Settings can export a
@@ -886,8 +898,9 @@ function HelpScreen() {
             Identical items stack. Equipped gear does not take a slot. Lock important stacks before
             destroying anything.
           </p>
-        </section>
-      </div>
+          </section>
+        </UiPanelSlot>
+      </UiPanelGrid>
     </>
   );
 }
@@ -1052,18 +1065,13 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
   };
   const resetAllUiLayouts = () => {
     if (uiSaveTimer.current !== null) window.clearTimeout(uiSaveTimer.current);
-    const defaults = sanitizeUiLayout(DEFAULT_UI_LAYOUT);
+    const defaults = resetUiLayout();
     pendingUiLayout.current = defaults;
     setUiLayout(defaults);
     saveUiLayout(defaults);
   };
   const resetCurrentScreenLayout = (target: ScreenId) => {
-    const defaults = DEFAULT_UI_LAYOUT.screenPanels[target];
-    if (!defaults) return;
-    updateUiLayout({
-      ...uiLayout,
-      screenPanels: { ...uiLayout.screenPanels, [target]: structuredClone(defaults) },
-    });
+    updateUiLayout(resetUiLayoutScreen(uiLayout, target));
   };
   useEffect(() => {
     return () => {
@@ -1133,7 +1141,7 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
   const render = () => {
     switch (screen) {
       case 'home':
-        return <HomeScreen game={currentGame} onNavigate={nav} />;
+        return <HomeScreen game={currentGame} onNavigate={nav} uiLayout={uiLayout} />;
       case 'mining':
         return (
           <MiningScreen game={currentGame} uiLayout={uiLayout} requestAction={requestAction} />
@@ -1157,7 +1165,7 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
       case 'equipment':
         return <EquipmentScreen game={currentGame} uiLayout={uiLayout} onNavigate={nav} />;
       case 'collection':
-        return <CollectionScreen game={currentGame} onNavigate={nav} />;
+        return <CollectionScreen game={currentGame} onNavigate={nav} uiLayout={uiLayout} />;
       case 'settings':
         return (
           <SettingsScreen
@@ -1170,10 +1178,11 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
               await clearProfile(currentGame.profileSlot);
               onExit();
             }}
+            uiLayout={uiLayout}
           />
         );
       case 'help':
-        return <HelpScreen />;
+        return <HelpScreen uiLayout={uiLayout} />;
       default:
         return <LockedScreen name={lockedFeature.name} description={lockedFeature.description} />;
     }

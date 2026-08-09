@@ -42,6 +42,7 @@ import { getInventoryValueLabel } from './inventoryView';
 import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
+import { UiPanelGrid } from './UiPanelGrid';
 import { ItemTooltip } from './items/ItemTooltip';
 import { SpecialAttackDetails } from './items/SpecialAttackDetails';
 import {
@@ -408,7 +409,7 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
         title="Equipment"
         description="Equip forged gear, compare upgrades, and shape your combat statistics."
       />
-      <div className="ui-panel-grid equipment-panel-grid" data-ui-panel-grid="equipment">
+      <UiPanelGrid screen="equipment" className="equipment-panel-grid">
         <UiPanelSlot screen="equipment" id="equipmentLoadout" layout={uiLayout}>
           <section
             className="panel panel-pad equipment-loadout-shell"
@@ -679,7 +680,7 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
             />
           </section>
         </UiPanelSlot>
-      </div>
+      </UiPanelGrid>
     </>
   );
 }

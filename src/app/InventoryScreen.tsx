@@ -38,6 +38,7 @@ import type { InventoryViewPreferences } from './inventoryOrderingPreferences';
 import { ScreenHeading } from './ScreenHeading';
 import { UI_EDITOR_COMPACT_QUERY, type UiLayout } from './uiLayout';
 import { UiPanelSlot } from './UiPanelSlot';
+import { UiPanelGrid } from './UiPanelGrid';
 
 export interface InventoryScreenProps {
   game: GameState;
@@ -423,7 +424,7 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
         title="Inventory"
         description="Materials, equipment, and trophies gathered across the frontier."
       />
-      <div className="ui-panel-grid inventory-panel-grid" data-ui-panel-grid="inventory">
+      <UiPanelGrid screen="inventory" className="inventory-panel-grid">
         <UiPanelSlot screen="inventory" id="inventoryToolbar" layout={uiLayout}>
           <section
             className="panel panel-pad inventory-toolbar-panel"
@@ -643,7 +644,7 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
             )}
           </section>
         </UiPanelSlot>
-      </div>
+      </UiPanelGrid>
       {compactViewport && detailsProps && (
         <InventoryDetailsDrawer
           open={mobileDetailsOpen}

@@ -9,13 +9,18 @@ import {
   getHomeWorldRecord,
 } from './home/homeSelectors';
 import { CombatProgression, ProfessionProgression } from './home/ProgressionPanels';
+import { UiPanelGrid } from './UiPanelGrid';
+import { UiPanelSlot } from './UiPanelSlot';
+import { DEFAULT_UI_LAYOUT, type UiLayout } from './uiLayout';
 
 export function HomeScreen({
   game,
   onNavigate,
+  uiLayout = DEFAULT_UI_LAYOUT,
 }: {
   game: GameState;
   onNavigate: (screen: ScreenId) => void;
+  uiLayout?: UiLayout;
 }) {
   const activity = getHomeActivitySummary(game);
   const worldRecord = getHomeWorldRecord(game);
@@ -36,21 +41,31 @@ export function HomeScreen({
         </button>
       </div>
 
-      <CharacterOverview
-        game={game}
-        onNavigate={onNavigate}
-        totalLevel={totalLevel}
-        totalCombatLevels={totalCombatLevels}
-        totalProfessionLevels={totalProfessionLevels}
-        activity={activity}
-      />
-
-      <div className="home-progression-grid">
-        <CombatProgression game={game} onNavigate={onNavigate} />
-        <ProfessionProgression game={game} onNavigate={onNavigate} />
-      </div>
-
-      <WorldRecord record={worldRecord} onNavigate={onNavigate} />
+      <UiPanelGrid screen="home" className="home-panel-grid">
+        <UiPanelSlot screen="home" id="homeOverview" layout={uiLayout}>
+          <CharacterOverview
+            game={game}
+            onNavigate={onNavigate}
+            totalLevel={totalLevel}
+            totalCombatLevels={totalCombatLevels}
+            totalProfessionLevels={totalProfessionLevels}
+            activity={activity}
+          />
+        </UiPanelSlot>
+        <UiPanelSlot screen="home" id="homeCombatProgression" layout={uiLayout}>
+          <div className="home-progression-panel-wrap">
+            <CombatProgression game={game} onNavigate={onNavigate} />
+          </div>
+        </UiPanelSlot>
+        <UiPanelSlot screen="home" id="homeProfessionProgression" layout={uiLayout}>
+          <div className="home-progression-panel-wrap">
+            <ProfessionProgression game={game} onNavigate={onNavigate} />
+          </div>
+        </UiPanelSlot>
+        <UiPanelSlot screen="home" id="homeWorldRecord" layout={uiLayout}>
+          <WorldRecord record={worldRecord} onNavigate={onNavigate} />
+        </UiPanelSlot>
+      </UiPanelGrid>
     </div>
   );
 }

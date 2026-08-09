@@ -80,6 +80,7 @@ import { getEquipmentSlotLabel } from '../game/equipmentSlots';
 import type { CombatEquipmentSlot } from '../game/equipmentSlots';
 import type { UiLayout } from './uiLayout';
 import { UiPanelSlot } from './UiPanelSlot';
+import { UiPanelGrid } from './UiPanelGrid';
 import { getCombatLogPresentation } from './combat/combatLogPresentation';
 import { formatHealth } from './formatters';
 import { getActualDps, getActualKillsPerHour } from './combat/sessionMetrics';
@@ -1814,7 +1815,7 @@ export function CombatScreen({
         {targetChanged && <span className="combat-context-meta">Switch is explicit</span>}
       </div>
       <CombatContentTabs activeTab={contentTab} onChange={setContentTab} />
-      <div className="ui-panel-grid" data-ui-panel-grid="combat">
+      <UiPanelGrid screen="combat">
         <UiPanelSlot screen="combat" id="combatLocations" layout={uiLayout}>
           {contentTab === 'areas' ? (
             <CombatBrowser
@@ -1892,7 +1893,7 @@ export function CombatScreen({
             onTabChange={setOverviewTab}
           />
         </UiPanelSlot>
-      </div>
+      </UiPanelGrid>
     </div>
   );
 }

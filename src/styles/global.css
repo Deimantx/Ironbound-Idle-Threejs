@@ -3,6 +3,36 @@
   box-sizing: border-box;
 }
 
+/* Keep the newly registered screens on their existing compact layouts. */
+@media (max-width: 900px) and (min-width: 651px) {
+  .home-panel-grid .ui-panel-slot,
+  .settings-panel-grid .ui-panel-slot,
+  .help-panel-grid .ui-panel-slot {
+    grid-row: auto !important;
+  }
+  .home-panel-grid .ui-panel-slot[data-ui-panel='homeOverview'],
+  .home-panel-grid .ui-panel-slot[data-ui-panel='homeWorldRecord'] {
+    grid-column: 1 / -1 !important;
+  }
+  .home-panel-grid .ui-panel-slot[data-ui-panel='homeCombatProgression'],
+  .settings-panel-grid .ui-panel-slot[data-ui-panel='settingsSave'],
+  .help-panel-grid .ui-panel-slot[data-ui-panel='helpGameplay'] {
+    grid-column: 1 / span 3 !important;
+  }
+  .home-panel-grid .ui-panel-slot[data-ui-panel='homeProfessionProgression'],
+  .settings-panel-grid .ui-panel-slot[data-ui-panel='settingsPresentation'],
+  .help-panel-grid .ui-panel-slot[data-ui-panel='helpSaveInventory'] {
+    grid-column: 4 / span 3 !important;
+  }
+}
+
+@media (max-width: 760px) and (min-width: 651px) {
+  .home-panel-grid .ui-panel-slot[data-ui-panel='homeCombatProgression'],
+  .home-panel-grid .ui-panel-slot[data-ui-panel='homeProfessionProgression'] {
+    grid-column: 1 / -1 !important;
+  }
+}
+
 /* Collection Log 2.0 */
 .collection-screen {
   display: grid;
@@ -41,6 +71,11 @@
 }
 .collection-panel {
   display: grid;
+  gap: 14px;
+}
+.collection-panel-grid,
+.settings-panel-grid,
+.help-panel-grid {
   gap: 14px;
 }
 .collection-filter-row {
@@ -2661,6 +2696,34 @@ h3 {
   z-index: 40;
   pointer-events: none;
 }
+.ui-editor-grid-guide {
+  position: fixed;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 12px;
+  pointer-events: none;
+  z-index: 40;
+}
+.ui-editor-grid-guide span {
+  min-width: 0;
+  border-right: 1px solid rgba(140, 169, 195, 0.16);
+  border-left: 1px solid rgba(140, 169, 195, 0.08);
+  background: rgba(140, 169, 195, 0.025);
+}
+.ui-editor-grid-guide::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 79px,
+    rgba(140, 169, 195, 0.12) 80px,
+    transparent 81px,
+    transparent 91px
+  );
+}
 .ui-editor-target {
   position: fixed;
   border: 2px dashed rgba(213, 170, 98, 0.72);
@@ -2674,6 +2737,10 @@ h3 {
 .ui-editor-target.selected {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(213, 170, 98, 0.16);
+}
+.ui-editor-target.locked {
+  border-style: solid;
+  border-color: rgba(154, 167, 176, 0.58);
 }
 .ui-editor-panel-target {
   border-color: rgba(140, 169, 195, 0.78);
@@ -2710,6 +2777,62 @@ h3 {
   cursor: not-allowed;
   opacity: 0.58;
 }
+.ui-editor-resize-handle {
+  position: absolute;
+  z-index: 2;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  touch-action: none;
+  user-select: none;
+}
+.ui-editor-resize-handle::after {
+  display: block;
+  content: '';
+  background: var(--gold);
+  opacity: 0.82;
+  box-shadow: 0 0 0 1px rgba(15, 18, 20, 0.75);
+}
+.ui-editor-resize-handle.right {
+  top: 10px;
+  right: -6px;
+  bottom: 10px;
+  width: 12px;
+  cursor: ew-resize;
+}
+.ui-editor-resize-handle.right::after {
+  width: 3px;
+  height: 100%;
+  margin: 0 auto;
+  border-radius: 3px;
+}
+.ui-editor-resize-handle.bottom {
+  right: 10px;
+  bottom: -6px;
+  left: 10px;
+  height: 12px;
+  cursor: ns-resize;
+}
+.ui-editor-resize-handle.bottom::after {
+  width: 100%;
+  height: 3px;
+  margin: 0 auto;
+  border-radius: 3px;
+}
+.ui-editor-resize-handle.corner {
+  right: -7px;
+  bottom: -7px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+}
+.ui-editor-resize-handle.corner::after {
+  width: 9px;
+  height: 9px;
+  margin: 3px;
+  border: 1px solid rgba(238, 217, 172, 0.92);
+  border-radius: 50%;
+}
 .ui-editor-panel {
   pointer-events: auto;
   position: fixed;
@@ -2731,6 +2854,47 @@ h3 {
 }
 .ui-editor-heading h2 {
   margin-bottom: 0;
+}
+.ui-editor-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+}
+.ui-editor-toolbar .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.ui-editor-history-status {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.ui-editor-current-screen {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 3px 10px;
+  margin-top: 14px;
+  padding: 10px 11px;
+  background: rgba(13, 18, 20, 0.68);
+  border: 1px solid #303b3e;
+  border-radius: 7px;
+}
+.ui-editor-current-screen .eyebrow {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+.ui-editor-current-screen strong {
+  color: #f1d398;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+}
+.ui-editor-current-screen small {
+  align-self: end;
+  color: var(--muted);
+  font-size: 10px;
 }
 .ui-editor-section {
   border-top: 1px solid #303b3e;
@@ -2815,6 +2979,15 @@ h3 {
   width: 100%;
   margin-top: 7px;
   accent-color: var(--gold);
+}
+.ui-editor-range input:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+.ui-editor-reset-section .button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .ui-editor-color {
   display: grid;
@@ -7633,6 +7806,13 @@ h3 {
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(280px, 2fr);
   gap: 20px;
+}
+.home-panel-grid {
+  column-gap: 20px;
+  row-gap: 22px;
+}
+.home-progression-panel-wrap {
+  width: 100%;
 }
 .home-world-record {
   min-width: 0;

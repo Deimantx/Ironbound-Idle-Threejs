@@ -6,13 +6,28 @@ import {
   DEFAULT_MINING_PANEL_LAYOUT,
   DEFAULT_SMITHING_PANEL_LAYOUT,
   DEFAULT_UI_LAYOUT,
+  UI_LAYOUT_VERSION,
+  DEFAULT_HOME_PANEL_LAYOUT,
+  DEFAULT_COLLECTION_PANEL_LAYOUT,
+  DEFAULT_SETTINGS_PANEL_LAYOUT,
+  DEFAULT_HELP_PANEL_LAYOUT,
   getUiPanels,
+  resetUiLayoutScreen,
+  resetUiLayout,
   sanitizeUiLayout,
 } from '../app/uiLayout';
 import { findAvailablePanelPosition } from '../app/UIEditor';
+import {
+  canEditPanelLayout,
+  clampPanelColumnSpan,
+  clampPanelHeight,
+  snapGridDelta,
+} from '../app/uiEditorGeometry';
 
 describe('visual UI layout', () => {
   it('exposes panel definitions by active screen', () => {
+    expect(UI_LAYOUT_VERSION).toBe(2);
+    expect(getUiPanels('home')).toHaveLength(4);
     expect(getUiPanels('combat')).toHaveLength(5);
     expect(getUiPanels('combat').map((panel) => panel.id)).toEqual([
       'combatLocations',
@@ -25,6 +40,9 @@ describe('visual UI layout', () => {
     expect(getUiPanels('equipment')).toHaveLength(2);
     expect(getUiPanels('mining')).toHaveLength(3);
     expect(getUiPanels('smithing')).toHaveLength(3);
+    expect(getUiPanels('collection')).toHaveLength(2);
+    expect(getUiPanels('settings')).toHaveLength(2);
+    expect(getUiPanels('help')).toHaveLength(2);
     expect(getUiPanels('inventory').map((panel) => panel.id)).toEqual([
       'inventoryToolbar',
       'inventoryBank',
@@ -43,6 +61,29 @@ describe('visual UI layout', () => {
       'smithingForge',
       'smithingAnvil',
     ]);
+  });
+
+  it('migrates legacy layouts into the current version and backfills new panels and locks', () => {
+    const layout = sanitizeUiLayout({
+      sidebarWidth: 248,
+      screenPanels: {
+        combat: { player: { column: 5, row: 4, columnSpan: 4, scale: 1.2 } },
+      },
+    });
+
+    expect(layout.version).toBe(UI_LAYOUT_VERSION);
+    expect(layout.sidebarWidth).toBe(248);
+    expect(layout.screenPanels.combat?.player).toMatchObject({
+      column: 5,
+      row: 4,
+      columnSpan: 4,
+      scale: 1.2,
+      locked: false,
+    });
+    expect(layout.screenPanels.home).toEqual(DEFAULT_HOME_PANEL_LAYOUT);
+    expect(layout.screenPanels.collection).toEqual(DEFAULT_COLLECTION_PANEL_LAYOUT);
+    expect(layout.screenPanels.settings).toEqual(DEFAULT_SETTINGS_PANEL_LAYOUT);
+    expect(layout.screenPanels.help).toEqual(DEFAULT_HELP_PANEL_LAYOUT);
   });
 
   it('adds the default combat panel grid to older saved layouts', () => {
@@ -83,6 +124,7 @@ describe('visual UI layout', () => {
       columnSpan: 4,
       height: 140,
       scale: 1.25,
+      locked: false,
     });
     expect(layout.screenPanels.inventory).toEqual(DEFAULT_INVENTORY_PANEL_LAYOUT);
     expect(layout.screenPanels.equipment).toEqual(DEFAULT_EQUIPMENT_PANEL_LAYOUT);
@@ -111,6 +153,7 @@ describe('visual UI layout', () => {
       columnSpan: 1,
       height: 0,
       scale: 1.5,
+      locked: false,
     });
   });
 
@@ -143,6 +186,7 @@ describe('visual UI layout', () => {
       columnSpan: 2,
       height: 0,
       scale: 1,
+      locked: false,
     });
     expect(layout.screenPanels.combat?.liveCombat).toEqual(DEFAULT_COMBAT_PANEL_LAYOUT.liveCombat);
   });
@@ -214,5 +258,48 @@ describe('visual UI layout', () => {
     expect(player).toBeDefined();
     const resolved = findAvailablePanelPosition(layout, 'combat', 'player', { ...player!, row: 4 });
     expect(resolved).toMatchObject({ column: 1, row: 4, columnSpan: 3 });
+  });
+
+  it('keeps screen resets isolated and clamps direct resize geometry', () => {
+    const custom = sanitizeUiLayout({
+      screenPanels: {
+        home: {
+          homeOverview: { column: 3, row: 4, columnSpan: 4, locked: true },
+        },
+        inventory: {
+          inventoryBank: { column: 2, row: 5, columnSpan: 8 },
+        },
+      },
+    });
+    const reset = resetUiLayoutScreen(custom, 'home');
+    expect(reset.screenPanels.home).toEqual(DEFAULT_HOME_PANEL_LAYOUT);
+    expect(reset.screenPanels.inventory?.inventoryBank).toMatchObject({
+      column: 2,
+      row: 5,
+      columnSpan: 8,
+    });
+
+    expect(snapGridDelta(37, 12)).toBe(3);
+    expect(clampPanelHeight(-10)).toBe(0);
+    expect(clampPanelHeight(901)).toBe(900);
+    expect(clampPanelColumnSpan(custom, 'equipment', 'equipmentLoadout', 12)).toBe(7);
+    expect(canEditPanelLayout(custom.screenPanels.home?.homeOverview)).toBe(false);
+    expect(canEditPanelLayout(custom.screenPanels.inventory?.inventoryBank)).toBe(true);
+  });
+
+  it('provides a complete UI reset independent of gameplay state', () => {
+    const reset = resetUiLayout();
+    expect(reset).toEqual(DEFAULT_UI_LAYOUT);
+    expect(Object.keys(reset.screenPanels)).toEqual([
+      'home',
+      'combat',
+      'inventory',
+      'equipment',
+      'mining',
+      'smithing',
+      'collection',
+      'settings',
+      'help',
+    ]);
   });
 });

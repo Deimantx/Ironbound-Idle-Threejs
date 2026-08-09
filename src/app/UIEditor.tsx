@@ -1,16 +1,29 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { GripVertical, LayoutGrid, Move, Palette, RotateCcw, X } from 'lucide-react';
 import {
-  DEFAULT_UI_LAYOUT,
+  GripVertical,
+  LayoutGrid,
+  Lock,
+  Move,
+  Palette,
+  Redo2,
+  RotateCcw,
+  Unlock,
+  Undo2,
+  X,
+} from 'lucide-react';
+import {
   getUiPanels,
   UI_EDITOR_COMPACT_QUERY,
   UI_EDITOR_GRID_ROW_HEIGHT,
   UI_REGIONS,
+  resetUiLayoutScreen,
+  resetUiLayout,
   type UiLayout,
   type UiPanelId,
   type UiPanelPosition,
   type UiRegion,
 } from './uiLayout';
+import { canEditPanelLayout, clampPanelColumnSpan, clampPanelHeight, snapGridDelta } from './uiEditorGeometry';
 import type { ScreenId } from '../game/types';
 
 interface UiEditorProps {
@@ -30,6 +43,7 @@ interface RegionBox {
 interface EditorBoxes {
   regions: Partial<Record<UiRegion, RegionBox>>;
   panels: Partial<Record<UiPanelId, RegionBox>>;
+  grid?: RegionBox;
 }
 
 type SelectedTarget = { kind: 'region'; id: UiRegion } | { kind: 'panel'; id: UiPanelId };
@@ -51,6 +65,19 @@ interface DragState {
   grabOffsetX?: number;
   grabOffsetY?: number;
   gridMetrics?: GridMetrics;
+}
+
+type ResizeDirection = 'width' | 'height' | 'corner';
+
+interface ResizeState {
+  target: UiPanelId;
+  direction: ResizeDirection;
+  startX: number;
+  startY: number;
+  pointerId: number;
+  handle: HTMLButtonElement;
+  original: UiPanelPosition;
+  gridMetrics: GridMetrics;
 }
 
 const numberLabel = (value: number): string =>
@@ -184,6 +211,15 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       : false,
   );
   const drag = useRef<DragState | null>(null);
+  const resize = useRef<ResizeState | null>(null);
+  const history = useRef<{ entries: UiLayout[]; index: number; pending: UiLayout | null; timer: number | null }>({
+    entries: [layout],
+    index: 0,
+    pending: null,
+    timer: null,
+  });
+  const historyScreen = useRef(screen);
+  const [, setHistoryVersion] = useState(0);
   const panelDefinitions = useMemo(() => getUiPanels(screen), [screen]);
   const panelLayout = useMemo(
     () => layout.screenPanels[screen] ?? EMPTY_PANEL_LAYOUT,
@@ -197,6 +233,74 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
   const scheduleMeasureRef = useRef<() => void>(() => undefined);
   const screenLabel = screen.charAt(0).toUpperCase() + screen.slice(1);
 
+  const syncLayout = (next: UiLayout) => {
+    layoutRef.current = next;
+    onChangeRef.current(next);
+  };
+
+  const recordHistory = (next: UiLayout) => {
+    const state = history.current;
+    const current = state.entries[state.index];
+    if (JSON.stringify(current) === JSON.stringify(next)) return;
+    state.entries = [...state.entries.slice(0, state.index + 1), next].slice(-80);
+    state.index = state.entries.length - 1;
+    state.pending = null;
+    setHistoryVersion((value) => value + 1);
+  };
+
+  const flushHistory = () => {
+    const state = history.current;
+    if (state.timer !== null) window.clearTimeout(state.timer);
+    state.timer = null;
+    if (state.pending) {
+      recordHistory(state.pending);
+      state.pending = null;
+    }
+  };
+
+  const commitLayout = (next: UiLayout, mode: 'immediate' | 'debounced' | 'none' = 'debounced') => {
+    syncLayout(next);
+    if (mode === 'none') return;
+    if (mode === 'immediate') {
+      flushHistory();
+      recordHistory(next);
+      return;
+    }
+    const state = history.current;
+    if (state.index < state.entries.length - 1) {
+      state.entries = state.entries.slice(0, state.index + 1);
+      setHistoryVersion((value) => value + 1);
+    }
+    state.pending = next;
+    if (state.timer !== null) window.clearTimeout(state.timer);
+    state.timer = window.setTimeout(() => {
+      state.timer = null;
+      if (state.pending) recordHistory(state.pending);
+    }, 240);
+  };
+
+  const undo = () => {
+    flushHistory();
+    const state = history.current;
+    if (state.index <= 0) return;
+    state.index -= 1;
+    syncLayout(state.entries[state.index]);
+    setHistoryVersion((value) => value + 1);
+  };
+
+  const redo = () => {
+    flushHistory();
+    const state = history.current;
+    if (state.index >= state.entries.length - 1) return;
+    state.index += 1;
+    syncLayout(state.entries[state.index]);
+    setHistoryVersion((value) => value + 1);
+  };
+  const undoRef = useRef(undo);
+  const redoRef = useRef(redo);
+  undoRef.current = undo;
+  redoRef.current = redo;
+
   useEffect(() => {
     boxesRef.current = boxes;
     layoutRef.current = layout;
@@ -204,6 +308,21 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     panelLayoutRef.current = panelLayout;
     screenRef.current = screen;
   }, [boxes, layout, onChange, panelLayout, screen]);
+
+  useEffect(() => {
+    if (historyScreen.current === screen) return;
+    const state = history.current;
+    if (state.timer !== null) window.clearTimeout(state.timer);
+    state.timer = null;
+    state.pending = null;
+    state.entries = [layoutRef.current];
+    state.index = 0;
+    historyScreen.current = screen;
+    drag.current = null;
+    resize.current = null;
+    setSelected({ kind: 'region', id: 'content' });
+    setHistoryVersion((value) => value + 1);
+  }, [screen]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
@@ -215,6 +334,46 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     return () => {
       mediaQuery.removeEventListener?.('change', updateViewport);
       mediaQuery.removeListener?.(updateViewport);
+    };
+  }, []);
+
+  useEffect(() => {
+    const historyState = history.current;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName.toLowerCase();
+      if (
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        tagName === 'select' ||
+        target?.isContentEditable
+      )
+        return;
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'z') return;
+      event.preventDefault();
+      if (event.shiftKey) redoRef.current();
+      else undoRef.current();
+    };
+    const onKeyUp = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const tagName = target?.tagName.toLowerCase();
+      if (
+        tagName === 'input' ||
+        tagName === 'textarea' ||
+        tagName === 'select' ||
+        target?.isContentEditable
+      )
+        return;
+      if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'y') return;
+      event.preventDefault();
+      redoRef.current();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keydown', onKeyUp);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keydown', onKeyUp);
+      if (historyState.timer !== null) window.clearTimeout(historyState.timer);
     };
   }, []);
 
@@ -231,6 +390,8 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     const measure = () => {
       const regions: Partial<Record<UiRegion, RegionBox>> = {};
       const panels: Partial<Record<UiPanelId, RegionBox>> = {};
+      const gridElement = document.querySelector<HTMLElement>(`[data-ui-panel-grid="${screen}"]`);
+      const gridRect = gridElement?.getBoundingClientRect();
       for (const region of UI_REGIONS) {
         const element = document.querySelector<HTMLElement>(`[data-ui-region="${region.id}"]`);
         if (!element) continue;
@@ -253,7 +414,10 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
           height: rect.height,
         };
       }
-      setBoxes({ regions, panels });
+      const grid = gridRect
+        ? { left: gridRect.left, top: gridRect.top, width: gridRect.width, height: gridRect.height }
+        : undefined;
+      setBoxes({ regions, panels, grid });
     };
     const scheduleMeasure = () => {
       if (frame !== null) return;
@@ -315,7 +479,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         };
         const currentOffset = currentLayout.offsets[active.target.id];
         if (currentOffset.x === nextOffset.x && currentOffset.y === nextOffset.y) return;
-        onChangeRef.current({
+        syncLayout({
           ...currentLayout,
           offsets: {
             ...currentLayout.offsets,
@@ -341,7 +505,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         row,
       });
       if (position.column === current.column && position.row === current.row) return;
-      onChangeRef.current({
+      syncLayout({
         ...currentLayout,
         screenPanels: {
           ...currentLayout.screenPanels,
@@ -352,8 +516,47 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         },
       });
     };
+    const applyResize = (clientX: number, clientY: number) => {
+      const active = resize.current;
+      if (!active) return;
+      const currentLayout = layoutRef.current;
+      const currentScreen = screenRef.current;
+      const current = currentLayout.screenPanels[currentScreen]?.[active.target];
+      if (!current || current.locked) return;
+      const deltaX = clientX - active.startX;
+      const deltaY = clientY - active.startY;
+      const columnDelta = snapGridDelta(deltaX, active.gridMetrics.columnStep);
+      const nextSpan =
+        active.direction === 'height'
+          ? current.columnSpan
+          : clampPanelColumnSpan(
+              currentLayout,
+              currentScreen,
+              active.target,
+              active.original.columnSpan + columnDelta,
+            );
+      const nextHeight =
+        active.direction === 'width'
+          ? current.height
+          : clampPanelHeight(active.original.height + deltaY);
+      if (nextSpan === current.columnSpan && nextHeight === current.height) return;
+      syncLayout({
+        ...currentLayout,
+        screenPanels: {
+          ...currentLayout.screenPanels,
+          [currentScreen]: {
+            ...(currentLayout.screenPanels[currentScreen] ?? EMPTY_PANEL_LAYOUT),
+            [active.target]: {
+              ...current,
+              columnSpan: nextSpan,
+              height: nextHeight,
+            },
+          },
+        },
+      });
+    };
     const move = (event: PointerEvent) => {
-      const active = drag.current;
+      const active = drag.current ?? resize.current;
       if (!active || event.pointerId !== active.pointerId) return;
       latestPointer = { clientX: event.clientX, clientY: event.clientY };
       if (frame !== null) return;
@@ -361,22 +564,30 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         const pointer = latestPointer;
         latestPointer = null;
         frame = null;
-        if (pointer) applyMove(pointer.clientX, pointer.clientY);
+        if (pointer) {
+          if (drag.current) applyMove(pointer.clientX, pointer.clientY);
+          else applyResize(pointer.clientX, pointer.clientY);
+        }
       });
     };
     const stop = (event: PointerEvent) => {
-      const active = drag.current;
+      const active = drag.current ?? resize.current;
       if (!active || event.pointerId !== active.pointerId) return;
       latestPointer = { clientX: event.clientX, clientY: event.clientY };
       if (frame !== null) cancelFrame(frame);
       frame = null;
       const pointer = latestPointer;
       latestPointer = null;
-      if (pointer) applyMove(pointer.clientX, pointer.clientY);
+      if (pointer) {
+        if (drag.current) applyMove(pointer.clientX, pointer.clientY);
+        else applyResize(pointer.clientX, pointer.clientY);
+      }
       if (active?.handle.hasPointerCapture?.(active.pointerId)) {
         active.handle.releasePointerCapture(active.pointerId);
       }
       drag.current = null;
+      resize.current = null;
+      recordHistory(layoutRef.current);
     };
     window.addEventListener('pointermove', move);
     window.addEventListener('pointerup', stop);
@@ -389,6 +600,13 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       if (active?.handle.hasPointerCapture?.(active.pointerId)) {
         active.handle.releasePointerCapture(active.pointerId);
       }
+      const activeResize = resize.current;
+      if (activeResize?.handle.hasPointerCapture?.(activeResize.pointerId)) {
+        activeResize.handle.releasePointerCapture(activeResize.pointerId);
+      }
+      drag.current = null;
+      resize.current = null;
+      recordHistory(layoutRef.current);
       if (frame !== null) cancelFrame(frame);
     };
   }, []);
@@ -396,7 +614,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
   const beginDrag = (target: SelectedTarget, event: React.PointerEvent<HTMLButtonElement>) => {
     event.preventDefault();
     setSelected(target);
-    if (target.kind === 'panel' && compactViewport) return;
+    if (target.kind === 'panel' && (compactViewport || !canEditPanelLayout(panelLayout[target.id]))) return;
     if (target.kind === 'region') {
       const offset = layout.offsets[target.id];
       event.currentTarget.setPointerCapture?.(event.pointerId);
@@ -428,6 +646,34 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     };
   };
 
+  const beginResize = (
+    panelId: UiPanelId,
+    direction: ResizeDirection,
+    event: React.PointerEvent<HTMLButtonElement>,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setSelected({ kind: 'panel', id: panelId });
+    if (compactViewport) return;
+    const position = panelLayout[panelId];
+    if (!canEditPanelLayout(position)) return;
+    const measuredPanels =
+      Object.keys(boxesRef.current.panels).length > 0 ? boxesRef.current.panels : boxes.panels;
+    const gridMetrics = getGridMetrics(screen, panelLayout, measuredPanels);
+    if (!position || !gridMetrics) return;
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    resize.current = {
+      target: panelId,
+      direction,
+      startX: event.clientX,
+      startY: event.clientY,
+      pointerId: event.pointerId,
+      handle: event.currentTarget,
+      original: { ...position },
+      gridMetrics,
+    };
+  };
+
   const updateNumber = (
     key: keyof Pick<
       UiLayout,
@@ -440,22 +686,25 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
     >,
     value: number,
   ) => {
-    onChange({ ...layout, [key]: value });
+    const currentLayout = layoutRef.current;
+    commitLayout({ ...currentLayout, [key]: value });
   };
 
   const updatePanel = (key: keyof UiPanelPosition, value: number) => {
     if (selected.kind !== 'panel') return;
-    const current = panelLayout[selected.id];
-    if (!current) return;
+    const currentLayout = layoutRef.current;
+    const currentPanelLayout = currentLayout.screenPanels[screen] ?? EMPTY_PANEL_LAYOUT;
+    const current = currentPanelLayout[selected.id];
+    if (!current || (current.locked && key !== 'locked')) return;
     const next = { ...current, [key]: value } as UiPanelPosition;
     if (key === 'columnSpan') next.column = Math.min(next.column, 13 - value);
-    const position = findAvailablePanelPosition(layout, screen, selected.id, next);
-    onChange({
-      ...layout,
+    const position = findAvailablePanelPosition(currentLayout, screen, selected.id, next);
+    commitLayout({
+      ...currentLayout,
       screenPanels: {
-        ...layout.screenPanels,
+        ...currentLayout.screenPanels,
         [screen]: {
-          ...panelLayout,
+          ...currentPanelLayout,
           [selected.id]: position,
         },
       },
@@ -464,10 +713,11 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
 
   const resetRegion = () => {
     if (selected.kind !== 'region') return;
-    onChange({
-      ...layout,
+    const currentLayout = layoutRef.current;
+    commitLayout({
+      ...currentLayout,
       offsets: {
-        ...layout.offsets,
+        ...currentLayout.offsets,
         [selected.id]: { x: 0, y: 0 },
       },
     });
@@ -475,10 +725,12 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
 
   const centerPanel = () => {
     if (selected.kind !== 'panel') return;
-    const current = panelLayout[selected.id];
-    if (!current) return;
+    const currentLayout = layoutRef.current;
+    const currentPanelLayout = currentLayout.screenPanels[screen] ?? EMPTY_PANEL_LAYOUT;
+    const current = currentPanelLayout[selected.id];
+    if (!current || current.locked) return;
     const position = findAvailablePanelPosition(
-      layout,
+      currentLayout,
       screen,
       selected.id,
       {
@@ -487,12 +739,12 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
       },
       'center',
     );
-    onChange({
-      ...layout,
+    commitLayout({
+      ...currentLayout,
       screenPanels: {
-        ...layout.screenPanels,
+        ...currentLayout.screenPanels,
         [screen]: {
-          ...panelLayout,
+          ...currentPanelLayout,
           [selected.id]: position,
         },
       },
@@ -501,19 +753,44 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
 
   const resetPanel = () => {
     if (selected.kind !== 'panel') return;
+    const currentLayout = layoutRef.current;
+    const currentPanelLayout = currentLayout.screenPanels[screen] ?? EMPTY_PANEL_LAYOUT;
     const definition = panelDefinitions.find((panel) => panel.id === selected.id);
     if (!definition) return;
-    onChange({
-      ...layout,
+    commitLayout({
+      ...currentLayout,
       screenPanels: {
-        ...layout.screenPanels,
+        ...currentLayout.screenPanels,
         [screen]: {
-          ...panelLayout,
+          ...currentPanelLayout,
           [selected.id]: { ...definition.defaultPosition },
         },
       },
     });
   };
+
+  const togglePanelLock = () => {
+    if (selected.kind !== 'panel') return;
+    const currentLayout = layoutRef.current;
+    const currentPanelLayout = currentLayout.screenPanels[screen] ?? EMPTY_PANEL_LAYOUT;
+    const current = currentPanelLayout[selected.id];
+    if (!current) return;
+    commitLayout(
+      {
+        ...currentLayout,
+        screenPanels: {
+          ...currentLayout.screenPanels,
+          [screen]: {
+            ...currentPanelLayout,
+            [selected.id]: { ...current, locked: !current.locked },
+          },
+        },
+      },
+      'immediate',
+    );
+  };
+
+  const resetCurrentScreen = () => commitLayout(resetUiLayoutScreen(layoutRef.current, screen), 'immediate');
 
   const selectedRegion =
     selected.kind === 'region'
@@ -529,6 +806,22 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
 
   return (
     <div className="ui-editor-layer" aria-label="Visual UI editor">
+      {boxes.grid && (
+        <div
+          className="ui-editor-grid-guide"
+          aria-hidden="true"
+          style={{
+            left: boxes.grid.left,
+            top: boxes.grid.top,
+            width: boxes.grid.width,
+            height: boxes.grid.height,
+          }}
+        >
+          {Array.from({ length: 12 }, (_, index) => (
+            <span key={index} />
+          ))}
+        </div>
+      )}
       {UI_REGIONS.map((region) => {
         const box = boxes.regions[region.id];
         if (!box) return null;
@@ -555,10 +848,14 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
         const box = boxes.panels[panel.id];
         if (!box) return null;
         const target = { kind: 'panel', id: panel.id } as const;
-        const dragDisabled = compactViewport;
+        const position = panelLayout[panel.id];
+        if (!position) return null;
+        const locked = position.locked;
+        const selectedPanelTarget = selected.kind === 'panel' && selected.id === panel.id;
+        const dragDisabled = compactViewport || locked;
         return (
           <div
-            className={`ui-editor-target ui-editor-panel-target ${selected.kind === 'panel' && selected.id === panel.id ? 'selected' : ''}`}
+            className={`ui-editor-target ui-editor-panel-target ${selectedPanelTarget ? 'selected' : ''} ${locked ? 'locked' : ''}`}
             key={panel.id}
             style={{ left: box.left, top: box.top, width: box.width, height: box.height }}
           >
@@ -568,14 +865,41 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
               onPointerDown={(event) => beginDrag(target, event)}
               aria-disabled={dragDisabled}
               title={
-                dragDisabled
+                compactViewport
                   ? 'Panel dragging is available above 900px viewport width'
+                  : locked
+                    ? 'Panel is locked. Unlock it to move or resize it.'
                   : `Drag to move ${panel.label}`
               }
             >
-              <GripVertical size={14} />
+              {locked ? <Lock size={13} aria-hidden="true" /> : <GripVertical size={14} />}
               {panel.label}
             </button>
+            {selectedPanelTarget && !locked && !compactViewport && (
+              <>
+                <button
+                  type="button"
+                  className="ui-editor-resize-handle right"
+                  aria-label={`Resize ${panel.label} width`}
+                  title={`Resize ${panel.label} width`}
+                  onPointerDown={(event) => beginResize(panel.id, 'width', event)}
+                />
+                <button
+                  type="button"
+                  className="ui-editor-resize-handle bottom"
+                  aria-label={`Resize ${panel.label} height`}
+                  title={`Resize ${panel.label} height`}
+                  onPointerDown={(event) => beginResize(panel.id, 'height', event)}
+                />
+                <button
+                  type="button"
+                  className="ui-editor-resize-handle corner"
+                  aria-label={`Resize ${panel.label}`}
+                  title={`Resize ${panel.label}`}
+                  onPointerDown={(event) => beginResize(panel.id, 'corner', event)}
+                />
+              </>
+            )}
           </div>
         );
       })}
@@ -590,10 +914,32 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
             <X size={17} />
           </button>
         </div>
+        <div className="ui-editor-toolbar" aria-label="Editor history controls">
+          <button className="button" onClick={undo} disabled={history.current.index <= 0} aria-label="Undo UI change">
+            <Undo2 size={14} /> Undo
+          </button>
+          <button
+            className="button"
+            onClick={redo}
+            disabled={history.current.index >= history.current.entries.length - 1}
+            aria-label="Redo UI change"
+          >
+            <Redo2 size={14} /> Redo
+          </button>
+          <span className="ui-editor-history-status" aria-live="polite">
+            {history.current.index + 1} / {history.current.entries.length}
+          </span>
+        </div>
         <p className="subtle">
           Drag a labeled handle, or use the controls below. Changes save automatically in this
           browser.
         </p>
+
+        <div className="ui-editor-current-screen" aria-label="Current screen status">
+          <span className="eyebrow">Current screen</span>
+          <strong>{screenLabel.toUpperCase()}</strong>
+          <small>{panelDefinitions.length} editable panels</small>
+        </div>
 
         <div className="ui-editor-section">
           <div className="ui-editor-section-title">
@@ -633,10 +979,10 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
                 max={80}
                 suffix="px"
                 onChange={(value) =>
-                  onChange({
-                    ...layout,
+                  commitLayout({
+                    ...layoutRef.current,
                     offsets: {
-                      ...layout.offsets,
+                      ...layoutRef.current.offsets,
                       [selectedRegion.id]: { ...selectedOffset, x: value },
                     },
                   })
@@ -649,10 +995,10 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
                 max={60}
                 suffix="px"
                 onChange={(value) =>
-                  onChange({
-                    ...layout,
+                  commitLayout({
+                    ...layoutRef.current,
                     offsets: {
-                      ...layout.offsets,
+                      ...layoutRef.current.offsets,
                       [selectedRegion.id]: { ...selectedOffset, y: value },
                     },
                   })
@@ -701,11 +1047,19 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
               {selectedPanel && selectedPanelPosition && (
                 <>
                   <div className="ui-editor-nudge-row">
-                    <button className="button" onClick={centerPanel}>
+                    <button className="button" onClick={centerPanel} disabled={selectedPanelPosition.locked}>
                       Center {selectedPanel.label}
                     </button>
                     <button className="button ghost" onClick={resetPanel}>
                       Reset {selectedPanel.label}
+                    </button>
+                    <button
+                      className="button ghost"
+                      onClick={togglePanelLock}
+                      aria-label={`${selectedPanelPosition.locked ? 'Unlock' : 'Lock'} ${selectedPanel.label}`}
+                    >
+                      {selectedPanelPosition.locked ? <Unlock size={14} /> : <Lock size={14} />}
+                      {selectedPanelPosition.locked ? 'Unlock panel' : 'Lock panel'}
                     </button>
                     <span className="muted">
                       C{selectedPanelPosition.column}, R{selectedPanelPosition.row}, W
@@ -718,6 +1072,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
                       value={selectedPanelPosition.column}
                       min={1}
                       max={13 - selectedPanelPosition.columnSpan}
+                      disabled={selectedPanelPosition.locked}
                       onChange={(value) => updatePanel('column', value)}
                     />
                     <EditorRange
@@ -725,6 +1080,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
                       value={selectedPanelPosition.row}
                       min={1}
                       max={12}
+                      disabled={selectedPanelPosition.locked}
                       onChange={(value) => updatePanel('row', value)}
                     />
                     <EditorRange
@@ -732,6 +1088,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
                       value={selectedPanelPosition.columnSpan}
                       min={1}
                       max={12}
+                      disabled={selectedPanelPosition.locked}
                       suffix=" columns"
                       onChange={(value) => updatePanel('columnSpan', value)}
                     />
@@ -746,6 +1103,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
                           ? `${selectedPanelPosition.height}px`
                           : 'Auto'
                       }
+                      disabled={selectedPanelPosition.locked}
                       onChange={(value) => updatePanel('height', value)}
                     />
                     <EditorRange
@@ -755,6 +1113,7 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
                       max={1.5}
                       step={0.05}
                       displayValue={`${Math.round(selectedPanelPosition.scale * 100)}%`}
+                      disabled={selectedPanelPosition.locked}
                       onChange={(value) => updatePanel('scale', value)}
                     />
                   </div>
@@ -831,26 +1190,38 @@ export function UiEditor({ screen, layout, onChange, onClose }: UiEditorProps) {
           <EditorColor
             label="Accent color"
             value={layout.accent}
-            onChange={(accent) => onChange({ ...layout, accent })}
+            onChange={(accent) => commitLayout({ ...layoutRef.current, accent })}
           />
           <EditorColor
             label="Game background"
             value={layout.background}
-            onChange={(background) => onChange({ ...layout, background })}
+            onChange={(background) => commitLayout({ ...layoutRef.current, background })}
           />
           <EditorColor
             label="Panel color"
             value={layout.panel}
-            onChange={(panel) => onChange({ ...layout, panel })}
+            onChange={(panel) => commitLayout({ ...layoutRef.current, panel })}
           />
         </div>
 
+        {panelsVisible && (
+          <div className="ui-editor-section ui-editor-reset-section">
+            <div className="ui-editor-section-title">
+              <RotateCcw size={15} /> Reset current screen
+            </div>
+            <p className="muted">Reset only the {screenLabel} panel positions, sizes, scales, and locks.</p>
+            <button className="button" onClick={resetCurrentScreen} aria-label={`Reset ${screenLabel} layout`}>
+              <RotateCcw size={14} /> Reset {screenLabel} layout
+            </button>
+          </div>
+        )}
+
         <button
           className="button danger ui-editor-reset"
-          onClick={() => onChange(DEFAULT_UI_LAYOUT)}
-          title="Restore all interface positions and sizes"
+          onClick={() => commitLayout(resetUiLayout(), 'immediate')}
+          title="Restore all interface positions, sizes, colors, and panel locks"
         >
-          <RotateCcw size={14} /> Emergency reset — entire layout
+          <RotateCcw size={14} /> Emergency reset — entire UI
         </button>
       </aside>
     </div>
@@ -865,6 +1236,7 @@ function EditorRange({
   step = 1,
   suffix = '',
   displayValue,
+  disabled = false,
   onChange,
 }: {
   label: string;
@@ -874,6 +1246,7 @@ function EditorRange({
   step?: number;
   suffix?: string;
   displayValue?: string;
+  disabled?: boolean;
   onChange: (value: number) => void;
 }) {
   return (
@@ -889,6 +1262,7 @@ function EditorRange({
         max={max}
         step={step}
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(Number(event.target.value))}
       />
     </label>

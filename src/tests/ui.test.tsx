@@ -67,6 +67,23 @@ const mockCombatGeometry = () => {
   });
 };
 
+const mockHomeGeometry = () => {
+  const grid = document.querySelector<HTMLElement>('[data-ui-panel-grid="home"]');
+  if (!grid) throw new Error('Home panel grid was not rendered');
+  vi.spyOn(grid, 'getBoundingClientRect').mockReturnValue(rect(0, 0, 1200, 900));
+  const geometry: Record<string, DOMRect> = {
+    homeOverview: rect(0, 0, 1200, 280),
+    homeCombatProgression: rect(0, 292, 588, 240),
+    homeProfessionProgression: rect(600, 292, 588, 240),
+    homeWorldRecord: rect(0, 544, 1200, 220),
+  };
+  Object.entries(geometry).forEach(([id, panelRect]) => {
+    const panel = document.querySelector<HTMLElement>(`[data-ui-panel="${id}"]`);
+    if (!panel) throw new Error(`Home panel ${id} was not rendered`);
+    vi.spyOn(panel, 'getBoundingClientRect').mockReturnValue(panelRect);
+  });
+};
+
 const dispatchPointer = (
   target: EventTarget,
   type: 'pointerdown' | 'pointermove' | 'pointerup',
@@ -95,6 +112,7 @@ afterEach(() => {
 
 describe('navigation integration', () => {
   beforeEach(() => {
+    window.localStorage.removeItem(UI_LAYOUT_STORAGE_KEY);
     const game = createNewGame(0, 'Navigator');
     game.settings.threeQuality = 'off';
     useGameStore.getState().setGame(game);
@@ -153,6 +171,22 @@ describe('navigation integration', () => {
     render(<App />);
     const cases = [
       {
+        nav: 'Home',
+        screen: 'home',
+        panels: [
+          'homeOverview',
+          'homeCombatProgression',
+          'homeProfessionProgression',
+          'homeWorldRecord',
+        ],
+        labels: [
+          'Character overview',
+          'Combat progression',
+          'Profession progression',
+          'World record',
+        ],
+      },
+      {
         nav: 'Inventory',
         screen: 'inventory',
         panels: ['inventoryToolbar', 'inventoryBank'],
@@ -176,10 +210,30 @@ describe('navigation integration', () => {
         panels: ['smithingOverview', 'smithingForge', 'smithingAnvil'],
         labels: ['Smithing overview', 'Smithing Forge', 'Smithing Anvil'],
       },
+      {
+        nav: 'Collection',
+        screen: 'collection',
+        panels: ['collectionSummary', 'collectionBrowser'],
+        labels: ['Collection summary', 'Collection browser'],
+      },
+      {
+        nav: 'Settings',
+        screen: 'settings',
+        panels: ['settingsSave', 'settingsPresentation'],
+        labels: ['Save controls', 'Presentation'],
+      },
+      {
+        nav: 'Help',
+        screen: 'help',
+        panels: ['helpGameplay', 'helpSaveInventory'],
+        labels: ['Gameplay and time', 'Save and inventory'],
+      },
     ];
 
     for (const current of cases) {
-      await user.click(screen.getAllByRole('button', { name: new RegExp(current.nav) })[0]);
+      if (current.nav !== 'Home') {
+        await user.click(within(screen.getByRole('navigation')).getByRole('button', { name: new RegExp(current.nav) }));
+      }
       expect(document.querySelector(`[data-ui-panel-grid="${current.screen}"]`)).not.toBeNull();
       for (const panel of current.panels) {
         expect(document.querySelector(`[data-ui-panel="${panel}"]`)).not.toBeNull();
@@ -192,7 +246,7 @@ describe('navigation integration', () => {
       }
       await user.click(within(editor).getByRole('button', { name: 'Close UI editor' }));
     }
-  });
+  }, 15000);
 
   it('persists an Inventory panel edit through the local UI layout', async () => {
     const user = userEvent.setup();
@@ -1511,9 +1565,161 @@ describe('navigation integration', () => {
     expect(screen.getByRole('dialog', { name: 'Edit game UI' })).toBeInTheDocument();
     expect(screen.getByText('Sidebar width')).toBeInTheDocument();
     expect(screen.getByText('Home panels')).toBeInTheDocument();
-    expect(screen.getByText('No editable panels are registered for Home yet.')).toBeInTheDocument();
+    expect(screen.getByText('4 editable panels')).toBeInTheDocument();
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    expect(within(editor).getByRole('button', { name: /Character overview/ })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Close UI editor' }));
     expect(screen.queryByRole('dialog', { name: 'Edit game UI' })).not.toBeInTheDocument();
+  });
+
+  it('supports Home history, panel locking, direct resize, and screen reset', async () => {
+    window.localStorage.removeItem(UI_LAYOUT_STORAGE_KEY);
+    const user = userEvent.setup();
+    render(<App />);
+    mockHomeGeometry();
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Combat progression/ }));
+
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Panel width' }), {
+      target: { value: '4' },
+    });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.screenPanels.home.homeCombatProgression.columnSpan).toBe(4);
+    });
+
+    await user.click(within(editor).getByRole('button', { name: 'Undo UI change' }));
+    expect(within(editor).getByRole('button', { name: 'Redo UI change' })).not.toBeDisabled();
+    await waitFor(() =>
+      expect(
+        JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}').screenPanels.home
+          .homeCombatProgression.columnSpan,
+      ).toBe(6),
+    );
+    await user.click(within(editor).getByRole('button', { name: 'Redo UI change' }));
+    await waitFor(() =>
+      expect(
+        JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}').screenPanels.home
+          .homeCombatProgression.columnSpan,
+      ).toBe(4),
+    );
+
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Panel width' }), {
+      target: { value: '3' },
+    });
+    await waitFor(() =>
+      expect(
+        JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}').screenPanels.home
+          .homeCombatProgression.columnSpan,
+      ).toBe(3),
+    );
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Panel width' }), {
+      target: { value: '5' },
+    });
+    await waitFor(() =>
+      expect(
+        JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}').screenPanels.home
+          .homeCombatProgression.columnSpan,
+      ).toBe(5),
+    );
+    await user.click(within(editor).getByRole('button', { name: 'Undo UI change' }));
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Panel width' }), {
+      target: { value: '2' },
+    });
+    expect(within(editor).getByRole('button', { name: 'Redo UI change' })).toBeDisabled();
+
+    await user.click(within(editor).getByRole('button', { name: 'Lock Combat progression' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.screenPanels.home.homeCombatProgression.locked).toBe(true);
+    });
+    expect(within(editor).getByRole('slider', { name: 'Panel width' })).toBeDisabled();
+    dispatchPointer(document.querySelector('[title="Panel is locked. Unlock it to move or resize it."]') as HTMLElement, 'pointerdown', {
+      pointerId: 4,
+      clientX: 180,
+      clientY: 360,
+      buttons: 1,
+    });
+    expect(
+      JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}').screenPanels.home
+        .homeCombatProgression.column,
+    ).toBe(1);
+    await user.click(within(editor).getByRole('button', { name: 'Unlock Combat progression' }));
+
+    const widthHandle = screen.getByRole('button', { name: 'Resize Combat progression width' });
+    dispatchPointer(widthHandle, 'pointerdown', {
+      pointerId: 5,
+      clientX: 500,
+      clientY: 400,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointermove', {
+      pointerId: 5,
+      clientX: 320,
+      clientY: 400,
+      buttons: 1,
+    });
+    dispatchPointer(window, 'pointerup', { pointerId: 5, clientX: 320, clientY: 400 });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.screenPanels.home.homeCombatProgression.columnSpan).toBe(1);
+    });
+
+    await user.click(within(editor).getByRole('button', { name: 'Reset Home layout' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.screenPanels.home.homeCombatProgression).toMatchObject({
+        column: 1,
+        row: 2,
+        columnSpan: 6,
+        locked: false,
+      });
+    });
+  });
+
+  it('resets only the current screen layout', async () => {
+    window.localStorage.removeItem(UI_LAYOUT_STORAGE_KEY);
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    let editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Combat progression/ }));
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Panel width' }), {
+      target: { value: '4' },
+    });
+    await waitFor(() =>
+      expect(
+        JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}').screenPanels.home
+          .homeCombatProgression.columnSpan,
+      ).toBe(4),
+    );
+    await user.click(within(editor).getByRole('button', { name: 'Close UI editor' }));
+
+    await user.click(within(screen.getByRole('navigation')).getByRole('button', { name: /Inventory/ }));
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Inventory bank/ }));
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Panel scale' }), {
+      target: { value: '1.5' },
+    });
+    await waitFor(() =>
+      expect(
+        JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}').screenPanels.inventory
+          .inventoryBank.scale,
+      ).toBe(1.5),
+    );
+    await user.click(within(editor).getByRole('button', { name: 'Close UI editor' }));
+
+    await user.click(within(screen.getByRole('navigation')).getByRole('button', { name: /Home/ }));
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: 'Reset Home layout' }));
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.screenPanels.home.homeCombatProgression.columnSpan).toBe(6);
+      expect(stored.screenPanels.inventory.inventoryBank.scale).toBe(1.5);
+    });
   });
 
   it('exposes individual combat panels to the visual UI editor', async () => {
@@ -1566,6 +1772,7 @@ describe('navigation integration', () => {
         columnSpan: 3,
         height: 0,
         scale: 1,
+        locked: false,
       });
     });
   });

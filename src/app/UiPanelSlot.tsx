@@ -75,6 +75,7 @@ export function UiPanelSlot({ screen, id, layout, children }: UiPanelSlotProps) 
     <div
       className="ui-panel-slot"
       data-ui-panel={id}
+      data-ui-panel-locked={position.locked ? 'true' : 'false'}
       style={getPanelStyle(position, reservedHeight)}
     >
       <div

@@ -35,6 +35,7 @@ import { formatHoursMinutes, formatNumber, formatRatePerHour } from './formatter
 import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
+import { UiPanelGrid } from './UiPanelGrid';
 import { ItemTooltip } from './items/ItemTooltip';
 import { formatSmithingToolSummary } from './items/itemProfessionPresentation';
 import { ExplainedTerm } from './tooltips/GameConceptTooltip';
@@ -978,7 +979,7 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
           </div>
         }
       />
-      <div className="ui-panel-grid smithing-panel-grid" data-ui-panel-grid="smithing">
+      <UiPanelGrid screen="smithing" className="smithing-panel-grid">
         <UiPanelSlot screen="smithing" id="smithingOverview" layout={uiLayout}>
           <section className="panel panel-pad smithing-overview-panel">
             {active && activeRecipe ? (
@@ -1163,7 +1164,7 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
             )}
           </section>
         </UiPanelSlot>
-      </div>
+      </UiPanelGrid>
     </>
   );
 }
