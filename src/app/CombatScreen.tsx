@@ -81,6 +81,8 @@ import type { CombatEquipmentSlot } from '../game/equipmentSlots';
 import type { UiLayout } from './uiLayout';
 import { UiPanelSlot } from './UiPanelSlot';
 import { UiPanelGrid } from './UiPanelGrid';
+import { UiPanelRegionGrid } from './UiPanelRegionGrid';
+import { UiPanelRegionSlot } from './UiPanelRegionSlot';
 import { getCombatLogPresentation } from './combat/combatLogPresentation';
 import { formatHealth } from './formatters';
 import { getActualDps, getActualKillsPerHour } from './combat/sessionMetrics';
@@ -383,6 +385,7 @@ function StyleControls({
 function PlayerSummaryPanel({
   game,
   enemy,
+  uiLayout,
   style,
   queuedStyle,
   onStyleChange,
@@ -390,6 +393,7 @@ function PlayerSummaryPanel({
 }: {
   game: GameState;
   enemy: EnemyDefinition;
+  uiLayout: UiLayout;
   style: CombatStyle;
   queuedStyle?: CombatStyle | null;
   onStyleChange: (style: CombatStyle) => void;
@@ -398,40 +402,54 @@ function PlayerSummaryPanel({
   const stats = getDerivedStats(game, style);
   return (
     <section className="combat-dashboard-panel combat-player-panel" aria-labelledby="player-title">
-      <div className="combat-panel-heading">
-        <div className="combat-panel-kicker">Player</div>
-        <div className="combat-player-heading-line">
-          <div className="combat-player-portrait" aria-hidden="true">
-            <UserRound size={25} />
+      <UiPanelRegionGrid screen="combat" panelId="player" layout={uiLayout} className="combat-player-regions">
+        <UiPanelRegionSlot screen="combat" panelId="player" regionId="playerIdentity" layout={uiLayout}>
+          <div className="combat-panel-heading">
+            <div className="combat-panel-kicker">Player</div>
+            <div className="combat-player-heading-line">
+              <div className="combat-player-portrait" aria-hidden="true">
+                <UserRound size={25} />
+              </div>
+              <div>
+                <h2 id="player-title">{game.player.name}</h2>
+                <span className="muted">
+                  <ExplainedTerm concept="combat-level" showHelpIcon={game.settings.showHelpIcons}>
+                    Combat level
+                  </ExplainedTerm>{' '}
+                  {stats.combatLevel}
+                </span>
+              </div>
+            </div>
           </div>
-          <div>
-            <h2 id="player-title">{game.player.name}</h2>
-            <span className="muted">
-              <ExplainedTerm concept="combat-level" showHelpIcon={game.settings.showHelpIcons}>
-                Combat level
-              </ExplainedTerm>{' '}
-              {stats.combatLevel}
-            </span>
+        </UiPanelRegionSlot>
+        <UiPanelRegionSlot screen="combat" panelId="player" regionId="playerEquipment" layout={uiLayout}>
+          <div className="combat-player-equipment-region">
+            <div className="combat-panel-divider" />
+            <div className="combat-panel-kicker">Equipment</div>
+            <EquipmentStrip game={game} />
           </div>
-        </div>
-      </div>
-      <div className="combat-panel-divider" />
-      <div className="combat-panel-kicker">Equipment</div>
-      <EquipmentStrip game={game} />
-      <StyleControls style={style} queuedStyle={queuedStyle} onChange={onStyleChange} />
-      <div className="combat-subheading-row">
-        <span className="combat-panel-kicker">Derived stats</span>
-        <button type="button" className="combat-text-link" onClick={() => onNavigate('equipment')}>
-          Full character statistics <ArrowUpRight size={13} />
-        </button>
-      </div>
-      <div className="combat-stats-grid">
-        <StatLine label="Accuracy" value={Math.round(stats.effectiveAccuracyRating)} concept="accuracy" showHelpIcons={game.settings.showHelpIcons} />
-        <StatLine label="Damage" value={formatDamageRange(stats.effectiveMaxHit)} concept="damage-range" showHelpIcons={game.settings.showHelpIcons} />
-        <StatLine label="Defence" value={Math.round(stats.effectiveDefenceRating)} concept="defence" showHelpIcons={game.settings.showHelpIcons} />
-        <StatLine label="Attack speed" value={formatSeconds(stats.attackIntervalMs)} concept="attack-speed" showHelpIcons={game.settings.showHelpIcons} />
-      </div>
-      <span className="sr-only">Current target: {enemy.name}</span>
+        </UiPanelRegionSlot>
+        <UiPanelRegionSlot screen="combat" panelId="player" regionId="playerCombatStyle" layout={uiLayout}>
+          <StyleControls style={style} queuedStyle={queuedStyle} onChange={onStyleChange} />
+        </UiPanelRegionSlot>
+        <UiPanelRegionSlot screen="combat" panelId="player" regionId="playerDerivedStats" layout={uiLayout}>
+          <div className="combat-player-derived-region">
+            <div className="combat-subheading-row">
+              <span className="combat-panel-kicker">Derived stats</span>
+              <button type="button" className="combat-text-link" onClick={() => onNavigate('equipment')}>
+                Full character statistics <ArrowUpRight size={13} />
+              </button>
+            </div>
+            <div className="combat-stats-grid">
+              <StatLine label="Accuracy" value={Math.round(stats.effectiveAccuracyRating)} concept="accuracy" showHelpIcons={game.settings.showHelpIcons} />
+              <StatLine label="Damage" value={formatDamageRange(stats.effectiveMaxHit)} concept="damage-range" showHelpIcons={game.settings.showHelpIcons} />
+              <StatLine label="Defence" value={Math.round(stats.effectiveDefenceRating)} concept="defence" showHelpIcons={game.settings.showHelpIcons} />
+              <StatLine label="Attack speed" value={formatSeconds(stats.attackIntervalMs)} concept="attack-speed" showHelpIcons={game.settings.showHelpIcons} />
+            </div>
+            <span className="sr-only">Current target: {enemy.name}</span>
+          </div>
+        </UiPanelRegionSlot>
+      </UiPanelRegionGrid>
     </section>
   );
 }
@@ -440,10 +458,12 @@ function EnemySummaryPanel({
   game,
   enemy,
   onViewLoot,
+  uiLayout,
 }: {
   game: GameState;
   enemy: EnemyDefinition;
   onViewLoot: () => void;
+  uiLayout: UiLayout;
 }) {
   const [combatDetailsExpanded, setCombatDetailsExpanded] = useState(false);
   const active =
@@ -463,6 +483,8 @@ function EnemySummaryPanel({
   const discovered = game.discoveredMonsters.includes(enemy.id);
   return (
     <section className="combat-dashboard-panel combat-enemy-panel" aria-labelledby="enemy-title">
+      <UiPanelRegionGrid screen="combat" panelId="enemy" layout={uiLayout} className="combat-enemy-regions">
+      <UiPanelRegionSlot screen="combat" panelId="enemy" regionId="enemyIdentity" layout={uiLayout}>
       <div className="combat-panel-heading">
         <div className="combat-panel-kicker">Enemy</div>
         <div className="combat-enemy-heading-line">
@@ -479,6 +501,8 @@ function EnemySummaryPanel({
         </div>
       </div>
       <p className="combat-enemy-description">{enemy.description}</p>
+      </UiPanelRegionSlot>
+      <UiPanelRegionSlot screen="combat" panelId="enemy" regionId="enemyStats" layout={uiLayout}>
       <div className="combat-subheading-row">
         <span className="combat-panel-kicker">Combat details</span>
         <div className="combat-disclosure-actions">
@@ -508,6 +532,8 @@ function EnemySummaryPanel({
         <StatLine label="Attack interval" value={formatSeconds(enemyStats.attackIntervalMs)} concept="attack-speed" showHelpIcons={game.settings.showHelpIcons} />
         <StatLine label="Base DPS" value={baseEnemyDps.toFixed(1)} />
       </div>
+      </UiPanelRegionSlot>
+      <UiPanelRegionSlot screen="combat" panelId="enemy" regionId="enemyTraits" layout={uiLayout}>
       <div className="combat-panel-note">
         <strong>{enemy.trait.name}</strong> — {enemy.trait.description}
       </div>
@@ -516,6 +542,8 @@ function EnemySummaryPanel({
           <EnemySpecialDetails special={enemy.specialAttack} />
         </div>
       )}
+      </UiPanelRegionSlot>
+      <UiPanelRegionSlot screen="combat" panelId="enemy" regionId="enemyDrops" layout={uiLayout}>
       <div className="combat-drop-preview">
         <div className="combat-subheading-row">
           <span className="combat-panel-kicker">Drop preview</span>
@@ -547,6 +575,8 @@ function EnemySummaryPanel({
           ))}
         </div>
       </div>
+      </UiPanelRegionSlot>
+      </UiPanelRegionGrid>
     </section>
   );
 }
@@ -608,6 +638,7 @@ function EnemyRoster({
 
 function CombatBrowser({
   game,
+  uiLayout,
   selectedRegionId,
   selectedArea,
   selectedEnemy,
@@ -622,6 +653,7 @@ function CombatBrowser({
   onToggleLocations,
 }: {
   game: GameState;
+  uiLayout: UiLayout;
   selectedRegionId: CombatRegionId;
   selectedArea: AreaId;
   selectedEnemy: EnemyId;
@@ -652,6 +684,8 @@ function CombatBrowser({
   );
   return (
     <section className="combat-locations combat-browser" aria-labelledby="combat-locations-title">
+      <UiPanelRegionGrid screen="combat" panelId="combatLocations" layout={uiLayout} className="combat-locations-regions">
+      <UiPanelRegionSlot screen="combat" panelId="combatLocations" regionId="combatLocationsNavigation" layout={uiLayout}>
       <div className="combat-section-heading">
         <div>
           <div className="eyebrow">Choose your road</div>
@@ -688,6 +722,8 @@ function CombatBrowser({
           )}
         </div>
       )}
+      </UiPanelRegionSlot>
+      <UiPanelRegionSlot screen="combat" panelId="combatLocations" regionId="combatLocationsAreas" layout={uiLayout}>
       <div
         id="combat-browser-content"
         className="combat-browser-content"
@@ -760,6 +796,10 @@ function CombatBrowser({
             );
           })}
         </div>
+      </div>
+      </UiPanelRegionSlot>
+      <UiPanelRegionSlot screen="combat" panelId="combatLocations" regionId="combatLocationsEnemies" layout={uiLayout}>
+      <div className="combat-browser-content combat-browser-enemies-content" hidden={!locationsExpanded}>
         <div className="combat-browser-selection">
           <div className="combat-browser-roster">
             <div className="combat-location-content-heading">
@@ -782,6 +822,8 @@ function CombatBrowser({
           />
         </div>
       </div>
+      </UiPanelRegionSlot>
+      </UiPanelRegionGrid>
     </section>
   );
 }
@@ -1007,6 +1049,7 @@ function LiveCombatResolution({
   game,
   enemy,
   events,
+  uiLayout,
   autoRepeat,
   onAutoRepeatChange,
   autoSpecial,
@@ -1026,6 +1069,7 @@ function LiveCombatResolution({
   game: GameState;
   enemy: EnemyDefinition;
   events: CombatVisualEvent[];
+  uiLayout: UiLayout;
   autoRepeat: boolean;
   onAutoRepeatChange: (checked: boolean) => void;
   autoSpecial: boolean;
@@ -1086,6 +1130,8 @@ function LiveCombatResolution({
       className={`combat-live-panel status-${status.toLowerCase().replaceAll(' ', '-')} ${combatAction?.combatState.eliteModifier ? 'elite-active' : ''}`}
       aria-label="Live combat resolution"
     >
+      <UiPanelRegionGrid screen="combat" panelId="liveCombat" layout={uiLayout} className="combat-live-regions">
+      <UiPanelRegionSlot screen="combat" panelId="liveCombat" regionId="liveCombatStatus" layout={uiLayout}>
       <div className="combat-live-heading">
         <div>
           <div className="combat-panel-kicker">Live combat resolution</div>
@@ -1143,6 +1189,8 @@ function LiveCombatResolution({
         <CombatEffectLane target="player" effects={selectPlayerCombatEffects(game)} />
         <CombatEffectLane target="enemy" effects={selectEnemyCombatEffects(game)} />
       </div>
+      </UiPanelRegionSlot>
+      <UiPanelRegionSlot screen="combat" panelId="liveCombat" regionId="liveCombatTimeline" layout={uiLayout}>
       {enemy.specialAttack && combatAction && (
         <div className={`combat-enemy-special ${enemySpecialReady ? 'ready' : ''}`}>
           <div className="combat-enemy-special-head">
@@ -1200,6 +1248,8 @@ function LiveCombatResolution({
           )}
         </div>
       </div>
+      </UiPanelRegionSlot>
+      <UiPanelRegionSlot screen="combat" panelId="liveCombat" regionId="liveCombatControls" layout={uiLayout}>
       <div className="combat-live-controls">
         <div className="combat-settings-control">
           <button
@@ -1286,11 +1336,15 @@ function LiveCombatResolution({
           </button>
         )}
       </div>
+      </UiPanelRegionSlot>
+      <UiPanelRegionSlot screen="combat" panelId="liveCombat" regionId="liveCombatLog" layout={uiLayout}>
       <RecentActions
         game={game}
         sessionStartedAt={sessionStartedAt}
         encounterStartedAt={encounterStartedAt}
       />
+      </UiPanelRegionSlot>
+      </UiPanelRegionGrid>
     </section>
   );
 }
@@ -1551,6 +1605,7 @@ function CombatOverviewTabs({
   events,
   tab,
   onTabChange,
+  uiLayout,
 }: {
   game: GameState;
   enemy: EnemyDefinition;
@@ -1559,6 +1614,7 @@ function CombatOverviewTabs({
   events: CombatVisualEvent[];
   tab: OverviewTab;
   onTabChange: (tab: OverviewTab) => void;
+  uiLayout: UiLayout;
 }) {
   const tabLabels: Record<OverviewTab, string> = {
     overview: 'Session summary',
@@ -1567,6 +1623,8 @@ function CombatOverviewTabs({
   };
   return (
     <section className="combat-overview" aria-label="Combat summary">
+      <UiPanelRegionGrid screen="combat" panelId="combatOverview" layout={uiLayout} className="combat-overview-regions">
+      <UiPanelRegionSlot screen="combat" panelId="combatOverview" regionId="combatOverviewTabs" layout={uiLayout}>
       <div className="combat-overview-tabs" role="tablist" aria-label="Combat summary tabs">
         {(['overview', 'loot', 'progression'] as OverviewTab[]).map((option) => (
           <button
@@ -1581,6 +1639,8 @@ function CombatOverviewTabs({
           </button>
         ))}
       </div>
+      </UiPanelRegionSlot>
+      <UiPanelRegionSlot screen="combat" panelId="combatOverview" regionId="combatOverviewContent" layout={uiLayout}>
       {tab === 'overview' ? (
         <OverviewSummary session={session} />
       ) : tab === 'loot' ? (
@@ -1588,6 +1648,8 @@ function CombatOverviewTabs({
       ) : (
         <ProgressionPanel game={game} session={session} style={style} />
       )}
+      </UiPanelRegionSlot>
+      </UiPanelRegionGrid>
     </section>
   );
 }
@@ -1816,10 +1878,16 @@ export function CombatScreen({
       </div>
       <CombatContentTabs activeTab={contentTab} onChange={setContentTab} />
       <UiPanelGrid screen="combat">
-        <UiPanelSlot screen="combat" id="combatLocations" layout={uiLayout}>
+        <UiPanelSlot
+          screen="combat"
+          id="combatLocations"
+          layout={uiLayout}
+          autoHeight={!locationsExpanded}
+        >
           {contentTab === 'areas' ? (
             <CombatBrowser
               game={game}
+              uiLayout={uiLayout}
               selectedRegionId={selectedRegionId}
               selectedArea={selectedArea}
               selectedEnemy={selectedEnemy}
@@ -1840,6 +1908,7 @@ export function CombatScreen({
         <UiPanelSlot screen="combat" id="player" layout={uiLayout}>
           <PlayerSummaryPanel
             game={game}
+            uiLayout={uiLayout}
             enemy={currentEnemy}
             style={currentStyle}
             queuedStyle={active?.pendingStyle}
@@ -1852,6 +1921,7 @@ export function CombatScreen({
             game={game}
             enemy={currentEnemy}
             events={events}
+            uiLayout={uiLayout}
             autoRepeat={activeAutoRepeatValue}
             onAutoRepeatChange={(checked) => {
               setAutoRepeat(checked);
@@ -1879,6 +1949,7 @@ export function CombatScreen({
           <EnemySummaryPanel
             game={game}
             enemy={currentEnemy}
+            uiLayout={uiLayout}
             onViewLoot={() => setOverviewTab('loot')}
           />
         </UiPanelSlot>
@@ -1891,6 +1962,7 @@ export function CombatScreen({
             events={events}
             tab={overviewTab}
             onTabChange={setOverviewTab}
+            uiLayout={uiLayout}
           />
         </UiPanelSlot>
       </UiPanelGrid>

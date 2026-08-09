@@ -36,6 +36,8 @@ import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
 import { UiPanelGrid } from './UiPanelGrid';
+import { UiPanelRegionGrid } from './UiPanelRegionGrid';
+import { UiPanelRegionSlot } from './UiPanelRegionSlot';
 import { ItemTooltip } from './items/ItemTooltip';
 import { formatSmithingToolSummary } from './items/itemProfessionPresentation';
 import { ExplainedTerm } from './tooltips/GameConceptTooltip';
@@ -982,96 +984,112 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
       <UiPanelGrid screen="smithing" className="smithing-panel-grid">
         <UiPanelSlot screen="smithing" id="smithingOverview" layout={uiLayout}>
           <section className="panel panel-pad smithing-overview-panel">
-            {active && activeRecipe ? (
-              <ActiveOrder
-                game={game}
-                recipe={activeRecipe}
-                action={active}
-                stopAction={stopAction}
-              />
-            ) : (
-              <div className="smithing-idle-overview">
-                <div>
-                  <div className="eyebrow">Production ready</div>
-                  <h2>Smithing idle</h2>
-                  <p>Select a Forge or Anvil recipe to begin.</p>
-                </div>
-              </div>
-            )}
-            {!active && <QuantitySelector mode={mode} setMode={setMode} />}
+            <UiPanelRegionGrid screen="smithing" panelId="smithingOverview" layout={uiLayout} className="smithing-overview-layout">
+              <UiPanelRegionSlot screen="smithing" panelId="smithingOverview" regionId="smithingOverviewActiveWork" layout={uiLayout}>
+                {active && activeRecipe ? (
+                  <ActiveOrder
+                    game={game}
+                    recipe={activeRecipe}
+                    action={active}
+                    stopAction={stopAction}
+                  />
+                ) : (
+                  <div className="smithing-idle-overview">
+                    <div>
+                      <div className="eyebrow">Production ready</div>
+                      <h2>Smithing idle</h2>
+                      <p>Select a Forge or Anvil recipe to begin.</p>
+                    </div>
+                  </div>
+                )}
+              </UiPanelRegionSlot>
+              <UiPanelRegionSlot screen="smithing" panelId="smithingOverview" regionId="smithingOverviewControls" layout={uiLayout}>
+                {!active && <QuantitySelector mode={mode} setMode={setMode} />}
+              </UiPanelRegionSlot>
+            </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
         <UiPanelSlot screen="smithing" id="smithingForge" layout={uiLayout}>
           <section className="panel panel-pad smithing-facility-panel">
-            <FacilityHeader
-              icon={<Flame size={19} />}
-              title="Forge"
-              subtitle="Smelt ore into usable metal bars."
-              controls={
-                <>
-                  <FacilityUpgradeTrigger
-                    facility="forge"
-                    open={forgeUpgradeOpen}
-                    onToggle={toggleForgeUpgrade}
-                    panelId="forge-facility-upgrade-preview"
-                  />
-                  <ForgeFuelControl
-                    game={game}
-                    open={forgeFuelOpen}
-                    onOpenChange={toggleForgeFuel}
-                  />
-                </>
-              }
-              collapsed={forgeCollapsed}
-              onToggle={toggleForgeCollapsed}
-            />
-            {!forgeCollapsed && (
-              <>
-                {forgeUpgradeOpen && <FacilityUpgradePreview facility="forge" />}
-                <ForgeVisibilityControl value={forgeVisibility} onChange={setForgeVisibility} />
-                <div className="smithing-recipe-list smithing-forge-list">
-                  {visibleForgeRecipes.map((recipe) => (
-                    <ForgeRecipeCard
-                      key={recipe.id}
-                      game={game}
-                      recipe={recipe}
-                      mode={mode}
-                      requestAction={requestAction}
-                    />
-                  ))}
-                </div>
-              </>
-            )}
+            <UiPanelRegionGrid screen="smithing" panelId="smithingForge" layout={uiLayout} className="smithing-forge-layout">
+              <UiPanelRegionSlot screen="smithing" panelId="smithingForge" regionId="smithingForgeHeading" layout={uiLayout}>
+                <FacilityHeader
+                  icon={<Flame size={19} />}
+                  title="Forge"
+                  subtitle="Smelt ore into usable metal bars."
+                  controls={
+                    <>
+                      <FacilityUpgradeTrigger
+                        facility="forge"
+                        open={forgeUpgradeOpen}
+                        onToggle={toggleForgeUpgrade}
+                        panelId="forge-facility-upgrade-preview"
+                      />
+                      <ForgeFuelControl
+                        game={game}
+                        open={forgeFuelOpen}
+                        onOpenChange={toggleForgeFuel}
+                      />
+                    </>
+                  }
+                  collapsed={forgeCollapsed}
+                  onToggle={toggleForgeCollapsed}
+                />
+              </UiPanelRegionSlot>
+              <UiPanelRegionSlot screen="smithing" panelId="smithingForge" regionId="smithingForgeRecipes" layout={uiLayout}>
+                {!forgeCollapsed && (
+                  <>
+                    {forgeUpgradeOpen && <FacilityUpgradePreview facility="forge" />}
+                    <ForgeVisibilityControl value={forgeVisibility} onChange={setForgeVisibility} />
+                    <div className="smithing-recipe-list smithing-forge-list">
+                      {visibleForgeRecipes.map((recipe) => (
+                        <ForgeRecipeCard
+                          key={recipe.id}
+                          game={game}
+                          recipe={recipe}
+                          mode={mode}
+                          requestAction={requestAction}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </UiPanelRegionSlot>
+            </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
         <UiPanelSlot screen="smithing" id="smithingAnvil" layout={uiLayout}>
           <section className="panel panel-pad smithing-facility-panel">
-            <FacilityHeader
-              icon={<Hammer size={19} />}
-              title="Anvil"
-              subtitle="Forge bars into equipment and profession tools."
-              controls={
-                <>
-                  <FacilityUpgradeTrigger
-                    facility="anvil"
-                    open={anvilUpgradeOpen}
-                    onToggle={toggleAnvilUpgrade}
-                    panelId="anvil-facility-upgrade-preview"
-                  />
-                  <AnvilToolControl
-                    game={game}
-                    open={anvilToolOpen}
-                    onOpenChange={toggleAnvilTool}
-                  />
-                </>
-              }
-              collapsed={anvilCollapsed}
-              onToggle={toggleAnvilCollapsed}
-            />
-            {!anvilCollapsed && (
-              <>
-                {anvilUpgradeOpen && <FacilityUpgradePreview facility="anvil" />}
-                <div className="smithing-filter-groups">
+            <UiPanelRegionGrid screen="smithing" panelId="smithingAnvil" layout={uiLayout} className="smithing-anvil-layout">
+              <UiPanelRegionSlot screen="smithing" panelId="smithingAnvil" regionId="smithingAnvilHeading" layout={uiLayout}>
+                <FacilityHeader
+                  icon={<Hammer size={19} />}
+                  title="Anvil"
+                  subtitle="Forge bars into equipment and profession tools."
+                  controls={
+                    <>
+                      <FacilityUpgradeTrigger
+                        facility="anvil"
+                        open={anvilUpgradeOpen}
+                        onToggle={toggleAnvilUpgrade}
+                        panelId="anvil-facility-upgrade-preview"
+                      />
+                      <AnvilToolControl
+                        game={game}
+                        open={anvilToolOpen}
+                        onOpenChange={toggleAnvilTool}
+                      />
+                    </>
+                  }
+                  collapsed={anvilCollapsed}
+                  onToggle={toggleAnvilCollapsed}
+                />
+              </UiPanelRegionSlot>
+              <UiPanelRegionSlot screen="smithing" panelId="smithingAnvil" regionId="smithingAnvilRecipes" layout={uiLayout}>
+                {!anvilCollapsed && (
+                  <>
+                    {anvilUpgradeOpen && <FacilityUpgradePreview facility="anvil" />}
+                    <div className="smithing-filter-groups">
                   <div
                     className="smithing-filter-group"
                     role="group"
@@ -1116,8 +1134,8 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
                       ))}
                     </div>
                   </div>
-                </div>
-                <div className="smithing-recipe-list smithing-anvil-list">
+                    </div>
+                    <div className="smithing-recipe-list smithing-anvil-list">
                   {tierGroups.map(({ tier, recipes }) => (
                     <section className="smithing-tier-group" key={tier}>
                       <button
@@ -1159,9 +1177,11 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
                       )}
                     </section>
                   ))}
-                </div>
-              </>
-            )}
+                    </div>
+                  </>
+                )}
+              </UiPanelRegionSlot>
+            </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
       </UiPanelGrid>

@@ -10719,7 +10719,123 @@ h3 {
   }
   .activity-strip-combat .activity-rate,
   .activity-strip-combat .activity-xp-next,
-  .activity-strip-combat .activity-eta {
+.activity-strip-combat .activity-eta {
     font-size: 9px;
+  }
+}
+
+/* UI editor Phase 2C: preserve the original screen layouts inside nested regions. */
+.mining-active-panel {
+  display: block;
+}
+.mining-overview-layout {
+  min-height: 100%;
+}
+.mining-overview-layout > .ui-panel-region-slot[data-ui-panel-region='miningOverviewScene'],
+.mining-overview-layout .scene-frame {
+  min-height: 520px;
+  height: 100%;
+}
+.mining-overview-layout .mining-overview-content {
+  height: 100%;
+}
+.mining-details-layout {
+  min-width: 0;
+}
+.mining-details-layout .mining-selected-rock,
+.mining-details-layout .mining-tool-details {
+  min-width: 0;
+}
+
+.inventory-toolbar-layout .inventory-filter-row {
+  margin-top: 0;
+}
+.inventory-bank-regions {
+  row-gap: 0;
+}
+.inventory-bank-regions .inventory-items-column {
+  padding-top: 16px;
+}
+.inventory-bank-regions .inventory-details-region {
+  height: 100%;
+}
+
+.collection-summary-regions {
+  min-width: 0;
+}
+.collection-browser-regions {
+  min-width: 0;
+}
+
+.help-gameplay-regions .ui-panel-region-slot + .ui-panel-region-slot h2,
+.help-save-inventory-regions .ui-panel-region-slot + .ui-panel-region-slot h2 {
+  margin-top: 20px;
+}
+
+.combat-locations-regions,
+.combat-player-regions,
+.combat-enemy-regions,
+.combat-live-regions,
+.combat-overview-regions,
+.equipment-loadout-regions,
+.equipment-stats-regions,
+.settings-save-regions,
+.settings-presentation-regions {
+  min-width: 0;
+}
+.combat-locations-regions .combat-browser-content {
+  min-width: 0;
+}
+
+@container inventory-toolbar (max-width: 620px) {
+  .inventory-toolbar-layout {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+}
+
+@container (max-width: 720px) {
+  .inventory-bank-regions .ui-panel-region-slot[data-ui-panel-region='inventoryBankItems'],
+  .inventory-bank-regions .ui-panel-region-slot[data-ui-panel-region='inventoryBankDetails'] {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+  .inventory-bank-regions .inventory-items-column {
+    padding-right: 0;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #3a4748;
+  }
+  .inventory-bank-regions .inventory-details-region {
+    min-height: 0;
+    padding: 16px 0 4px;
+    position: static;
+    background: transparent;
+    border-top: 0;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  .mining-overview-layout > .ui-panel-region-slot[data-ui-panel-region='miningOverviewScene'],
+  .mining-overview-layout .scene-frame {
+    min-height: 230px;
+  }
+  .mining-overview-layout .mining-overview-content {
+    height: auto;
+  }
+  .inventory-bank-regions .ui-panel-region-slot[data-ui-panel-region='inventoryBankItems'],
+  .inventory-bank-regions .ui-panel-region-slot[data-ui-panel-region='inventoryBankDetails'] {
+    grid-column: 1 / -1 !important;
+    grid-row: auto !important;
+  }
+  .inventory-bank-regions .inventory-details-region {
+    display: none;
+  }
+}
+
+@media (max-width: 650px) {
+  .mining-overview-layout > .ui-panel-region-slot[data-ui-panel-region='miningOverviewScene'],
+  .mining-overview-layout .scene-frame {
+    min-height: 190px;
   }
 }

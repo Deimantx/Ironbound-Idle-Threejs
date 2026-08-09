@@ -303,6 +303,30 @@ describe('navigation integration', () => {
     await user.click(within(editor).getByRole('button', { name: 'Close UI editor' }));
   });
 
+  it('edits an Inventory nested region and protects bank controls', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Inventory/ })[0]);
+    expect(document.querySelector('[data-ui-panel-region-grid="inventoryBank"]')).toBeInTheDocument();
+    expect(document.querySelector('[data-ui-panel-region="inventoryBankItems"]')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Edit game UI' }));
+    const editor = screen.getByRole('dialog', { name: 'Edit game UI' });
+    await user.click(within(editor).getByRole('button', { name: /Inventory bank/ }));
+    expect(within(editor).getByRole('button', { name: /Item Grid/ })).toBeInTheDocument();
+    await user.click(within(editor).getByRole('button', { name: /Item Grid/ }));
+    fireEvent.change(within(editor).getByRole('slider', { name: 'Region width' }), {
+      target: { value: '7' },
+    });
+    await waitFor(() => {
+      const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
+      expect(stored.panelRegions.inventory.inventoryBank.regions.inventoryBankItems.columnSpan).toBe(7);
+    });
+
+    await user.click(within(editor).getByRole('button', { name: /Heading and Sort/ }));
+    expect(within(editor).getByRole('checkbox', { name: 'Visible' })).toBeDisabled();
+  });
+
   it('keeps Mining active while editing a panel layout', async () => {
     const user = userEvent.setup();
     render(<App />);

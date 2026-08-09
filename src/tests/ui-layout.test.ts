@@ -27,6 +27,7 @@ import {
   sanitizeUiLayout,
 } from '../app/uiLayout';
 import { findAvailablePanelPosition } from '../app/UIEditor';
+import type { ScreenId } from '../game/types';
 import {
   canEditPanelLayout,
   clampPanelColumnSpan,
@@ -95,6 +96,84 @@ describe('visual UI layout', () => {
       expect(getUiPanelRegions('home', panelId).map((region) => region.id)).toEqual(regionIds);
       expect(getUiPanelRegionPresets('home', panelId).length).toBeGreaterThan(0);
     }
+  });
+
+  it('registers stable nested definitions for every Phase 2C screen', () => {
+    const expected: Record<string, Record<string, string[]>> = {
+      mining: {
+        miningOverview: ['miningOverviewScene', 'miningOverviewActivity'],
+        miningNodes: ['miningNodesHeading', 'miningNodesBrowser'],
+        miningDetails: ['miningDetailsRock', 'miningDetailsTool'],
+      },
+      smithing: {
+        smithingOverview: ['smithingOverviewActiveWork', 'smithingOverviewControls'],
+        smithingForge: ['smithingForgeHeading', 'smithingForgeRecipes'],
+        smithingAnvil: ['smithingAnvilHeading', 'smithingAnvilRecipes'],
+      },
+      inventory: {
+        inventoryToolbar: ['inventoryToolbarSearch', 'inventoryToolbarCapacity', 'inventoryToolbarFilters'],
+        inventoryBank: ['inventoryBankHeading', 'inventoryBankItems', 'inventoryBankDetails'],
+      },
+      equipment: {
+        equipmentLoadout: [
+          'equipmentLoadoutCombat',
+          'equipmentLoadoutAccessories',
+          'equipmentLoadoutProfession',
+          'equipmentLoadoutInspection',
+        ],
+        equipmentStats: [
+          'equipmentStatsCombat',
+          'equipmentStatsComparison',
+          'equipmentStatsSpecial',
+          'equipmentStatsProfession',
+        ],
+      },
+      collection: {
+        collectionSummary: ['collectionSummaryItems', 'collectionSummaryMonsters', 'collectionSummaryOverall'],
+        collectionBrowser: ['collectionBrowserControls', 'collectionBrowserContent'],
+      },
+      settings: {
+        settingsSave: ['settingsSavePrimary', 'settingsSaveTransfer', 'settingsSaveDanger'],
+        settingsPresentation: [
+          'settingsPresentationGeneral',
+          'settingsPresentationAccessibility',
+          'settingsPresentationGraphics',
+        ],
+      },
+      help: {
+        helpGameplay: ['helpGameplayTime', 'helpGameplayOffline'],
+        helpSaveInventory: ['helpSaveInventorySave', 'helpSaveInventoryInventory'],
+      },
+      combat: {
+        combatLocations: ['combatLocationsNavigation', 'combatLocationsAreas', 'combatLocationsEnemies'],
+        player: ['playerIdentity', 'playerEquipment', 'playerCombatStyle', 'playerDerivedStats'],
+        liveCombat: ['liveCombatStatus', 'liveCombatTimeline', 'liveCombatControls', 'liveCombatLog'],
+        enemy: ['enemyIdentity', 'enemyStats', 'enemyTraits', 'enemyDrops'],
+        combatOverview: ['combatOverviewTabs', 'combatOverviewContent'],
+      },
+    };
+
+    for (const [screen, panels] of Object.entries(expected)) {
+      for (const [panelId, regionIds] of Object.entries(panels)) {
+        expect(getUiPanelRegions(screen as ScreenId, panelId).map((region) => region.id)).toEqual(regionIds);
+        expect(getUiPanelRegionPresets(screen as ScreenId, panelId).length).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('protects essential controls while allowing informational regions to be hidden', () => {
+    expect(getUiPanelRegions('settings', 'settingsSave').every((region) => region.canHide === false)).toBe(true);
+    expect(getUiPanelRegions('combat', 'liveCombat').map((region) => region.canHide)).toEqual([
+      false,
+      true,
+      false,
+      true,
+    ]);
+    expect(getUiPanelRegions('inventory', 'inventoryToolbar').map((region) => region.canHide)).toEqual([
+      false,
+      true,
+      false,
+    ]);
   });
 
   it('migrates legacy layouts into the current version and backfills new panels and locks', () => {

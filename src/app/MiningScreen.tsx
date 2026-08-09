@@ -32,6 +32,8 @@ import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
 import { UiPanelGrid } from './UiPanelGrid';
+import { UiPanelRegionGrid } from './UiPanelRegionGrid';
+import { UiPanelRegionSlot } from './UiPanelRegionSlot';
 import { GameTooltip } from './items/GameTooltip';
 import { ItemTooltip } from './items/ItemTooltip';
 import { ExplainedTerm } from './tooltips/GameConceptTooltip';
@@ -313,13 +315,34 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
       <UiPanelGrid screen="mining" className="mining-panel-grid">
         <UiPanelSlot screen="mining" id="miningOverview" layout={uiLayout}>
           <section className="panel scene-panel mining-overview-panel mining-active-panel">
-            <ThreeScene
+            <UiPanelRegionGrid
               screen="mining"
-              settings={game.settings}
-              miningTheme={activeDisplayNode.theme}
-              miningStage={activeDisplayRuntime.stageIndex}
-            />
-            <div className="mining-overview-content">
+              panelId="miningOverview"
+              layout={uiLayout}
+              className="mining-overview-layout"
+            >
+              <UiPanelRegionSlot
+                screen="mining"
+                panelId="miningOverview"
+                regionId="miningOverviewScene"
+                layout={uiLayout}
+                className="mining-overview-scene-region"
+              >
+                <ThreeScene
+                  screen="mining"
+                  settings={game.settings}
+                  miningTheme={activeDisplayNode.theme}
+                  miningStage={activeDisplayRuntime.stageIndex}
+                />
+              </UiPanelRegionSlot>
+              <UiPanelRegionSlot
+                screen="mining"
+                panelId="miningOverview"
+                regionId="miningOverviewActivity"
+                layout={uiLayout}
+                className="mining-overview-activity-region"
+              >
+                <div className="mining-overview-content">
               <div className="eyebrow">{activeNode ? 'Active Mining' : 'Mining Idle'}</div>
               <h2>{activeNode?.name ?? selectedNode.name}</h2>
               <p className="subtle">
@@ -388,25 +411,31 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 </div>
                 <StaminaBar stamina={game.mining.stamina} showHelpIcons={game.settings.showHelpIcons} />
               </div>
-            </div>
+                </div>
+              </UiPanelRegionSlot>
+            </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
 
         <UiPanelSlot screen="mining" id="miningNodes" layout={uiLayout}>
           <section className="panel panel-pad">
-            <div className="split">
-              <div>
-                <div className="eyebrow">Available Deposits</div>
-                <h2>Mining deposits</h2>
-                <p className="subtle">
-                  Select a rock to inspect it. Mining only changes when you press its action.
-                </p>
-              </div>
-              <span className="badge">
-                {occupiedSlots(game.inventory)}/{GAME_CONFIG.inventorySlots} slots
-              </span>
-            </div>
-            <div className="list mining-node-list">
+            <UiPanelRegionGrid screen="mining" panelId="miningNodes" layout={uiLayout} className="mining-nodes-layout">
+              <UiPanelRegionSlot screen="mining" panelId="miningNodes" regionId="miningNodesHeading" layout={uiLayout}>
+                <div className="split">
+                  <div>
+                    <div className="eyebrow">Available Deposits</div>
+                    <h2>Mining deposits</h2>
+                    <p className="subtle">
+                      Select a rock to inspect it. Mining only changes when you press its action.
+                    </p>
+                  </div>
+                  <span className="badge">
+                    {occupiedSlots(game.inventory)}/{GAME_CONFIG.inventorySlots} slots
+                  </span>
+                </div>
+              </UiPanelRegionSlot>
+              <UiPanelRegionSlot screen="mining" panelId="miningNodes" regionId="miningNodesBrowser" layout={uiLayout}>
+                <div className="list mining-node-list">
               {MINING_NODES.map((node) => {
                 const locked = game.skills.mining.level < node.level;
                 const isSelected = selectedNode.id === node.id;
@@ -484,14 +513,17 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                   </div>
                 );
               })}
-            </div>
+                </div>
+              </UiPanelRegionSlot>
+            </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
 
         <UiPanelSlot screen="mining" id="miningDetails" layout={uiLayout}>
           <section className="panel panel-pad mining-details-panel">
-            <div className="mining-details-grid">
-              <div className="mining-selected-rock">
+            <UiPanelRegionGrid screen="mining" panelId="miningDetails" layout={uiLayout} className="mining-details-layout">
+              <UiPanelRegionSlot screen="mining" panelId="miningDetails" regionId="miningDetailsRock" layout={uiLayout}>
+                <div className="mining-selected-rock">
                 <div className="eyebrow">Selected rock</div>
                 <h2>{selectedNode.name}</h2>
                 <p className="subtle">
@@ -547,9 +579,11 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                     <p className="subtle">No authored bonus drops.</p>
                   )}
                 </div>
-              </div>
+                </div>
+              </UiPanelRegionSlot>
 
-              <div className="mining-tool-details">
+              <UiPanelRegionSlot screen="mining" panelId="miningDetails" regionId="miningDetailsTool" layout={uiLayout}>
+                <div className="mining-tool-details">
                 <div className="eyebrow">Current pickaxe</div>
                 <h2>{activeTool.itemId ? itemById[activeTool.itemId]?.name : 'No pickaxe'}</h2>
                 <ItemTooltip item={activeTool.itemId ? itemById[activeTool.itemId] : undefined}>
@@ -640,8 +674,9 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                     </small>
                   )}
                 </div>
-              </div>
-            </div>
+                </div>
+              </UiPanelRegionSlot>
+            </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
       </UiPanelGrid>

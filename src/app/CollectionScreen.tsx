@@ -23,6 +23,8 @@ import { EnemyTooltip } from './tooltips/EnemyTooltip';
 import { formatDamageRange } from './combat/combatPresentation';
 import { UiPanelGrid } from './UiPanelGrid';
 import { UiPanelSlot } from './UiPanelSlot';
+import { UiPanelRegionGrid } from './UiPanelRegionGrid';
+import { UiPanelRegionSlot } from './UiPanelRegionSlot';
 import { DEFAULT_UI_LAYOUT, type UiLayout } from './uiLayout';
 import {
   collectionEnemyMatchesSearch,
@@ -65,27 +67,35 @@ const ProgressBar = ({ percent }: { percent: number }) => (
   </div>
 );
 
-function CollectionSummary({ game }: { game: GameState }) {
+function CollectionSummary({ game, uiLayout }: { game: GameState; uiLayout: UiLayout }) {
   const items = getItemCollectionProgress(game);
   const monsters = getMonsterCollectionProgress(game);
   const overall = getOverallCollectionProgress(game);
   return (
     <section className="panel collection-summary" aria-label="Collection completion">
-      <div className="collection-summary-stat">
-        <span className="eyebrow">Items</span>
-        <strong>{items.discovered} / {items.total}</strong>
-        <ProgressBar percent={items.percent} />
-      </div>
-      <div className="collection-summary-stat">
-        <span className="eyebrow">Monsters</span>
-        <strong>{monsters.discovered} / {monsters.total}</strong>
-        <ProgressBar percent={monsters.percent} />
-      </div>
-      <div className="collection-summary-stat collection-summary-overall">
-        <span className="eyebrow">Overall discovery</span>
-        <strong>{overall.percent}%</strong>
-        <ProgressBar percent={overall.percent} />
-      </div>
+      <UiPanelRegionGrid screen="collection" panelId="collectionSummary" layout={uiLayout} className="collection-summary-regions">
+        <UiPanelRegionSlot screen="collection" panelId="collectionSummary" regionId="collectionSummaryItems" layout={uiLayout}>
+          <div className="collection-summary-stat">
+            <span className="eyebrow">Items</span>
+            <strong>{items.discovered} / {items.total}</strong>
+            <ProgressBar percent={items.percent} />
+          </div>
+        </UiPanelRegionSlot>
+        <UiPanelRegionSlot screen="collection" panelId="collectionSummary" regionId="collectionSummaryMonsters" layout={uiLayout}>
+          <div className="collection-summary-stat">
+            <span className="eyebrow">Monsters</span>
+            <strong>{monsters.discovered} / {monsters.total}</strong>
+            <ProgressBar percent={monsters.percent} />
+          </div>
+        </UiPanelRegionSlot>
+        <UiPanelRegionSlot screen="collection" panelId="collectionSummary" regionId="collectionSummaryOverall" layout={uiLayout}>
+          <div className="collection-summary-stat collection-summary-overall">
+            <span className="eyebrow">Overall discovery</span>
+            <strong>{overall.percent}%</strong>
+            <ProgressBar percent={overall.percent} />
+          </div>
+        </UiPanelRegionSlot>
+      </UiPanelRegionGrid>
     </section>
   );
 }
@@ -708,25 +718,31 @@ export function CollectionScreen({
       </div>
       <UiPanelGrid screen="collection" className="collection-panel-grid">
         <UiPanelSlot screen="collection" id="collectionSummary" layout={uiLayout}>
-          <CollectionSummary game={game} />
+          <CollectionSummary game={game} uiLayout={uiLayout} />
         </UiPanelSlot>
         <UiPanelSlot screen="collection" id="collectionBrowser" layout={uiLayout}>
           <section className="panel panel-pad collection-panel">
-            <div className="tabs" role="tablist" aria-label="Collection categories">
-              {(['items', 'monsters'] as CollectionTab[]).map((option) => (
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={tab === option}
-                  className={`tab ${tab === option ? 'active' : ''}`}
-                  onClick={() => setTab(option)}
-                  key={option}
-                >
-                  {option === 'items' ? 'Items' : 'Monsters'}
-                </button>
-              ))}
-            </div>
-            {tab === 'items' ? <ItemCollection game={game} onNavigate={onNavigate} /> : <MonsterCollection game={game} />}
+            <UiPanelRegionGrid screen="collection" panelId="collectionBrowser" layout={uiLayout} className="collection-browser-regions">
+              <UiPanelRegionSlot screen="collection" panelId="collectionBrowser" regionId="collectionBrowserControls" layout={uiLayout}>
+                <div className="tabs" role="tablist" aria-label="Collection categories">
+                  {(['items', 'monsters'] as CollectionTab[]).map((option) => (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={tab === option}
+                      className={`tab ${tab === option ? 'active' : ''}`}
+                      onClick={() => setTab(option)}
+                      key={option}
+                    >
+                      {option === 'items' ? 'Items' : 'Monsters'}
+                    </button>
+                  ))}
+                </div>
+              </UiPanelRegionSlot>
+              <UiPanelRegionSlot screen="collection" panelId="collectionBrowser" regionId="collectionBrowserContent" layout={uiLayout}>
+                {tab === 'items' ? <ItemCollection game={game} onNavigate={onNavigate} /> : <MonsterCollection game={game} />}
+              </UiPanelRegionSlot>
+            </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
       </UiPanelGrid>

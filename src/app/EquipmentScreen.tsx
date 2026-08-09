@@ -43,6 +43,8 @@ import { ItemIcon } from './ItemIcon';
 import { ScreenHeading } from './ScreenHeading';
 import { UiPanelSlot } from './UiPanelSlot';
 import { UiPanelGrid } from './UiPanelGrid';
+import { UiPanelRegionGrid } from './UiPanelRegionGrid';
+import { UiPanelRegionSlot } from './UiPanelRegionSlot';
 import { ItemTooltip } from './items/ItemTooltip';
 import { SpecialAttackDetails } from './items/SpecialAttackDetails';
 import {
@@ -418,6 +420,8 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
             <div className="eyebrow">Character loadout</div>
             <h2 id="equipment-loadout-title">Active equipment</h2>
 
+            <UiPanelRegionGrid screen="equipment" panelId="equipmentLoadout" layout={uiLayout} className="equipment-loadout-regions">
+            <UiPanelRegionSlot screen="equipment" panelId="equipmentLoadout" regionId="equipmentLoadoutCombat" layout={uiLayout}>
             <section className="equipment-combat-section" aria-labelledby="combat-gear-title">
               <div className="equipment-section-heading">
                 <div className="eyebrow">Combat Gear</div>
@@ -437,7 +441,9 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                 ))}
               </div>
             </section>
+            </UiPanelRegionSlot>
 
+            <UiPanelRegionSlot screen="equipment" panelId="equipmentLoadout" regionId="equipmentLoadoutAccessories" layout={uiLayout}>
             <section className="equipment-accessory-section" aria-labelledby="accessories-title">
               <div className="eyebrow">Accessories</div>
               <h3 id="accessories-title" className="visually-hidden">
@@ -455,7 +461,9 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                 ))}
               </div>
             </section>
+            </UiPanelRegionSlot>
 
+            <UiPanelRegionSlot screen="equipment" panelId="equipmentLoadout" regionId="equipmentLoadoutProfession" layout={uiLayout}>
             <section
               className="equipment-profession-section"
               aria-labelledby="profession-equipment-title"
@@ -479,7 +487,9 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                 </div>
               </div>
             </section>
+            </UiPanelRegionSlot>
 
+            <UiPanelRegionSlot screen="equipment" panelId="equipmentLoadout" regionId="equipmentLoadoutInspection" layout={uiLayout}>
             <div className="equipment-loadout-workspace">
               <section
                 className="equipment-selected-slot equipment-loadout-inspection"
@@ -599,6 +609,8 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                 )}
               </section>
             </div>
+            </UiPanelRegionSlot>
+            </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
         <UiPanelSlot screen="equipment" id="equipmentStats" layout={uiLayout}>
@@ -606,16 +618,20 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
             className={`panel panel-pad equipment-comparison equipment-stats-shell ${statsPanelScale === 1 ? 'equipment-stats-sticky-safe' : ''}`}
             aria-labelledby="equipment-stats-title"
           >
-            <div className="eyebrow">Character statistics</div>
-            <h2 id="equipment-stats-title">Derived statistics</h2>
-            <EquipmentStatRows
-              game={game}
-              selectedSlot={selectedSlot}
-              candidateId={selectedSlot === 'tool' ? null : (candidateItem?.id ?? null)}
-            />
+            <UiPanelRegionGrid screen="equipment" panelId="equipmentStats" layout={uiLayout} className="equipment-stats-regions">
+              <UiPanelRegionSlot screen="equipment" panelId="equipmentStats" regionId="equipmentStatsCombat" layout={uiLayout}>
+                <div className="eyebrow">Character statistics</div>
+                <h2 id="equipment-stats-title">Derived statistics</h2>
+                <EquipmentStatRows
+                  game={game}
+                  selectedSlot={selectedSlot}
+                  candidateId={selectedSlot === 'tool' ? null : (candidateItem?.id ?? null)}
+                />
+              </UiPanelRegionSlot>
 
-            {candidateItem && selectedSlot !== 'tool' && (
-              <section className="equipment-stat-section" aria-labelledby="bonus-comparison-title">
+              <UiPanelRegionSlot screen="equipment" panelId="equipmentStats" regionId="equipmentStatsComparison" layout={uiLayout}>
+              {candidateItem && selectedSlot !== 'tool' && (
+                <section className="equipment-stat-section" aria-labelledby="bonus-comparison-title">
                 <div className="eyebrow" id="bonus-comparison-title">
                   Item bonus comparison
                 </div>
@@ -642,11 +658,13 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                 ) : (
                   <p className="subtle">No bonus changes between these items.</p>
                 )}
-              </section>
-            )}
+                </section>
+              )}
+              </UiPanelRegionSlot>
 
-            {selectedSlot === 'weapon' && (currentSpecial || candidateSpecial) && (
-              <section
+              <UiPanelRegionSlot screen="equipment" panelId="equipmentStats" regionId="equipmentStatsSpecial" layout={uiLayout}>
+              {selectedSlot === 'weapon' && (currentSpecial || candidateSpecial) && (
+                <section
                 className="equipment-stat-section equipment-special-comparison"
                 aria-labelledby="special-comparison-title"
               >
@@ -669,15 +687,19 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                     </div>
                   )}
                 </div>
-              </section>
-            )}
+                </section>
+              )}
+              </UiPanelRegionSlot>
 
-            <ProfessionBonuses
-              currentTool={game.equipment.tool ? itemById[game.equipment.tool] : undefined}
-              candidateItem={selectedSlot === 'tool' ? candidateItem : undefined}
-              expanded={professionExpanded}
-              onToggle={() => setProfessionExpanded((value) => !value)}
-            />
+              <UiPanelRegionSlot screen="equipment" panelId="equipmentStats" regionId="equipmentStatsProfession" layout={uiLayout}>
+                <ProfessionBonuses
+                  currentTool={game.equipment.tool ? itemById[game.equipment.tool] : undefined}
+                  candidateItem={selectedSlot === 'tool' ? candidateItem : undefined}
+                  expanded={professionExpanded}
+                  onToggle={() => setProfessionExpanded((value) => !value)}
+                />
+              </UiPanelRegionSlot>
+            </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
       </UiPanelGrid>

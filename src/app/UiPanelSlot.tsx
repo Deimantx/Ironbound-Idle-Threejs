@@ -13,6 +13,7 @@ interface UiPanelSlotProps {
   screen: ScreenId;
   id: UiPanelId;
   layout: UiLayout;
+  autoHeight?: boolean;
   children: ReactNode;
 }
 
@@ -26,7 +27,7 @@ const getPanelStyle = (
   minHeight: reservedHeight > 0 ? `${reservedHeight}px` : undefined,
 });
 
-export function UiPanelSlot({ screen, id, layout, children }: UiPanelSlotProps) {
+export function UiPanelSlot({ screen, id, layout, autoHeight = false, children }: UiPanelSlotProps) {
   const contentRef = useRef<HTMLDivElement>(null);
   const [contentHeight, setContentHeight] = useState(0);
   const [compactViewport, setCompactViewport] = useState(() =>
@@ -64,13 +65,13 @@ export function UiPanelSlot({ screen, id, layout, children }: UiPanelSlotProps) 
     );
     observer.observe(element);
     return () => observer.disconnect();
-  }, []);
+  }, [autoHeight, compactViewport]);
 
   if (!position) return null;
 
   const scale = compactViewport ? 1 : position.scale;
   const hasMeasurement = contentHeight > 0;
-  const reservedHeight = Math.max(position.height, contentHeight) * scale;
+  const reservedHeight = Math.max(autoHeight ? 0 : position.height, contentHeight) * scale;
   const appearance = getUiPanelAppearance(layout, screen, id);
   const appearanceStyle = {
     ...(appearance.background ? { '--ui-panel-local-background': appearance.background } : {}),

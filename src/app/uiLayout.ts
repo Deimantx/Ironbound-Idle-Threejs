@@ -385,6 +385,232 @@ export const DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT: UiPanelInternalLayout = 
   },
 };
 
+export const DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    miningOverviewScene: { order: 1, column: 1, columnSpan: 4, row: 1, visible: true },
+    miningOverviewActivity: { order: 2, column: 5, columnSpan: 8, row: 1, visible: true },
+  },
+};
+
+export const DEFAULT_MINING_NODES_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    miningNodesHeading: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    miningNodesBrowser: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+  },
+};
+
+export const DEFAULT_MINING_DETAILS_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    miningDetailsRock: { order: 1, column: 1, columnSpan: 7, row: 1, visible: true },
+    miningDetailsTool: { order: 2, column: 8, columnSpan: 5, row: 1, visible: true },
+  },
+};
+
+export const DEFAULT_SMITHING_OVERVIEW_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 14,
+  padding: 0,
+  regions: {
+    smithingOverviewActiveWork: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    smithingOverviewControls: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+  },
+};
+
+export const DEFAULT_SMITHING_FORGE_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    smithingForgeHeading: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    smithingForgeRecipes: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+  },
+};
+
+export const DEFAULT_SMITHING_ANVIL_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    smithingAnvilHeading: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    smithingAnvilRecipes: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+  },
+};
+
+export const DEFAULT_INVENTORY_TOOLBAR_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 14,
+  padding: 0,
+  regions: {
+    inventoryToolbarSearch: { order: 1, column: 1, columnSpan: 7, row: 1, visible: true },
+    inventoryToolbarCapacity: { order: 2, column: 8, columnSpan: 5, row: 1, visible: true },
+    inventoryToolbarFilters: { order: 3, column: 1, columnSpan: 12, row: 2, visible: true },
+  },
+};
+
+export const DEFAULT_INVENTORY_BANK_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    inventoryBankHeading: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    inventoryBankItems: { order: 2, column: 1, columnSpan: 8, row: 2, visible: true },
+    inventoryBankDetails: { order: 3, column: 9, columnSpan: 4, row: 2, visible: true },
+  },
+};
+
+export const DEFAULT_EQUIPMENT_LOADOUT_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    equipmentLoadoutCombat: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    equipmentLoadoutAccessories: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+    equipmentLoadoutProfession: { order: 3, column: 1, columnSpan: 12, row: 3, visible: true },
+    equipmentLoadoutInspection: { order: 4, column: 1, columnSpan: 12, row: 4, visible: true },
+  },
+};
+
+export const DEFAULT_EQUIPMENT_STATS_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    equipmentStatsCombat: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    equipmentStatsComparison: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+    equipmentStatsSpecial: { order: 3, column: 1, columnSpan: 12, row: 3, visible: true },
+    equipmentStatsProfession: { order: 4, column: 1, columnSpan: 12, row: 4, visible: true },
+  },
+};
+
+export const DEFAULT_COLLECTION_SUMMARY_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 12,
+  padding: 0,
+  regions: {
+    collectionSummaryItems: { order: 1, column: 1, columnSpan: 4, row: 1, visible: true },
+    collectionSummaryMonsters: { order: 2, column: 5, columnSpan: 4, row: 1, visible: true },
+    collectionSummaryOverall: { order: 3, column: 9, columnSpan: 4, row: 1, visible: true },
+  },
+};
+
+export const DEFAULT_COLLECTION_BROWSER_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 14,
+  padding: 0,
+  regions: {
+    collectionBrowserControls: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    collectionBrowserContent: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+  },
+};
+
+export const DEFAULT_SETTINGS_SAVE_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    settingsSavePrimary: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    settingsSaveTransfer: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+    settingsSaveDanger: { order: 3, column: 1, columnSpan: 12, row: 3, visible: true },
+  },
+};
+
+export const DEFAULT_SETTINGS_PRESENTATION_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    settingsPresentationGeneral: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    settingsPresentationAccessibility: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+    settingsPresentationGraphics: { order: 3, column: 1, columnSpan: 12, row: 3, visible: true },
+  },
+};
+
+export const DEFAULT_HELP_GAMEPLAY_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    helpGameplayTime: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    helpGameplayOffline: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+  },
+};
+
+export const DEFAULT_HELP_SAVE_INVENTORY_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    helpSaveInventorySave: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    helpSaveInventoryInventory: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+  },
+};
+
+export const DEFAULT_COMBAT_LOCATIONS_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    combatLocationsNavigation: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    combatLocationsAreas: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+    combatLocationsEnemies: { order: 3, column: 1, columnSpan: 12, row: 3, visible: true },
+  },
+};
+
+export const DEFAULT_COMBAT_PLAYER_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    playerIdentity: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    playerEquipment: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+    playerCombatStyle: { order: 3, column: 1, columnSpan: 12, row: 3, visible: true },
+    playerDerivedStats: { order: 4, column: 1, columnSpan: 12, row: 4, visible: true },
+  },
+};
+
+export const DEFAULT_COMBAT_LIVE_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    liveCombatStatus: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    liveCombatTimeline: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+    liveCombatControls: { order: 3, column: 1, columnSpan: 12, row: 3, visible: true },
+    liveCombatLog: { order: 4, column: 1, columnSpan: 12, row: 4, visible: true },
+  },
+};
+
+export const DEFAULT_COMBAT_ENEMY_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    enemyIdentity: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    enemyStats: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+    enemyTraits: { order: 3, column: 1, columnSpan: 12, row: 3, visible: true },
+    enemyDrops: { order: 4, column: 1, columnSpan: 12, row: 4, visible: true },
+  },
+};
+
+export const DEFAULT_COMBAT_OVERVIEW_INTERNAL_LAYOUT: UiPanelInternalLayout = {
+  direction: 'grid',
+  gap: 0,
+  padding: 0,
+  regions: {
+    combatOverviewTabs: { order: 1, column: 1, columnSpan: 12, row: 1, visible: true },
+    combatOverviewContent: { order: 2, column: 1, columnSpan: 12, row: 2, visible: true },
+  },
+};
+
 const withRegionPositionUpdates = (
   base: UiPanelInternalLayout,
   updates: Partial<Record<UiPanelRegionId, Partial<UiPanelRegionPosition>>>,
@@ -415,11 +641,59 @@ const splitRegionLayout = (
   firstRegionId: UiPanelRegionId,
   secondRegionId: UiPanelRegionId,
   firstSpan: number,
+  row = 2,
 ): UiPanelInternalLayout =>
   withRegionPositionUpdates(base, {
-    [firstRegionId]: { column: 1, columnSpan: firstSpan, row: 2 },
-    [secondRegionId]: { column: firstSpan + 1, columnSpan: 12 - firstSpan, row: 2 },
+    [firstRegionId]: { column: 1, columnSpan: firstSpan, row },
+    [secondRegionId]: { column: firstSpan + 1, columnSpan: 12 - firstSpan, row },
   });
+
+const simpleRegionPresets = (base: UiPanelInternalLayout): UiPanelRegionPreset[] => [
+  { id: 'default', label: 'Default', layout: base },
+  { id: 'stacked', label: 'Stacked', layout: stackedRegionLayout(base) },
+];
+
+const ratioRegionPresets = (
+  base: UiPanelInternalLayout,
+  firstRegionId: UiPanelRegionId,
+  secondRegionId: UiPanelRegionId,
+  row = 2,
+): UiPanelRegionPreset[] => [
+  { id: 'default', label: 'Default', layout: base },
+  {
+    id: '75-25',
+    label: '75 / 25',
+    layout: splitRegionLayout(base, firstRegionId, secondRegionId, 9, row),
+  },
+  {
+    id: '50-50',
+    label: '50 / 50',
+    layout: splitRegionLayout(base, firstRegionId, secondRegionId, 6, row),
+  },
+  { id: 'stacked', label: 'Stacked', layout: stackedRegionLayout(base) },
+];
+
+type RegionMetadata = [UiPanelRegionId, string, string, boolean?];
+
+const createPanelRegionRegistryEntry = (
+  panelId: UiPanelId,
+  label: string,
+  defaultLayout: UiPanelInternalLayout,
+  regions: RegionMetadata[],
+  presets: UiPanelRegionPreset[] = simpleRegionPresets(defaultLayout),
+): UiPanelRegionRegistryEntry => ({
+  panelId,
+  label,
+  defaultLayout,
+  presets,
+  regions: regions.map(([id, regionLabel, description, canHide = true]) => ({
+    id,
+    label: regionLabel,
+    description,
+    defaultPosition: defaultLayout.regions[id],
+    canHide,
+  })),
+});
 
 const homeOverviewRatioLayout = (statsSpan: number): UiPanelInternalLayout =>
   withRegionPositionUpdates(DEFAULT_HOME_OVERVIEW_INTERNAL_LAYOUT, {
@@ -603,6 +877,252 @@ export const UI_PANEL_REGION_REGISTRY: Partial<
       ],
     },
   },
+  mining: {
+    miningOverview: createPanelRegionRegistryEntry(
+      'miningOverview',
+      'Mining overview contents',
+      DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT,
+      [
+        ['miningOverviewScene', 'Scene', 'Selected rock visual and mining environment'],
+        ['miningOverviewActivity', 'Activity', 'Current rock, stage, progress, stamina, and mining state', false],
+      ],
+      ratioRegionPresets(
+        DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT,
+        'miningOverviewScene',
+        'miningOverviewActivity',
+        1,
+      ),
+    ),
+    miningNodes: createPanelRegionRegistryEntry(
+      'miningNodes',
+      'Mining deposits contents',
+      DEFAULT_MINING_NODES_INTERNAL_LAYOUT,
+      [
+        ['miningNodesHeading', 'Heading', 'Deposit title, description, and inventory capacity'],
+        ['miningNodesBrowser', 'Node Browser', 'Selectable deposits and Mine or Stop controls', false],
+      ],
+    ),
+    miningDetails: createPanelRegionRegistryEntry(
+      'miningDetails',
+      'Mining details contents',
+      DEFAULT_MINING_DETAILS_INTERNAL_LAYOUT,
+      [
+        ['miningDetailsRock', 'Rock Details', 'Selected rock, stage, output, and bonus drops'],
+        ['miningDetailsTool', 'Tool Details', 'Current pickaxe, effectiveness, and recommendation'],
+      ],
+      ratioRegionPresets(
+        DEFAULT_MINING_DETAILS_INTERNAL_LAYOUT,
+        'miningDetailsRock',
+        'miningDetailsTool',
+        1,
+      ),
+    ),
+  },
+  smithing: {
+    smithingOverview: createPanelRegionRegistryEntry(
+      'smithingOverview',
+      'Smithing overview contents',
+      DEFAULT_SMITHING_OVERVIEW_INTERNAL_LAYOUT,
+      [
+        ['smithingOverviewActiveWork', 'Active Work', 'Current Forge or Anvil order and production state', false],
+        ['smithingOverviewControls', 'Quantity Controls', 'Quantity mode for the next smithing action', false],
+      ],
+      ratioRegionPresets(
+        DEFAULT_SMITHING_OVERVIEW_INTERNAL_LAYOUT,
+        'smithingOverviewActiveWork',
+        'smithingOverviewControls',
+      ),
+    ),
+    smithingForge: createPanelRegionRegistryEntry(
+      'smithingForge',
+      'Forge contents',
+      DEFAULT_SMITHING_FORGE_INTERNAL_LAYOUT,
+      [
+        ['smithingForgeHeading', 'Heading', 'Forge facility title, upgrade, fuel, and visibility controls', false],
+        ['smithingForgeRecipes', 'Recipe Browser', 'Smelting filters and Forge recipe cards', false],
+      ],
+    ),
+    smithingAnvil: createPanelRegionRegistryEntry(
+      'smithingAnvil',
+      'Anvil contents',
+      DEFAULT_SMITHING_ANVIL_INTERNAL_LAYOUT,
+      [
+        ['smithingAnvilHeading', 'Heading', 'Anvil facility title, upgrade, and tool controls', false],
+        ['smithingAnvilRecipes', 'Recipe Browser', 'Type, metal, tier filters, and Anvil recipes', false],
+      ],
+    ),
+  },
+  inventory: {
+    inventoryToolbar: createPanelRegionRegistryEntry(
+      'inventoryToolbar',
+      'Inventory toolbar contents',
+      DEFAULT_INVENTORY_TOOLBAR_INTERNAL_LAYOUT,
+      [
+        ['inventoryToolbarSearch', 'Search', 'Inventory search field and clear action', false],
+        ['inventoryToolbarCapacity', 'Capacity', 'Occupied inventory capacity and progress'],
+        ['inventoryToolbarFilters', 'Filters', 'Inventory category filters and counts', false],
+      ],
+    ),
+    inventoryBank: createPanelRegionRegistryEntry(
+      'inventoryBank',
+      'Inventory bank contents',
+      DEFAULT_INVENTORY_BANK_INTERNAL_LAYOUT,
+      [
+        ['inventoryBankHeading', 'Heading and Sort', 'Item bank title, result count, sort, and manual ordering controls', false],
+        ['inventoryBankItems', 'Item Grid', 'Inventory stacks, selection, and item drag ordering', false],
+        ['inventoryBankDetails', 'Item Details', 'Selected item source, equipment, lock, and destroy actions'],
+      ],
+      [
+        { id: 'default', label: 'Default', layout: DEFAULT_INVENTORY_BANK_INTERNAL_LAYOUT },
+        { id: '75-25', label: '75 / 25', layout: splitRegionLayout(DEFAULT_INVENTORY_BANK_INTERNAL_LAYOUT, 'inventoryBankItems', 'inventoryBankDetails', 9) },
+        { id: '67-33', label: '67 / 33', layout: splitRegionLayout(DEFAULT_INVENTORY_BANK_INTERNAL_LAYOUT, 'inventoryBankItems', 'inventoryBankDetails', 8) },
+        { id: '50-50', label: '50 / 50', layout: splitRegionLayout(DEFAULT_INVENTORY_BANK_INTERNAL_LAYOUT, 'inventoryBankItems', 'inventoryBankDetails', 6) },
+        { id: 'stacked', label: 'Stacked', layout: stackedRegionLayout(DEFAULT_INVENTORY_BANK_INTERNAL_LAYOUT) },
+      ],
+    ),
+  },
+  equipment: {
+    equipmentLoadout: createPanelRegionRegistryEntry(
+      'equipmentLoadout',
+      'Equipment loadout contents',
+      DEFAULT_EQUIPMENT_LOADOUT_INTERNAL_LAYOUT,
+      [
+        ['equipmentLoadoutCombat', 'Combat Gear', 'Combat equipment slots and selection', false],
+        ['equipmentLoadoutAccessories', 'Accessories', 'Accessory equipment slots and selection', false],
+        ['equipmentLoadoutProfession', 'Profession Gear', 'Profession tool slot and mining equipment', false],
+        ['equipmentLoadoutInspection', 'Selected Gear and Compatible Items', 'Equip, unequip, compare, and compatible inventory actions', false],
+      ],
+    ),
+    equipmentStats: createPanelRegionRegistryEntry(
+      'equipmentStats',
+      'Equipment statistics contents',
+      DEFAULT_EQUIPMENT_STATS_INTERNAL_LAYOUT,
+      [
+        ['equipmentStatsCombat', 'Combat Statistics', 'Derived combat statistics and character statistics link', false],
+        ['equipmentStatsComparison', 'Bonus Comparison', 'Current and candidate item bonus comparison'],
+        ['equipmentStatsSpecial', 'Special Attacks', 'Current and candidate weapon special attacks'],
+        ['equipmentStatsProfession', 'Profession Bonuses', 'Expandable profession tool bonuses'],
+      ],
+    ),
+  },
+  collection: {
+    collectionSummary: createPanelRegionRegistryEntry(
+      'collectionSummary',
+      'Collection summary contents',
+      DEFAULT_COLLECTION_SUMMARY_INTERNAL_LAYOUT,
+      [
+        ['collectionSummaryItems', 'Items Progress', 'Discovered item count and progress'],
+        ['collectionSummaryMonsters', 'Monsters Progress', 'Discovered monster count and progress'],
+        ['collectionSummaryOverall', 'Overall Progress', 'Combined collection completion progress'],
+      ],
+      simpleRegionPresets(DEFAULT_COLLECTION_SUMMARY_INTERNAL_LAYOUT),
+    ),
+    collectionBrowser: createPanelRegionRegistryEntry(
+      'collectionBrowser',
+      'Collection browser contents',
+      DEFAULT_COLLECTION_BROWSER_INTERNAL_LAYOUT,
+      [
+        ['collectionBrowserControls', 'Browser Controls', 'Items or Monsters tabs, search, filters, and result counts', false],
+        ['collectionBrowserContent', 'Browser Content', 'Collection cards and selected record details', false],
+      ],
+    ),
+  },
+  settings: {
+    settingsSave: createPanelRegionRegistryEntry(
+      'settingsSave',
+      'Save settings contents',
+      DEFAULT_SETTINGS_SAVE_INTERNAL_LAYOUT,
+      [
+        ['settingsSavePrimary', 'Primary Save', 'Save Now and primary save status', false],
+        ['settingsSaveTransfer', 'Save Transfer', 'Export and import save controls', false],
+        ['settingsSaveDanger', 'Profile and Reset', 'Profile return, character reset, and deletion controls', false],
+      ],
+    ),
+    settingsPresentation: createPanelRegionRegistryEntry(
+      'settingsPresentation',
+      'Presentation settings contents',
+      DEFAULT_SETTINGS_PRESENTATION_INTERNAL_LAYOUT,
+      [
+        ['settingsPresentationGeneral', 'General', 'Sound, music, and number presentation settings', false],
+        ['settingsPresentationAccessibility', 'Accessibility', 'Reduced motion and help icon settings', false],
+        ['settingsPresentationGraphics', 'Graphics', 'Three.js quality setting', false],
+      ],
+    ),
+  },
+  help: {
+    helpGameplay: createPanelRegionRegistryEntry(
+      'helpGameplay',
+      'Gameplay help contents',
+      DEFAULT_HELP_GAMEPLAY_INTERNAL_LAYOUT,
+      [
+        ['helpGameplayTime', 'Time and Actions', 'Elapsed-time gameplay and action replacement guidance'],
+        ['helpGameplayOffline', 'Offline Progress', 'Offline simulation and safe stopping guidance'],
+      ],
+    ),
+    helpSaveInventory: createPanelRegionRegistryEntry(
+      'helpSaveInventory',
+      'Save and inventory help contents',
+      DEFAULT_HELP_SAVE_INVENTORY_INTERNAL_LAYOUT,
+      [
+        ['helpSaveInventorySave', 'Save Safety', 'Autosave, export, and backup guidance'],
+        ['helpSaveInventoryInventory', 'Inventory', 'Stacking, equipment slots, and lock guidance'],
+      ],
+    ),
+  },
+  combat: {
+    combatLocations: createPanelRegionRegistryEntry(
+      'combatLocations',
+      'Combat locations contents',
+      DEFAULT_COMBAT_LOCATIONS_INTERNAL_LAYOUT,
+      [
+        ['combatLocationsNavigation', 'Navigation', 'Combat browser heading and expand or collapse control', false],
+        ['combatLocationsAreas', 'Areas', 'Combat regions and area selection', false],
+        ['combatLocationsEnemies', 'Enemies', 'Enemy roster and target preview selection', false],
+      ],
+    ),
+    player: createPanelRegionRegistryEntry(
+      'player',
+      'Player combat contents',
+      DEFAULT_COMBAT_PLAYER_INTERNAL_LAYOUT,
+      [
+        ['playerIdentity', 'Identity', 'Player portrait, name, and combat level', false],
+        ['playerEquipment', 'Equipment', 'Equipped combat gear and accessories'],
+        ['playerCombatStyle', 'Combat Style', 'Accurate, Aggressive, and Defensive controls', false],
+        ['playerDerivedStats', 'Derived Stats', 'Accuracy, damage, defence, and attack speed'],
+      ],
+    ),
+    liveCombat: createPanelRegionRegistryEntry(
+      'liveCombat',
+      'Live combat contents',
+      DEFAULT_COMBAT_LIVE_INTERNAL_LAYOUT,
+      [
+        ['liveCombatStatus', 'Combat Status', 'Live heading, combatants, health, and attack status', false],
+        ['liveCombatTimeline', 'Combat Timeline', 'Effects, specials, adrenaline, and combat timing'],
+        ['liveCombatControls', 'Combat Controls', 'Fight, stop, special, inventory, and combat settings controls', false],
+        ['liveCombatLog', 'Combat Log', 'Recent combat actions'],
+      ],
+    ),
+    enemy: createPanelRegionRegistryEntry(
+      'enemy',
+      'Enemy combat contents',
+      DEFAULT_COMBAT_ENEMY_INTERNAL_LAYOUT,
+      [
+        ['enemyIdentity', 'Identity', 'Enemy portrait, name, level, and description', false],
+        ['enemyStats', 'Combat Stats', 'Expandable enemy accuracy, defence, damage, and timing'],
+        ['enemyTraits', 'Traits', 'Enemy trait and special attack details'],
+        ['enemyDrops', 'Drop Preview', 'Preview of the enemy drop table'],
+      ],
+    ),
+    combatOverview: createPanelRegionRegistryEntry(
+      'combatOverview',
+      'Combat overview contents',
+      DEFAULT_COMBAT_OVERVIEW_INTERNAL_LAYOUT,
+      [
+        ['combatOverviewTabs', 'Overview Tabs', 'Session, Loot, and Progression tab navigation', false],
+        ['combatOverviewContent', 'Overview Content', 'The selected session, loot, or progression view', false],
+      ],
+    ),
+  },
 };
 
 const EMPTY_UI_PANELS: UiPanelDefinition[] = [];
@@ -701,6 +1221,43 @@ export const DEFAULT_UI_LAYOUT: UiLayout = {
       homeCombatProgression: cloneInternalLayout(DEFAULT_HOME_COMBAT_PROGRESSION_INTERNAL_LAYOUT),
       homeProfessionProgression: cloneInternalLayout(DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT),
       homeWorldRecord: cloneInternalLayout(DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT),
+    },
+    mining: {
+      miningOverview: cloneInternalLayout(DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT),
+      miningNodes: cloneInternalLayout(DEFAULT_MINING_NODES_INTERNAL_LAYOUT),
+      miningDetails: cloneInternalLayout(DEFAULT_MINING_DETAILS_INTERNAL_LAYOUT),
+    },
+    smithing: {
+      smithingOverview: cloneInternalLayout(DEFAULT_SMITHING_OVERVIEW_INTERNAL_LAYOUT),
+      smithingForge: cloneInternalLayout(DEFAULT_SMITHING_FORGE_INTERNAL_LAYOUT),
+      smithingAnvil: cloneInternalLayout(DEFAULT_SMITHING_ANVIL_INTERNAL_LAYOUT),
+    },
+    inventory: {
+      inventoryToolbar: cloneInternalLayout(DEFAULT_INVENTORY_TOOLBAR_INTERNAL_LAYOUT),
+      inventoryBank: cloneInternalLayout(DEFAULT_INVENTORY_BANK_INTERNAL_LAYOUT),
+    },
+    equipment: {
+      equipmentLoadout: cloneInternalLayout(DEFAULT_EQUIPMENT_LOADOUT_INTERNAL_LAYOUT),
+      equipmentStats: cloneInternalLayout(DEFAULT_EQUIPMENT_STATS_INTERNAL_LAYOUT),
+    },
+    collection: {
+      collectionSummary: cloneInternalLayout(DEFAULT_COLLECTION_SUMMARY_INTERNAL_LAYOUT),
+      collectionBrowser: cloneInternalLayout(DEFAULT_COLLECTION_BROWSER_INTERNAL_LAYOUT),
+    },
+    settings: {
+      settingsSave: cloneInternalLayout(DEFAULT_SETTINGS_SAVE_INTERNAL_LAYOUT),
+      settingsPresentation: cloneInternalLayout(DEFAULT_SETTINGS_PRESENTATION_INTERNAL_LAYOUT),
+    },
+    help: {
+      helpGameplay: cloneInternalLayout(DEFAULT_HELP_GAMEPLAY_INTERNAL_LAYOUT),
+      helpSaveInventory: cloneInternalLayout(DEFAULT_HELP_SAVE_INVENTORY_INTERNAL_LAYOUT),
+    },
+    combat: {
+      combatLocations: cloneInternalLayout(DEFAULT_COMBAT_LOCATIONS_INTERNAL_LAYOUT),
+      player: cloneInternalLayout(DEFAULT_COMBAT_PLAYER_INTERNAL_LAYOUT),
+      liveCombat: cloneInternalLayout(DEFAULT_COMBAT_LIVE_INTERNAL_LAYOUT),
+      enemy: cloneInternalLayout(DEFAULT_COMBAT_ENEMY_INTERNAL_LAYOUT),
+      combatOverview: cloneInternalLayout(DEFAULT_COMBAT_OVERVIEW_INTERNAL_LAYOUT),
     },
   },
   panelAppearances: {},

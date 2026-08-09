@@ -39,6 +39,8 @@ import { ScreenHeading } from './ScreenHeading';
 import { UI_EDITOR_COMPACT_QUERY, type UiLayout } from './uiLayout';
 import { UiPanelSlot } from './UiPanelSlot';
 import { UiPanelGrid } from './UiPanelGrid';
+import { UiPanelRegionGrid } from './UiPanelRegionGrid';
+import { UiPanelRegionSlot } from './UiPanelRegionSlot';
 
 export interface InventoryScreenProps {
   game: GameState;
@@ -433,8 +435,19 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
             <h2 className="visually-hidden" id="inventory-toolbar-title">
               Inventory search and filters
             </h2>
-            <div className="inventory-toolbar-main">
-              <div className="inventory-search-row">
+            <UiPanelRegionGrid
+              screen="inventory"
+              panelId="inventoryToolbar"
+              layout={uiLayout}
+              className="inventory-toolbar-layout"
+            >
+              <UiPanelRegionSlot
+                screen="inventory"
+                panelId="inventoryToolbar"
+                regionId="inventoryToolbarSearch"
+                layout={uiLayout}
+              >
+                <div className="inventory-search-row">
                 <label className="inventory-search-field">
                   <Search size={16} aria-hidden="true" />
                   <span className="visually-hidden">Search inventory</span>
@@ -456,8 +469,15 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                     </button>
                   )}
                 </label>
-              </div>
-              <div className={`inventory-capacity inventory-capacity-${capacityState}`}>
+                </div>
+              </UiPanelRegionSlot>
+              <UiPanelRegionSlot
+                screen="inventory"
+                panelId="inventoryToolbar"
+                regionId="inventoryToolbarCapacity"
+                layout={uiLayout}
+              >
+                <div className={`inventory-capacity inventory-capacity-${capacityState}`}>
                 <div className="inventory-capacity-label">
                   <span>Capacity</span>
                   <strong>
@@ -479,13 +499,19 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                     }}
                   />
                 </div>
-              </div>
-            </div>
-            <div
-              className="inventory-filter-row"
-              role="group"
-              aria-label="Inventory display groups"
-            >
+                </div>
+              </UiPanelRegionSlot>
+              <UiPanelRegionSlot
+                screen="inventory"
+                panelId="inventoryToolbar"
+                regionId="inventoryToolbarFilters"
+                layout={uiLayout}
+              >
+                <div
+                  className="inventory-filter-row"
+                  role="group"
+                  aria-label="Inventory display groups"
+                >
               {INVENTORY_FILTERS.map((option) => {
                 const count = groupCounts[option.id];
                 return (
@@ -501,7 +527,9 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                   </button>
                 );
               })}
-            </div>
+                </div>
+              </UiPanelRegionSlot>
+            </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
         <UiPanelSlot screen="inventory" id="inventoryBank" layout={uiLayout}>
@@ -509,7 +537,19 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
             className="panel panel-pad inventory-bank-panel"
             aria-labelledby="inventory-bank-title"
           >
-            <div className="inventory-bank-heading">
+            <UiPanelRegionGrid
+              screen="inventory"
+              panelId="inventoryBank"
+              layout={uiLayout}
+              className="inventory-bank-regions"
+            >
+              <UiPanelRegionSlot
+                screen="inventory"
+                panelId="inventoryBank"
+                regionId="inventoryBankHeading"
+                layout={uiLayout}
+              >
+              <div className="inventory-bank-heading">
               <div className="inventory-bank-heading-main">
                 <h2 id="inventory-bank-title">Item Bank</h2>
                 <span className="inventory-bank-count">
@@ -566,13 +606,20 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                   <span>Auto Sort</span>
                 </label>
               </div>
-            </div>
+              </div>
             {viewPreferences.sortMode === 'manual' && !compactViewport && (
               <p className="inventory-manual-hint">
                 Manual ordering active - drag cards to rearrange.
               </p>
             )}
+              </UiPanelRegionSlot>
             {!hasInventory ? (
+              <UiPanelRegionSlot
+                screen="inventory"
+                panelId="inventoryBank"
+                regionId="inventoryBankItems"
+                layout={uiLayout}
+              >
               <div className="inventory-empty-state">
                 <PackageOpen size={30} aria-hidden="true" />
                 <h3>Your inventory is empty</h3>
@@ -594,8 +641,15 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                   </button>
                 </div>
               </div>
+              </UiPanelRegionSlot>
             ) : (
-              <div className="inventory-bank-layout">
+              <>
+              <UiPanelRegionSlot
+                screen="inventory"
+                panelId="inventoryBank"
+                regionId="inventoryBankItems"
+                layout={uiLayout}
+              >
                 <div className="inventory-items-column">
                   {hasFilteredResults ? (
                     viewPreferences.sortMode === 'category' ? (
@@ -624,6 +678,13 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                     </div>
                   )}
                 </div>
+              </UiPanelRegionSlot>
+              <UiPanelRegionSlot
+                screen="inventory"
+                panelId="inventoryBank"
+                regionId="inventoryBankDetails"
+                layout={uiLayout}
+              >
                 <aside className="inventory-details-region" aria-label="Selected item details">
                   {detailsProps ? (
                     <InventoryItemDetails headingId={detailsHeadingId} {...detailsProps} />
@@ -640,8 +701,10 @@ export function InventoryScreen({ game, uiLayout, onNavigate }: InventoryScreenP
                     </div>
                   )}
                 </aside>
-              </div>
+              </UiPanelRegionSlot>
+              </>
             )}
+            </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
       </UiPanelGrid>

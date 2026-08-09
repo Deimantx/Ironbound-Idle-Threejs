@@ -47,6 +47,8 @@ import { formatHealth, formatNumber } from './formatters';
 import { UiEditor } from './UIEditor';
 import { UiPanelGrid } from './UiPanelGrid';
 import { UiPanelSlot } from './UiPanelSlot';
+import { UiPanelRegionGrid } from './UiPanelRegionGrid';
+import { UiPanelRegionSlot } from './UiPanelRegionSlot';
 import { EquipmentScreen } from './EquipmentScreen';
 import { InventoryScreen } from './InventoryScreen';
 import { MiningScreen } from './MiningScreen';
@@ -730,96 +732,127 @@ function SettingsScreen({
       <UiPanelGrid screen="settings" className="settings-panel-grid">
         <UiPanelSlot screen="settings" id="settingsSave" layout={uiLayout}>
           <section className="panel panel-pad">
-          <h2>Save controls</h2>
-          <div className="button-row" style={{ margin: '15px 0' }}>
-            <button className="button primary" onClick={() => void saveNow()}>
-              <Save size={14} /> Save Now
-            </button>
-            <button className="button" onClick={() => void exportSave()}>
-              Export Save
-            </button>
-            <label className="button">
-              Import Save
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".json,application/json"
-                hidden
-                onChange={(event) => {
-                  const file = event.target.files?.[0];
-                  if (file) void importSave(file);
-                  event.currentTarget.value = '';
-                }}
-              />
-            </label>
-          </div>
-          <p className="subtle">
-            Primary and last-known-good backup are maintained locally. Offline progress is capped at
-            24 hours.
-          </p>
-          <div className="button-row">
-            <button className="button ghost" onClick={onProfiles}>
-              Return to profiles
-            </button>
-            <button className="button danger" onClick={reset}>
-              Reset current character
-            </button>
-            <button
-              className="button danger"
-              onClick={() =>
-                setConfirmation({
-                  title: 'Delete character?',
-                  message: 'This character and its backup will be permanently deleted.',
-                  confirmLabel: 'Delete character',
-                  danger: true,
-                  onConfirm: onDelete,
-                })
-              }
-            >
-              Delete current character
-            </button>
-          </div>
+          <UiPanelRegionGrid screen="settings" panelId="settingsSave" layout={uiLayout} className="settings-save-regions">
+            <UiPanelRegionSlot screen="settings" panelId="settingsSave" regionId="settingsSavePrimary" layout={uiLayout}>
+              <h2>Save controls</h2>
+              <div className="button-row" style={{ margin: '15px 0' }}>
+                <button className="button primary" onClick={() => void saveNow()}>
+                  <Save size={14} /> Save Now
+                </button>
+              </div>
+              <p className="subtle">
+                Primary and last-known-good backup are maintained locally. Offline progress is capped at
+                24 hours.
+              </p>
+            </UiPanelRegionSlot>
+            <UiPanelRegionSlot screen="settings" panelId="settingsSave" regionId="settingsSaveTransfer" layout={uiLayout}>
+              <div className="button-row">
+                <button className="button" onClick={() => void exportSave()}>
+                  Export Save
+                </button>
+                <label className="button">
+                  Import Save
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept=".json,application/json"
+                    hidden
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) void importSave(file);
+                      event.currentTarget.value = '';
+                    }}
+                  />
+                </label>
+              </div>
+            </UiPanelRegionSlot>
+            <UiPanelRegionSlot screen="settings" panelId="settingsSave" regionId="settingsSaveDanger" layout={uiLayout}>
+              <div className="button-row">
+                <button className="button ghost" onClick={onProfiles}>
+                  Return to profiles
+                </button>
+                <button className="button danger" onClick={reset}>
+                  Reset current character
+                </button>
+                <button
+                  className="button danger"
+                  onClick={() =>
+                    setConfirmation({
+                      title: 'Delete character?',
+                      message: 'This character and its backup will be permanently deleted.',
+                      confirmLabel: 'Delete character',
+                      danger: true,
+                      onConfirm: onDelete,
+                    })
+                  }
+                >
+                  Delete current character
+                </button>
+              </div>
+            </UiPanelRegionSlot>
+          </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
         <UiPanelSlot screen="settings" id="settingsPresentation" layout={uiLayout}>
           <section className="panel panel-pad">
-          <h2>Presentation</h2>
-          {[
-            ['sound', 'Sound effects'],
-            ['music', 'Music'],
-            ['reducedMotion', 'Reduced motion'],
-            ['compactNumbers', 'Compact numbers'],
-            ['showHelpIcons', 'Show help icons'],
-          ].map(([key, label]) => (
-            <label className="stat-line" key={key}>
-              <span>{label}</span>
-              <input
-                type="checkbox"
-                checked={Boolean(game.settings[key as keyof typeof game.settings])}
-                onChange={(event) => setSettings({ [key]: event.target.checked })}
-              />
-            </label>
-          ))}
-          <p className="settings-option-description">
-            Display small help markers beside explained stats and mechanics. Tooltips still work
-            when hidden.
-          </p>
-          <label className="stat-line">
-            <span>Three.js quality</span>
-            <select
-              className="select"
-              value={game.settings.threeQuality}
-              onChange={(event) =>
-                setSettings({
-                  threeQuality: event.target.value as GameState['settings']['threeQuality'],
-                })
-              }
-            >
-              <option value="off">Off</option>
-              <option value="low">Low</option>
-              <option value="high">High</option>
-            </select>
-          </label>
+          <UiPanelRegionGrid screen="settings" panelId="settingsPresentation" layout={uiLayout} className="settings-presentation-regions">
+            <UiPanelRegionSlot screen="settings" panelId="settingsPresentation" regionId="settingsPresentationGeneral" layout={uiLayout}>
+              <h2>Presentation</h2>
+              {[
+                ['sound', 'Sound effects'],
+                ['music', 'Music'],
+                ['compactNumbers', 'Compact numbers'],
+              ].map(([key, label]) => (
+                <label className="stat-line" key={key}>
+                  <span>{label}</span>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(game.settings[key as keyof typeof game.settings])}
+                    onChange={(event) => setSettings({ [key]: event.target.checked })}
+                  />
+                </label>
+              ))}
+            </UiPanelRegionSlot>
+            <UiPanelRegionSlot screen="settings" panelId="settingsPresentation" regionId="settingsPresentationAccessibility" layout={uiLayout}>
+              <h3>Accessibility</h3>
+              {[
+                ['reducedMotion', 'Reduced motion'],
+                ['showHelpIcons', 'Show help icons'],
+              ].map(([key, label]) => (
+                <label className="stat-line" key={key}>
+                  <span>{label}</span>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(game.settings[key as keyof typeof game.settings])}
+                    onChange={(event) => setSettings({ [key]: event.target.checked })}
+                  />
+                </label>
+              ))}
+              <p className="settings-option-description">
+                Display small help markers beside explained stats and mechanics. Tooltips still work
+                when hidden.
+              </p>
+            </UiPanelRegionSlot>
+            <UiPanelRegionSlot screen="settings" panelId="settingsPresentation" regionId="settingsPresentationGraphics" layout={uiLayout}>
+              <h3>Graphics</h3>
+              <label className="stat-line">
+                <span>Three.js quality</span>
+                <select
+                  className="select"
+                  value={game.settings.threeQuality}
+                  onChange={(event) =>
+                    setSettings({
+                      threeQuality: event.target.value as GameState['settings']['threeQuality'],
+                    })
+                  }
+                >
+                  <option value="off">Off</option>
+                  <option value="low">Low</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+            </UiPanelRegionSlot>
+          </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
       </UiPanelGrid>
@@ -874,30 +907,42 @@ function HelpScreen({ uiLayout }: { uiLayout: UiLayout }) {
       <UiPanelGrid screen="help" className="help-panel-grid">
         <UiPanelSlot screen="help" id="helpGameplay" layout={uiLayout}>
           <section className="panel panel-pad">
-          <h2>How time works</h2>
-          <p className="subtle">
-            Mining, smithing, and combat use elapsed time rather than animation frames. Start one
-            action, then navigate freely. Starting another action replaces it after confirmation.
-          </p>
-          <h2 style={{ marginTop: 20 }}>Offline progress</h2>
-          <p className="subtle">
-            On load, the last simulated timestamp is replayed for up to 24 hours. Actions stop
-            safely when materials, inventory, or combat survivability run out.
-          </p>
+          <UiPanelRegionGrid screen="help" panelId="helpGameplay" layout={uiLayout} className="help-gameplay-regions">
+            <UiPanelRegionSlot screen="help" panelId="helpGameplay" regionId="helpGameplayTime" layout={uiLayout}>
+              <h2>How time works</h2>
+              <p className="subtle">
+                Mining, smithing, and combat use elapsed time rather than animation frames. Start one
+                action, then navigate freely. Starting another action replaces it after confirmation.
+              </p>
+            </UiPanelRegionSlot>
+            <UiPanelRegionSlot screen="help" panelId="helpGameplay" regionId="helpGameplayOffline" layout={uiLayout}>
+              <h2>Offline progress</h2>
+              <p className="subtle">
+                On load, the last simulated timestamp is replayed for up to 24 hours. Actions stop
+                safely when materials, inventory, or combat survivability run out.
+              </p>
+            </UiPanelRegionSlot>
+          </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
         <UiPanelSlot screen="help" id="helpSaveInventory" layout={uiLayout}>
           <section className="panel panel-pad">
-          <h2>Keeping your save safe</h2>
-          <p className="subtle">
-            Autosave runs about every ten seconds and when the tab is hidden. Settings can export a
-            portable JSON file for backup or transfer.
-          </p>
-          <h2 style={{ marginTop: 20 }}>Inventory</h2>
-          <p className="subtle">
-            Identical items stack. Equipped gear does not take a slot. Lock important stacks before
-            destroying anything.
-          </p>
+          <UiPanelRegionGrid screen="help" panelId="helpSaveInventory" layout={uiLayout} className="help-save-inventory-regions">
+            <UiPanelRegionSlot screen="help" panelId="helpSaveInventory" regionId="helpSaveInventorySave" layout={uiLayout}>
+              <h2>Keeping your save safe</h2>
+              <p className="subtle">
+                Autosave runs about every ten seconds and when the tab is hidden. Settings can export a
+                portable JSON file for backup or transfer.
+              </p>
+            </UiPanelRegionSlot>
+            <UiPanelRegionSlot screen="help" panelId="helpSaveInventory" regionId="helpSaveInventoryInventory" layout={uiLayout}>
+              <h2>Inventory</h2>
+              <p className="subtle">
+                Identical items stack. Equipped gear does not take a slot. Lock important stacks before
+                destroying anything.
+              </p>
+            </UiPanelRegionSlot>
+          </UiPanelRegionGrid>
           </section>
         </UiPanelSlot>
       </UiPanelGrid>
