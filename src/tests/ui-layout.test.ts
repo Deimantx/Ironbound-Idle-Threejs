@@ -25,8 +25,8 @@ import {
   resetUiLayoutScreen,
   resetUiLayout,
   sanitizeUiLayout,
-} from '../app/uiLayout';
-import { findAvailablePanelPosition } from '../app/UIEditor';
+} from '../app/ui-editor/uiLayout';
+import { findAvailablePanelPosition } from '../app/ui-editor/UIEditor';
 import type { ScreenId } from '../game/types';
 import {
   canEditPanelLayout,
@@ -35,7 +35,7 @@ import {
   snapGridDelta,
   clampNestedColumnSpan,
   findAvailableNestedRegionPosition,
-} from '../app/uiEditorGeometry';
+} from '../app/ui-editor/uiEditorGeometry';
 
 describe('visual UI layout', () => {
   it('exposes panel definitions by active screen', () => {

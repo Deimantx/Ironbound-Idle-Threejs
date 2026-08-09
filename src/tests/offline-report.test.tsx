@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { OfflineModal, formatOfflineDuration } from '../app/OfflineReport';
+import { OfflineModal, formatOfflineDuration } from '../app/components/OfflineReport';
 import { getXpForLevel } from '../game/formulas/experienceFormulas';
 import { createNewGame } from '../game/state/initialState';
 import { emptySummary } from '../game/types';

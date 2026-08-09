@@ -18,7 +18,7 @@ import {
   parseDebugInteger,
 } from '../../game/debug/debugActions';
 import type { AreaId } from '../../game/types';
-import { formatHealth } from '../formatters';
+import { formatHealth } from '../shared/formatters';
 import { ActionButton, Field, Section } from './DebugComponents';
 import type { PanelProps } from './debugUiTypes';
 

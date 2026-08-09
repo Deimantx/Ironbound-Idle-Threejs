@@ -2,12 +2,12 @@ import { act, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
-import { DEFAULT_UI_LAYOUT } from '../app/uiLayout';
-import { InventoryScreen } from '../app/InventoryScreen';
+import { DEFAULT_UI_LAYOUT } from '../app/ui-editor/uiLayout';
+import { InventoryScreen } from '../app/screens/inventory/InventoryScreen';
 import {
   getInventoryViewStorageKey,
   resetInventoryViewPreferences,
-} from '../app/inventoryPreferences';
+} from '../app/shared/inventoryPreferences';
 
 describe('live Inventory preference reset', () => {
   beforeEach(() => {

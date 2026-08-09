@@ -5,7 +5,7 @@ import { createDebugController } from '../../game/debug/debugActions';
 import type { DebugActionResult, DebugMutation } from '../../game/debug/debugTypes';
 import { useGameStore } from '../../game/state/gameStore';
 import type { GameState, ScreenId } from '../../game/types';
-import { ConfirmDialog, type ConfirmDialogOptions } from '../ConfirmDialog';
+import { ConfirmDialog, type ConfirmDialogOptions } from '../components/ConfirmDialog';
 import { Details, Section, activeActionLabel } from './DebugComponents';
 import { CombatPanel as DebugCombatPanel } from './DebugCombatPanel';
 import { EquipmentPanel as DebugEquipmentPanel } from './DebugEquipmentPanel';

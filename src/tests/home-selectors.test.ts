@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { getItemCollectionProgress, getMonsterCollectionProgress, getOverallCollectionProgress } from '../app/collection/collectionSelectors';
+import { getItemCollectionProgress, getMonsterCollectionProgress, getOverallCollectionProgress } from '../app/screens/collection/collectionSelectors';
 import {
   getHomeActivitySummary,
   getHomeContinueDestination,
   getHomeRecentProgress,
   getHomeWorldRecord,
-} from '../app/home/homeSelectors';
+} from '../app/screens/home/homeSelectors';
 import { createNewGame } from '../game/state/initialState';
 import type { GameState } from '../game/types';
 

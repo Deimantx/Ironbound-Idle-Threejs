@@ -5,11 +5,11 @@ import {
   reconcileManualOrder,
   reorderVisibleSubset,
   sortInventoryStacks,
-} from '../app/inventoryOrdering';
+} from '../app/screens/inventory/inventoryOrdering';
 import {
   DEFAULT_INVENTORY_VIEW_PREFERENCES,
   sanitizeInventoryViewPreferences,
-} from '../app/inventoryOrderingPreferences';
+} from '../app/screens/inventory/inventoryOrderingPreferences';
 
 const definition = (
   id: string,

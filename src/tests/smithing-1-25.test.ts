@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SMITHING_TUNING, getSmithingXpPerBar } from '../config/smithingTuning';
 import { recipeById } from '../content/recipes';
-import { formatHoursMinutes } from '../app/formatters';
+import { formatHoursMinutes } from '../app/shared/formatters';
 import { startSmithing } from '../game/engine/actionController';
 import {
   getForgeFuelItemsRequired,

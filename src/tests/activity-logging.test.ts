@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getCombatLogPresentation } from '../app/combat/combatLogPresentation';
+import { getCombatLogPresentation } from '../app/screens/combat/combatLogPresentation';
 import { appendCombatLog } from '../game/logging/combatLog';
 import { appendMilestone } from '../game/logging/milestoneLog';
 import { migrateSave } from '../game/persistence/migrations';

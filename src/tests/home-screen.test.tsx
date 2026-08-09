@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { HomeScreen } from '../app/HomeScreen';
+import { HomeScreen } from '../app/screens/home/HomeScreen';
 import { startCombat } from '../game/engine/actionController';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';

@@ -8,7 +8,7 @@ import {
   getEquipmentBonusComparison,
   getEquipmentEmptyState,
   getEquipmentTierRank,
-} from '../app/equipmentView';
+} from '../app/shared/equipmentView';
 import type { InventoryStack } from '../game/types';
 
 describe('Equipment view helpers and separated bonuses', () => {

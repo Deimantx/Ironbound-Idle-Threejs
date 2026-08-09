@@ -13,8 +13,8 @@ import {
 import { exportProfile, importProfile } from '../../game/persistence/saveManager';
 import { savePayloadSchema } from '../../game/persistence/saveSchema';
 import { useGameStore } from '../../game/state/gameStore';
-import { DEFAULT_UI_LAYOUT, saveUiLayout } from '../uiLayout';
-import { resetInventoryViewPreferences } from '../inventoryPreferences';
+import { DEFAULT_UI_LAYOUT, saveUiLayout } from '../ui-editor/uiLayout';
+import { resetInventoryViewPreferences } from '../shared/inventoryPreferences';
 import { ActionButton, Field, Section } from './DebugComponents';
 import { createDebugController } from '../../game/debug/debugActions';
 import type { PanelProps } from './debugUiTypes';

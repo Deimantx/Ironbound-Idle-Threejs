@@ -8,7 +8,7 @@ import {
   getInventoryStackGroups,
   getVisibleInventoryStacks,
   matchesInventorySearch,
-} from '../app/inventoryView';
+} from '../app/shared/inventoryView';
 
 describe('inventory view helpers', () => {
   it('maps item categories to the five display groups', () => {

@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react';
 import type { ItemDefinition } from '../../game/types';
-import { getEquipmentBonusLabel, formatEquipmentBonus, getEquipmentSlotLabel } from '../equipmentView';
-import { ItemIcon } from '../ItemIcon';
+import { getEquipmentBonusLabel, formatEquipmentBonus, getEquipmentSlotLabel } from '../shared/equipmentView';
+import { ItemIcon } from './ItemIcon';
 import { GameTooltip } from './GameTooltip';
 import { ProfessionToolDetails } from './ProfessionToolDetails';
 import { SpecialAttackDetails } from './SpecialAttackDetails';

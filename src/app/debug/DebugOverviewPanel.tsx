@@ -14,7 +14,7 @@ import {
 import { DEBUG_PRESETS } from '../../game/debug/debugPresets';
 import { ActionButton, Field, Section, activeActionLabel, skillLabel } from './DebugComponents';
 import type { PanelProps } from './debugUiTypes';
-import { formatHealth } from '../formatters';
+import { formatHealth } from '../shared/formatters';
 
 export function OverviewPanel({ game, run, confirm }: PanelProps) {
   const [skillTarget, setSkillTarget] = useState<SkillId | 'all'>('all');

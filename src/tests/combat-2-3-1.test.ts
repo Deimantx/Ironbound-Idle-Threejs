@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { itemById } from '../content/items';
-import { formatHealth } from '../app/formatters';
-import { getActualDps, getActualKillsPerHour } from '../app/combat/sessionMetrics';
-import { getCombatLogPresentation } from '../app/combat/combatLogPresentation';
+import { formatHealth } from '../app/shared/formatters';
+import { getActualDps, getActualKillsPerHour } from '../app/screens/combat/sessionMetrics';
+import { getCombatLogPresentation } from '../app/screens/combat/combatLogPresentation';
 import { getSpecialAttackEffectRows } from '../app/items/specialAttackPresentation';
 import { getTooltipPosition } from '../app/items/tooltipPosition';
 import { parseGameState } from '../game/persistence/saveSchema';

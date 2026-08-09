@@ -2,7 +2,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from '../app/App';
-import { RecipeOutput } from '../app/SmithingScreen';
+import { RecipeOutput } from '../app/screens/smithing/SmithingScreen';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { miningNodeById } from '../content/miningNodes';
 import { recipeById } from '../content/recipes';
@@ -10,8 +10,8 @@ import { getMiningEstimatedRates, createMiningRuntimeState } from '../game/formu
 import { getXpForLevel } from '../game/formulas/experienceFormulas';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
-import { UI_LAYOUT_STORAGE_KEY } from '../app/uiLayout';
-import { formatRatePerHour } from '../app/formatters';
+import { UI_LAYOUT_STORAGE_KEY } from '../app/ui-editor/uiLayout';
+import { formatRatePerHour } from '../app/shared/formatters';
 
 const rect = (left: number, top: number, width: number, height: number): DOMRect =>
   ({

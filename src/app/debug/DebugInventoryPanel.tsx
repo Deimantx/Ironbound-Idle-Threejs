@@ -18,7 +18,7 @@ import {
 } from '../../game/debug/debugActions';
 import { EQUIPMENT_SLOT_LABELS } from '../../game/equipmentSlots';
 import type { EquipmentSlot } from '../../game/types';
-import { ItemIcon } from '../ItemIcon';
+import { ItemIcon } from '../items/ItemIcon';
 import { ActionButton, Field, Section, labelize, uniqueSorted } from './DebugComponents';
 import type { PanelProps } from './debugUiTypes';
 

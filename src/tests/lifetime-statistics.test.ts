@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { formatPlayTime } from '../app/formatters';
+import { formatPlayTime } from '../app/shared/formatters';
 import { startMining, startSmithing } from '../game/engine/actionController';
 import { simulateElapsed } from '../game/engine/simulation';
 import { parseGameState } from '../game/persistence/saveSchema';

@@ -1,31 +1,12 @@
 import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react';
-import {
-  Bug,
-  Hammer,
-  Heart,
-  Lock,
-  Paintbrush,
-  Pickaxe,
-  Save,
-  Settings,
-  Skull,
-  Swords,
-  Timer,
-} from 'lucide-react';
-import { AREAS, areaById } from '../content/areas';
+import { Bug, Lock, Paintbrush, Save, Settings, Skull } from 'lucide-react';
 import { enemyById } from '../content/enemies';
-import { miningNodeById } from '../content/miningNodes';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { getDerivedStats } from '../game/formulas/statFormulas';
 import { getTotalLevel } from '../game/progression/progressionSelectors';
-import { isCombatAreaUnlocked } from '../game/selectors/combatSelectors';
-import { progressRatio } from '../game/engine/simulation';
-import { getMiningRuntimeState, getMiningTool } from '../game/formulas/miningFormulas';
-import { MINING_TUNING } from '../config/miningTuning';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
 import {
-  exportProfile,
   importProfile,
   listProfiles,
   loadProfile,
@@ -34,8 +15,6 @@ import {
   type SaveRecord,
 } from '../game/persistence/saveManager';
 import type {
-  AreaId,
-  CombatStyle,
   EnemyId,
   GameState,
   ScreenId,
@@ -43,16 +22,8 @@ import type {
 } from '../game/types';
 import { NAVIGATION } from '../content/navigation';
 import { ThreeScene } from '../three/ThreeScene';
-import { formatHealth, formatNumber } from './formatters';
-import { UiEditor } from './UIEditor';
-import { UiPanelGrid } from './UiPanelGrid';
-import { UiPanelSlot } from './UiPanelSlot';
-import { UiPanelRegionGrid } from './UiPanelRegionGrid';
-import { UiPanelRegionSlot } from './UiPanelRegionSlot';
-import { EquipmentScreen } from './EquipmentScreen';
-import { InventoryScreen } from './InventoryScreen';
-import { MiningScreen } from './MiningScreen';
-import { SmithingScreen } from './SmithingScreen';
+import { formatHealth, formatNumber } from './shared/formatters';
+import { UiEditor } from './ui-editor/UIEditor';
 import {
   loadUiLayout,
   resetUiLayoutScreen,
@@ -60,14 +31,20 @@ import {
   sanitizeUiLayout,
   saveUiLayout,
   type UiLayout,
-} from './uiLayout';
-import { CombatScreen as RealtimeCombatScreen } from './CombatScreen';
-import { ConfirmDialog, type ConfirmDialogOptions } from './ConfirmDialog';
-import { OfflineModal as OfflineReportModal } from './OfflineReport';
-import { ActivityStrip, actionLabel } from './ActivityStrip';
-import { getCombatLogPresentation } from './combat/combatLogPresentation';
-import { CollectionScreen } from './CollectionScreen';
-import { HomeScreen } from './HomeScreen';
+} from './ui-editor/uiLayout';
+import { CombatScreen as RealtimeCombatScreen } from './screens/combat/CombatScreen';
+import { ConfirmDialog, type ConfirmDialogOptions } from './components/ConfirmDialog';
+import { OfflineModal as OfflineReportModal } from './components/OfflineReport';
+import { ActivityStrip } from './shell/ActivityStrip';
+import { getCombatLogPresentation } from './screens/combat/combatLogPresentation';
+import { CollectionScreen } from './screens/collection/CollectionScreen';
+import { HomeScreen } from './screens/home/HomeScreen';
+import { EquipmentScreen } from './screens/equipment/EquipmentScreen';
+import { InventoryScreen } from './screens/inventory/InventoryScreen';
+import { MiningScreen } from './screens/mining/MiningScreen';
+import { SmithingScreen } from './screens/smithing/SmithingScreen';
+import { SettingsScreen } from './screens/settings/SettingsScreen';
+import { HelpScreen } from './screens/help/HelpScreen';
 
 const DebugMenu = import.meta.env.DEV ? lazy(() => import('./debug/DebugMenu')) : null;
 
@@ -286,7 +263,6 @@ function ProfileSelection({
     </>
   );
 }
-
 function Sidebar({
   screen,
   onNavigate,
@@ -409,472 +385,6 @@ function Header({
   );
 }
 
-export function LegacyActionStrip({
-  game,
-  onNavigate,
-}: {
-  game: GameState;
-  onNavigate: (screen: ScreenId) => void;
-}) {
-  const action = game.activeAction;
-  const stopAction = useGameStore((store) => store.stopAction);
-  const combatSession = useGameStore((store) => store.combatSession);
-  const [now, setNow] = useState(Date.now());
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, []);
-  const ratio = progressRatio(action, now, game);
-  if (action.type === 'none') return null;
-  const screen: ScreenId =
-    action.type === 'mining' ? 'mining' : action.type === 'smithing' ? 'smithing' : 'combat';
-  if (action.type === 'combat') {
-    const enemy = enemyById[action.enemyId];
-    const combatStats = getDerivedStats(game, action.style);
-    const combatStartedAt = combatSession.startedAt ?? game.updatedAt;
-    return (
-      <div className="action-strip combat-strip" data-ui-region="actionStrip">
-        <div className="action-icon">
-          <Swords size={19} />
-        </div>
-        <div className="combat-activity-stats" aria-label="Combat activity summary">
-          <div className="combat-activity-stat">
-            <span>Combat level</span>
-            <strong>{combatStats.combatLevel}</strong>
-          </div>
-          <div className="combat-activity-stat">
-            <span>HP</span>
-            <strong>
-              <Heart size={13} /> {formatHealth(game.player.currentHp)} / {formatHealth(combatStats.maxHealth)}
-            </strong>
-          </div>
-        </div>
-        <button className="action-main button ghost" onClick={() => onNavigate('combat')}>
-          <strong>Fighting {enemy?.name ?? 'enemy'}</strong>
-          <small>Click to open Live Combat Resolution</small>
-        </button>
-        <div className="action-meta action-fight-time">
-          <Timer size={13} /> {formatFightDuration(combatStartedAt, now)}
-        </div>
-      </div>
-    );
-  }
-  const miningNode = action.type === 'mining' ? miningNodeById[action.nodeId] : undefined;
-  const miningRuntime =
-    action.type === 'mining' ? getMiningRuntimeState(game.mining, action.nodeId) : undefined;
-  const miningRemainingMs =
-    action.type !== 'mining'
-      ? 0
-      : action.phase === 'respawn'
-        ? (miningRuntime?.respawnRemainingMs ?? 0)
-        : Math.max(
-            0,
-            (action.phase === 'rest'
-              ? MINING_TUNING.restDurationMs
-              : getMiningTool(game).swingIntervalMs) - action.progressMs,
-          );
-  const miningPhaseText =
-    action.type !== 'mining'
-      ? ''
-      : action.phase === 'rest'
-        ? 'Resting'
-        : action.phase === 'respawn'
-          ? 'Rock reforming'
-          : 'Swinging';
-  const miningStageText =
-    action.type === 'mining'
-      ? `Stage ${(miningRuntime?.stageIndex ?? 0) + 1}/${miningNode?.stages.length ?? 0}`
-      : '';
-  return (
-    <div className="action-strip" data-ui-region="actionStrip">
-      <div className="action-icon">
-        {action.type === 'mining' ? (
-          <Pickaxe size={19} />
-        ) : action.type === 'smithing' ? (
-          <Hammer size={19} />
-        ) : (
-          <Swords size={19} />
-        )}
-      </div>
-      <button className="action-main button ghost" onClick={() => onNavigate(screen)}>
-        <strong>{actionLabel(game)}</strong>
-        <small className="mining-activity-label">
-          {action.type === 'mining'
-            ? `${miningPhaseText} · ${miningStageText}`
-            : 'Active in background'}
-        </small>
-      </button>
-      <div className="progress-track">
-        <div
-          className="progress-fill"
-          style={{ width: `${Math.max(4, Math.min(100, ratio * 100))}%` }}
-        />
-      </div>
-      <div className="action-meta">
-        {action.type === 'mining'
-          ? `Stamina ${Math.round(game.mining.stamina)} · ${Math.ceil(miningRemainingMs / 1000)}s`
-          : 'Cycle in progress'}
-      </div>
-      <button className="button danger" onClick={stopAction}>
-        Stop
-      </button>
-    </div>
-  );
-}
-
-/* eslint-disable react-hooks/rules-of-hooks -- retained for the migration diff; the routed screen is RealtimeCombatScreen. */
-function _LegacyCombatScreen({
-  game,
-  requestAction,
-}: {
-  game: GameState;
-  requestAction: (screen: ScreenId, action: () => void) => void;
-}) {
-  const [areaId, setAreaId] = useState<AreaId>('forest-path');
-  const [style, setStyle] = useState<CombatStyle>('accurate');
-  const [autoRepeat, setAutoRepeat] = useState(true);
-  const startCombat = useGameStore((store) => store.startCombat);
-  const stopAction = useGameStore((store) => store.stopAction);
-  const active = game.activeAction.type === 'combat' ? game.activeAction : null;
-  const area = areaById[areaId];
-  const stats = getDerivedStats(game);
-  return (
-    <>
-      <div className="screen-heading">
-        <div>
-          <div className="eyebrow">World · Automated combat</div>
-          <h1>Combat</h1>
-          <p className="subtle">
-            Choose a road, settle into a style, and let the intervals resolve.
-          </p>
-        </div>
-        <span className="badge gold">Combat level {stats.combatLevel}</span>
-      </div>
-      <div className="button-row" style={{ marginBottom: 15 }}>
-        {AREAS.map((candidate) => {
-          const unlocked = isCombatAreaUnlocked(game, candidate);
-          return (
-            <button
-              key={candidate.id}
-              className={`button ${candidate.id === areaId ? 'gold' : 'ghost'}`}
-              disabled={!unlocked}
-              onClick={() => setAreaId(candidate.id)}
-            >
-              {unlocked ? (
-                candidate.name
-              ) : (
-                <>
-                  <Lock size={13} /> {candidate.name}
-                </>
-              )}
-            </button>
-          );
-        })}
-      </div>
-      <div className="dashboard-grid">
-        <section className="panel scene-panel">
-          <div style={{ position: 'relative', padding: 22 }}>
-            <span className="badge">{area.name}</span>
-            <h2 style={{ marginTop: 18 }}>{area.name}</h2>
-            <p className="subtle">{area.description}</p>
-            <div className="grid grid-2" style={{ marginTop: 25 }}>
-              <div>
-                <div className="muted">Your attack</div>
-                <strong>
-                  {stats.attack} attack · {stats.maxHit} max hit
-                </strong>
-              </div>
-              <div>
-                <div className="muted">Your defence</div>
-                <strong>
-                  {stats.defence} rating · {stats.maxHealth} health
-                </strong>
-              </div>
-            </div>
-          </div>
-        </section>
-        <section className="panel panel-pad">
-          <div className="split">
-            <h2>Available targets</h2>
-            <label className="subtle">
-              <input
-                type="checkbox"
-                checked={autoRepeat}
-                onChange={(event) => setAutoRepeat(event.target.checked)}
-              />{' '}
-              Auto Repeat
-            </label>
-          </div>
-          <div className="list" style={{ marginTop: 12 }}>
-            {area.enemyIds.map((enemyId) => {
-              const enemy = enemyById[enemyId];
-              const isActive = active?.enemyId === enemyId;
-              return (
-                <div className="list-row" key={enemy.id}>
-                  <div className="enemy-art">
-                    {enemy.theme === 'wolf'
-                      ? '◒'
-                      : enemy.theme === 'bat'
-                        ? '◓'
-                        : enemy.theme === 'crab'
-                          ? '◇'
-                          : '◈'}
-                  </div>
-                  <div className="row-main">
-                    <strong>
-                      {enemy.name} <span className="badge">Lv {enemy.displayLevel}</span>
-                    </strong>
-                    <small>
-                      {enemy.description}
-                      <br />
-                      {enemy.maxHealth} HP · {game.killCounts[enemy.id] ?? 0} defeated
-                    </small>
-                  </div>
-                  {isActive ? (
-                    <button className="button danger" onClick={stopAction}>
-                      Stop
-                    </button>
-                  ) : (
-                    <button
-                      className="button primary"
-                      onClick={() =>
-                        requestAction('combat', () =>
-                          startCombat(areaId, enemy.id, style, autoRepeat),
-                        )
-                      }
-                    >
-                      Fight
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <div style={{ marginTop: 18 }}>
-            <div className="eyebrow">Combat style</div>
-            <div className="button-row">
-              {(['accurate', 'aggressive', 'defensive'] as CombatStyle[]).map((option) => (
-                <button
-                  className={`button ${style === option ? 'gold' : 'ghost'}`}
-                  key={option}
-                  onClick={() => setStyle(option)}
-                >
-                  {option[0].toUpperCase() + option.slice(1)}
-                </button>
-              ))}
-            </div>
-            <p className="subtle" style={{ marginTop: 10 }}>
-              {style === 'accurate'
-                ? 'Attack XP from every point of damage.'
-                : style === 'aggressive'
-                  ? 'Strength XP from every point of damage.'
-                  : 'Defence XP from every point of damage.'}{' '}
-              Damage also grants Hitpoints XP.
-            </p>
-          </div>
-        </section>
-      </div>
-    </>
-  );
-}
-
-function SettingsScreen({
-  game,
-  onProfiles,
-  onDelete,
-  uiLayout,
-}: {
-  game: GameState;
-  onProfiles: () => void;
-  onDelete: () => void;
-  uiLayout: UiLayout;
-}) {
-  const saveNow = useGameStore((store) => store.saveNow);
-  const setSettings = useGameStore((store) => store.setSettings);
-  const setGame = useGameStore((store) => store.setGame);
-  const fileRef = useRef<HTMLInputElement>(null);
-  const [confirmation, setConfirmation] = useState<ConfirmDialogOptions | null>(null);
-  const exportSave = async () => {
-    const text = await exportProfile(game);
-    const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${game.player.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-ironbound.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-  const importSave = async (file: File) => {
-    try {
-      const imported = await importProfile(await file.text(), game.profileSlot);
-      setGame(imported);
-    } catch (cause) {
-      window.alert(cause instanceof Error ? cause.message : 'Import failed.');
-    }
-  };
-  const reset = () => {
-    setConfirmation({
-      title: 'Reset character?',
-      message: 'The current save will be replaced with a fresh character.',
-      confirmLabel: 'Reset character',
-      danger: true,
-      onConfirm: () => setGame(createNewGame(game.profileSlot, game.player.name)),
-    });
-  };
-  return (
-    <>
-      <div className="screen-heading">
-        <div>
-          <div className="eyebrow">System</div>
-          <h1>Settings</h1>
-          <p className="subtle">Controls for this browser profile and its presentation.</p>
-        </div>
-      </div>
-      <UiPanelGrid screen="settings" className="settings-panel-grid">
-        <UiPanelSlot screen="settings" id="settingsSave" layout={uiLayout}>
-          <section className="panel panel-pad">
-          <UiPanelRegionGrid screen="settings" panelId="settingsSave" layout={uiLayout} className="settings-save-regions">
-            <UiPanelRegionSlot screen="settings" panelId="settingsSave" regionId="settingsSavePrimary" layout={uiLayout}>
-              <h2>Save controls</h2>
-              <div className="button-row" style={{ margin: '15px 0' }}>
-                <button className="button primary" onClick={() => void saveNow()}>
-                  <Save size={14} /> Save Now
-                </button>
-              </div>
-              <p className="subtle">
-                Primary and last-known-good backup are maintained locally. Offline progress is capped at
-                24 hours.
-              </p>
-            </UiPanelRegionSlot>
-            <UiPanelRegionSlot screen="settings" panelId="settingsSave" regionId="settingsSaveTransfer" layout={uiLayout}>
-              <div className="button-row">
-                <button className="button" onClick={() => void exportSave()}>
-                  Export Save
-                </button>
-                <label className="button">
-                  Import Save
-                  <input
-                    ref={fileRef}
-                    type="file"
-                    accept=".json,application/json"
-                    hidden
-                    onChange={(event) => {
-                      const file = event.target.files?.[0];
-                      if (file) void importSave(file);
-                      event.currentTarget.value = '';
-                    }}
-                  />
-                </label>
-              </div>
-            </UiPanelRegionSlot>
-            <UiPanelRegionSlot screen="settings" panelId="settingsSave" regionId="settingsSaveDanger" layout={uiLayout}>
-              <div className="button-row">
-                <button className="button ghost" onClick={onProfiles}>
-                  Return to profiles
-                </button>
-                <button className="button danger" onClick={reset}>
-                  Reset current character
-                </button>
-                <button
-                  className="button danger"
-                  onClick={() =>
-                    setConfirmation({
-                      title: 'Delete character?',
-                      message: 'This character and its backup will be permanently deleted.',
-                      confirmLabel: 'Delete character',
-                      danger: true,
-                      onConfirm: onDelete,
-                    })
-                  }
-                >
-                  Delete current character
-                </button>
-              </div>
-            </UiPanelRegionSlot>
-          </UiPanelRegionGrid>
-          </section>
-        </UiPanelSlot>
-        <UiPanelSlot screen="settings" id="settingsPresentation" layout={uiLayout}>
-          <section className="panel panel-pad">
-          <UiPanelRegionGrid screen="settings" panelId="settingsPresentation" layout={uiLayout} className="settings-presentation-regions">
-            <UiPanelRegionSlot screen="settings" panelId="settingsPresentation" regionId="settingsPresentationGeneral" layout={uiLayout}>
-              <h2>Presentation</h2>
-              {[
-                ['sound', 'Sound effects'],
-                ['music', 'Music'],
-                ['compactNumbers', 'Compact numbers'],
-              ].map(([key, label]) => (
-                <label className="stat-line" key={key}>
-                  <span>{label}</span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(game.settings[key as keyof typeof game.settings])}
-                    onChange={(event) => setSettings({ [key]: event.target.checked })}
-                  />
-                </label>
-              ))}
-            </UiPanelRegionSlot>
-            <UiPanelRegionSlot screen="settings" panelId="settingsPresentation" regionId="settingsPresentationAccessibility" layout={uiLayout}>
-              <h3>Accessibility</h3>
-              {[
-                ['reducedMotion', 'Reduced motion'],
-                ['showHelpIcons', 'Show help icons'],
-              ].map(([key, label]) => (
-                <label className="stat-line" key={key}>
-                  <span>{label}</span>
-                  <input
-                    type="checkbox"
-                    checked={Boolean(game.settings[key as keyof typeof game.settings])}
-                    onChange={(event) => setSettings({ [key]: event.target.checked })}
-                  />
-                </label>
-              ))}
-              <p className="settings-option-description">
-                Display small help markers beside explained stats and mechanics. Tooltips still work
-                when hidden.
-              </p>
-            </UiPanelRegionSlot>
-            <UiPanelRegionSlot screen="settings" panelId="settingsPresentation" regionId="settingsPresentationGraphics" layout={uiLayout}>
-              <h3>Graphics</h3>
-              <label className="stat-line">
-                <span>Three.js quality</span>
-                <select
-                  className="select"
-                  value={game.settings.threeQuality}
-                  onChange={(event) =>
-                    setSettings({
-                      threeQuality: event.target.value as GameState['settings']['threeQuality'],
-                    })
-                  }
-                >
-                  <option value="off">Off</option>
-                  <option value="low">Low</option>
-                  <option value="high">High</option>
-                </select>
-              </label>
-            </UiPanelRegionSlot>
-          </UiPanelRegionGrid>
-          </section>
-        </UiPanelSlot>
-      </UiPanelGrid>
-      {confirmation && (
-        <ConfirmDialog
-          title={confirmation.title}
-          message={confirmation.message}
-          confirmLabel={confirmation.confirmLabel}
-          cancelLabel={confirmation.cancelLabel}
-          danger={confirmation.danger}
-          onCancel={() => setConfirmation(null)}
-          onConfirm={() => {
-            const action = confirmation.onConfirm;
-            setConfirmation(null);
-            void action();
-          }}
-        />
-      )}
-    </>
-  );
-}
-
 function LockedScreen({ name, description }: { name: string; description?: string }) {
   return (
     <div className="locked-screen">
@@ -894,117 +404,6 @@ function LockedScreen({ name, description }: { name: string; description?: strin
     </div>
   );
 }
-function HelpScreen({ uiLayout }: { uiLayout: UiLayout }) {
-  return (
-    <>
-      <div className="screen-heading">
-        <div>
-          <div className="eyebrow">Field notes</div>
-          <h1>Help</h1>
-          <p className="subtle">A short guide to the systems currently in your hands.</p>
-        </div>
-      </div>
-      <UiPanelGrid screen="help" className="help-panel-grid">
-        <UiPanelSlot screen="help" id="helpGameplay" layout={uiLayout}>
-          <section className="panel panel-pad">
-          <UiPanelRegionGrid screen="help" panelId="helpGameplay" layout={uiLayout} className="help-gameplay-regions">
-            <UiPanelRegionSlot screen="help" panelId="helpGameplay" regionId="helpGameplayTime" layout={uiLayout}>
-              <h2>How time works</h2>
-              <p className="subtle">
-                Mining, smithing, and combat use elapsed time rather than animation frames. Start one
-                action, then navigate freely. Starting another action replaces it after confirmation.
-              </p>
-            </UiPanelRegionSlot>
-            <UiPanelRegionSlot screen="help" panelId="helpGameplay" regionId="helpGameplayOffline" layout={uiLayout}>
-              <h2>Offline progress</h2>
-              <p className="subtle">
-                On load, the last simulated timestamp is replayed for up to 24 hours. Actions stop
-                safely when materials, inventory, or combat survivability run out.
-              </p>
-            </UiPanelRegionSlot>
-          </UiPanelRegionGrid>
-          </section>
-        </UiPanelSlot>
-        <UiPanelSlot screen="help" id="helpSaveInventory" layout={uiLayout}>
-          <section className="panel panel-pad">
-          <UiPanelRegionGrid screen="help" panelId="helpSaveInventory" layout={uiLayout} className="help-save-inventory-regions">
-            <UiPanelRegionSlot screen="help" panelId="helpSaveInventory" regionId="helpSaveInventorySave" layout={uiLayout}>
-              <h2>Keeping your save safe</h2>
-              <p className="subtle">
-                Autosave runs about every ten seconds and when the tab is hidden. Settings can export a
-                portable JSON file for backup or transfer.
-              </p>
-            </UiPanelRegionSlot>
-            <UiPanelRegionSlot screen="help" panelId="helpSaveInventory" regionId="helpSaveInventoryInventory" layout={uiLayout}>
-              <h2>Inventory</h2>
-              <p className="subtle">
-                Identical items stack. Equipped gear does not take a slot. Lock important stacks before
-                destroying anything.
-              </p>
-            </UiPanelRegionSlot>
-          </UiPanelRegionGrid>
-          </section>
-        </UiPanelSlot>
-      </UiPanelGrid>
-    </>
-  );
-}
-
-function _LegacyOfflineModal({
-  summary,
-  onClose,
-}: {
-  summary: SimulationSummary;
-  onClose: () => void;
-}) {
-  const entries = Object.entries(summary.completed);
-  return (
-    <div className="modal-backdrop">
-      <section className="modal" role="dialog" aria-modal="true" aria-labelledby="offline-title">
-        <div className="eyebrow">Welcome back</div>
-        <h2 id="offline-title">Your time away has been counted.</h2>
-        <p className="subtle">{Math.round(summary.elapsedMs / 60_000)} minutes simulated safely.</p>
-        {summary.remainingElapsedMs > 0 && (
-          <p className="subtle">
-            {Math.round(summary.remainingElapsedMs / 60_000)} minutes remain queued for a safe
-            follow-up simulation.
-          </p>
-        )}
-        <div className="offline-summary">
-          <div className="summary-stat">
-            <strong>{summary.enemiesDefeated}</strong>
-            <span className="muted">foes defeated</span>
-          </div>
-          <div className="summary-stat">
-            <strong>{Object.values(summary.itemsGained).reduce((a, b) => a + b, 0)}</strong>
-            <span className="muted">items gained</span>
-          </div>
-          <div className="summary-stat">
-            <strong>{Object.values(summary.xpGained).reduce((a, b) => a + b, 0)}</strong>
-            <span className="muted">XP earned</span>
-          </div>
-        </div>
-        {entries.length > 0 && (
-          <div className="list">
-            {entries.slice(0, 8).map(([label, amount]) => (
-              <div className="list-row" key={label}>
-                <span>{label.replace(':', ' · ')}</span>
-                <strong>×{amount}</strong>
-              </div>
-            ))}
-          </div>
-        )}
-        {summary.stoppedReason && (
-          <p style={{ color: 'var(--gold)', marginTop: 15 }}>Stopped: {summary.stoppedReason}</p>
-        )}
-        <button className="button primary" style={{ marginTop: 18 }} onClick={onClose}>
-          Continue
-        </button>
-      </section>
-    </div>
-  );
-}
-
 function DeathModal({
   game,
   enemyId,

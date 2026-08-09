@@ -1,4 +1,4 @@
-import type { ConfirmDialogOptions } from '../ConfirmDialog';
+import type { ConfirmDialogOptions } from '../components/ConfirmDialog';
 import type { DebugActionResult, DebugMutation } from '../../game/debug/debugTypes';
 import type { GameState, ScreenId } from '../../game/types';
 

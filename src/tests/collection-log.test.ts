@@ -14,7 +14,7 @@ import {
   getCollectionItemSourceNavigation,
   getCollectionProgress,
   getRegionCollectionEnemies,
-} from '../app/collection/collectionSelectors';
+} from '../app/screens/collection/collectionSelectors';
 import { formatRewardSummary } from '../app/combat/combatPresentation';
 
 describe('Collection Log 2.0 selectors', () => {

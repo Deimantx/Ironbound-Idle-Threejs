@@ -18,7 +18,7 @@ import { simulateElapsed } from '../game/engine/simulation';
 import { createNewGame } from '../game/state/initialState';
 import { getItemQuantity } from '../game/systems/inventorySystem';
 import type { GameState } from '../game/types';
-import { formatDropChance } from '../app/formatters';
+import { formatDropChance } from '../app/shared/formatters';
 
 describe('Mining 1.1 formulas and simulation', () => {
   it('authored Phase One content is exactly Stone, Iron, and Coal', () => {
