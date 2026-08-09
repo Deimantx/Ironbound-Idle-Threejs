@@ -105,7 +105,7 @@ function OfflineItems({
           <div className="offline-gain-row" key={itemId}>
             <ItemIcon itemId={itemId} size="md" />
             <span>{itemById[itemId]?.name ?? itemId}</span>
-            <strong>+{formatNumber(summary.itemsGained[itemId])}</strong>
+            <strong className="numeric">+{formatNumber(summary.itemsGained[itemId])}</strong>
           </div>
         ))}
       </div>
@@ -130,19 +130,19 @@ function OfflineProgress({ summary, game }: { summary: SimulationSummary; game: 
         {showCombatStats && summary.enemiesDefeated > 0 && (
           <div className="offline-progress-row">
             <span>Enemies defeated</span>
-            <strong>{formatNumber(summary.enemiesDefeated)}</strong>
+            <strong className="numeric">{formatNumber(summary.enemiesDefeated)}</strong>
           </div>
         )}
         {showCombatStats && summary.goldGained > 0 && (
           <div className="offline-progress-row">
             <span>Gold gained</span>
-            <strong>+{formatNumber(summary.goldGained)}</strong>
+            <strong className="numeric">+{formatNumber(summary.goldGained)}</strong>
           </div>
         )}
         {xpRows.map(([skill, amount]) => (
           <div className="offline-progress-row" key={skill}>
             <span>{skillName(skill)} XP</span>
-            <strong>+{formatNumber(amount ?? 0)}</strong>
+            <strong className="numeric">+{formatNumber(amount ?? 0)}</strong>
           </div>
         ))}
         {levelRows.map(([skill, amount]) => {

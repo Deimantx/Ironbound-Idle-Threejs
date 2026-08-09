@@ -340,7 +340,7 @@ function Header({
         </span>
         <span className="header-stat">
           HP{' '}
-          <strong>
+          <strong className="numeric">
             {formatHealth(game.player.currentHp)}/{formatHealth(stats.maxHealth)}
           </strong>
         </span>
