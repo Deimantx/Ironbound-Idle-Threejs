@@ -19,7 +19,7 @@ describe('Equipment 2.1 save migration', () => {
     const state = legacyState(3);
     state.equipment = {};
     const migrated = migrate(state);
-    expect(migrated.schemaVersion).toBe(14);
+    expect(migrated.schemaVersion).toBe(15);
     expect(migrated.equipment).toEqual({});
   });
 
@@ -31,7 +31,7 @@ describe('Equipment 2.1 save migration', () => {
       shield: 'iron-shield',
     } as unknown as GameState['equipment'];
     const migrated = migrate(state, 2);
-    expect(migrated.schemaVersion).toBe(14);
+    expect(migrated.schemaVersion).toBe(15);
     expect(migrated.equipment).toEqual({ armor: 'iron-armor', offhand: 'iron-shield' });
     expect(getItemQuantity(migrated.inventory, 'bronze-armor')).toBe(1);
   });
@@ -116,7 +116,7 @@ describe('Equipment 2.1 save migration', () => {
     const shieldSave = legacyState(3);
     shieldSave.equipment = { shield: 'iron-shield' } as unknown as GameState['equipment'];
     const parsed = parseGameState(JSON.stringify(shieldSave));
-    expect(parsed.schemaVersion).toBe(14);
+    expect(parsed.schemaVersion).toBe(15);
     expect(parsed.equipment.offhand).toBe('iron-shield');
   });
 
@@ -138,7 +138,7 @@ describe('Equipment 2.1 save migration', () => {
     current.equipment = { shield: 'iron-shield' } as unknown as GameState['equipment'];
     expect(() => parseGameState(JSON.stringify(current))).toThrow();
     const parsedLegacy = parseGameState(JSON.stringify({ ...current, schemaVersion: 3 }));
-    expect(parsedLegacy.schemaVersion).toBe(14);
+    expect(parsedLegacy.schemaVersion).toBe(15);
     expect(parsedLegacy.equipment.offhand).toBe('iron-shield');
   });
 });

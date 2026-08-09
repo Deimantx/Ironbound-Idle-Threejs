@@ -126,6 +126,20 @@ export const mergeCombatSession = (
   return next;
 };
 
+export const countSummaryItems = (summary: Pick<SimulationSummary, 'itemsGained'>): number =>
+  Object.values(summary.itemsGained).reduce(
+    (total, quantity) => total + (Number.isFinite(quantity) ? Math.floor(Math.max(0, quantity)) : 0),
+    0,
+  );
+
+const addSimulationStatistics = (game: GameState, summary: SimulationSummary): GameState => ({
+  ...game,
+  statistics: {
+    ...game.statistics,
+    totalItemsGained: game.statistics.totalItemsGained + countSummaryItems(summary),
+  },
+});
+
 const sessionForState = (game: GameState): CombatSessionStats => {
   if (game.activeAction.type !== 'combat') return emptyCombatSession();
   return emptyCombatSession(
@@ -148,6 +162,15 @@ const appendCombatEvents = (
 const normalizeGameSkills = (game: GameState): GameState => ({
   ...game,
   player: { ...game.player, currentHp: getClampedPlayerHealth(game) },
+  statistics: {
+    ...game.statistics,
+    totalItemsGained: Number.isFinite(game.statistics.totalItemsGained)
+      ? Math.floor(Math.max(0, game.statistics.totalItemsGained))
+      : 0,
+    playTimeMs: Number.isFinite(game.statistics.playTimeMs)
+      ? Math.floor(Math.max(0, game.statistics.playTimeMs))
+      : 0,
+  },
   skills: Object.fromEntries(
     SKILL_IDS.map((skillId) => [skillId, normalizeSkillState(game.skills[skillId])]),
   ) as GameState['skills'],
@@ -183,19 +206,22 @@ export const useGameStore = create<Store>((set, get) => ({
   combatSession: emptyCombatSession(),
   setGame: (game, offlineSummary = null) => {
     const normalizedGame = game ? normalizeGameSkills(game) : null;
+    const accountedGame = normalizedGame && offlineSummary
+      ? addSimulationStatistics(normalizedGame, offlineSummary)
+      : normalizedGame;
     lastTick = Date.now();
     const loadedCombat =
-      normalizedGame?.activeAction.type === 'combat' ? normalizedGame.activeAction : null;
+      accountedGame?.activeAction.type === 'combat' ? accountedGame.activeAction : null;
     set({
-      game: normalizedGame,
+      game: accountedGame,
       offlineSummary,
       saveStatus: 'saved',
       combatEvents: [],
       combatSession: emptyCombatSession(
         loadedCombat?.enemyId ?? null,
-        loadedCombat && normalizedGame ? normalizedGame.updatedAt : null,
+        loadedCombat && accountedGame ? accountedGame.updatedAt : null,
         loadedCombat?.combatState.encounterStartedAt ??
-          (loadedCombat && normalizedGame ? normalizedGame.updatedAt : null),
+          (loadedCombat && accountedGame ? accountedGame.updatedAt : null),
       ),
     });
   },
@@ -227,6 +253,8 @@ export const useGameStore = create<Store>((set, get) => ({
     lastTick = now;
     if (elapsed <= 0) return;
     const result = simulateElapsed(game, elapsed);
+    result.state.statistics.totalItemsGained += countSummaryItems(result.summary);
+    result.state.statistics.playTimeMs += elapsed;
     const isCombat = game.activeAction.type === 'combat';
     const nextCombatSession = isCombat
       ? mergeCombatSession(get().combatSession, result.summary, result.events)

@@ -125,7 +125,7 @@ describe('Activity Logging 2.0', () => {
     state.schemaVersion = 9;
 
     const migrated = migrateSave(state, 9);
-    expect(migrated.schemaVersion).toBe(14);
+    expect(migrated.schemaVersion).toBe(15);
     expect(migrated.activityLogs.milestones).toMatchObject([
       { kind: 'level-up', skillId: 'mining', level: 42 },
     ]);
@@ -134,7 +134,7 @@ describe('Activity Logging 2.0', () => {
     ]);
     expect(migrated.activityLogs.combat).toHaveLength(1);
     const parsed = parseGameState(JSON.stringify(state));
-    expect(parsed.schemaVersion).toBe(14);
+    expect(parsed.schemaVersion).toBe(15);
     expect(parsed.activityLogs.milestones[0]).toMatchObject({ skillId: 'mining', level: 42 });
     expect(parsed.activityLogs.combat[0]).toMatchObject({ kind: 'legacy' });
   });

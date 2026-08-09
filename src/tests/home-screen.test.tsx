@@ -5,8 +5,8 @@ import { startCombat } from '../game/engine/actionController';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
 
-describe('HomeScreen 2.1', () => {
-  it('presents the four top-level progression concepts and separate pillars in the approved order', () => {
+describe('HomeScreen 2.3', () => {
+  it('presents the four top-level progression concepts and shared progression boards', () => {
     const game = createNewGame(0, 'Dashboard Tester');
     game.settings.threeQuality = 'off';
     game.skills.attack.level = 10;
@@ -25,10 +25,19 @@ describe('HomeScreen 2.1', () => {
     expect(screen.getByText('TOTAL PROFESSION LEVELS')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Combat Progression' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Profession Progression' })).toBeInTheDocument();
+    const combat = screen.getByRole('region', { name: 'Combat Progression' });
+    expect(Array.from(combat.querySelectorAll('.home-progression-group > h3')).map((node) => node.textContent)).toEqual([
+      'Hitpoints',
+      'Melee',
+    ]);
+    expect(combat.querySelectorAll('.home-progression-group-melee .home-skill-tile')).toHaveLength(3);
     expect(screen.getByText('Attack')).toBeInTheDocument();
     expect(screen.getByText('Mining')).toBeInTheDocument();
+    expect(screen.queryByText('Ranged')).not.toBeInTheDocument();
+    expect(screen.queryByText('Magic')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Hitpoints, level/ }).querySelector('.lucide-heart')).toBeInTheDocument();
     expect(screen.getAllByText('Idle').length).toBeGreaterThan(0);
-    expect(screen.getByText('Offhand')).toBeInTheDocument();
+    expect(screen.queryByText('Current loadout')).not.toBeInTheDocument();
 
     const overview = screen.getByRole('region', { name: 'Your standing on the frontier' });
     expect(Array.from(overview.querySelectorAll('.home-metric-label')).map((node) => node.textContent?.trim())).toEqual([
@@ -39,7 +48,7 @@ describe('HomeScreen 2.1', () => {
     ]);
   });
 
-  it('consolidates supporting records and keeps navigation unambiguous', () => {
+  it('integrates recent progress and keeps navigation unambiguous', () => {
     const game = createNewGame(0, 'Dashboard Tester');
     game.settings.threeQuality = 'off';
     game.equipment.weapon = 'bronze-sword';
@@ -47,22 +56,27 @@ describe('HomeScreen 2.1', () => {
 
     render(<HomeScreen game={game} onNavigate={vi.fn()} />);
 
-    expect(screen.getByRole('heading', { name: 'Recent Progress' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Combat' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Professions' })).toBeInTheDocument();
-    expect(screen.getAllByRole('heading', { name: 'Recent Progress' })).toHaveLength(1);
+    expect(screen.getByRole('heading', { name: 'Recent Combat' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Recent Profession' })).toBeInTheDocument();
     expect(screen.getByText('Enemies defeated')).toBeInTheDocument();
     expect(screen.getByText('Items')).toBeInTheDocument();
     expect(screen.getByText('Monsters')).toBeInTheDocument();
     expect(screen.getByText('Overall')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Overall collection progress' })).toBeInTheDocument();
     expect(screen.queryByText('The same eligible world and collection totals shown in the Collection Log.')).not.toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /View Gear/ })).toHaveLength(1);
+    expect(screen.queryByRole('button', { name: /View Gear/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Equipment' })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Open Mining' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Open Smithing' })).toBeInTheDocument();
-    expect(screen.getByRole('group', { name: 'Weapon: Bronze Sword' })).toHaveAttribute('data-tooltip-trigger', 'true');
-    expect(screen.getByRole('group', { name: 'Offhand: Empty' })).not.toHaveAttribute('data-tooltip-trigger');
+    expect(screen.getByRole('button', { name: /Mining, level/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Smithing, level/ })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Open Mining/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Open Smithing/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('Starter Path')).not.toBeInTheDocument();
+    expect(screen.queryByText('Combat snapshot')).not.toBeInTheDocument();
+    expect(screen.getByText('Total items gained')).toBeInTheDocument();
+    expect(screen.getByText('Time played')).toBeInTheDocument();
+    expect(screen.queryByText('Equipped for the frontier')).not.toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /Weapon: Bronze Sword/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('Choose a profession or seek a fight.')).not.toBeInTheDocument();
   });
 
   it('keeps Home totals accurate after the metric strip redesign', () => {
@@ -87,19 +101,31 @@ describe('HomeScreen 2.1', () => {
     ]);
   });
 
+  it('renders max levels and presentational levels without hardcoding the current cap', () => {
+    const game = createNewGame(0, 'Level Display Tester');
+    game.settings.threeQuality = 'off';
+    game.skills.attack = { level: 200, xp: 9_999_999 };
+    game.skills.strength = { level: 100, xp: 9_999_999 };
+    render(<HomeScreen game={game} onNavigate={vi.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'Attack, level 200, max level' })).toHaveTextContent('Lv 200');
+    expect(screen.getByRole('button', { name: 'Strength, level 100, max level' })).toHaveTextContent('MAX');
+  });
+
   it('shows idle and active activity status without changing game state', () => {
     const game = createNewGame(0, 'Activity Tester');
     game.settings.threeQuality = 'off';
     const navigate = vi.fn();
     useGameStore.getState().setGame(game);
     const { rerender } = render(<HomeScreen game={game} onNavigate={navigate} />);
-    expect(screen.getByText('No action running')).toBeInTheDocument();
+    expect(screen.getByText('Idle')).toBeInTheDocument();
 
     const activeGame = startCombat(game, 'forest-path', 'forest-rat', 'accurate', true, 1_000);
     const before = structuredClone(activeGame.activeAction);
     rerender(<HomeScreen game={activeGame} onNavigate={navigate} />);
-    expect(screen.getByText(/Combat · Forest Rat/)).toBeInTheDocument();
+    expect(screen.getByText(/Combat .* Forest Rat/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Return to Combat' })).toBeInTheDocument();
+    expect(screen.queryByText(/Session/)).not.toBeInTheDocument();
     expect(activeGame.activeAction).toEqual(before);
   });
 });

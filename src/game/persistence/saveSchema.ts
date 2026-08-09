@@ -297,6 +297,8 @@ const savePayloadShape = {
     forged: z.number(),
     deaths: z.number(),
     totalKills: z.number(),
+    totalItemsGained: z.number().int().nonnegative(),
+    playTimeMs: z.number().int().nonnegative(),
   }),
   gold: z.number().nonnegative(),
   mining: z.object({
@@ -343,6 +345,8 @@ export const legacySavePayloadSchema = z.object({
     forged: z.number(),
     deaths: z.number(),
     totalKills: z.number(),
+    totalItemsGained: z.number().int().nonnegative().optional(),
+    playTimeMs: z.number().int().nonnegative().optional(),
   }),
   mining: savePayloadShape.mining.optional(),
   activeAction: legacyActiveActionSchema,

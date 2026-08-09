@@ -3,12 +3,11 @@ import { getItemCollectionProgress, getMonsterCollectionProgress, getOverallColl
 import {
   getHomeActivitySummary,
   getHomeContinueDestination,
-  getHomeLoadout,
   getHomeRecentProgress,
-  getHomeStarterPathObjectives,
   getHomeWorldRecord,
 } from '../app/home/homeSelectors';
 import { createNewGame } from '../game/state/initialState';
+import type { GameState } from '../game/types';
 
 describe('Home selectors', () => {
   it('normalizes idle and active activity destinations without mutating the action', () => {
@@ -40,19 +39,26 @@ describe('Home selectors', () => {
     });
   });
 
-  it('uses active action, then the first incomplete Starter Path objective, then Combat', () => {
+  it('resumes active combat or professions and defaults idle characters to Combat', () => {
     const game = createNewGame(0, 'Continue Selector');
+    expect(getHomeContinueDestination(game)).toBe('combat');
+    game.activeAction = {
+      type: 'mining',
+      nodeId: 'stone-outcrop',
+      startedAt: 0,
+      phase: 'swing',
+      progressMs: 0,
+    };
     expect(getHomeContinueDestination(game)).toBe('mining');
-    game.inventory = [
-      { itemId: 'stone-ore', quantity: 1, locked: false },
-      { itemId: 'iron-ore', quantity: 1, locked: false },
-    ];
+    game.activeAction = {
+      type: 'smithing',
+      recipeId: 'bronze-bar',
+      quantityMode: 'continuous',
+      remaining: null,
+      progressMs: 0,
+    };
     expect(getHomeContinueDestination(game)).toBe('smithing');
-    game.inventory.push({ itemId: 'bronze-bar', quantity: 1, locked: false });
-    game.discoveredItems.push('bronze-sword');
-    game.equipment.weapon = 'bronze-sword';
-    game.killCounts['forest-rat'] = 1;
-    expect(getHomeStarterPathObjectives(game).every((objective) => objective.done)).toBe(true);
+    game.activeAction = { type: 'combat' } as GameState['activeAction'];
     expect(getHomeContinueDestination(game)).toBe('combat');
   });
 
@@ -72,18 +78,21 @@ describe('Home selectors', () => {
     expect(record.itemProgress).toEqual(getItemCollectionProgress(game));
     expect(record.monsterProgress).toEqual(getMonsterCollectionProgress(game));
     expect(record.overallProgress).toEqual(getOverallCollectionProgress(game));
+    expect(record.totalItemsGained).toBe(0);
+    expect(record.playTimeMs).toBe(0);
   });
 
-  it('resolves the compact loadout snapshot and keeps empty slots empty', () => {
-    const game = createNewGame(0, 'Loadout Selector');
-    game.equipment.weapon = 'bronze-sword';
-    game.equipment.armor = 'iron-armor';
-    game.equipment.tool = 'iron-smithing-hammer';
-    expect(getHomeLoadout(game).map((entry) => [entry.label, entry.item?.name ?? 'Empty'])).toEqual([
-      ['Weapon', 'Bronze Sword'],
-      ['Armor', 'Iron Armor'],
-      ['Offhand', 'Empty'],
-      ['Tool', 'Iron Smithing Hammer'],
-    ]);
+  it('limits each integrated recent-progress category to two entries', () => {
+    const game = createNewGame(0, 'Recent Limit');
+    game.activityLogs.milestones = Array.from({ length: 8 }, (_, index) => ({
+      id: `mining-${index}`,
+      kind: 'level-up' as const,
+      skillId: index % 2 === 0 ? 'mining' : 'attack',
+      level: index + 2,
+      at: index,
+    }));
+    const recent = getHomeRecentProgress(game);
+    expect(recent.combat).toHaveLength(2);
+    expect(recent.profession).toHaveLength(2);
   });
 });

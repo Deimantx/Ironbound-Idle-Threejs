@@ -539,6 +539,8 @@ export interface GameState {
     forged: number;
     deaths: number;
     totalKills: number;
+    totalItemsGained: number;
+    playTimeMs: number;
   };
   gold: number;
   mining: MiningState;
@@ -719,8 +721,8 @@ export const emptySummary = (elapsedMs = 0): SimulationSummary => ({
   itemsGained: {},
   itemsUsed: {},
   enemiesDefeated: 0,
-  deaths: 0,
-  goldGained: 0,
+    deaths: 0,
+    goldGained: 0,
   eliteEnemiesDefeated: 0,
   combatStats: {
     playerAttacks: 0,

@@ -29,3 +29,15 @@ export const formatHoursMinutes = (milliseconds: number): string => {
   const minutes = totalMinutes % 60;
   return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 };
+
+export const formatPlayTime = (milliseconds: number): string => {
+  const totalMinutes = Math.max(
+    0,
+    Math.floor((Number.isFinite(milliseconds) ? milliseconds : 0) / 60_000),
+  );
+  const days = Math.floor(totalMinutes / (24 * 60));
+  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
+  const minutes = totalMinutes % 60;
+  const clock = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  return days > 0 ? `${days}d ${clock}` : clock;
+};

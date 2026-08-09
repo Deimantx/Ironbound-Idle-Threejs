@@ -633,6 +633,26 @@ const migratePeriodicCombatEffects = (input: GameState): GameState => {
   };
 };
 
+const normalizeLifetimeStatistic = (value: unknown): number => {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : 0;
+};
+
+const migrateLifetimeStatistics = (input: GameState): GameState => ({
+  ...input,
+  statistics: {
+    ...input.statistics,
+    totalItemsGained: normalizeLifetimeStatistic(
+      (input.statistics as GameState['statistics'] & { totalItemsGained?: unknown })
+        .totalItemsGained,
+    ),
+    playTimeMs: normalizeLifetimeStatistic(
+      (input.statistics as GameState['statistics'] & { playTimeMs?: unknown }).playTimeMs,
+    ),
+  },
+  schemaVersion: 15,
+});
+
 export const migrations: Record<number, SaveMigration> = {
   1: (input) => ({
     ...input,
@@ -701,6 +721,7 @@ export const migrations: Record<number, SaveMigration> = {
   12: migrateHelpIcons,
   13: migrateEnemySpecialFoundation,
   14: migratePeriodicCombatEffects,
+  15: migrateLifetimeStatistics,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {
@@ -720,6 +741,7 @@ export const migrateSave = (input: GameState, fromVersion = input.schemaVersion)
   current = migrateActivityLogs(current);
   current = migrateEnemySpecialFoundation(current);
   current = migratePeriodicCombatEffects(current);
+  current = migrateLifetimeStatistics(current);
   current.settings.showHelpIcons = current.settings.showHelpIcons ?? true;
   const maxHealth = getDerivedStats(current).maxHealth;
   current.player.currentHp = clampHealth(current.player.currentHp, maxHealth);

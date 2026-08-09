@@ -128,7 +128,7 @@ describe('navigation integration', () => {
     useGameStore.getState().setGame(game);
     render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'Recent Progress' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Recent Profession' })).toBeInTheDocument();
     expect(screen.getByText('Mining reached Level 42')).toBeInTheDocument();
     expect(screen.queryByText('You hit Forest Rat for 4.')).not.toBeInTheDocument();
 
@@ -566,8 +566,13 @@ describe('navigation integration', () => {
     const before = useGameStore.getState().game;
     const withoutSimulationClock = (current: typeof before) => {
       if (!current) return current;
-      const { updatedAt: _updatedAt, lastSimulatedAt: _lastSimulatedAt, ...stable } = current;
-      return stable;
+      const {
+        updatedAt: _updatedAt,
+        lastSimulatedAt: _lastSimulatedAt,
+        statistics,
+        ...stable
+      } = current;
+      return { ...stable, statistics: { ...statistics, playTimeMs: 0 } };
     };
     const beforeStable = withoutSimulationClock(before);
     const forgePanel = document.querySelector('[data-ui-panel="smithingForge"]') as HTMLElement;

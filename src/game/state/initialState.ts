@@ -31,6 +31,8 @@ export const createNewGame = (slot: number, name: string, now = Date.now()): Gam
       forged: 0,
       deaths: 0,
       totalKills: 0,
+      totalItemsGained: 0,
+      playTimeMs: 0,
     },
     gold: 0,
     mining: { stamina: 100, nodeStates: {} },
