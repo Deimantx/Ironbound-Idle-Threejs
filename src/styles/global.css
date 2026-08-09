@@ -6221,7 +6221,7 @@ h3 {
 }
 .combat-region-card strong {
   overflow: hidden;
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -6328,7 +6328,7 @@ h3 {
 .combat-area-card-copy strong {
   overflow: hidden;
   color: #eee3cb;
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -6336,14 +6336,14 @@ h3 {
   display: -webkit-box;
   overflow: hidden;
   color: #87948f;
-  font-size: 9px;
+  font-size: 10px;
   line-height: 1.35;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
 }
 .combat-area-card-copy span {
   color: #c2a56a;
-  font-size: 9px;
+  font-size: 10px;
 }
 .combat-area-card-status {
   grid-column: 1 / -1;
@@ -6602,11 +6602,11 @@ h3 {
 }
 .combat-enemy-card-copy span {
   color: #c2a56a;
-  font-size: 9px;
+  font-size: 11px;
 }
 .combat-enemy-card-copy small {
   color: #879793;
-  font-size: 9px;
+  font-size: 11px;
 }
 .combat-future-content {
   display: flex;
@@ -7286,14 +7286,14 @@ h3 {
 .combat-effect-tooltip strong,
 .enemy-special-details strong {
   color: #e1bd6e;
-  font-size: 11px;
+  font-size: 12px;
 }
 .enemy-special-kicker.emphasized {
   display: flex;
   align-items: center;
   gap: 6px;
   color: #e36d6d;
-  font-size: 13px;
+  font-size: 14px;
   text-transform: none;
   letter-spacing: normal;
 }
@@ -7302,20 +7302,20 @@ h3 {
   flex: 0 0 auto;
 }
 .enemy-special-details.emphasized > strong {
-  font-size: 12px;
+  font-size: 13px;
 }
 .enemy-special-details.emphasized .enemy-special-description {
-  font-size: 12px;
+  font-size: 13px;
 }
 .enemy-special-details.emphasized .enemy-special-row {
-  font-size: 12px;
+  font-size: 13px;
 }
 .combat-effect-tooltip span,
 .combat-effect-tooltip p,
 .enemy-special-details span,
 .enemy-special-details small {
   color: #aeb9af;
-  font-size: 9px;
+  font-size: 10px;
 }
 .combat-effect-tooltip p {
   margin: 0;
@@ -7481,7 +7481,7 @@ h3 {
   border: 1px solid #806a42;
   border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(224, 189, 111, 0.08);
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1.35;
   pointer-events: none;
 }
@@ -7505,12 +7505,12 @@ h3 {
 }
 .item-tooltip-header strong {
   color: #e1bd6e;
-  font-size: 11px;
+  font-size: 12px;
 }
 .item-tooltip-header span,
 .item-tooltip-kicker {
   color: #87958e;
-  font-size: 9px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -7574,7 +7574,7 @@ h3 {
 .concept-tooltip-content strong,
 .enemy-tooltip-header strong {
   color: #e1bd6e;
-  font-size: 11px;
+  font-size: 12px;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -7596,7 +7596,7 @@ h3 {
 .enemy-tooltip-header span,
 .enemy-tooltip-kills {
   color: #87958e;
-  font-size: 9px;
+  font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -7610,7 +7610,7 @@ h3 {
   display: flex;
   justify-content: space-between;
   gap: 6px;
-  font-size: 9px;
+  font-size: 10px;
 }
 .enemy-tooltip-stats span:last-child {
   grid-column: 1 / -1;
@@ -8372,7 +8372,7 @@ h3 {
   border-top: 2px solid var(--home-progression-accent);
 }
 .home-progression-heading {
-  margin-bottom: 15px;
+  margin-bottom: 19px;
 }
 .home-progression-heading > div:first-child {
   min-width: 0;
@@ -8384,6 +8384,7 @@ h3 {
   display: flex;
   align-items: center;
   gap: 7px;
+  margin-bottom: 4px;
 }
 .home-progression-title-row .eyebrow {
   margin-bottom: 0;
@@ -8404,7 +8405,7 @@ h3 {
 .home-recent-inline h3 {
   margin-bottom: 9px;
   color: #c9b47d;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
@@ -8464,9 +8465,9 @@ h3 {
 }
 .home-skill-tile-heading {
   display: flex;
-  align-items: baseline;
   flex-direction: column;
   justify-content: flex-start;
+  align-items: center;
   min-width: 0;
   gap: 3px;
   margin-top: 8px;
@@ -8486,8 +8487,10 @@ h3 {
 }
 .home-skill-tile-heading b {
   color: #f1d398;
-  font-size: 18px;
+  font-size: 19px;
   line-height: 1;
+  position: relative;
+  top: 2px;
 }
 .home-skill-tile-progress-row {
   display: grid;
@@ -8527,6 +8530,7 @@ h3 {
 }
 .home-recent-inline h3 {
   margin-bottom: 7px;
+  font-size: 14px;
 }
 .home-record-collection {
   min-width: 0;
@@ -8568,6 +8572,7 @@ h3 {
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: 10px;
+  row-gap: 4px;
   min-width: 0;
   padding: 3px clamp(10px, 2vw, 24px);
 }
@@ -8588,7 +8593,7 @@ h3 {
 }
 .home-record-stat strong {
   color: #f3dba5;
-  font-size: clamp(19px, 2.2vw, 29px);
+  font-size: 25px;
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
@@ -8652,18 +8657,18 @@ h3 {
 .home-milestone-row strong {
   overflow: hidden;
   color: #dce4dc;
-  font-size: 11px;
+  font-size: 13px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .home-milestone-row time {
   color: #82908b;
-  font-size: 9px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .home-milestone-empty {
   padding: 5px 0;
-  font-size: 11px;
+  font-size: 12px;
 }
 @media (max-width: 1200px) {
   .content-home {
