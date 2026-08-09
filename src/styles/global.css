@@ -5351,11 +5351,6 @@ h3 {
 .combat-health {
   margin: 14px 0 17px;
 }
-.combat-health-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
 .combat-health-head {
   margin-bottom: 7px;
   font-family: var(--font-family-body);
@@ -5364,6 +5359,7 @@ h3 {
   line-height: var(--line-height-small);
 }
 .combat-health-head strong {
+  margin-left: auto;
   font-family: var(--font-family-stat);
   font-size: var(--font-size-stat-compact);
   font-weight: var(--font-weight-stat-compact);
@@ -6287,7 +6283,7 @@ h3 {
   grid-template-rows: 1fr auto;
   gap: 0 8px;
   min-width: 0;
-  min-height: 122px;
+  min-height: 104px;
   padding: 9px;
   color: #cbd2cd;
   text-align: left;
@@ -6332,22 +6328,13 @@ h3 {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.combat-area-card-copy small {
-  display: -webkit-box;
-  overflow: hidden;
-  color: #87948f;
-  font-size: 10px;
-  line-height: 1.35;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
 .combat-area-card-copy span {
   color: #c2a56a;
   font-size: 10px;
 }
 .combat-area-card-status {
   grid-column: 1 / -1;
-  margin-top: 8px;
+  margin-top: 6px;
   color: #9fc6a8;
   font-size: 9px;
   text-transform: uppercase;
@@ -7099,14 +7086,6 @@ h3 {
   font-weight: var(--font-weight-small);
   line-height: var(--line-height-small);
 }
-.combat-redesign .combat-health-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-.combat-redesign .combat-health-separator,
 .combat-redesign .attack-progress-separator {
   color: #687873;
   font-style: normal;

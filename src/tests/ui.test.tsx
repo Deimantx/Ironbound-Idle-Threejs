@@ -8,6 +8,7 @@ import { miningNodeById } from '../content/miningNodes';
 import { recipeById } from '../content/recipes';
 import { getMiningEstimatedRates, createMiningRuntimeState } from '../game/formulas/miningFormulas';
 import { getXpForLevel } from '../game/formulas/experienceFormulas';
+import { startCombat } from '../game/engine/actionController';
 import { createNewGame } from '../game/state/initialState';
 import { useGameStore } from '../game/state/gameStore';
 import { UI_LAYOUT_STORAGE_KEY } from '../app/ui-editor/uiLayout';
@@ -2484,7 +2485,7 @@ describe('navigation integration', () => {
     await user.click(screen.getByRole('button', { name: 'Show browser' }));
     act(() => useGameStore.getState().tick(Date.now() + 500));
     expect(screen.getByRole('button', { name: 'Collapse browser' })).toBeInTheDocument();
-    expect(screen.getAllByRole('progressbar', { name: 'YOU health' })).toHaveLength(1);
+    expect(screen.getAllByRole('progressbar', { name: 'Player health' })).toHaveLength(1);
     const activityStats = screen.getByLabelText('Combat activity summary');
     expect(within(activityStats).getByText('YOU')).toBeInTheDocument();
     expect(within(activityStats).queryByText('Gold')).not.toBeInTheDocument();
@@ -2632,8 +2633,10 @@ describe('navigation integration', () => {
     const forestPath = screen.getByRole('button', { name: /Forest Path/ });
     const wolfDen = screen.getByRole('button', { name: /Wolf Den/ });
     expect(within(forestPath).queryByText(/\d+ enemies?/)).not.toBeInTheDocument();
+    expect(within(forestPath).queryByText('Woodland Trail')).not.toBeInTheDocument();
     expect(within(forestPath).getAllByText(/Requires Combat Lv/)).toHaveLength(1);
     expect(within(wolfDen).queryByText(/\d+ enemies?/)).not.toBeInTheDocument();
+    expect(within(wolfDen).queryByText('Predator Den')).not.toBeInTheDocument();
     expect(within(wolfDen).getAllByText(/Requires Combat Lv/)).toHaveLength(1);
   });
 
@@ -2641,8 +2644,30 @@ describe('navigation integration', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
-    expect(screen.getAllByRole('progressbar', { name: 'YOU health' })).toHaveLength(1);
-    expect(screen.getAllByRole('progressbar', { name: 'ENEMY · Forest Rat health' })).toHaveLength(1);
+    const assertNumericHealthHeaders = (enemyHealthLabel: string) => {
+      const livePanel = screen.getByRole('region', { name: 'Live combat resolution' });
+      const headers = Array.from(livePanel.querySelectorAll('.combat-health-head'));
+      expect(headers).toHaveLength(2);
+      headers.forEach((header) => {
+        expect(header.textContent?.trim()).toMatch(/^\d+ \/ \d+ HP · \d+%$/);
+      });
+      expect(screen.getAllByRole('progressbar', { name: 'Player health' })).toHaveLength(1);
+      expect(screen.getAllByRole('progressbar', { name: enemyHealthLabel })).toHaveLength(1);
+    };
+
+    assertNumericHealthHeaders('Forest Rat health');
+    const roadBanditGame = startCombat(
+      createNewGame(0, 'Road Bandit Health Tester'),
+      'abandoned-camp',
+      'road-bandit',
+      'accurate',
+      false,
+      1_000,
+    );
+    roadBanditGame.settings.threeQuality = 'off';
+    act(() => useGameStore.getState().setGame(roadBanditGame));
+    await waitFor(() => expect(screen.getAllByRole('progressbar', { name: 'Road Bandit health' })).toHaveLength(1));
+    assertNumericHealthHeaders('Road Bandit health');
     expect(screen.getAllByRole('progressbar', { name: 'Next attack' })).toHaveLength(2);
     expect(screen.getByText('Live combat log')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Combat log' })).not.toBeInTheDocument();

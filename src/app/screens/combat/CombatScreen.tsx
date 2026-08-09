@@ -145,12 +145,12 @@ const getCombatantHp = (
 };
 
 function HealthBar({
-  label,
+  accessibleName,
   current,
   max,
   tone,
 }: {
-  label: string;
+  accessibleName: string;
   current: number;
   max: number;
   tone: 'player' | 'enemy';
@@ -160,15 +160,9 @@ function HealthBar({
   return (
     <div className={`combat-health combat-health-${tone} health-state-${state}`}>
       <div className="combat-health-head">
-        <span className="combat-health-label">
-          {(state === 'critical' || state === 'near-death') && (
-            <AlertTriangle size={13} aria-hidden="true" />
-          )}
-          {label}
-          <span className="combat-health-separator" aria-hidden="true">
-            —
-          </span>
-        </span>
+        {(state === 'critical' || state === 'near-death') && (
+          <AlertTriangle size={13} aria-hidden="true" />
+        )}
         <strong className="ui-stat-compact combat-health-value">
           {formatHealth(current)} / {formatHealth(max)} HP · {percent}%
         </strong>
@@ -176,11 +170,11 @@ function HealthBar({
       <div
         className="combat-health-track"
         role="progressbar"
-        aria-label={`${label} health`}
+        aria-label={`${accessibleName} health`}
         aria-valuemin={0}
         aria-valuemax={max}
         aria-valuenow={Math.ceil(Math.max(0, current))}
-        aria-valuetext={`${formatHealth(current)} of ${formatHealth(max)} hit points`}
+        aria-valuetext={`${accessibleName}: ${formatHealth(current)} of ${formatHealth(max)} hit points`}
       >
         <i style={{ width: `${percent}%` }} />
       </div>
@@ -780,7 +774,6 @@ function CombatBrowser({
                 </span>
                 <span className="combat-area-card-copy">
                   <strong>{candidate.name}</strong>
-                  <small>{candidate.identity}</small>
                   <span>Requires Combat Lv {candidate.requiredCombatLevel}</span>
                 </span>
                 <span className="combat-area-card-status">
@@ -1144,7 +1137,7 @@ function LiveCombatResolution({
       <div className="combat-resolution-compare">
         <div className="combat-resolution-side player">
           <HealthBar
-            label="YOU"
+            accessibleName="Player"
             current={game.player.currentHp}
             max={getDerivedStats(game, combatAction?.style ?? 'accurate', selectPlayerCombatEffects(game)).maxHealth}
             tone="player"
@@ -1156,7 +1149,7 @@ function LiveCombatResolution({
         </div>
         <div className="combat-resolution-side enemy">
           <HealthBar
-            label={`ENEMY · ${enemy.name}`}
+            accessibleName={enemy.name}
             current={enemyHp}
             max={combatAction?.combatState.enemyMaxHp ?? enemyStats.maxHealth}
             tone="enemy"
