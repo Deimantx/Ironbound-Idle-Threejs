@@ -29,6 +29,24 @@ describe('UI font registry', () => {
       weightStep: 100,
       supportedWeights: [100, 200, 300, 400, 500, 600, 700, 800, 900],
     });
+    expect(UI_FONT_REGISTRY.dmMono).toMatchObject({
+      label: 'DM Mono',
+      cssFamily: "'DM Mono', ui-monospace, SFMono-Regular, Consolas, monospace",
+      weightMode: 'static',
+      minWeight: 300,
+      maxWeight: 500,
+      weightStep: 100,
+      supportedWeights: [300, 400, 500],
+    });
+    expect(UI_FONT_REGISTRY.robotoCondensed).toMatchObject({
+      label: 'Roboto Condensed',
+      cssFamily: "'Roboto Condensed', 'Inter', ui-sans-serif, system-ui, sans-serif",
+      weightMode: 'static',
+      minWeight: 200,
+      maxWeight: 900,
+      weightStep: 100,
+      supportedWeights: [200, 300, 400, 500, 700, 800, 900],
+    });
     expect(DEFAULT_UI_FONT_FAMILIES).toEqual({ heading: 'inter', body: 'inter', stat: 'inter' });
   });
 
@@ -47,6 +65,10 @@ describe('UI font registry', () => {
     expect(resolveFontWeight('interDisplay', 680)).toBe(700);
     expect(resolveFontWeight('interDisplay', 9999)).toBe(900);
     expect(resolveFontWeight('interDisplay', -1)).toBe(100);
+    expect(resolveFontWeight('dmMono', 200)).toBe(300);
+    expect(resolveFontWeight('dmMono', 450)).toBe(400);
+    expect(resolveFontWeight('robotoCondensed', 680)).toBe(700);
+    expect(resolveFontWeight('robotoCondensed', 600)).toBe(500);
     expect(resolveFontWeight('interDisplay', Number.NaN)).toBe(400);
   });
 });

@@ -1644,6 +1644,10 @@ describe('navigation integration', () => {
     expect(within(editor).getByRole('combobox', { name: 'Heading Font' })).toBeInTheDocument();
     expect(within(editor).getByRole('combobox', { name: 'Body / UI Font' })).toBeInTheDocument();
     expect(within(editor).getByRole('combobox', { name: 'Stat / Numeric Font' })).toBeInTheDocument();
+    const fontOptions = Array.from(
+      within(editor).getByRole('combobox', { name: 'Heading Font' }).querySelectorAll('option'),
+    ).map((option) => option.textContent);
+    expect(fontOptions).toEqual(['Inter', 'Inter Display', 'DM Mono', 'Roboto Condensed']);
 
     await user.selectOptions(within(editor).getByRole('combobox', { name: 'Heading Font' }), 'interDisplay');
     await waitFor(() => {

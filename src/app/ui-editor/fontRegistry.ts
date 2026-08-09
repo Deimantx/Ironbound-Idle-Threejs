@@ -2,7 +2,7 @@ export const UI_FONT_ROLE_IDS = ['heading', 'body', 'stat'] as const;
 
 export type UiFontRoleId = (typeof UI_FONT_ROLE_IDS)[number];
 
-export const UI_FONT_IDS = ['inter', 'interDisplay'] as const;
+export const UI_FONT_IDS = ['inter', 'interDisplay', 'dmMono', 'robotoCondensed'] as const;
 
 export type UiFontId = (typeof UI_FONT_IDS)[number];
 
@@ -44,6 +44,26 @@ export const UI_FONT_REGISTRY: Record<UiFontId, UiFontDefinition> = {
     maxWeight: 900,
     weightStep: 100,
     supportedWeights: [100, 200, 300, 400, 500, 600, 700, 800, 900],
+  },
+  dmMono: {
+    id: 'dmMono',
+    label: 'DM Mono',
+    cssFamily: "'DM Mono', ui-monospace, SFMono-Regular, Consolas, monospace",
+    weightMode: 'static',
+    minWeight: 300,
+    maxWeight: 500,
+    weightStep: 100,
+    supportedWeights: [300, 400, 500],
+  },
+  robotoCondensed: {
+    id: 'robotoCondensed',
+    label: 'Roboto Condensed',
+    cssFamily: "'Roboto Condensed', 'Inter', ui-sans-serif, system-ui, sans-serif",
+    weightMode: 'static',
+    minWeight: 200,
+    maxWeight: 900,
+    weightStep: 100,
+    supportedWeights: [200, 300, 400, 500, 700, 800, 900],
   },
 };
 

@@ -33,3 +33,27 @@
 @font-face { font-family: 'Inter Display'; src: url('../Assets/Fonts/InterDisplay-ExtraBoldItalic.woff2') format('woff2'); font-style: italic; font-weight: 800; font-display: swap; }
 @font-face { font-family: 'Inter Display'; src: url('../Assets/Fonts/InterDisplay-Black.woff2') format('woff2'); font-style: normal; font-weight: 900; font-display: swap; }
 @font-face { font-family: 'Inter Display'; src: url('../Assets/Fonts/InterDisplay-BlackItalic.woff2') format('woff2'); font-style: italic; font-weight: 900; font-display: swap; }
+
+/* DM Mono is bundled as static normal and italic faces at weights 300, 400, and 500. */
+@font-face { font-family: 'DM Mono'; src: url('../Assets/Fonts/DMMono-Light.woff2') format('woff2'); font-style: normal; font-weight: 300; font-display: swap; }
+@font-face { font-family: 'DM Mono'; src: url('../Assets/Fonts/DMMono-LightItalic.woff2') format('woff2'); font-style: italic; font-weight: 300; font-display: swap; }
+@font-face { font-family: 'DM Mono'; src: url('../Assets/Fonts/DMMono-Regular.woff2') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'DM Mono'; src: url('../Assets/Fonts/DMMono-Italic.woff2') format('woff2'); font-style: italic; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'DM Mono'; src: url('../Assets/Fonts/DMMono-Medium.woff2') format('woff2'); font-style: normal; font-weight: 500; font-display: swap; }
+@font-face { font-family: 'DM Mono'; src: url('../Assets/Fonts/DMMono-MediumItalic.woff2') format('woff2'); font-style: italic; font-weight: 500; font-display: swap; }
+
+/* Roboto Condensed is bundled as static normal and italic faces at its available weights. */
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-ExtraLight.woff2') format('woff2'); font-style: normal; font-weight: 200; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-ExtraLightItalic.woff2') format('woff2'); font-style: italic; font-weight: 200; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-Light.woff2') format('woff2'); font-style: normal; font-weight: 300; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-LightItalic.woff2') format('woff2'); font-style: italic; font-weight: 300; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-Regular.woff2') format('woff2'); font-style: normal; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-Italic.woff2') format('woff2'); font-style: italic; font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-Medium.woff2') format('woff2'); font-style: normal; font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-MediumItalic.woff2') format('woff2'); font-style: italic; font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-Bold.woff2') format('woff2'); font-style: normal; font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-BoldItalic.woff2') format('woff2'); font-style: italic; font-weight: 700; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-ExtraBold.woff2') format('woff2'); font-style: normal; font-weight: 800; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-ExtraBoldItalic.woff2') format('woff2'); font-style: italic; font-weight: 800; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-Black.woff2') format('woff2'); font-style: normal; font-weight: 900; font-display: swap; }
+@font-face { font-family: 'Roboto Condensed'; src: url('../Assets/Fonts/RobotoCondensed-BlackItalic.woff2') format('woff2'); font-style: italic; font-weight: 900; font-display: swap; }
