@@ -169,7 +169,7 @@ function HealthBar({
             —
           </span>
         </span>
-        <strong>
+        <strong className="ui-stat-compact combat-health-value">
           {formatHealth(current)} / {formatHealth(max)} HP · {percent}%
         </strong>
       </div>
@@ -246,8 +246,10 @@ function StatLine({
 }) {
   return (
     <div className="combat-stat-line" title={concept ? undefined : hint}>
-      <span>{concept ? <ExplainedTerm concept={concept} label={label} showHelpIcon={showHelpIcons} /> : label}</span>
-      <strong>{value}</strong>
+      <span className="combat-stat-label">
+        {concept ? <ExplainedTerm concept={concept} label={label} showHelpIcon={showHelpIcons} /> : label}
+      </span>
+      <strong className="ui-stat-compact combat-stat-value">{value}</strong>
     </div>
   );
 }
@@ -287,11 +289,9 @@ function EquipmentStrip({ game }: { game: GameState }) {
             tabIndex={item ? 0 : undefined}
             aria-label={`${label}: ${itemLabel}`}
           >
-          <span>{label}</span>
-          {item ? <ItemIcon itemId={item.id} size="xs" /> : <b>—</b>}
-          <small>
-            {itemLabel}
-          </small>
+            <span className="combat-equip-slot-label">{label}</span>
+            {item ? <ItemIcon itemId={item.id} size="xs" /> : <b>—</b>}
+            <small className="combat-equip-slot-item">{itemLabel}</small>
           </div>
         </ItemTooltip>
       );
@@ -972,7 +972,7 @@ function TargetAnalysis({
                   label
                 )}
               </span>
-              <strong>{value}</strong>
+              <strong className="ui-stat-compact combat-analysis-value">{value}</strong>
             </div>
           ))}
         </div>
@@ -1027,13 +1027,13 @@ function RecentActions({
                 className={`combat-live-log-entry ${presentation.category} ${presentation.important ? 'important' : ''}`}
                 key={entry.id}
               >
-                <time>
+                <time className="combat-live-log-time">
                   {formatCombatLogTime(entry.at, entry.encounterStartedAt ?? encounterStartedAt)}
                 </time>
                 <span className="combat-live-log-icon">
                   <Icon size={12} />
                 </span>
-                <span>{presentation.text}</span>
+                <span className="combat-live-log-message">{presentation.text}</span>
               </div>
             );
           })
@@ -1202,7 +1202,7 @@ function LiveCombatResolution({
                 Special Charge · <strong>{enemy.specialAttack.name}</strong>
               </span>
             </GameTooltip>
-            <strong>{enemySpecialCharge} / {COMBAT_TUNING.enemySpecialChargeMax}{enemySpecialReady ? ' READY' : ''}</strong>
+            <strong className="ui-stat-compact combat-enemy-special-value">{enemySpecialCharge} / {COMBAT_TUNING.enemySpecialChargeMax}{enemySpecialReady ? ' READY' : ''}</strong>
           </div>
           <div
             className="combat-enemy-special-track"
@@ -1221,7 +1221,7 @@ function LiveCombatResolution({
           <ExplainedTerm concept="adrenaline" showHelpIcon={game.settings.showHelpIcons}>
             Adrenaline
           </ExplainedTerm>
-          <strong>
+          <strong className="ui-stat-compact combat-adrenaline-value">
             {adrenaline} / {COMBAT_TUNING.adrenalineMax}{' '}
             {adrenaline >= COMBAT_TUNING.adrenalineMax ? 'READY' : ''}
           </strong>
@@ -1481,7 +1481,7 @@ function ProgressionPanel({
       <div className="combat-training-focus">
         <ArrowUpRight size={15} />
         <span>Training {selectedSkill[0].toUpperCase() + selectedSkill.slice(1)}</span>
-        <strong>{formatNumber(session.xpGained[selectedSkill] ?? 0)} XP</strong>
+        <strong className="ui-stat-compact">{formatNumber(session.xpGained[selectedSkill] ?? 0)} XP</strong>
         <small>{formatNumber(xpHour)} XP/hour</small>
       </div>
       <div className="combat-xp-grid">
@@ -1491,7 +1491,7 @@ function ProgressionPanel({
             <div className="combat-xp-row" key={skill}>
               <div>
                 <span>{skill[0].toUpperCase() + skill.slice(1)}</span>
-                <b>Lv {game.skills[skill].level}</b>
+                <b className="ui-stat-compact">Lv {game.skills[skill].level}</b>
               </div>
               <div className="combat-xp-bar">
                 <i style={{ width: `${progress.percent}%` }} />
@@ -1505,19 +1505,19 @@ function ProgressionPanel({
       </div>
       <div className="combat-session-stat-grid">
         <div>
-          <strong>{formatDuration(started)}</strong>
+          <strong className="ui-stat-compact">{formatDuration(started)}</strong>
           <span>time active</span>
         </div>
         <div>
-          <strong>{formatNumber(session.enemiesDefeated)}</strong>
+          <strong className="ui-stat-compact">{formatNumber(session.enemiesDefeated)}</strong>
           <span>enemies defeated</span>
         </div>
         <div>
-          <strong>{formatNumber(totalXp)}</strong>
+          <strong className="ui-stat-compact">{formatNumber(totalXp)}</strong>
           <span>XP gained</span>
         </div>
         <div>
-          <strong>{formatNumber(session.goldGained)}</strong>
+          <strong className="ui-stat-compact">{formatNumber(session.goldGained)}</strong>
           <span>gold gained</span>
         </div>
       </div>
@@ -1563,33 +1563,33 @@ function OverviewSummary({ session }: { session: CombatSessionStats }) {
       <div className="combat-overview-columns">
         <div>
           <span className="combat-panel-kicker">Performance · Actual</span>
-          <strong>{actualDps.toFixed(1)}</strong>
+          <strong className="ui-stat-compact combat-overview-value">{actualDps.toFixed(1)}</strong>
           <small>actual DPS</small>
-          <strong>{playerHitRate}</strong>
+          <strong className="ui-stat-compact combat-overview-value">{playerHitRate}</strong>
           <small>player hit rate</small>
-          <strong>{enemyHitRate}</strong>
+          <strong className="ui-stat-compact combat-overview-value">{enemyHitRate}</strong>
           <small>enemy hit rate</small>
-          <strong>{specialHitRate}</strong>
+          <strong className="ui-stat-compact combat-overview-value">{specialHitRate}</strong>
           <small>special hit rate</small>
         </div>
         <div>
           <span className="combat-panel-kicker">Timing · Actual</span>
-          <strong>{averageKillTime}</strong>
+          <strong className="ui-stat-compact combat-overview-value">{averageKillTime}</strong>
           <small>average kill time</small>
-          <strong>{actualKillsPerHour.toFixed(1)}</strong>
+          <strong className="ui-stat-compact combat-overview-value">{actualKillsPerHour.toFixed(1)}</strong>
           <small>actual kills/hour</small>
-          <strong>{formatNumber(session.damageDealt)}</strong>
+          <strong className="ui-stat-compact combat-overview-value">{formatNumber(session.damageDealt)}</strong>
           <small>damage dealt</small>
-          <strong>{formatNumber(session.damageTaken)}</strong>
+          <strong className="ui-stat-compact combat-overview-value">{formatNumber(session.damageTaken)}</strong>
           <small>damage taken</small>
         </div>
         <div>
           <span className="combat-panel-kicker">Rewards · Actual</span>
-          <strong>{formatNumber(session.goldGained)}</strong>
+          <strong className="ui-stat-compact combat-overview-value">{formatNumber(session.goldGained)}</strong>
           <small>gold gained</small>
-          <strong>{formatNumber(itemsGained)}</strong>
+          <strong className="ui-stat-compact combat-overview-value">{formatNumber(itemsGained)}</strong>
           <small>items gained</small>
-          <strong>{session.eliteEnemiesDefeated}</strong>
+          <strong className="ui-stat-compact combat-overview-value">{session.eliteEnemiesDefeated}</strong>
           <small>elite kills</small>
         </div>
       </div>

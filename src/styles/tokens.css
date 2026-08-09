@@ -28,6 +28,7 @@
   /* Runtime-derived density fallbacks; the app root replaces these values. */
   --font-size-button-compact: 10px;
   --font-size-stat-compact: 14px;
+  --font-size-stat-label: 11px;
 
   /* Typography — weights */
   --font-weight-page-title: 700;

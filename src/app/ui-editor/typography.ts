@@ -200,6 +200,9 @@ export const getCompactStatSize = (masterSize: number): number =>
 export const getCompactButtonSize = (masterSize: number): number =>
   clamp(Math.round(masterSize * 0.84), 9, 16);
 
+export const getCompactStatLabelSize = (masterSize: number): number =>
+  clamp(Math.round(masterSize * 0.42), 9, 18);
+
 const safeNumber = (value: unknown, fallback: number): number =>
   typeof value === 'number' && Number.isFinite(value) ? value : fallback;
 
@@ -277,6 +280,7 @@ export const getTypographyCssVariables = (
   }
   variables['--font-size-stat-compact'] = `${getCompactStatSize(typography.roles.stat.size)}px`;
   variables['--font-weight-stat-compact'] = variables['--font-weight-stat'];
+  variables['--font-size-stat-label'] = `${getCompactStatLabelSize(typography.roles.stat.size)}px`;
   variables['--font-size-button-compact'] = `${getCompactButtonSize(typography.roles.button.size)}px`;
   variables['--font-weight-button-compact'] = variables['--font-weight-button'];
   return variables;

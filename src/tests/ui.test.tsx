@@ -1684,6 +1684,15 @@ describe('navigation integration', () => {
     fireEvent.change(within(getRoleEditor('Body')).getByRole('slider', { name: 'Size' }), {
       target: { value: '22' },
     });
+    fireEvent.change(within(getRoleEditor('Description')).getByRole('slider', { name: 'Size' }), {
+      target: { value: '20' },
+    });
+    fireEvent.change(within(getRoleEditor('Small Text')).getByRole('slider', { name: 'Size' }), {
+      target: { value: '16' },
+    });
+    fireEvent.change(within(getRoleEditor('Eyebrow')).getByRole('slider', { name: 'Size' }), {
+      target: { value: '18' },
+    });
     fireEvent.change(within(getRoleEditor('Stat Values')).getByRole('slider', { name: 'Size' }), {
       target: { value: '42' },
     });
@@ -1700,13 +1709,20 @@ describe('navigation integration', () => {
       const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
       expect(stored.typography.roles.panelTitle).toEqual({ size: 27, weight: 650 });
       expect(stored.typography.roles.body.size).toBe(22);
+      expect(stored.typography.roles.description.size).toBe(20);
+      expect(stored.typography.roles.small.size).toBe(16);
+      expect(stored.typography.roles.eyebrow.size).toBe(18);
       expect(stored.typography.roles.stat).toEqual({ size: 42, weight: 800 });
       expect(stored.typography.roles.button).toEqual({ size: 20, weight: 800 });
       expect(document.querySelector('.app')).toHaveStyle({
         '--font-size-panel-title': '27px',
         '--font-weight-panel-title': '600',
+        '--font-size-description': '20px',
+        '--font-size-small': '16px',
+        '--font-size-eyebrow': '18px',
         '--font-size-stat': '42px',
         '--font-size-stat-compact': '22px',
+        '--font-size-stat-label': '18px',
         '--font-weight-stat': '800',
         '--font-weight-stat-compact': '800',
         '--font-size-button': '20px',
@@ -1735,11 +1751,18 @@ describe('navigation integration', () => {
       const stored = JSON.parse(window.localStorage.getItem(UI_LAYOUT_STORAGE_KEY) ?? '{}');
       expect(stored.typography.roles.panelTitle).toEqual({ size: 20, weight: 700 });
       expect(stored.typography.roles.body).toEqual({ size: 16, weight: 400 });
+      expect(stored.typography.roles.description).toEqual({ size: 13, weight: 400 });
+      expect(stored.typography.roles.small).toEqual({ size: 10, weight: 400 });
+      expect(stored.typography.roles.eyebrow).toEqual({ size: 11, weight: 400 });
       expect(stored.typography.roles.stat).toEqual({ size: 26, weight: 700 });
       expect(stored.typography.roles.button).toEqual({ size: 12, weight: 600 });
       expect(document.querySelector('.app')).toHaveStyle({
+        '--font-size-description': '13px',
+        '--font-size-small': '10px',
+        '--font-size-eyebrow': '11px',
         '--font-size-stat': '26px',
         '--font-size-stat-compact': '14px',
+        '--font-size-stat-label': '11px',
         '--font-weight-stat': '700',
         '--font-weight-stat-compact': '700',
         '--font-size-button': '12px',
@@ -2634,6 +2657,52 @@ describe('navigation integration', () => {
     ).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Full drop table' }));
     expect(screen.getByRole('heading', { name: 'Loot table' })).toBeInTheDocument();
+  });
+
+  it('exposes Combat screenshot targets through semantic typography hooks', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Combat Typography');
+    game.settings.threeQuality = 'off';
+    game.equipment.weapon = 'iron-sword';
+    game.discoveredItems.push('iron-sword');
+    game.activityLogs.combat = [
+      {
+        id: 'combat-typography-hit',
+        kind: 'player-hit',
+        enemyId: 'forest-rat',
+        damage: 4,
+        special: false,
+        at: 2_000,
+        encounterStartedAt: 2_000,
+      },
+    ];
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+
+    expect(document.querySelectorAll('.combat-stat-label').length).toBeGreaterThanOrEqual(4);
+    expect(document.querySelectorAll('.combat-stat-value')).not.toHaveLength(0);
+    expect(document.querySelector('.combat-health-value')).toHaveClass('ui-stat-compact');
+    expect(document.querySelector('.combat-enemy-description')).toHaveClass(
+      'combat-enemy-description',
+    );
+    expect(document.querySelector('.special-attack-effect')).toHaveClass(
+      'special-attack-effect',
+    );
+    expect(document.querySelector('.combat-live-log-message')).toHaveTextContent(
+      'You hit Forest Rat for 4.',
+    );
+    expect(screen.getByText('Derived stats')).toHaveClass('combat-panel-kicker');
+    expect(screen.getByText('Combat details')).toHaveClass('combat-panel-kicker');
+    expect(document.querySelector('.app')).toHaveStyle({
+      '--font-size-stat': '26px',
+      '--font-size-stat-compact': '14px',
+      '--font-size-stat-label': '11px',
+      '--font-size-description': '13px',
+      '--font-size-small': '10px',
+      '--font-size-eyebrow': '11px',
+    });
   });
 
   it('collapses and expands Target Analysis like the combat locations panel', async () => {

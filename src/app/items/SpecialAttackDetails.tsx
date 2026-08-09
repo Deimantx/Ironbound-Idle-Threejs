@@ -12,7 +12,7 @@ export function SpecialAttackDetails({
     <div className={`special-attack-details ${className}`.trim()}>
       <div className="special-attack-effect-list">
         {getSpecialAttackEffectRows(special).map((row) => (
-          <span key={row.id}>{row.label}</span>
+          <span className="special-attack-effect" key={row.id}>{row.label}</span>
         ))}
       </div>
     </div>

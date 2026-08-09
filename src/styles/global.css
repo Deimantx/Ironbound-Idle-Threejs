@@ -2771,6 +2771,7 @@ h3 {
   --font-size-stat: 26px;
   --font-size-button-compact: 10px;
   --font-size-stat-compact: 14px;
+  --font-size-stat-label: 11px;
   --font-weight-page-title: 700;
   --font-weight-panel-title: 700;
   --font-weight-subheading: 700;
@@ -3409,9 +3410,12 @@ h3 {
 }
 .context-kicker {
   color: #728083;
-  font-size: 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-eyebrow);
+  font-weight: var(--font-weight-eyebrow);
+  line-height: var(--line-height-eyebrow);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--letter-spacing-eyebrow);
 }
 .context-item b {
   color: var(--text);
@@ -3641,10 +3645,17 @@ h3 {
   gap: 10px;
   margin-bottom: 6px;
   color: var(--muted);
-  font-size: 11px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-health-head strong {
   color: var(--text);
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
   font-variant-numeric: tabular-nums;
 }
 .combat-health-track {
@@ -3713,10 +3724,17 @@ h3 {
   padding: 7px 0;
   border-bottom: 1px solid #2e393c;
   color: var(--muted);
-  font-size: 11px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-stat-label);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-stat-line strong {
   color: var(--text);
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
   font-variant-numeric: tabular-nums;
 }
 .panel-label {
@@ -3735,9 +3753,11 @@ h3 {
 .combat-equipment-group-title {
   margin: 7px 0 4px;
   color: #c3a86e;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-eyebrow);
+  line-height: var(--line-height-small);
+  letter-spacing: var(--letter-spacing-eyebrow);
   text-transform: uppercase;
 }
 .combat-equipment-grid-main,
@@ -4300,13 +4320,19 @@ h3 {
   gap: 8px;
   padding: 6px 0;
   border-bottom: 1px solid #2a3436;
-  font-size: 11px;
-  line-height: 1.3;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-log-entry time {
   flex: 0 0 auto;
   color: #707d80;
-  font-size: 9px;
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
+  font-variant-numeric: tabular-nums;
 }
 .combat-log-entry.success span {
   color: #a9d0aa;
@@ -5332,10 +5358,16 @@ h3 {
 }
 .combat-health-head {
   margin-bottom: 7px;
-  font-size: 11px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-health-head strong {
-  font-size: 11px;
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
 }
 .combat-health-track {
   height: 17px;
@@ -5931,17 +5963,22 @@ h3 {
 }
 .combat-header-stat span {
   color: #899694;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--letter-spacing-eyebrow);
 }
 .combat-header-stat strong {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   color: #e9dfc8;
-  font-size: 14px;
   font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
   font-variant-numeric: tabular-nums;
 }
 .combat-header-stat strong svg {
@@ -6034,7 +6071,10 @@ h3 {
   align-items: center;
   gap: 4px;
   color: #9bc0a4;
-  font-size: 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
   white-space: nowrap;
 }
 .combat-save-status svg {
@@ -6051,7 +6091,10 @@ h3 {
 .combat-context-section b {
   overflow: hidden;
   color: #e5ddc7;
-  font-size: 11px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -6060,7 +6103,10 @@ h3 {
 }
 .combat-context-meta {
   color: #a8b3ad;
-  font-size: 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-redesign .combat-status {
   margin-left: 5px;
@@ -6097,12 +6143,17 @@ h3 {
   box-shadow: inset 3px 0 var(--combat-gold);
 }
 .combat-content-tabs button span {
-  font-size: 13px;
-  font-weight: 800;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-button-compact);
+  font-weight: var(--font-weight-button-compact);
+  line-height: var(--line-height-button);
 }
 .combat-content-tabs button small {
   color: #7f8c89;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-content-tabs button.selected small {
   color: #b6a37e;
@@ -6192,7 +6243,10 @@ h3 {
   color: #9eaca4;
   background: rgba(47, 65, 55, 0.2);
   border-left: 2px solid #78936e;
-  font-size: 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-description);
+  font-weight: var(--font-weight-description);
+  line-height: var(--line-height-description);
 }
 .combat-region-description strong {
   color: #e9e0ca;
@@ -6209,11 +6263,17 @@ h3 {
   gap: 10px;
   padding: 0 16px 14px;
   color: #c6cfc9;
-  font-size: 11px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-browser-collapsed-summary small {
   color: #d2b276;
-  font-size: 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-area-grid {
   display: grid;
@@ -6453,7 +6513,10 @@ h3 {
   padding: 10px 0 8px;
 }
 .combat-location-content-heading .muted {
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-enemy-roster {
   display: flex;
@@ -6646,10 +6709,12 @@ h3 {
 }
 .combat-panel-kicker {
   color: #c7a76b;
-  font-size: 9px;
-  font-weight: 800;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-eyebrow);
+  font-weight: var(--font-weight-eyebrow);
+  line-height: var(--line-height-eyebrow);
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--letter-spacing-eyebrow);
 }
 .combat-player-heading-line,
 .combat-enemy-heading-line {
@@ -6716,16 +6781,22 @@ h3 {
   padding: 7px 0;
   border-bottom: 1px solid #2d383b;
 }
-.combat-redesign .combat-stat-line span {
+.combat-redesign .combat-stat-line .combat-stat-label {
   overflow: hidden;
   color: #899692;
-  font-size: 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-stat-label);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.combat-redesign .combat-stat-line strong {
+.combat-redesign .combat-stat-line .combat-stat-value {
   color: #e7dfca;
-  font-size: 11px;
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
   font-variant-numeric: tabular-nums;
 }
 .combat-subheading-row {
@@ -6733,7 +6804,10 @@ h3 {
 }
 .combat-subheading-row .muted {
   color: #778582;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-disclosure-actions {
   display: inline-flex;
@@ -6791,13 +6865,20 @@ h3 {
   white-space: nowrap;
 }
 .combat-redesign .combat-equip-slot > span {
-  font-size: 7px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-eyebrow);
+  line-height: var(--line-height-small);
+  letter-spacing: var(--letter-spacing-eyebrow);
   text-transform: uppercase;
 }
 .combat-redesign .combat-equip-slot > small {
   margin-top: 3px;
   color: #8d9994;
-  font-size: 8px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-redesign .combat-equip-slot > b {
   display: block;
@@ -6850,12 +6931,18 @@ h3 {
   min-width: 0;
 }
 .combat-style-option strong {
-  font-size: 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-button-compact);
+  font-weight: var(--font-weight-button-compact);
+  line-height: var(--line-height-button);
 }
 .combat-style-option small {
   overflow: hidden;
   color: #8b9994;
-  font-size: 8px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -6865,8 +6952,10 @@ h3 {
 .combat-style-description {
   margin: 7px 0 0;
   color: #87948f;
-  font-size: 9px;
-  line-height: 1.4;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-description);
+  font-weight: var(--font-weight-description);
+  line-height: var(--line-height-description);
 }
 .combat-panel-note {
   display: flex;
@@ -6874,8 +6963,10 @@ h3 {
   gap: 5px;
   margin-top: 14px;
   color: #8cae98;
-  font-size: 9px;
-  line-height: 1.35;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-description);
+  font-weight: var(--font-weight-description);
+  line-height: var(--line-height-description);
 }
 .combat-panel-note svg {
   flex: 0 0 auto;
@@ -6883,12 +6974,17 @@ h3 {
 .combat-enemy-description {
   margin: 13px 0 0;
   color: #929e99;
-  font-size: 10px;
-  line-height: 1.4;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-description);
+  font-weight: var(--font-weight-description);
+  line-height: var(--line-height-description);
 }
 .combat-enemy-discovery {
   color: #9cbda2;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-drop-preview {
   margin-top: 14px;
@@ -6909,7 +7005,10 @@ h3 {
   background: #131a1c;
   border: 1px solid #303c3f;
   border-radius: 5px;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-drop-item span {
   overflow: hidden;
@@ -6995,7 +7094,10 @@ h3 {
   display: flex;
   margin-bottom: 5px;
   color: #9ca8a3;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-redesign .combat-health-label {
   display: inline-flex;
@@ -7009,9 +7111,12 @@ h3 {
   color: #687873;
   font-style: normal;
 }
-.combat-redesign .combat-health-head strong {
+.combat-redesign .combat-health-value {
   color: #ece4cf;
-  font-size: 10px;
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
 }
 .combat-redesign .combat-health-track {
   height: 17px;
@@ -7233,10 +7338,17 @@ h3 {
   justify-content: space-between;
   gap: 8px;
   color: #c9958a;
-  font-size: 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-enemy-special-head > strong {
   color: #e0bf78;
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
   font-variant-numeric: tabular-nums;
 }
 .combat-enemy-special-name {
@@ -7273,7 +7385,17 @@ h3 {
   display: flex;
   justify-content: space-between;
   color: #d9c38f;
-  font-size: 11px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
+}
+.combat-adrenaline-value {
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
+  font-variant-numeric: tabular-nums;
 }
 .combat-adrenaline-track {
   height: 8px;
@@ -7304,12 +7426,16 @@ h3 {
 .combat-redesign .combat-main-action {
   min-height: 40px;
   padding-inline: 16px;
-  font-weight: 800;
+  font-family: var(--font-family-body);
+  font-weight: var(--font-weight-button);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 .combat-adrenaline small {
   color: #9da39b;
-  line-height: 1.35;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-description);
+  font-weight: var(--font-weight-description);
+  line-height: var(--line-height-description);
 }
 .combat-adrenaline-details {
   display: grid;
@@ -7333,13 +7459,16 @@ h3 {
   flex-wrap: wrap;
   gap: 4px;
 }
-.special-attack-effect-list span {
+.special-attack-effect-list .special-attack-effect {
   padding: 3px 5px;
   color: #c8a86b;
   background: rgba(22, 25, 24, 0.46);
   border: 1px solid #675638;
   border-radius: 4px;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .game-tooltip {
   position: fixed;
@@ -7535,15 +7664,24 @@ h3 {
 }
 .combat-analysis-target-copy span {
   color: #9ca9a4;
-  font-size: 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-analysis-target-copy small {
   color: #c5a967;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-analysis-style {
   color: #c3a86e;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
   white-space: nowrap;
 }
 .combat-analysis-content {
@@ -7559,7 +7697,10 @@ h3 {
   background: rgba(65, 53, 32, 0.18);
   border: 1px solid #4e4534;
   border-radius: 6px;
-  font-size: 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-analysis-lifetime-kills svg {
   color: var(--combat-gold);
@@ -7585,7 +7726,10 @@ h3 {
   color: #9ca9a4;
   background: rgba(13, 18, 20, 0.5);
   border-radius: 5px;
-  font-size: 11px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-stat-label);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-analysis-row strong {
   color: #e4d8bb;
@@ -7596,7 +7740,16 @@ h3 {
   margin-top: 12px;
   padding: 0 8px;
   color: #d5bd82;
-  font-size: 12px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-description);
+  font-weight: var(--font-weight-description);
+  line-height: var(--line-height-description);
+}
+.combat-analysis-trait-copy {
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-description);
+  font-weight: var(--font-weight-description);
+  line-height: var(--line-height-description);
 }
 .combat-analysis-trait.combat-analysis-trait-emphasized {
   display: grid;
@@ -7678,7 +7831,10 @@ h3 {
   color: #aab5b0;
   background: rgba(17, 23, 25, 0.68);
   border-radius: 4px;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-live-log-entry.important {
   color: #ecdcaf;
@@ -7705,9 +7861,13 @@ h3 {
 .combat-live-log-entry.legacy {
   color: #aab5b0;
 }
-.combat-live-log-entry time {
+.combat-live-log-entry .combat-live-log-time {
   color: #6f7d79;
-  font-size: 8px;
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
+  font-variant-numeric: tabular-nums;
 }
 .combat-live-log-icon {
   display: grid;
@@ -7770,15 +7930,21 @@ h3 {
 .combat-overview-columns .combat-panel-kicker {
   margin-bottom: 5px;
 }
-.combat-overview-columns strong {
+.combat-overview-columns .combat-overview-value {
   color: #e9dfc8;
-  font-size: 15px;
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
   font-variant-numeric: tabular-nums;
 }
 .combat-overview-columns small {
   margin-bottom: 6px;
   color: #82908b;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-loot-content .combat-section-heading,
 .combat-overview-content > .combat-section-heading {
@@ -7862,7 +8028,10 @@ h3 {
   background: rgba(76, 60, 31, 0.22);
   border: 1px solid #59482f;
   border-radius: 6px;
-  font-size: 10px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-training-focus span {
   color: #e6d9bb;
@@ -7891,7 +8060,10 @@ h3 {
   justify-content: space-between;
   gap: 5px;
   color: #aab6b0;
-  font-size: 9px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-xp-row b {
   color: #d9c28d;
@@ -7912,7 +8084,10 @@ h3 {
 .combat-xp-row small {
   grid-column: 2;
   color: #76847f;
-  font-size: 8px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-session-stat-grid {
   display: grid;
@@ -7932,11 +8107,18 @@ h3 {
 }
 .combat-session-stat-grid strong {
   color: #e6ddc3;
-  font-size: 13px;
+  font-family: var(--font-family-stat);
+  font-size: var(--font-size-stat-compact);
+  font-weight: var(--font-weight-stat-compact);
+  line-height: var(--line-height-stat);
+  font-variant-numeric: tabular-nums;
 }
 .combat-session-stat-grid span {
   color: #7d8a85;
-  font-size: 8px;
+  font-family: var(--font-family-body);
+  font-size: var(--font-size-small);
+  font-weight: var(--font-weight-small);
+  line-height: var(--line-height-small);
 }
 .combat-next-unlock {
   display: flex;
@@ -11044,16 +11226,7 @@ h3 {
 .header-stat strong,
 .action-fight-time,
 .combat-level-badge strong,
-.combat-health-head strong,
 .attack-progress-head > span:last-child,
-.combat-stat-line strong,
-.combat-training-focus > strong,
-.combat-xp-row b,
-.combat-enemy-special-head > strong,
-.combat-adrenaline-head > strong,
-.combat-session-stat-grid strong,
-.combat-overview-columns strong,
-.combat-analysis-row strong,
 .combat-analysis-lifetime-kills strong,
 .combat-metric strong,
 .combat-activity-stat strong,
@@ -11119,8 +11292,4 @@ h3 {
 .smithing-fuel-actions .button {
   font-size: var(--font-size-button-compact);
   font-weight: var(--font-weight-button-compact);
-}
-
-.combat-redesign .combat-main-action {
-  font-weight: var(--font-weight-button);
 }

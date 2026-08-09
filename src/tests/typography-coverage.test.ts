@@ -3,6 +3,7 @@ import {
   DEFAULT_UI_TYPOGRAPHY,
   getCompactButtonSize,
   getCompactStatSize,
+  getCompactStatLabelSize,
   getTypographyCssVariables,
   UI_TYPOGRAPHY_ROLE_IDS,
 } from '../app/ui-editor/typography';
@@ -15,6 +16,7 @@ describe('semantic typography coverage', () => {
     expect(Object.keys(DEFAULT_UI_TYPOGRAPHY.roles)).toEqual(UI_TYPOGRAPHY_ROLE_IDS);
     expect(variables).toHaveProperty('--font-size-button-compact');
     expect(variables).toHaveProperty('--font-size-stat-compact');
+    expect(variables).toHaveProperty('--font-size-stat-label');
     expect(variables).toHaveProperty('--font-weight-button-compact');
     expect(variables).toHaveProperty('--font-weight-stat-compact');
   });
@@ -22,6 +24,7 @@ describe('semantic typography coverage', () => {
   it('maps Stat and Button master sizes to runtime compact values', () => {
     expect([14, 20, 26, 34, 42].map(getCompactStatSize)).toEqual([10, 11, 14, 19, 22]);
     expect([9, 12, 16, 20].map(getCompactButtonSize)).toEqual([9, 10, 13, 16]);
+    expect([14, 20, 26, 34, 42].map(getCompactStatLabelSize)).toEqual([9, 9, 11, 14, 18]);
 
     const typography = {
       ...DEFAULT_UI_TYPOGRAPHY,
@@ -42,6 +45,7 @@ describe('semantic typography coverage', () => {
       '--font-weight-button-compact': '800',
       '--font-size-stat': '42px',
       '--font-size-stat-compact': '22px',
+      '--font-size-stat-label': '18px',
       '--font-weight-stat': '500',
       '--font-weight-stat-compact': '500',
       '--font-family-stat': "'DM Mono', ui-monospace, SFMono-Regular, Consolas, monospace",
