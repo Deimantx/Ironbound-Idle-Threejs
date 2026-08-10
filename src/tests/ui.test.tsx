@@ -997,6 +997,7 @@ describe('navigation integration', () => {
     expect(document.querySelector('.equipment-stats-shell')).toHaveClass(
       'equipment-stats-sticky-safe',
     );
+    expect(screen.queryByText('Explicit Mining stats shown below')).not.toBeInTheDocument();
     for (const heading of ['Combat Gear', 'Accessories', 'Profession Equipment']) {
       expect(
         screen
@@ -1032,7 +1033,7 @@ describe('navigation integration', () => {
         .getByRole('button', { name: 'Armor slot, Bronze Armor' })
         .querySelector('.equipment-empty-slot-icon'),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText('Special Attacks')).not.toBeInTheDocument();
+    expect(screen.queryByText('Special Attack')).not.toBeInTheDocument();
 
     const armorSlot = screen.getByRole('button', { name: 'Armor slot, Bronze Armor' });
     await user.click(armorSlot);
@@ -1073,7 +1074,7 @@ describe('navigation integration', () => {
 
     const professionToggle = screen.getByRole('button', { name: /Profession Bonuses/ });
     expect(professionToggle).toHaveAttribute('aria-expanded', 'false');
-    expect(professionToggle).toHaveTextContent('No pickaxe equipped');
+    expect(professionToggle).not.toHaveTextContent(/No pickaxe equipped|Preview|damage|pen/);
     expect(screen.getByText('No compatible Weapons in Inventory.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open Inventory' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Tool slot, empty' }));
@@ -1081,9 +1082,10 @@ describe('navigation integration', () => {
     expect(screen.getByText(/No profession tool equipped/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Inspect Bronze Pick/ })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: /Inspect Bronze Pick/ }));
-    expect(professionToggle).toHaveTextContent('Preview 16 damage');
+    expect(professionToggle).toHaveTextContent('Profession Bonuses');
+    expect(professionToggle).not.toHaveTextContent(/Preview|damage|pen/);
     expect(screen.getByText(/1 damage · 0 pen/)).toBeInTheDocument();
-    expect(screen.queryByText('Special Attacks')).not.toBeInTheDocument();
+    expect(screen.queryByText('Special Attack')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Gloves slot, empty' }));
     expect(professionToggle).toHaveAttribute('aria-expanded', 'false');
     expect(screen.getByText('No Gloves are currently available.')).toBeInTheDocument();
@@ -1100,7 +1102,7 @@ describe('navigation integration', () => {
     }
   });
 
-  it('shows Special Attacks only for a relevant weapon selection', async () => {
+  it('keeps the equipped weapon special visible and compares weapon candidates', async () => {
     const user = userEvent.setup();
     const game = createNewGame(0, 'Special Tester');
     game.settings.threeQuality = 'off';
@@ -1110,12 +1112,37 @@ describe('navigation integration', () => {
     render(<App />);
 
     await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
-    expect(screen.getByText('Special Attacks')).toBeInTheDocument();
+    expect(screen.getByText('Special Attack')).toBeInTheDocument();
+    expect(screen.getByText('Focused Slash')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Weapon slot, Bronze Sword' }));
     await user.click(screen.getByRole('button', { name: /Inspect Iron Sword/ }));
-    expect(screen.getByText('Candidate special')).toBeInTheDocument();
+    expect(screen.getByText('Current')).toBeInTheDocument();
+    expect(screen.getByText('Candidate')).toBeInTheDocument();
+    expect(screen.getByText('Sundering Strike')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Armor slot, empty' }));
-    expect(screen.queryByText('Special Attacks')).not.toBeInTheDocument();
+    expect(screen.getByText('Special Attack')).toBeInTheDocument();
+    expect(screen.getByText('Focused Slash')).toBeInTheDocument();
+    expect(screen.queryByText('Candidate')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Tool slot, Worn Pickaxe' }));
+    expect(screen.getByText('Special Attack')).toBeInTheDocument();
+    expect(screen.getByText('Focused Slash')).toBeInTheDocument();
+  });
+
+  it('shows a candidate special when no weapon is equipped', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Candidate Special Tester');
+    game.settings.threeQuality = 'off';
+    game.equipment = {};
+    game.inventory = [{ itemId: 'bronze-sword', quantity: 1, locked: false }];
+    useGameStore.getState().setGame(game);
+    render(<App />);
+
+    await user.click(screen.getAllByRole('button', { name: /Equipment/ })[0]);
+    expect(screen.queryByText('Special Attack')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Inspect Bronze Sword/ }));
+    expect(screen.getByText('Special Attack')).toBeInTheDocument();
+    expect(screen.getByText('No special attack')).toBeInTheDocument();
+    expect(screen.getByText('Focused Slash')).toBeInTheDocument();
   });
 
   it('preserves a manually expanded profession disclosure while a tool is equipped', async () => {
@@ -1135,7 +1162,9 @@ describe('navigation integration', () => {
     expect(professionToggle).toHaveAttribute('aria-expanded', 'true');
     await user.click(screen.getByRole('button', { name: 'Weapon slot, empty' }));
     expect(professionToggle).toHaveAttribute('aria-expanded', 'true');
-    expect(professionToggle).toHaveTextContent('16 damage · 25 pen');
+    expect(professionToggle).toHaveTextContent('Profession Bonuses');
+    expect(professionToggle).not.toHaveTextContent(/16 damage|25 pen/);
+    expect(screen.getByText(/16 damage · 25 pen/)).toBeInTheDocument();
   });
 
   it('shows the compact nine-slot equipment summary in Combat', async () => {

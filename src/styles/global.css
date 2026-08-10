@@ -2266,8 +2266,8 @@ h3 {
   justify-self: start;
 }
 .equipment-stat-section + .equipment-stat-section {
-  margin-top: 22px;
-  padding-top: 18px;
+  margin-top: 18px;
+  padding-top: 14px;
   border-top: 1px solid #2c363a;
 }
 .equipment-stat-comparison-row {
@@ -2313,6 +2313,9 @@ h3 {
 .equipment-comparison-columns > div {
   min-width: 0;
 }
+.equipment-comparison-columns-single {
+  grid-template-columns: 1fr;
+}
 .equipment-comparison-columns small,
 .equipment-comparison-columns strong {
   display: block;
@@ -2333,8 +2336,8 @@ h3 {
   margin-top: 22px;
 }
 .equipment-profession-bonuses {
-  margin-top: 22px;
-  padding-top: 18px;
+  margin-top: 18px;
+  padding-top: 14px;
   border-top: 1px solid #2c363a;
 }
 .equipment-profession-toggle {
@@ -2349,14 +2352,6 @@ h3 {
   text-align: left;
   background: transparent;
   border: 0;
-}
-.equipment-profession-toggle-summary {
-  margin-left: auto;
-  margin-right: 10px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 500;
-  text-align: right;
 }
 .equipment-profession-toggle svg {
   color: var(--gold);

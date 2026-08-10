@@ -259,15 +259,6 @@ function ProfessionBonuses({
     : null;
   const currentHammer = getSmithingHammerDefinition(currentTool?.id);
   const candidateHammer = getSmithingHammerDefinition(candidateItem?.id);
-  const summary = candidateItem
-    ? candidateHammer
-      ? `Preview ${formatSmithingToolSummary(candidateHammer)}`
-      : `Preview ${formatMiningToolSummary(candidateDefinition ?? MINING_TUNING.noTool)}`
-    : currentTool
-      ? currentHammer
-        ? formatSmithingToolSummary(currentHammer)
-        : formatMiningToolSummary(currentDefinition)
-      : 'No pickaxe equipped';
   return (
     <section className="equipment-profession-bonuses" aria-labelledby="profession-bonuses-title">
       <button
@@ -278,7 +269,6 @@ function ProfessionBonuses({
         onClick={onToggle}
       >
         <span id="profession-bonuses-title">Profession Bonuses</span>
-        <span className="equipment-profession-toggle-summary">{summary}</span>
         <ChevronDown className={expanded ? 'is-expanded' : ''} size={15} aria-hidden="true" />
       </button>
       {expanded && (
@@ -401,8 +391,11 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
   const bonusComparison = candidateItem
     ? getEquipmentBonusComparison(currentItem, candidateItem, scope)
     : [];
-  const currentSpecial = selectedSlot === 'weapon' ? currentItem?.specialAttack : undefined;
+  const equippedWeapon = game.equipment.weapon ? itemById[game.equipment.weapon] : undefined;
+  const currentSpecial = equippedWeapon?.specialAttack;
   const candidateSpecial = selectedSlot === 'weapon' ? candidateItem?.specialAttack : undefined;
+  const comparingWeaponSpecials = selectedSlot === 'weapon' && Boolean(candidateItem);
+  const showSpecialAttack = Boolean(currentSpecial || candidateSpecial);
 
   return (
     <>
@@ -480,10 +473,6 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                     selected={selectedSlot === 'tool'}
                     onSelect={selectSlot}
                   />
-                  {!game.equipment.tool && <small>No pickaxe equipped</small>}
-                  {game.equipment.tool && itemById[game.equipment.tool] && (
-                    <small>Explicit Mining stats shown below</small>
-                  )}
                 </div>
               </div>
             </section>
@@ -663,24 +652,24 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
               </UiPanelRegionSlot>
 
               <UiPanelRegionSlot screen="equipment" panelId="equipmentStats" regionId="equipmentStatsSpecial" layout={uiLayout}>
-              {selectedSlot === 'weapon' && (currentSpecial || candidateSpecial) && (
+              {showSpecialAttack && (
                 <section
                 className="equipment-stat-section equipment-special-comparison"
                 aria-labelledby="special-comparison-title"
               >
                 <div className="eyebrow" id="special-comparison-title">
-                  <Sparkles size={13} /> Special Attacks
+                  <Sparkles size={13} /> Special Attack
                 </div>
-                <div className="equipment-comparison-columns">
+                <div className={`equipment-comparison-columns ${comparingWeaponSpecials ? '' : 'equipment-comparison-columns-single'}`}>
                   <div>
-                    <small>Current special</small>
+                    {comparingWeaponSpecials && <small>Current</small>}
                     <strong>{currentSpecial?.name ?? 'No special attack'}</strong>
                     {currentSpecial && <p>{currentSpecial.description}</p>}
                     {currentSpecial && <SpecialAttackDetails special={currentSpecial} />}
                   </div>
-                  {candidateItem && (
+                  {comparingWeaponSpecials && (
                     <div>
-                      <small>Candidate special</small>
+                      <small>Candidate</small>
                       <strong>{candidateSpecial?.name ?? 'No special attack'}</strong>
                       {candidateSpecial && <p>{candidateSpecial.description}</p>}
                       {candidateSpecial && <SpecialAttackDetails special={candidateSpecial} />}
