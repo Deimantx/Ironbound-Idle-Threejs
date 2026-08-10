@@ -88,7 +88,7 @@ import { formatHealth } from '../../shared/formatters';
 import { getActualDps, getActualKillsPerHour } from './sessionMetrics';
 import { SpecialAttackDetails } from '../../items/SpecialAttackDetails';
 import { COMBAT_TUNING } from '../../../config/combatTuning';
-import { formatDamageRange, formatRewardSummary } from '../../combat/combatPresentation';
+import { formatDamageRange } from '../../combat/combatPresentation';
 import { EnemySpecialDetails } from '../../combat/EnemySpecialDetails';
 import { CombatEffectLane } from './CombatEffectLanes';
 
@@ -98,6 +98,18 @@ type OverviewTab = 'overview' | 'loot' | 'progression';
 const formatSeconds = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
 const formatNumber = (value: number): string =>
   new Intl.NumberFormat('en-US').format(Math.floor(value));
+const formatRecentRewardSummary = (
+  goldGained: number,
+  items: Array<{ itemId: string; quantity: number }>,
+): string => {
+  const segments: string[] = [];
+  if (goldGained > 0) segments.push(`${goldGained} Gold`);
+  for (const item of items) {
+    const name = itemById[item.itemId]?.name ?? 'Unknown item';
+    segments.push(item.quantity > 1 ? `${item.quantity} ${name}` : name);
+  }
+  return segments.join(` ${'\u00b7'} `);
+};
 const formatDuration = (ms: number): string => {
   const seconds = Math.max(0, Math.floor(ms / 1000));
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
@@ -456,7 +468,7 @@ function EnemySummaryPanel({
 }: {
   game: GameState;
   enemy: EnemyDefinition;
-  onViewLoot: () => void;
+  onViewLoot: (enemyId: EnemyId) => void;
   uiLayout: UiLayout;
 }) {
   const [combatDetailsExpanded, setCombatDetailsExpanded] = useState(false);
@@ -474,7 +486,6 @@ function EnemySummaryPanel({
   );
   const baseEnemyDps =
     (1 + enemyStats.maxHit) / 2 / Math.max(0.001, enemyStats.attackIntervalMs / 1000);
-  const discovered = game.discoveredMonsters.includes(enemy.id);
   return (
     <section className="combat-dashboard-panel combat-enemy-panel" aria-labelledby="enemy-title">
       <UiPanelRegionGrid screen="combat" panelId="enemy" layout={uiLayout} className="combat-enemy-regions">
@@ -500,9 +511,6 @@ function EnemySummaryPanel({
       <div className="combat-subheading-row">
         <span className="combat-panel-kicker">Combat details</span>
         <div className="combat-disclosure-actions">
-          <span className="combat-enemy-discovery">
-            {discovered ? 'Encounter logged' : 'Undiscovered'}
-          </span>
           <button
             type="button"
             className="combat-locations-toggle"
@@ -528,7 +536,7 @@ function EnemySummaryPanel({
       </div>
       </UiPanelRegionSlot>
       <UiPanelRegionSlot screen="combat" panelId="enemy" regionId="enemyTraits" layout={uiLayout}>
-      <div className="combat-panel-note">
+      <div className="combat-panel-note combat-enemy-trait-note">
         <strong>{enemy.trait.name}</strong> — {enemy.trait.description}
       </div>
       {enemy.specialAttack && (
@@ -541,7 +549,7 @@ function EnemySummaryPanel({
       <div className="combat-drop-preview">
         <div className="combat-subheading-row">
           <span className="combat-panel-kicker">Drop preview</span>
-          <button type="button" className="combat-text-link" onClick={onViewLoot}>
+          <button type="button" className="combat-text-link" onClick={() => onViewLoot(enemy.id)}>
             Full drop table <ArrowUpRight size={13} />
           </button>
         </div>
@@ -640,10 +648,10 @@ function CombatBrowser({
   activeArea,
   locationsExpanded,
   style,
-  styleIsQueued,
   onSelectArea,
   onSelectRegion,
   onSelectEnemy,
+  onViewLoot,
   onToggleLocations,
 }: {
   game: GameState;
@@ -655,10 +663,10 @@ function CombatBrowser({
   activeArea: AreaId | null;
   locationsExpanded: boolean;
   style: CombatStyle;
-  styleIsQueued: boolean;
   onSelectArea: (areaId: AreaId) => void;
   onSelectRegion: (regionId: CombatRegionId) => void;
   onSelectEnemy: (enemyId: EnemyId, areaId: AreaId) => void;
+  onViewLoot: (enemyId: EnemyId) => void;
   onToggleLocations: () => void;
 }) {
   const region = combatRegionById[selectedRegionId] ?? combatRegionById.greenvale;
@@ -742,7 +750,6 @@ function CombatBrowser({
                 <RegionIcon size={17} />
                 <span>
                   <strong>{candidate.name}</strong>
-                  <small>{available ? 'Active region' : 'Coming later'}</small>
                 </span>
                 {!available && <Lock size={14} aria-hidden="true" />}
               </button>
@@ -769,21 +776,27 @@ function CombatBrowser({
                 key={candidate.id}
                 onClick={() => onSelectArea(candidate.id)}
               >
-                <span className="combat-area-card-icon" style={{ background: candidate.accent }}>
-                  {unlocked ? <Icon size={18} /> : <Lock size={16} />}
+                <span className="combat-area-card-header">
+                  <span className="combat-area-card-icon" style={{ background: candidate.accent }}>
+                    {unlocked ? <Icon size={18} /> : <Lock size={16} />}
+                  </span>
+                  <span className="combat-area-card-copy">
+                    <strong>{candidate.name}</strong>
+                  </span>
                 </span>
-                <span className="combat-area-card-copy">
-                  <strong>{candidate.name}</strong>
-                  <span>Requires Combat Lv {candidate.requiredCombatLevel}</span>
+                <span className="combat-area-card-meta">
+                  Requires Combat Lv {candidate.requiredCombatLevel}
                 </span>
-                <span className="combat-area-card-status">
-                  {activeFight
-                    ? 'Fighting here'
-                    : selected
-                      ? 'Selected'
-                      : unlocked
-                        ? 'Available'
-                        : 'Locked'}
+                <span className="combat-area-card-footer">
+                  <span className="combat-area-card-status">
+                    {activeFight
+                      ? 'Fighting here'
+                      : selected
+                        ? 'Selected'
+                        : unlocked
+                          ? 'Available'
+                          : 'Locked'}
+                  </span>
                 </span>
               </button>
             );
@@ -811,7 +824,7 @@ function CombatBrowser({
             game={game}
             enemy={selectedTarget}
             style={style}
-            styleIsQueued={styleIsQueued}
+            onViewLoot={onViewLoot}
           />
         </div>
       </div>
@@ -897,12 +910,12 @@ function TargetAnalysis({
   game,
   enemy,
   style,
-  styleIsQueued = false,
+  onViewLoot,
 }: {
   game: GameState;
   enemy: EnemyDefinition;
   style: CombatStyle;
-  styleIsQueued?: boolean;
+  onViewLoot: (enemyId: EnemyId) => void;
 }) {
   const [expanded, setExpanded] = useState(true);
   const enemyStats = getEnemyCombatStats(enemy);
@@ -934,10 +947,9 @@ function TargetAnalysis({
               <span>Enemy Lv {enemy.displayLevel}</span>
             <small>{formatNumber(game.killCounts[enemy.id] ?? 0)} lifetime kills</small>
           </span>
-          <span className="combat-analysis-style">
-            Preview: {getCombatStyleInfo(style).name}
-            {styleIsQueued ? ' · queued after current attack' : ''}
-          </span>
+          <button type="button" className="combat-text-link" onClick={() => onViewLoot(enemy.id)}>
+            Full drop table <ArrowUpRight size={13} />
+          </button>
         </div>
         <div className="combat-analysis-heading-actions">
           <button
@@ -971,8 +983,7 @@ function TargetAnalysis({
         </div>
         <div className="combat-analysis-trait combat-analysis-trait-emphasized">
           <strong className="combat-analysis-trait-heading">
-            <Zap size={16} aria-hidden="true" />
-            Important enemy trait: {trait.name}
+            {trait.name}
           </strong>
           <span className="combat-analysis-trait-copy">
             {trait.description}
@@ -1363,7 +1374,9 @@ function LootPanel({
       <div className="combat-section-heading">
         <div>
           <div className="eyebrow">Rewards and discovery</div>
-          <h2 id="loot-title">Loot table</h2>
+          <h2 id="loot-title">
+            Loot table <span className="combat-loot-target">({enemy.name})</span>
+          </h2>
         </div>
         <span className="muted">
           {game.discoveredMonsters.includes(enemy.id)
@@ -1421,7 +1434,7 @@ function LootPanel({
         <span className="combat-panel-kicker">Recent rewards</span>
         {recentLoot.length ? (
           recentLoot.map((event) => {
-            const summary = formatRewardSummary(event.gold, event.items.length);
+            const summary = formatRecentRewardSummary(event.gold, event.items);
             if (!summary) return null;
             return (
               <div className="combat-reward-row" key={event.id}>
@@ -1592,7 +1605,7 @@ function OverviewSummary({ session }: { session: CombatSessionStats }) {
 
 function CombatOverviewTabs({
   game,
-  enemy,
+  lootEnemy,
   session,
   style,
   events,
@@ -1601,7 +1614,7 @@ function CombatOverviewTabs({
   uiLayout,
 }: {
   game: GameState;
-  enemy: EnemyDefinition;
+  lootEnemy: EnemyDefinition;
   session: CombatSessionStats;
   style: CombatStyle;
   events: CombatVisualEvent[];
@@ -1615,7 +1628,7 @@ function CombatOverviewTabs({
     progression: 'Progression',
   };
   return (
-    <section className="combat-overview" aria-label="Combat summary">
+    <section id="combat-overview-panel" className="combat-overview" aria-label="Combat summary">
       <UiPanelRegionGrid screen="combat" panelId="combatOverview" layout={uiLayout} className="combat-overview-regions">
       <UiPanelRegionSlot screen="combat" panelId="combatOverview" regionId="combatOverviewTabs" layout={uiLayout}>
       <div className="combat-overview-tabs" role="tablist" aria-label="Combat summary tabs">
@@ -1637,7 +1650,7 @@ function CombatOverviewTabs({
       {tab === 'overview' ? (
         <OverviewSummary session={session} />
       ) : tab === 'loot' ? (
-        <LootPanel game={game} enemy={enemy} events={events} />
+        <LootPanel game={game} enemy={lootEnemy} events={events} />
       ) : (
         <ProgressionPanel game={game} session={session} style={style} />
       )}
@@ -1669,6 +1682,7 @@ export function CombatScreen({
   const [contentTab, setContentTab] = useState<CombatContentTab>('areas');
   const [locationsExpanded, setLocationsExpanded] = useState(true);
   const [overviewTab, setOverviewTab] = useState<OverviewTab>('overview');
+  const [lootEnemyId, setLootEnemyId] = useState<EnemyId | null>(null);
   const [selectedArea, setSelectedArea] = useState<AreaId>(activeAreaId ?? 'forest-path');
   const [selectedEnemy, setSelectedEnemy] = useState<EnemyId>(activeEnemyId ?? 'forest-rat');
   const [selectedRegionId, setSelectedRegionId] = useState<CombatRegionId>(
@@ -1692,10 +1706,19 @@ export function CombatScreen({
   const startPending = useRef(false);
   const previousCombatActive = useRef(Boolean(active));
   const autoCollapsedCombatRun = useRef(false);
+  const handleViewLoot = (enemyId: EnemyId) => {
+    setLootEnemyId(enemyId);
+    setOverviewTab('loot');
+    const overviewPanel = document.getElementById('combat-overview-panel');
+    if (overviewPanel && typeof overviewPanel.scrollIntoView === 'function') {
+      overviewPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
   const currentAreaId = activeAreaId ?? selectedArea;
   const currentEnemyId = activeEnemyId ?? selectedEnemy;
   const currentArea = areaById[currentAreaId] ?? areaById['forest-path'];
   const currentEnemy = enemyById[currentEnemyId] ?? enemyById['forest-rat'];
+  const lootEnemy = enemyById[lootEnemyId ?? currentEnemyId] ?? currentEnemy;
   const selectedTargetArea = areaById[selectedArea] ?? areaById['forest-path'];
   const selectedTarget = enemyById[selectedEnemy] ?? enemyById['forest-rat'];
   const targetChanged = Boolean(
@@ -1733,6 +1756,10 @@ export function CombatScreen({
     setAutoRepeat(activeAutoRepeat);
     setAutoSpecial(activeAutoSpecial ?? true);
   }, [activeAreaId, activeEnemyId, activeStyle, activeAutoRepeat, activeAutoSpecial]);
+
+  useEffect(() => {
+    setLootEnemyId(null);
+  }, [activeEnemyId, selectedEnemy]);
 
   const selectArea = (areaId: AreaId) => {
     const area = areaById[areaId];
@@ -1870,7 +1897,7 @@ export function CombatScreen({
         {targetChanged && <span className="combat-context-meta">Switch is explicit</span>}
       </div>
       <CombatContentTabs activeTab={contentTab} onChange={setContentTab} />
-      <UiPanelGrid screen="combat">
+      <UiPanelGrid screen="combat" className="combat-dashboard-grid">
         <UiPanelSlot
           screen="combat"
           id="combatLocations"
@@ -1888,10 +1915,10 @@ export function CombatScreen({
               activeArea={active?.areaId ?? null}
               locationsExpanded={locationsExpanded}
               style={nextEncounterStyle}
-              styleIsQueued={Boolean(active?.pendingStyle)}
               onSelectArea={selectArea}
               onSelectRegion={selectRegion}
               onSelectEnemy={selectEnemy}
+              onViewLoot={handleViewLoot}
               onToggleLocations={() => setLocationsExpanded((expanded) => !expanded)}
             />
           ) : (
@@ -1943,13 +1970,13 @@ export function CombatScreen({
             game={game}
             enemy={currentEnemy}
             uiLayout={uiLayout}
-            onViewLoot={() => setOverviewTab('loot')}
+            onViewLoot={handleViewLoot}
           />
         </UiPanelSlot>
         <UiPanelSlot screen="combat" id="combatOverview" layout={uiLayout}>
           <CombatOverviewTabs
             game={game}
-            enemy={currentEnemy}
+            lootEnemy={lootEnemy}
             session={session}
             style={currentStyle}
             events={events}

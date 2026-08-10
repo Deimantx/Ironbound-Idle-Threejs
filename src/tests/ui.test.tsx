@@ -2564,7 +2564,7 @@ describe('navigation integration', () => {
     expect(
       screen.getByRole('group', { name: 'Selected target: Goblin Scavenger, level 4' }),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Important enemy trait: Desperate Swing/)).toBeInTheDocument();
+    expect(screen.getByText('Desperate Swing')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Switch to Goblin Scavenger' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Switch to Goblin Scavenger' }));
     const activeCombat = useGameStore.getState().game?.activeAction;
@@ -2619,11 +2619,80 @@ describe('navigation integration', () => {
     );
     expect(screen.getByRole('button', { name: 'Stonehill' })).not.toBeDisabled();
     expect(screen.getByRole('button', { name: 'Ashmoor, coming later' })).toBeDisabled();
+    const regionSelector = screen.getByLabelText('Combat regions');
+    expect(within(regionSelector).queryByText('Active region')).not.toBeInTheDocument();
+    expect(within(regionSelector).queryByText('Coming later')).not.toBeInTheDocument();
+    expect(screen.getByText('Verdant frontier country surrounding the early settlements.')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Select target Forest Rat/ })).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: /Dungeons/ }));
     expect(screen.getByText('Dungeons are not available yet')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: /Special Areas/ }));
     expect(screen.getByText('Special Areas are not available yet')).toBeInTheDocument();
+  });
+
+  it('opens the selected target loot table before combat', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Pre-fight Loot Tester');
+    game.discoveredItems.push('goblin-scrap', 'tattered-hide');
+    useGameStore.getState().setGame(game);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+
+    await user.click(screen.getByRole('button', { name: 'Select target Goblin Scavenger, level 4' }));
+    const targetPreview = screen.getByRole('group', {
+      name: 'Selected target: Goblin Scavenger, level 4',
+    });
+    expect(screen.queryByText('Preview: Accurate')).not.toBeInTheDocument();
+    const overviewPanel = document.getElementById('combat-overview-panel');
+    if (!overviewPanel) throw new Error('Combat overview panel was not rendered');
+    const scrollIntoView = vi.fn();
+    overviewPanel.scrollIntoView = scrollIntoView;
+
+    await user.click(within(targetPreview).getByRole('button', { name: 'Full drop table' }));
+
+    expect(screen.getByRole('tab', { name: 'Loot' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('heading', { name: /Loot table.*Goblin Scavenger/ })).toBeInTheDocument();
+    const lootTable = document.querySelector<HTMLElement>('.combat-loot-table');
+    if (!lootTable) throw new Error('Combat loot table was not rendered');
+    expect(within(lootTable).getByText('Goblin Scrap')).toBeInTheDocument();
+    expect(useGameStore.getState().game?.activeAction.type).toBe('none');
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+  });
+
+  it('opens previewed loot without changing the active combat enemy', async () => {
+    const user = userEvent.setup();
+    const game = createNewGame(0, 'Active Preview Loot Tester');
+    game.discoveredItems.push('goblin-scrap', 'tattered-hide');
+    useGameStore.getState().setGame(game);
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+    await user.click(screen.getByRole('button', { name: 'Fight' }));
+    expect(useGameStore.getState().game?.activeAction).toMatchObject({
+      type: 'combat',
+      enemyId: 'forest-rat',
+    });
+    await user.click(screen.getByRole('button', { name: 'Show browser' }));
+    await user.click(screen.getByRole('button', { name: 'Switch target Goblin Scavenger, level 4' }));
+    const targetPreview = screen.getByRole('group', {
+      name: 'Selected target: Goblin Scavenger, level 4',
+    });
+    const overviewPanel = document.getElementById('combat-overview-panel');
+    if (!overviewPanel) throw new Error('Combat overview panel was not rendered');
+    const scrollIntoView = vi.fn();
+    overviewPanel.scrollIntoView = scrollIntoView;
+
+    await user.click(within(targetPreview).getByRole('button', { name: 'Full drop table' }));
+
+    expect(useGameStore.getState().game?.activeAction).toMatchObject({
+      type: 'combat',
+      enemyId: 'forest-rat',
+    });
+    expect(screen.getByRole('tab', { name: 'Loot' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('heading', { name: /Loot table.*Goblin Scavenger/ })).toBeInTheDocument();
+    const lootTable = document.querySelector<HTMLElement>('.combat-loot-table');
+    if (!lootTable) throw new Error('Combat loot table was not rendered');
+    expect(within(lootTable).getByText('Goblin Scrap')).toBeInTheDocument();
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
 
   it('keeps combat area cards concise without enemy counts or duplicate requirements', async () => {
@@ -2635,6 +2704,11 @@ describe('navigation integration', () => {
     expect(within(forestPath).queryByText(/\d+ enemies?/)).not.toBeInTheDocument();
     expect(within(forestPath).queryByText('Woodland Trail')).not.toBeInTheDocument();
     expect(within(forestPath).getAllByText(/Requires Combat Lv/)).toHaveLength(1);
+    expect(within(forestPath).getByText('Selected')).toHaveClass('combat-area-card-status');
+    expect(forestPath.querySelector('.combat-area-card-footer .combat-area-card-status')).toHaveTextContent('Selected');
+    const oldShrine = screen.getByRole('button', { name: /Old Shrine/ });
+    expect(within(oldShrine).getByText('Locked')).toHaveClass('combat-area-card-status');
+    expect(oldShrine.querySelector('.combat-area-card-footer .combat-area-card-status')).toHaveTextContent('Locked');
     expect(within(wolfDen).queryByText(/\d+ enemies?/)).not.toBeInTheDocument();
     expect(within(wolfDen).queryByText('Predator Den')).not.toBeInTheDocument();
     expect(within(wolfDen).getAllByText(/Requires Combat Lv/)).toHaveLength(1);
@@ -2680,8 +2754,29 @@ describe('navigation integration', () => {
     expect(
       screen.queryByText(/Timers and combat results come from the simulation engine/),
     ).not.toBeInTheDocument();
+    const overviewPanel = document.getElementById('combat-overview-panel');
+    if (!overviewPanel) throw new Error('Combat overview panel was not rendered');
+    const scrollIntoView = vi.fn();
+    overviewPanel.scrollIntoView = scrollIntoView;
+    act(() =>
+      useGameStore.getState().applyDebugState(roadBanditGame, {
+        replaceCombatSession: true,
+        events: [
+          {
+            id: 'recent-reward-display',
+            type: 'loot',
+            enemyId: 'road-bandit',
+            at: 2_000,
+            gold: 2,
+            items: [{ itemId: 'tattered-hide', quantity: 1 }],
+          },
+        ],
+      }),
+    );
     await user.click(screen.getByRole('button', { name: 'Full drop table' }));
-    expect(screen.getByRole('heading', { name: 'Loot table' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Loot table.*Road Bandit/ })).toBeInTheDocument();
+    expect(screen.getByText(`2 Gold ${String.fromCharCode(0xb7)} Tattered Hide`)).toBeInTheDocument();
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
   });
 
   it('exposes Combat screenshot targets through semantic typography hooks', async () => {
@@ -2712,6 +2807,7 @@ describe('navigation integration', () => {
     expect(document.querySelector('.combat-enemy-description')).toHaveClass(
       'combat-enemy-description',
     );
+    expect(document.querySelector('.combat-enemy-trait-note')).toBeInTheDocument();
     expect(document.querySelector('.special-attack-effect')).toHaveClass(
       'special-attack-effect',
     );
@@ -2720,6 +2816,7 @@ describe('navigation integration', () => {
     );
     expect(screen.getByText('Derived stats')).toHaveClass('combat-panel-kicker');
     expect(screen.getByText('Combat details')).toHaveClass('combat-panel-kicker');
+    expect(document.querySelector('.combat-enemy-discovery')).not.toBeInTheDocument();
     expect(document.querySelector('.app')).toHaveStyle({
       '--font-size-stat': '26px',
       '--font-size-stat-compact': '14px',
