@@ -1,7 +1,7 @@
 import { AREAS, areaById } from '../../../content/areas';
 import { COMBAT_REGIONS } from '../../../content/combatRegions';
 import { ENEMIES } from '../../../content/enemies';
-import { ITEMS } from '../../../content/items';
+import { ITEMS, itemById } from '../../../content/items';
 import { MINING_NODES } from '../../../content/miningNodes';
 import { MINING_TOOLS } from '../../../content/miningTools';
 import { RECIPES } from '../../../content/recipes';
@@ -36,6 +36,19 @@ for (const node of MINING_NODES) {
 for (const recipe of RECIPES) if (!recipe.legacy) collectionItemIds.add(recipe.outputItemId);
 for (const tool of [...MINING_TOOLS, ...SMITHING_TOOLS]) collectionItemIds.add(tool.itemId);
 
+const collectionCombatSourceByItemId = new Map<string, string>();
+for (const enemy of ENEMIES) {
+  if (!collectionEnemyIds.has(enemy.id)) continue;
+  const area = areaById[enemy.areaId];
+  const region = area ? COMBAT_REGIONS.find((candidate) => candidate.id === area.regionId) : undefined;
+  if (!area || !region) continue;
+  for (const loot of enemy.loot) {
+    if (!collectionCombatSourceByItemId.has(loot.itemId)) {
+      collectionCombatSourceByItemId.set(loot.itemId, `${region.name} · ${area.name} · ${enemy.name}`);
+    }
+  }
+}
+
 const sourceNavigationByItemId = new Map<string, CollectionItemSourceNavigation>();
 for (const enemy of ENEMIES) {
   if (!collectionEnemyIds.has(enemy.id)) continue;
@@ -61,6 +74,9 @@ export const getCollectionEligibleItems = (): ItemDefinition[] =>
 export const getCollectionItemSourceNavigation = (
   itemId: string,
 ): CollectionItemSourceNavigation | null => sourceNavigationByItemId.get(itemId) ?? null;
+
+export const getCollectionItemSourceLabel = (itemId: string): string =>
+  collectionCombatSourceByItemId.get(itemId) ?? itemById[itemId]?.source ?? '';
 
 export const getCollectionItemCategory = (item: ItemDefinition): CollectionItemCategory => {
   if (item.category === 'weapon' || item.category === 'armor' || item.category === 'shield')
@@ -125,7 +141,7 @@ export const collectionItemMatchesSearch = (
   if (!query.trim()) return true;
   if (!discovered) return false;
   const normalized = query.trim().toLocaleLowerCase();
-  return [item.name, getCollectionItemCategory(item), item.source]
+  return [item.name, getCollectionItemCategory(item), getCollectionItemSourceLabel(item.id)]
     .join(' ')
     .toLocaleLowerCase()
     .includes(normalized);

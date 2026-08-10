@@ -367,6 +367,7 @@ describe('navigation integration', () => {
       nodeId: 'stone-outcrop',
     });
     expect(screen.getByRole('heading', { name: 'Iron Vein' })).toBeInTheDocument();
+    expect(document.querySelector('.mining-overview-content h2')?.textContent).toBe('Stone Outcrop');
     expect(screen.getByRole('button', { name: 'Switch to Iron Vein' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open Mining: Stone Outcrop' })).toBeInTheDocument();
 
@@ -408,11 +409,19 @@ describe('navigation integration', () => {
 
     await user.click(screen.getAllByRole('button', { name: /Mining/ })[0]);
     expect(screen.getByText('Available Deposits')).toBeInTheDocument();
+    expect(screen.queryByText(/\d+\/\d+ slots/)).not.toBeInTheDocument();
     expect(screen.getByText(/Owned: 0/)).toBeInTheDocument();
     expect(screen.getByText(/Mining XP \/ Swing/)).toBeInTheDocument();
+    expect(screen.getByText('Full deposit')).toBeInTheDocument();
+    expect(screen.getByText('Respawn')).toBeInTheDocument();
+    expect(screen.queryByText('Current depth')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Depth \d+\/\d+/)).not.toBeInTheDocument();
+    expect(screen.getByText('Your pickaxe fully penetrates this deposit.')).toBeInTheDocument();
+    expect(screen.queryByText('Recommended pickaxe')).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Inspect Iron Vein' }));
     expect(screen.getByText('Iron Pick')).toBeInTheDocument();
     expect(screen.getByText('Iron Pick', { selector: 'strong' })).toBeInTheDocument();
+    expect(screen.getByText('Recommended pickaxe')).toBeInTheDocument();
     expect(screen.getAllByText(/Owned 0/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/Ore yield|1 per \d+ damage/)).not.toBeInTheDocument();
     expect(screen.queryByText('Resource progress')).not.toBeInTheDocument();
@@ -453,10 +462,21 @@ describe('navigation integration', () => {
     expect(screen.getByText('XP to next: 133')).toBeInTheDocument();
     expect(screen.getByText(/^ETA: \d{2}:\d{2}$/)).toBeInTheDocument();
     expect(screen.getByText(/Rich Core/)).toBeInTheDocument();
+    fireEvent.click(screen.getAllByRole('button', { name: /Mining/ })[0]);
+    const stageTrack = document.querySelector<HTMLElement>('.mining-stage-track');
+    expect(stageTrack).toBeInTheDocument();
+    expect(stageTrack?.querySelectorAll('.mining-stage-step')).toHaveLength(5);
+    expect(stageTrack?.querySelectorAll('strong, small')).toHaveLength(0);
+    expect(
+      within(stageTrack as HTMLElement).getByRole('listitem', {
+        name: /Stage 4: Rich Core \(current\)/,
+      }),
+    ).toBeInTheDocument();
     expect(screen.getByText('Swing')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Swing progress' })).toBeInTheDocument();
-    expect(screen.getByText('Stamina')).toBeInTheDocument();
-    expect(screen.getByText('100/100')).toBeInTheDocument();
+    const liveStatus = document.querySelector<HTMLElement>('.mining-live-status');
+    expect(liveStatus?.textContent).toContain('Stamina');
+    expect(liveStatus?.textContent).toContain('100 / 100');
     expect(
       screen.getByText(
         `~${formatRatePerHour(getMiningEstimatedRates(game, miningNodeById['stone-outcrop']).xpPerHour)} XP/hr`,
@@ -1531,7 +1551,7 @@ describe('navigation integration', () => {
     expect(screen.getByRole('heading', { name: 'Iron Sword' })).toBeInTheDocument();
     expect(details().getByText('Equipment')).toBeInTheDocument();
     expect(details().getByText('Sundering Strike')).toBeInTheDocument();
-    expect(details().getByText(/Training Grounds|Smithing/)).toBeInTheDocument();
+    expect(details().getByText('Smithing')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Equip' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'View Equipment' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Lock' })).toBeInTheDocument();
@@ -1540,7 +1560,7 @@ describe('navigation integration', () => {
     await user.click(screen.getByRole('button', { name: /View Rat Tail/ }));
     expect(screen.getByRole('heading', { name: 'Rat Tail' })).toBeInTheDocument();
     expect(details().getByText('Drops')).toBeInTheDocument();
-    expect(details().getByText(/Training Grounds/)).toBeInTheDocument();
+    expect(details().getByText('Greenvale · Forest Path · Forest Rat')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Equip' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'View Equipment' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Lock' })).toBeInTheDocument();

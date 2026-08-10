@@ -10,7 +10,9 @@ import {
   collectionItemMatchesSearch,
   getCollectionEligibleEnemies,
   getCollectionEligibleItemIds,
+  getCollectionEligibleItems,
   getCollectionItemCategory,
+  getCollectionItemSourceLabel,
   getCollectionItemSourceNavigation,
   getCollectionProgress,
   getRegionCollectionEnemies,
@@ -66,6 +68,34 @@ describe('Collection Log 2.0 selectors', () => {
       label: 'Open Combat',
     });
     expect(getCollectionItemSourceNavigation('worn-pickaxe')).toBeNull();
+  });
+
+  it('derives current combat sources and keeps non-combat sources intact', () => {
+    const expectedSources = {
+      'rat-tail': 'Greenvale · Forest Path · Forest Rat',
+      'tattered-hide': 'Greenvale · Forest Path · Forest Rat',
+      'goblin-scrap': 'Greenvale · Forest Path · Goblin Scavenger',
+      'bat-wing': 'Greenvale · Old Shrine · Cave Bat',
+      'crab-shell': 'Greenvale · Old Shrine · Stoneback Crab',
+      'wolf-pelt': 'Greenvale · Wolf Den · Grey Wolf',
+      'bandit-token': 'Greenvale · Abandoned Camp · Road Bandit',
+      'rusted-emblem': 'Greenvale · Abandoned Camp · Road Bandit',
+    } as const;
+
+    for (const [itemId, source] of Object.entries(expectedSources)) {
+      expect(getCollectionItemSourceLabel(itemId)).toBe(source);
+      expect(getCollectionItemSourceLabel(itemId)).not.toMatch(/Training Grounds|Copper Hills|Ironwood Pass/);
+    }
+    expect(getCollectionItemSourceLabel('iron-ore')).toBe('Mining · Iron Vein');
+    expect(getCollectionItemSourceLabel('iron-bar')).toBe('Smithing · Smelting');
+    expect(getCollectionItemSourceLabel('boar-tusk')).toBe('Stonehill · Rocky Foothills · Hill Boar');
+    expect(
+      getCollectionEligibleItems().filter(
+        (item) => item.category === 'drop' && /Training Grounds|Copper Hills|Ironwood Pass/.test(item.source),
+      ),
+    ).toEqual([]);
+    expect(collectionItemMatchesSearch(itemById['rat-tail'], 'Forest Path', true)).toBe(true);
+    expect(collectionItemMatchesSearch(itemById['rat-tail'], 'Training Grounds', true)).toBe(false);
   });
 
   it('keeps monster organization authored by region and area', () => {

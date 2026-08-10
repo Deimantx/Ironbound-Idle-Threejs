@@ -43,6 +43,10 @@ describe('Collection Log screen', () => {
     expect(screen.getByRole('group', { name: 'Discovery Status' })).toBeInTheDocument();
     const categoryGroup = screen.getByRole('group', { name: 'Category' });
     expect(categoryGroup).toBeInTheDocument();
+    const divider = document.querySelector('.collection-filter-divider');
+    expect(divider).toBeInTheDocument();
+    expect(divider?.previousElementSibling).toBe(screen.getByRole('group', { name: 'Discovery Status' }));
+    expect(divider?.nextElementSibling).toBe(categoryGroup);
     expect(within(categoryGroup).getByRole('button', { name: /All Items/ })).toHaveTextContent(/\d+\/57/);
     expect(screen.getByRole('heading', { name: 'Discovered Items' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Undiscovered Items' })).toBeInTheDocument();
@@ -81,6 +85,20 @@ describe('Collection Log screen', () => {
     const unknownCard = screen.getAllByRole('button', { name: 'Unknown item' })[0];
     await user.click(unknownCard);
     expect(screen.queryByRole('button', { name: /Open (Combat|Mining|Smithing)/ })).not.toBeInTheDocument();
+  });
+
+  it('shows the current combat hierarchy for Greenvale item sources', async () => {
+    const game = createNewGame(0, 'Collection Tester');
+    game.settings.threeQuality = 'off';
+    game.discoveredItems.push('rat-tail');
+    useGameStore.getState().setGame(game);
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /Collection Log/ }));
+    await user.click(screen.getByRole('button', { name: 'Rat Tail' }));
+
+    expect(screen.getByText('Greenvale · Forest Path · Forest Rat')).toBeInTheDocument();
+    expect(screen.queryByText('Training Grounds · Forest Rat')).not.toBeInTheDocument();
   });
 
   it('keeps monster region selection when clearing filters', async () => {

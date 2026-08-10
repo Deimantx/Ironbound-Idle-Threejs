@@ -34,6 +34,7 @@ import {
   getCollectionEligibleItems,
   getCollectionItemCategory,
   getCollectionItemSourceNavigation,
+  getCollectionItemSourceLabel,
   getCollectionProgress,
   getItemCollectionProgress,
   getMonsterCollectionProgress,
@@ -401,6 +402,7 @@ function ItemCollectionDetails({
   }
   const bonuses = Object.entries(item.bonuses ?? {}).filter(([, value]) => value !== 0);
   const sourceNavigation = getCollectionItemSourceNavigation(item.id);
+  const sourceLabel = getCollectionItemSourceLabel(item.id);
   return (
     <aside className="collection-detail" aria-label={`${item.name} details`}>
       <div className="collection-detail-heading">
@@ -417,7 +419,7 @@ function ItemCollectionDetails({
       <div className="collection-detail-meta">
         <div className="collection-detail-row"><span>Owned</span><strong className="ui-stat-compact">{formatNumber(getItemQuantity(game.inventory, item.id))}</strong></div>
         <div className="collection-detail-source">
-          <div className="collection-detail-row"><span>Source</span><strong>{item.source}</strong></div>
+          <div className="collection-detail-row"><span>Source</span><strong>{sourceLabel}</strong></div>
           {sourceNavigation && (
             <button
               type="button"

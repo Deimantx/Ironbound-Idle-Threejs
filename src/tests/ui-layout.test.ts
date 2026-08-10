@@ -16,6 +16,7 @@ import {
   DEFAULT_HOME_COMBAT_PROGRESSION_INTERNAL_LAYOUT,
   DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT,
   DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT,
+  DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT,
   getUiPanels,
   getUiPanelAppearance,
   getUiPanelInternalLayout,
@@ -112,7 +113,7 @@ describe('visual UI layout', () => {
   it('registers stable nested definitions for every Phase 2C screen', () => {
     const expected: Record<string, Record<string, string[]>> = {
       mining: {
-        miningOverview: ['miningOverviewScene', 'miningOverviewActivity'],
+        miningOverview: ['miningOverviewScene', 'miningOverviewActivity', 'miningOverviewStatus'],
         miningNodes: ['miningNodesHeading', 'miningNodesBrowser'],
         miningDetails: ['miningDetailsRock', 'miningDetailsTool'],
       },
@@ -185,6 +186,30 @@ describe('visual UI layout', () => {
       true,
       false,
     ]);
+  });
+
+  it('hydrates the Mining Live Status region without changing saved scene or activity positions', () => {
+    const layout = sanitizeUiLayout({
+      panelRegions: {
+        mining: {
+          miningOverview: {
+            direction: 'grid',
+            gap: 7,
+            padding: 3,
+            regions: {
+              miningOverviewScene: { order: 9, column: 2, columnSpan: 3, row: 4, visible: true },
+              miningOverviewActivity: { order: 8, column: 5, columnSpan: 8, row: 4, visible: false },
+            },
+          },
+        },
+      },
+    });
+    const regions = layout.panelRegions.mining?.miningOverview?.regions;
+    expect(regions?.miningOverviewScene).toMatchObject({ order: 9, column: 2, row: 4, columnSpan: 3 });
+    expect(regions?.miningOverviewActivity).toMatchObject({ order: 8, row: 4, visible: false });
+    expect(regions?.miningOverviewStatus).toEqual(
+      DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT.regions.miningOverviewStatus,
+    );
   });
 
   it('migrates legacy layouts into the current version and backfills new panels and locks', () => {

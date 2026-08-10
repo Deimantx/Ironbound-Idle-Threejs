@@ -126,10 +126,11 @@
   text-transform: uppercase;
 }
 .collection-filter-divider {
+  flex: 0 0 1px;
   align-self: stretch;
-  min-height: 42px;
-  margin: 0 5px;
-  border-left: 1px solid var(--line);
+  width: 1px;
+  margin: 0 8px;
+  background: var(--line);
 }
 .collection-filter-group .button {
   min-height: 30px;
@@ -9938,7 +9939,6 @@ h3 {
   position: relative;
   padding: 20px;
 }
-.mining-overview-status,
 .mining-stamina-block {
   display: grid;
   gap: 7px;
@@ -10207,10 +10207,6 @@ h3 {
   background: rgba(213, 170, 98, 0.2);
   color: var(--gold);
   box-shadow: 0 0 0 4px rgba(213, 170, 98, 0.09);
-}
-.mining-overview-status {
-  max-width: 520px;
-  margin-top: 0;
 }
 .mining-durability-bar {
   height: 10px;
@@ -11250,7 +11246,6 @@ h3 {
 .inventory-bonus strong,
 .inventory-details-metadata .ui-stat-compact,
 .mining-level-header strong,
-.mining-overview-status strong,
 .mining-active-stats strong,
 .mining-detail-meta strong,
 .mining-comparison-row strong,
@@ -11304,4 +11299,237 @@ h3 {
 .smithing-fuel-actions .button {
   font-size: var(--font-size-button-compact);
   font-weight: var(--font-weight-button-compact);
+}
+
+/* Mining information hierarchy: keep live state below the visual/stage row. */
+.mining-overview-layout {
+  row-gap: 14px;
+}
+
+.mining-overview-scene-region,
+.mining-overview-activity-region,
+.mining-overview-status-region {
+  min-width: 0;
+}
+
+.mining-overview-activity-region .mining-overview-content {
+  display: block;
+  height: auto;
+  min-height: 0;
+  padding: 22px 24px;
+  background: none;
+}
+
+.mining-stage-track {
+  grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
+  margin: 18px 0 16px;
+}
+
+.mining-stage-step {
+  display: grid;
+  min-height: 32px;
+  padding: 0;
+  place-items: center;
+  cursor: help;
+}
+
+.mining-stage-step:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 6px;
+}
+
+.mining-stage-step::before {
+  top: 15px;
+  left: calc(-50% + 14px);
+  width: calc(100% - 28px);
+}
+
+.mining-stage-marker {
+  width: 28px;
+  height: 28px;
+}
+
+.mining-current-stage {
+  display: grid;
+  gap: 4px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.mining-current-stage strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.mining-live-status {
+  padding: 16px 18px;
+  border-top: 1px solid var(--line);
+  background: rgba(12, 15, 17, 0.38);
+}
+
+.mining-live-status-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.mining-live-status-heading h3 {
+  margin: 4px 0 0;
+  color: var(--text);
+  font-size: 16px;
+}
+
+.mining-live-status-heading > strong {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.mining-live-status .mining-durability-bar {
+  height: 10px;
+  margin-top: 10px;
+}
+
+.mining-live-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.mining-live-metric,
+.mining-live-stamina {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid rgba(115, 132, 132, 0.18);
+  border-radius: 7px;
+  background: rgba(20, 26, 28, 0.7);
+}
+
+.mining-live-metric {
+  display: grid;
+  gap: 3px;
+}
+
+.mining-live-metric > span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.mining-live-metric > strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.mining-live-stamina .mining-stamina-block {
+  height: 100%;
+  margin-top: 0;
+  align-content: center;
+}
+
+.mining-live-status .mining-phase-bar {
+  height: 7px;
+  margin-top: 12px;
+}
+
+.mining-live-status .mining-preview-note,
+.mining-live-status .mining-rate-summary {
+  margin-top: 12px;
+}
+
+.mining-live-status .mining-rate-summary {
+  margin-top: 14px;
+}
+
+.mining-node-list {
+  gap: 7px;
+  margin-top: 8px;
+}
+
+.mining-node-card {
+  gap: 8px;
+}
+
+.mining-node-select {
+  gap: 10px;
+  padding: 9px 10px;
+}
+
+.mining-node-effectiveness,
+.mining-node-rates {
+  margin-top: 5px;
+}
+
+.mining-node-card > .button {
+  margin-right: 10px;
+  padding: 7px 10px;
+}
+
+.mining-requirements {
+  margin: 16px 0;
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.mining-requirement-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.mining-requirement-grid span {
+  display: grid;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.mining-requirement-grid strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.mining-details-layout .mining-reward-section {
+  margin-top: 18px;
+}
+
+.mining-tool-comparison,
+.mining-recommendation {
+  margin-top: 14px;
+}
+
+@media (max-width: 900px) {
+  .mining-live-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mining-live-stamina {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .mining-overview-activity-region .mining-overview-content {
+    padding: 18px;
+  }
+
+  .mining-live-status {
+    padding: 14px;
+  }
+
+  .mining-live-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .mining-live-stamina {
+    grid-column: auto;
+  }
+
+  .mining-current-stage strong {
+    font-size: 15px;
+  }
 }

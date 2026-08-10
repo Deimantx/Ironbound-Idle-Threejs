@@ -411,6 +411,7 @@ export const DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT: UiPanelInternalLayout = {
   regions: {
     miningOverviewScene: { order: 1, column: 1, columnSpan: 4, row: 1, visible: true },
     miningOverviewActivity: { order: 2, column: 5, columnSpan: 8, row: 1, visible: true },
+    miningOverviewStatus: { order: 3, column: 1, columnSpan: 12, row: 2, visible: true },
   },
 };
 
@@ -903,7 +904,8 @@ export const UI_PANEL_REGION_REGISTRY: Partial<
       DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT,
       [
         ['miningOverviewScene', 'Scene', 'Selected rock visual and mining environment'],
-        ['miningOverviewActivity', 'Activity', 'Current rock, stage, progress, stamina, and mining state', false],
+        ['miningOverviewActivity', 'Stages', 'Current node, mining state, and compact stage progression', false],
+        ['miningOverviewStatus', 'Live Status', 'Current stage durability, phase, stamina, rest countdown, and estimated rates'],
       ],
       ratioRegionPresets(
         DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT,

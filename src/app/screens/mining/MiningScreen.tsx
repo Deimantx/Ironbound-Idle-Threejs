@@ -1,6 +1,5 @@
 import { Lock } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { GAME_CONFIG } from '../../../config/gameConfig';
 import { MINING_TUNING } from '../../../config/miningTuning';
 import { itemById } from '../../../content/items';
 import { MINING_NODES, miningNodeById } from '../../../content/miningNodes';
@@ -25,7 +24,7 @@ import type {
   MiningPhase,
   ScreenId,
 } from '../../../game/types';
-import { getItemQuantity, occupiedSlots } from '../../../game/systems/inventorySystem';
+import { getItemQuantity } from '../../../game/systems/inventorySystem';
 import { ThreeScene } from '../../../three/ThreeScene';
 import { formatDropChance, formatNumber } from '../../shared/formatters';
 import { ItemIcon } from '../../items/ItemIcon';
@@ -163,7 +162,7 @@ const StageTrack = ({
   preview?: boolean;
   showHelpIcons?: boolean;
 }) => (
-  <div className="mining-stage-track" aria-label={`${node.name} stage progression`}>
+  <div className="mining-stage-track" role="list" aria-label={`${node.name} stage progression`}>
     {node.stages.map((stage, index) => {
       const state = preview
         ? index === currentStage
@@ -188,12 +187,12 @@ const StageTrack = ({
           }
         >
           <div
+            role="listitem"
             className={`mining-stage-step mining-stage-step-${state}`}
             aria-current={state === 'current' ? 'step' : undefined}
+            aria-label={`Stage ${index + 1}: ${stage.name}${state === 'current' ? ' (current)' : state === 'complete' ? ' (complete)' : ' (future)'}`}
           >
-            <span className="mining-stage-marker">{state === 'complete' ? '✓' : index + 1}</span>
-            <strong>{stage.name}</strong>
-            <small>{stage.durability} durability</small>
+            <span className="mining-stage-marker" aria-hidden="true">{state === 'complete' ? '✓' : index + 1}</span>
           </div>
         </GameTooltip>
       );
@@ -348,7 +347,7 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
               <p className="subtle">
                 {activeNode
                   ? `${phaseLabel(game.activeAction.type === 'mining' ? game.activeAction.phase : 'swing')} · Stage ${(activeDisplayRuntime.stageIndex ?? 0) + 1} of ${activeDisplayNode.stages.length}`
-                  : 'Select a rock and press Mine to begin.'}
+                  : `${selectedHasRuntime ? 'Ready to continue' : 'Untouched deposit'} · Stage ${(activeDisplayRuntime.stageIndex ?? 0) + 1} of ${activeDisplayNode.stages.length}`}
               </p>
 
               <StageTrack
@@ -357,60 +356,62 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 preview={!activeNode}
               />
 
-              <div className="mining-overview-status">
-                <div className="split">
-                  <span>{activeDisplayStage.name} durability</span>
-                  <strong>
-                    {Math.ceil(activeDisplayRuntime.stageDurability)} /{' '}
-                    {activeDisplayStage.durability}
-                  </strong>
-                </div>
-                <ProgressBar
-                  value={activeDisplayRuntime.stageDurability}
-                  max={activeDisplayStage.durability}
-                  label="Current stage durability"
-                  className="mining-durability-bar"
-                />
+              <div className="mining-current-stage">
+                <span className="eyebrow">Current stage</span>
+                <strong>{activeDisplayStage.name}</strong>
+              </div>
 
-                {activeNode ? (
-                  <>
-                    <div className="split mining-phase-row">
-                      <span>
-                        {phaseTitle(
-                          game.activeAction.type === 'mining' ? game.activeAction.phase : 'swing',
-                        )}
-                      </span>
-                      <strong>{formatDuration(activeRemaining)}</strong>
+               </div>
+              </UiPanelRegionSlot>
+              <UiPanelRegionSlot
+                screen="mining"
+                panelId="miningOverview"
+                regionId="miningOverviewStatus"
+                layout={uiLayout}
+                className="mining-overview-status-region"
+              >
+                <div className="mining-live-status">
+                  <div className="mining-live-status-heading">
+                    <div>
+                      <span className="eyebrow">Current stage</span>
+                      <h3>{activeDisplayStage.name}</h3>
                     </div>
+                    <strong className="ui-stat-compact">
+                      {Math.ceil(activeDisplayRuntime.stageDurability)} / {activeDisplayStage.durability}
+                    </strong>
+                  </div>
+                  <ProgressBar
+                    value={activeDisplayRuntime.stageDurability}
+                    max={activeDisplayStage.durability}
+                    label="Current stage durability"
+                    className="mining-durability-bar"
+                  />
+                  <div className="mining-live-metrics">
+                    <div className="mining-live-metric">
+                      <span>{activeNode ? phaseTitle(game.activeAction.type === 'mining' ? game.activeAction.phase : 'swing') : 'Mining status'}</span>
+                      <strong>{activeNode ? formatDuration(activeRemaining) : 'Idle'}</strong>
+                    </div>
+                    {activeNode && (
+                      <div className="mining-live-metric">
+                        <span>Before rest</span>
+                        <strong>{swingsBeforeRest} swing{swingsBeforeRest === 1 ? '' : 's'}</strong>
+                      </div>
+                    )}
+                    <div className="mining-live-stamina">
+                      <StaminaBar stamina={game.mining.stamina} showHelpIcons={game.settings.showHelpIcons} />
+                    </div>
+                  </div>
+                  {activeNode ? (
                     <ProgressBar
                       value={activeProgress * 100}
                       max={100}
                       label={`${phaseLabel(game.activeAction.type === 'mining' ? game.activeAction.phase : 'swing')} progress`}
                       className="mining-phase-bar"
                     />
-                  </>
-                ) : (
-                  <div className="mining-preview-note">Previewing Stage 1 at full durability.</div>
-                )}
-
-                <div className="mining-active-stats">
-                  <span>
-                    {activeNode ? 'Stamina' : 'Ready'}
-                    <strong>
-                      {Math.round(game.mining.stamina)} / {MINING_TUNING.maxStamina}
-                    </strong>
-                  </span>
-                  {activeNode && (
-                    <span>
-                      Before rest
-                      <strong>
-                        {swingsBeforeRest} swing{swingsBeforeRest === 1 ? '' : 's'}
-                      </strong>
-                    </span>
+                  ) : (
+                    <div className="mining-preview-note">Press Mine to begin working this deposit.</div>
                   )}
-                </div>
-                <StaminaBar stamina={game.mining.stamina} showHelpIcons={game.settings.showHelpIcons} />
-              </div>
+                  <RateSummary game={game} node={activeDisplayNode} />
                 </div>
               </UiPanelRegionSlot>
             </UiPanelRegionGrid>
@@ -429,9 +430,6 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                       Select a rock to inspect it. Mining only changes when you press its action.
                     </p>
                   </div>
-                  <span className="badge">
-                    {occupiedSlots(game.inventory)}/{GAME_CONFIG.inventorySlots} slots
-                  </span>
                 </div>
               </UiPanelRegionSlot>
               <UiPanelRegionSlot screen="mining" panelId="miningNodes" regionId="miningNodesBrowser" layout={uiLayout}>
@@ -531,6 +529,15 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                   {selectedNode.requiredPenetration}
                 </p>
                 <p>{selectedNode.description}</p>
+                <div className="mining-requirements">
+                  <div className="eyebrow">Requirements</div>
+                  <div className="mining-requirement-grid">
+                    <span>Mining level<strong>{selectedNode.level}</strong></span>
+                    <span>Penetration<strong>{selectedNode.requiredPenetration}</strong></span>
+                    <span>Full deposit<strong>~{formatDuration(selectedRates.cycleMs)}</strong></span>
+                    <span>Respawn<strong>{formatDuration(selectedNode.respawnMs)}</strong></span>
+                  </div>
+                </div>
                 <ItemTooltip item={itemById[selectedNode.primaryRewardItemId]}>
                   <div className="mining-primary-resource">
                     <ItemIcon itemId={selectedNode.primaryRewardItemId} size="lg" />
@@ -541,28 +548,8 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                     </div>
                   </div>
                 </ItemTooltip>
-                <div className="mining-selected-stage-heading">
-                  <div>
-                    <span>{selectedHasRuntime ? 'Current depth' : 'Untouched deposit'}</span>
-                    <strong>
-                      Stage {selectedRuntime.stageIndex + 1}: {selectedStage.name}
-                    </strong>
-                    <small>
-                      {selectedStage.durability} max durability · Depth{' '}
-                      {selectedRuntime.stageIndex + 1}/{selectedNode.stages.length}
-                    </small>
-                  </div>
-                </div>
                 <div className="eyebrow mining-section-label">Estimated output</div>
                 <RateSummary game={game} node={selectedNode} />
-                <div className="mining-detail-meta">
-                  <span>
-                    Full deposit<strong>~{formatDuration(selectedRates.cycleMs)}</strong>
-                  </span>
-                  <span>
-                    Respawn<strong>{formatDuration(selectedNode.respawnMs)}</strong>
-                  </span>
-                </div>
                 <div className="mining-reward-section">
                   <div className="eyebrow">
                     <ExplainedTerm concept="bonus-drop" showHelpIcon={game.settings.showHelpIcons}>
@@ -644,14 +631,15 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 </div>
                 {selectedEffectiveness < 1 ? (
                   <p className="mining-warning" role="status">
-                    Your pickaxe cannot fully penetrate this rock. Damage and Mining XP are reduced.
+                    Your pickaxe cannot fully penetrate this deposit. Damage and Mining XP are reduced.
                   </p>
                 ) : (
                   <p className="mining-ready" role="status">
-                    Your pickaxe fully penetrates this rock.
+                    Your pickaxe fully penetrates this deposit.
                   </p>
                 )}
-                <div className="mining-recommendation">
+                {selectedEffectiveness < 1 && (
+                  <div className="mining-recommendation">
                   <span>Recommended pickaxe</span>
                   <strong>
                     {recommendedToolName}
@@ -659,21 +647,14 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                       ? ' or better'
                       : ''}
                   </strong>
-                  {selectedEffectiveness >= 1 ? (
-                    <small>
-                      {activeTool.itemId === recommendedTool?.itemId
-                        ? 'Current tool meets this requirement'
-                        : 'Your current tool exceeds this requirement'}
-                    </small>
-                  ) : (
-                    <small>
-                      Requires {recommendedToolName}
-                      {recommendedTool
-                        ? ` or better · Mining Level ${recommendedTool.requiredMiningLevel}`
-                        : ''}
-                    </small>
-                  )}
-                </div>
+                  <small>
+                    Requires {recommendedToolName}
+                    {recommendedTool
+                      ? ` or better · Mining Level ${recommendedTool.requiredMiningLevel}`
+                      : ''}
+                  </small>
+                  </div>
+                )}
                 </div>
               </UiPanelRegionSlot>
             </UiPanelRegionGrid>
