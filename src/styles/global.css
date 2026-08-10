@@ -5148,26 +5148,6 @@ h3 {
   }
 }
 
-/* Mining 1.2 presentation polish. */
-.mining-active-panel {
-  display: grid;
-  grid-template-columns: minmax(220px, 0.65fr) minmax(0, 1.35fr);
-  min-height: 520px;
-}
-.mining-active-panel > .scene-frame {
-  position: relative;
-  inset: auto;
-  grid-column: 1;
-  min-height: 520px;
-  opacity: 0.92;
-}
-.mining-overview-content {
-  grid-column: 2;
-  z-index: auto;
-  min-height: 0;
-  padding: 24px 26px 24px 18px;
-  background: none;
-}
 .mining-selected-stage-heading {
   display: block;
 }
@@ -5265,26 +5245,6 @@ h3 {
 }
 .offline-continue {
   margin-top: 20px;
-}
-@media (max-width: 900px) {
-  .mining-active-panel {
-    grid-template-columns: 1fr;
-    min-height: 0;
-  }
-  .mining-active-panel > .scene-frame {
-    grid-column: 1;
-    min-height: 230px;
-  }
-  .mining-overview-content {
-    grid-column: 1;
-    min-height: 0;
-    padding: 20px;
-  }
-}
-@media (max-width: 650px) {
-  .mining-active-panel > .scene-frame {
-    min-height: 190px;
-  }
 }
 @media (max-width: 760px) {
   .combat-strip {
@@ -6674,6 +6634,8 @@ h3 {
   grid-auto-flow: row;
 }
 .ui-panel-region-slot {
+  grid-column: var(--ui-panel-region-column);
+  grid-row: var(--ui-panel-region-row);
   min-width: 0;
   min-height: 0;
 }
@@ -10102,25 +10064,12 @@ h3 {
 .mining-level-header .bar {
   margin-top: 3px;
 }
-.mining-active-panel {
-  min-height: 520px;
-}
 .mining-active-panel .scene-frame {
   opacity: 0.86;
   background: radial-gradient(circle at 52% 42%, rgba(126, 143, 143, 0.24), transparent 49%);
 }
 .mining-overview-content {
   z-index: 1;
-  display: grid;
-  align-content: space-between;
-  min-height: 478px;
-  padding: 24px;
-  background: linear-gradient(
-    90deg,
-    rgba(15, 19, 21, 0.94),
-    rgba(15, 19, 21, 0.52) 60%,
-    transparent
-  );
 }
 .mining-overview-content h2 {
   max-width: 360px;
@@ -10499,25 +10448,9 @@ h3 {
     gap: 25px;
   }
 }
-@media (max-width: 900px) {
-  .mining-active-panel {
-    min-height: 470px;
-  }
-  .mining-overview-content {
-    min-height: 428px;
-  }
-}
 @media (max-width: 650px) {
   .mining-level-header {
     min-width: 0;
-  }
-  .mining-active-panel {
-    min-height: 620px;
-  }
-  .mining-overview-content {
-    min-height: 578px;
-    padding: 18px;
-    background: linear-gradient(90deg, rgba(15, 19, 21, 0.96), rgba(15, 19, 21, 0.7));
   }
   .mining-stage-track {
     gap: 0;
@@ -11075,20 +11008,6 @@ h3 {
 }
 
 /* UI editor Phase 2C: preserve the original screen layouts inside nested regions. */
-.mining-active-panel {
-  display: block;
-}
-.mining-overview-layout {
-  min-height: 100%;
-}
-.mining-overview-layout > .ui-panel-region-slot[data-ui-panel-region='miningOverviewScene'],
-.mining-overview-layout .scene-frame {
-  min-height: 520px;
-  height: 100%;
-}
-.mining-overview-layout .mining-overview-content {
-  height: 100%;
-}
 .mining-details-layout {
   min-width: 0;
 }
@@ -11166,13 +11085,6 @@ h3 {
 }
 
 @media (max-width: 900px) {
-  .mining-overview-layout > .ui-panel-region-slot[data-ui-panel-region='miningOverviewScene'],
-  .mining-overview-layout .scene-frame {
-    min-height: 230px;
-  }
-  .mining-overview-layout .mining-overview-content {
-    height: auto;
-  }
   .inventory-bank-regions .ui-panel-region-slot[data-ui-panel-region='inventoryBankItems'],
   .inventory-bank-regions .ui-panel-region-slot[data-ui-panel-region='inventoryBankDetails'] {
     grid-column: 1 / -1 !important;
@@ -11180,13 +11092,6 @@ h3 {
   }
   .inventory-bank-regions .inventory-details-region {
     display: none;
-  }
-}
-
-@media (max-width: 650px) {
-  .mining-overview-layout > .ui-panel-region-slot[data-ui-panel-region='miningOverviewScene'],
-  .mining-overview-layout .scene-frame {
-    min-height: 190px;
   }
 }
 
@@ -11301,9 +11206,17 @@ h3 {
   font-weight: var(--font-weight-button-compact);
 }
 
-/* Mining information hierarchy: keep live state below the visual/stage row. */
+/* Mining information hierarchy and alignment. */
+.mining-active-panel {
+  display: block;
+  min-height: 0;
+}
+
 .mining-overview-layout {
-  row-gap: 14px;
+  align-content: start;
+  min-height: 0;
+  padding: max(20px, var(--ui-panel-region-padding));
+  row-gap: 16px;
 }
 
 .mining-overview-scene-region,
@@ -11312,20 +11225,60 @@ h3 {
   min-width: 0;
 }
 
-.mining-overview-activity-region .mining-overview-content {
-  display: block;
-  height: auto;
+.mining-overview-scene-region,
+.mining-overview-activity-region {
+  position: relative;
+  min-height: 260px;
+  height: 260px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--ui-panel-radius, var(--radius));
+  background: var(--ui-panel-color, var(--panel));
+}
+
+.mining-overview-scene-region .scene-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   min-height: 0;
-  padding: 22px 24px;
+}
+
+.mining-overview-activity-region {
+  display: flex;
+  align-items: stretch;
+  padding: 18px 20px;
+  border-left-color: rgba(115, 132, 132, 0.32);
+}
+
+.mining-overview-activity-region .mining-overview-content {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  height: 100%;
+  min-height: 0;
+  padding: 0;
   background: none;
 }
 
+.mining-overview-content h2 {
+  max-width: none;
+}
+
+.mining-overview-activity-region .mining-stage-track {
+  margin-top: auto;
+  margin-bottom: 0;
+}
+
 .mining-stage-track {
-  grid-template-columns: repeat(auto-fit, minmax(42px, 1fr));
-  margin: 18px 0 16px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 16px 0 0;
 }
 
 .mining-stage-step {
+  min-width: 0;
   display: grid;
   min-height: 32px;
   padding: 0;
@@ -11350,97 +11303,87 @@ h3 {
   height: 28px;
 }
 
-.mining-current-stage {
-  display: grid;
-  gap: 4px;
-  margin-top: 16px;
-  padding-top: 12px;
-  border-top: 1px solid var(--line);
-}
-
-.mining-current-stage strong {
-  color: var(--text);
-  font-size: 16px;
+.mining-overview-status-region {
+  min-width: 0;
 }
 
 .mining-live-status {
-  padding: 16px 18px;
+  min-width: 0;
+  padding: 18px 0 0;
   border-top: 1px solid var(--line);
-  background: rgba(12, 15, 17, 0.38);
+  background: var(--ui-panel-color, var(--panel));
 }
 
 .mining-live-status-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: flex-end;
+}
+
+.mining-live-status-heading > div {
+  min-width: 0;
 }
 
 .mining-live-status-heading h3 {
-  margin: 4px 0 0;
-  color: var(--text);
-  font-size: 16px;
+  overflow: hidden;
+  margin: 2px 0 0;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mining-live-status-heading > strong {
-  color: var(--text);
-  font-size: 16px;
+  flex: 0 0 auto;
+  align-self: flex-end;
+  padding-bottom: 1px;
+  white-space: nowrap;
 }
 
 .mining-live-status .mining-durability-bar {
-  height: 10px;
-  margin-top: 10px;
+  width: 100%;
 }
 
 .mining-live-metrics {
+  gap: 18px;
+}
+
+.mining-live-metric {
+  min-width: 0;
+  padding: 0 0 10px;
+  border: 0;
+  border-bottom: 1px solid rgba(115, 132, 132, 0.2);
+  border-radius: 0;
+  background: none;
+}
+
+.mining-live-metric > span {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.mining-live-metric > strong {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.mining-live-bars {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
   margin-top: 14px;
 }
 
-.mining-live-metric,
-.mining-live-stamina {
-  min-width: 0;
-  padding: 9px 10px;
-  border: 1px solid rgba(115, 132, 132, 0.18);
-  border-radius: 7px;
-  background: rgba(20, 26, 28, 0.7);
-}
-
-.mining-live-metric {
-  display: grid;
-  gap: 3px;
-}
-
-.mining-live-metric > span {
-  color: var(--muted);
-  font-size: 10px;
-}
-
-.mining-live-metric > strong {
-  color: var(--text);
-  font-size: 13px;
-}
-
-.mining-live-stamina .mining-stamina-block {
-  height: 100%;
+.mining-live-bars .mining-phase-bar,
+.mining-live-bars .mining-stamina-block {
   margin-top: 0;
-  align-content: center;
-}
-
-.mining-live-status .mining-phase-bar {
-  height: 7px;
-  margin-top: 12px;
-}
-
-.mining-live-status .mining-preview-note,
-.mining-live-status .mining-rate-summary {
-  margin-top: 12px;
 }
 
 .mining-live-status .mining-rate-summary {
-  margin-top: 14px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.mining-live-status .mining-rate-summary span:last-child,
+.mining-selected-rock .mining-rate-summary span:last-child {
+  text-align: right;
 }
 
 .mining-node-list {
@@ -11467,8 +11410,22 @@ h3 {
   padding: 7px 10px;
 }
 
+.mining-details-layout {
+  column-gap: 24px;
+  row-gap: 28px;
+}
+
+.mining-details-layout > .ui-panel-region-slot[data-ui-panel-region='miningDetailsRock'] {
+  padding-right: 24px;
+}
+
+.mining-details-layout > .ui-panel-region-slot[data-ui-panel-region='miningDetailsTool'] {
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+}
+
 .mining-requirements {
-  margin: 16px 0;
+  margin: 14px 0;
   padding: 12px 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
@@ -11478,6 +11435,7 @@ h3 {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  row-gap: 12px;
   margin-top: 8px;
 }
 
@@ -11493,43 +11451,122 @@ h3 {
   font-size: 13px;
 }
 
-.mining-details-layout .mining-reward-section {
-  margin-top: 18px;
+.mining-primary-resource {
+  margin: 16px 0;
 }
 
-.mining-tool-comparison,
+.mining-selected-rock .mining-rate-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.mining-stat-grid {
+  gap: 12px 16px;
+}
+
+.mining-tool-comparison {
+  gap: 6px;
+}
+
+.mining-comparison-row {
+  min-height: 22px;
+  align-items: center;
+}
+
+.mining-comparison-highlight {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 16px;
+  margin-top: 8px;
+}
+
+.mining-comparison-highlight > span {
+  min-width: 0;
+}
+
+.mining-comparison-highlight > span:first-child {
+  display: flex;
+  grid-column: 1 / -1;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.mining-comparison-highlight > span:not(:first-child) {
+  display: grid;
+  gap: 3px;
+}
+
+.mining-ready,
+.mining-warning,
 .mining-recommendation {
-  margin-top: 14px;
+  max-width: 100%;
 }
 
 @media (max-width: 900px) {
-  .mining-live-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .mining-overview-layout {
+    padding: 16px;
   }
 
-  .mining-live-stamina {
+  .mining-overview-layout > .ui-panel-region-slot[data-ui-panel-region='miningOverviewScene'],
+  .mining-overview-layout > .ui-panel-region-slot[data-ui-panel-region='miningOverviewActivity'],
+  .mining-overview-layout > .ui-panel-region-slot[data-ui-panel-region='miningOverviewStatus'],
+  .mining-details-layout > .ui-panel-region-slot[data-ui-panel-region='miningDetailsRock'],
+  .mining-details-layout > .ui-panel-region-slot[data-ui-panel-region='miningDetailsTool'] {
     grid-column: 1 / -1;
+    grid-row: auto;
+  }
+
+  .mining-overview-scene-region,
+  .mining-overview-activity-region {
+    min-height: 230px;
+    height: 230px;
+  }
+
+  .mining-details-layout {
+    column-gap: 0;
+  }
+
+  .mining-details-layout > .ui-panel-region-slot[data-ui-panel-region='miningDetailsRock'],
+  .mining-details-layout > .ui-panel-region-slot[data-ui-panel-region='miningDetailsTool'] {
+    padding-right: 0;
+    padding-left: 0;
+  }
+
+  .mining-details-layout > .ui-panel-region-slot[data-ui-panel-region='miningDetailsTool'] {
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    border-left: 0;
   }
 }
 
 @media (max-width: 600px) {
-  .mining-overview-activity-region .mining-overview-content {
-    padding: 18px;
+  .mining-overview-layout {
+    padding: 12px;
   }
 
-  .mining-live-status {
-    padding: 14px;
+  .mining-overview-scene-region,
+  .mining-overview-activity-region {
+    min-height: 200px;
+    height: 200px;
   }
 
   .mining-live-metrics {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
-  .mining-live-stamina {
-    grid-column: auto;
+  .mining-live-metric {
+    padding-bottom: 8px;
   }
 
-  .mining-current-stage strong {
-    font-size: 15px;
+  .mining-live-status .mining-rate-summary,
+  .mining-selected-rock .mining-rate-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .mining-live-status .mining-rate-summary span:last-child,
+  .mining-selected-rock .mining-rate-summary span:last-child {
+    text-align: left;
   }
 }

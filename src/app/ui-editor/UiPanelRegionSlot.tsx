@@ -30,8 +30,8 @@ export function UiPanelRegionSlot({
   if (!position) return null;
   const hidden = !position.visible;
   const style = {
-    gridColumn: internal.direction === 'stack' ? '1 / -1' : `${position.column} / span ${position.columnSpan}`,
-    gridRow: internal.direction === 'stack' ? position.order : position.row,
+    '--ui-panel-region-column': internal.direction === 'stack' ? '1 / -1' : `${position.column} / span ${position.columnSpan}`,
+    '--ui-panel-region-row': internal.direction === 'stack' ? position.order : position.row,
     order: position.order,
     display: hidden ? 'none' : undefined,
   } as CSSProperties;

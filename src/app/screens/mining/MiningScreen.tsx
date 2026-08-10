@@ -135,14 +135,24 @@ const ProgressBar = ({
   </div>
 );
 
-const StaminaBar = ({ stamina, showHelpIcons = true }: { stamina: number; showHelpIcons?: boolean }) => (
+const StaminaBar = ({
+  stamina,
+  showHelpIcons = true,
+  compact = false,
+}: {
+  stamina: number;
+  showHelpIcons?: boolean;
+  compact?: boolean;
+}) => (
   <div className="mining-stamina-block">
-    <div className="split">
-      <ExplainedTerm concept="mining-stamina" showHelpIcon={showHelpIcons}>Stamina</ExplainedTerm>
-      <strong>
-        {Math.round(stamina)} / {MINING_TUNING.maxStamina}
-      </strong>
-    </div>
+    {!compact && (
+      <div className="split">
+        <ExplainedTerm concept="mining-stamina" showHelpIcon={showHelpIcons}>Stamina</ExplainedTerm>
+        <strong>
+          {Math.round(stamina)} / {MINING_TUNING.maxStamina}
+        </strong>
+      </div>
+    )}
     <ProgressBar
       value={stamina}
       max={MINING_TUNING.maxStamina}
@@ -162,7 +172,12 @@ const StageTrack = ({
   preview?: boolean;
   showHelpIcons?: boolean;
 }) => (
-  <div className="mining-stage-track" role="list" aria-label={`${node.name} stage progression`}>
+  <div
+    className="mining-stage-track"
+    role="list"
+    aria-label={`${node.name} stage progression`}
+    style={{ gridTemplateColumns: `repeat(${node.stages.length}, minmax(0, 1fr))` }}
+  >
     {node.stages.map((stage, index) => {
       const state = preview
         ? index === currentStage
@@ -356,11 +371,6 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 preview={!activeNode}
               />
 
-              <div className="mining-current-stage">
-                <span className="eyebrow">Current stage</span>
-                <strong>{activeDisplayStage.name}</strong>
-              </div>
-
                </div>
               </UiPanelRegionSlot>
               <UiPanelRegionSlot
@@ -397,20 +407,28 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                         <strong>{swingsBeforeRest} swing{swingsBeforeRest === 1 ? '' : 's'}</strong>
                       </div>
                     )}
-                    <div className="mining-live-stamina">
-                      <StaminaBar stamina={game.mining.stamina} showHelpIcons={game.settings.showHelpIcons} />
+                    <div className="mining-live-metric">
+                      <ExplainedTerm concept="mining-stamina" showHelpIcon={game.settings.showHelpIcons}>
+                        Stamina
+                      </ExplainedTerm>
+                      <strong>
+                        {Math.round(game.mining.stamina)} / {MINING_TUNING.maxStamina}
+                      </strong>
                     </div>
                   </div>
-                  {activeNode ? (
-                    <ProgressBar
-                      value={activeProgress * 100}
-                      max={100}
-                      label={`${phaseLabel(game.activeAction.type === 'mining' ? game.activeAction.phase : 'swing')} progress`}
-                      className="mining-phase-bar"
-                    />
-                  ) : (
-                    <div className="mining-preview-note">Press Mine to begin working this deposit.</div>
-                  )}
+                  <div className="mining-live-bars">
+                    {activeNode ? (
+                      <ProgressBar
+                        value={activeProgress * 100}
+                        max={100}
+                        label={`${phaseLabel(game.activeAction.type === 'mining' ? game.activeAction.phase : 'swing')} progress`}
+                        className="mining-phase-bar"
+                      />
+                    ) : (
+                      <div className="mining-preview-note">Press Mine to begin working this deposit.</div>
+                    )}
+                    <StaminaBar stamina={game.mining.stamina} showHelpIcons={game.settings.showHelpIcons} compact />
+                  </div>
                   <RateSummary game={game} node={activeDisplayNode} />
                 </div>
               </UiPanelRegionSlot>
@@ -522,7 +540,7 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
             <UiPanelRegionGrid screen="mining" panelId="miningDetails" layout={uiLayout} className="mining-details-layout">
               <UiPanelRegionSlot screen="mining" panelId="miningDetails" regionId="miningDetailsRock" layout={uiLayout}>
                 <div className="mining-selected-rock">
-                <div className="eyebrow">Selected rock</div>
+                <div className="eyebrow">Selected deposit</div>
                 <h2>{selectedNode.name}</h2>
                 <p className="subtle">
                   Mining Level {selectedNode.level} · Required Penetration{' '}

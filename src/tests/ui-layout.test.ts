@@ -17,6 +17,7 @@ import {
   DEFAULT_HOME_PROFESSION_PROGRESSION_INTERNAL_LAYOUT,
   DEFAULT_HOME_WORLD_RECORD_INTERNAL_LAYOUT,
   DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT,
+  DEFAULT_MINING_DETAILS_INTERNAL_LAYOUT,
   getUiPanels,
   getUiPanelAppearance,
   getUiPanelInternalLayout,
@@ -171,6 +172,51 @@ describe('visual UI layout', () => {
         expect(getUiPanelRegionPresets(screen as ScreenId, panelId).length).toBeGreaterThan(0);
       }
     }
+  });
+
+  it('keeps Mining overview and details defaults aligned to their intended compositions', () => {
+    expect(DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT.regions).toMatchObject({
+      miningOverviewScene: { column: 1, columnSpan: 4, row: 1 },
+      miningOverviewActivity: { column: 5, columnSpan: 8, row: 1 },
+      miningOverviewStatus: { column: 1, columnSpan: 12, row: 2 },
+    });
+    expect(DEFAULT_MINING_DETAILS_INTERNAL_LAYOUT.regions).toMatchObject({
+      miningDetailsRock: { column: 1, columnSpan: 6, row: 1 },
+      miningDetailsTool: { column: 7, columnSpan: 6, row: 1 },
+    });
+  });
+
+  it('resets Mining nested regions to the current composition without affecting other screens', () => {
+    const custom = sanitizeUiLayout({
+      panelRegions: {
+        mining: {
+          miningOverview: {
+            direction: 'grid',
+            gap: 9,
+            padding: 4,
+            regions: {
+              miningOverviewScene: { order: 4, column: 3, columnSpan: 6, row: 3, visible: true },
+              miningOverviewActivity: { order: 5, column: 9, columnSpan: 4, row: 3, visible: true },
+              miningOverviewStatus: { order: 6, column: 1, columnSpan: 12, row: 4, visible: false },
+            },
+          },
+          miningDetails: {
+            direction: 'grid',
+            gap: 3,
+            padding: 2,
+            regions: {
+              miningDetailsRock: { order: 2, column: 2, columnSpan: 8, row: 2, visible: true },
+              miningDetailsTool: { order: 1, column: 10, columnSpan: 3, row: 2, visible: true },
+            },
+          },
+        },
+      },
+    });
+    const reset = resetUiLayoutScreen(custom, 'mining');
+
+    expect(reset.panelRegions.mining?.miningOverview).toEqual(DEFAULT_MINING_OVERVIEW_INTERNAL_LAYOUT);
+    expect(reset.panelRegions.mining?.miningDetails).toEqual(DEFAULT_MINING_DETAILS_INTERNAL_LAYOUT);
+    expect(reset.panelRegions.home).toEqual(custom.panelRegions.home);
   });
 
   it('protects essential controls while allowing informational regions to be hidden', () => {

@@ -472,6 +472,9 @@ describe('navigation integration', () => {
         name: /Stage 4: Rich Core \(current\)/,
       }),
     ).toBeInTheDocument();
+    expect(document.querySelector('.mining-current-stage')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('.mining-live-metric')).toHaveLength(3);
+    expect(document.querySelector('.mining-live-bars .mining-stamina-block')).toBeInTheDocument();
     expect(screen.getByText('Swing')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Swing progress' })).toBeInTheDocument();
     const liveStatus = document.querySelector<HTMLElement>('.mining-live-status');

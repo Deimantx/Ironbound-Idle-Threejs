@@ -430,8 +430,8 @@ export const DEFAULT_MINING_DETAILS_INTERNAL_LAYOUT: UiPanelInternalLayout = {
   gap: 0,
   padding: 0,
   regions: {
-    miningDetailsRock: { order: 1, column: 1, columnSpan: 7, row: 1, visible: true },
-    miningDetailsTool: { order: 2, column: 8, columnSpan: 5, row: 1, visible: true },
+    miningDetailsRock: { order: 1, column: 1, columnSpan: 6, row: 1, visible: true },
+    miningDetailsTool: { order: 2, column: 7, columnSpan: 6, row: 1, visible: true },
   },
 };
 
@@ -928,7 +928,7 @@ export const UI_PANEL_REGION_REGISTRY: Partial<
       'Mining details contents',
       DEFAULT_MINING_DETAILS_INTERNAL_LAYOUT,
       [
-        ['miningDetailsRock', 'Rock Details', 'Selected rock, stage, output, and bonus drops'],
+        ['miningDetailsRock', 'Deposit Details', 'Selected deposit, output, and bonus drops'],
         ['miningDetailsTool', 'Tool Details', 'Current pickaxe, effectiveness, and recommendation'],
       ],
       ratioRegionPresets(
