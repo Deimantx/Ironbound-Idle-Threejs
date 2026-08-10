@@ -414,6 +414,7 @@ describe('navigation integration', () => {
     expect(screen.getByText(/Mining XP \/ Swing/)).toBeInTheDocument();
     expect(screen.getByText('Full deposit')).toBeInTheDocument();
     expect(screen.getByText('Respawn')).toBeInTheDocument();
+    expect(document.querySelector('.mining-selected-rock > .subtle')).not.toBeInTheDocument();
     expect(screen.queryByText('Current depth')).not.toBeInTheDocument();
     expect(screen.queryByText(/Depth \d+\/\d+/)).not.toBeInTheDocument();
     expect(screen.getByText('Your pickaxe fully penetrates this deposit.')).toBeInTheDocument();
@@ -473,13 +474,16 @@ describe('navigation integration', () => {
       }),
     ).toBeInTheDocument();
     expect(document.querySelector('.mining-current-stage')).not.toBeInTheDocument();
-    expect(document.querySelectorAll('.mining-live-metric')).toHaveLength(3);
-    expect(document.querySelector('.mining-live-bars .mining-stamina-block')).toBeInTheDocument();
+    expect(document.querySelectorAll('.mining-live-metric')).toHaveLength(2);
     expect(screen.getByText('Swing')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Swing progress' })).toBeInTheDocument();
     const liveStatus = document.querySelector<HTMLElement>('.mining-live-status');
-    expect(liveStatus?.textContent).toContain('Stamina');
-    expect(liveStatus?.textContent).toContain('100 / 100');
+    if (!liveStatus) throw new Error('Mining live status was not rendered');
+    expect(within(liveStatus).getByRole('progressbar', { name: 'Current stage durability' })).toBeInTheDocument();
+    expect(within(liveStatus).getByRole('progressbar', { name: 'Mining stamina' })).toBeInTheDocument();
+    expect(within(liveStatus).queryByRole('progressbar', { name: 'Swinging progress' })).not.toBeInTheDocument();
+    expect(within(liveStatus).getAllByText('Stamina', { exact: true })).toHaveLength(1);
+    expect(liveStatus.textContent).toContain('100 / 100');
     expect(
       screen.getByText(
         `~${formatRatePerHour(getMiningEstimatedRates(game, miningNodeById['stone-outcrop']).xpPerHour)} XP/hr`,
@@ -516,6 +520,9 @@ describe('navigation integration', () => {
     expect(screen.getByRole('progressbar', { name: 'Rest progress' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Open Mining: Stone Outcrop' }));
     expect(screen.getByRole('heading', { name: 'Mining' })).toBeInTheDocument();
+    const liveStatus = document.querySelector<HTMLElement>('.mining-live-status');
+    if (!liveStatus) throw new Error('Mining live status was not rendered');
+    expect(within(liveStatus).getByRole('progressbar', { name: 'Resting progress' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Stop mining' }));
     expect(useGameStore.getState().game?.activeAction.type).toBe('none');
     expect(screen.queryByRole('button', { name: 'Stop mining' })).not.toBeInTheDocument();
@@ -539,6 +546,12 @@ describe('navigation integration', () => {
     expect(screen.getByText('Rock reforming')).toBeInTheDocument();
     expect(screen.getByText('Respawn')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Respawn progress' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Open Mining: Stone Outcrop' }));
+    const liveStatus = document.querySelector<HTMLElement>('.mining-live-status');
+    if (!liveStatus) throw new Error('Mining live status was not rendered');
+    expect(
+      within(liveStatus).getByRole('progressbar', { name: 'Rock reforming progress' }),
+    ).toBeInTheDocument();
 
     game.activeAction = {
       type: 'mining',

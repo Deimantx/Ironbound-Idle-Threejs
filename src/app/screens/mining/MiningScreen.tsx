@@ -138,21 +138,17 @@ const ProgressBar = ({
 const StaminaBar = ({
   stamina,
   showHelpIcons = true,
-  compact = false,
 }: {
   stamina: number;
   showHelpIcons?: boolean;
-  compact?: boolean;
 }) => (
   <div className="mining-stamina-block">
-    {!compact && (
-      <div className="split">
-        <ExplainedTerm concept="mining-stamina" showHelpIcon={showHelpIcons}>Stamina</ExplainedTerm>
-        <strong>
-          {Math.round(stamina)} / {MINING_TUNING.maxStamina}
-        </strong>
-      </div>
-    )}
+    <div className="split">
+      <ExplainedTerm concept="mining-stamina" showHelpIcon={showHelpIcons}>Stamina</ExplainedTerm>
+      <strong>
+        {Math.round(stamina)} / {MINING_TUNING.maxStamina}
+      </strong>
+    </div>
     <ProgressBar
       value={stamina}
       max={MINING_TUNING.maxStamina}
@@ -300,6 +296,9 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
   const activeDisplayRuntime = activeNode ? (activeRuntime ?? selectedRuntime) : selectedRuntime;
   const activeProgress = phaseProgress(game, activeNode);
   const activeRemaining = phaseRemaining(game, activeNode);
+  const activePhase =
+    activeNode && game.activeAction.type === 'mining' ? game.activeAction.phase : undefined;
+  const hasTemporaryPhase = activePhase === 'rest' || activePhase === 'respawn';
   const swingsBeforeRest = getMiningSwingsBeforeRest(game.mining.stamina, activeTool.staminaCost);
   const ownedPrimary = getItemQuantity(game.inventory, selectedNode.primaryRewardItemId);
   const recommendedTool = getRecommendedMiningToolForNode(selectedNode);
@@ -396,38 +395,40 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                     label="Current stage durability"
                     className="mining-durability-bar"
                   />
-                  <div className="mining-live-metrics">
-                    <div className="mining-live-metric">
-                      <span>{activeNode ? phaseTitle(game.activeAction.type === 'mining' ? game.activeAction.phase : 'swing') : 'Mining status'}</span>
-                      <strong>{activeNode ? formatDuration(activeRemaining) : 'Idle'}</strong>
-                    </div>
-                    {activeNode && (
+                  {activePhase === 'swing' && (
+                    <div className="mining-live-metrics">
+                      <div className="mining-live-metric">
+                        <span>{phaseTitle(activePhase)}</span>
+                        <strong>{formatDuration(activeRemaining)}</strong>
+                      </div>
                       <div className="mining-live-metric">
                         <span>Before rest</span>
                         <strong>{swingsBeforeRest} swing{swingsBeforeRest === 1 ? '' : 's'}</strong>
                       </div>
-                    )}
-                    <div className="mining-live-metric">
-                      <ExplainedTerm concept="mining-stamina" showHelpIcon={game.settings.showHelpIcons}>
-                        Stamina
-                      </ExplainedTerm>
-                      <strong>
-                        {Math.round(game.mining.stamina)} / {MINING_TUNING.maxStamina}
-                      </strong>
                     </div>
-                  </div>
-                  <div className="mining-live-bars">
-                    {activeNode ? (
+                  )}
+                  {hasTemporaryPhase && activePhase && (
+                    <div className="mining-phase-progress">
+                      <div className="mining-phase-progress-heading">
+                        <span>{phaseLabel(activePhase)}</span>
+                        <strong className="ui-stat-compact">{formatDuration(activeRemaining)}</strong>
+                      </div>
                       <ProgressBar
                         value={activeProgress * 100}
                         max={100}
-                        label={`${phaseLabel(game.activeAction.type === 'mining' ? game.activeAction.phase : 'swing')} progress`}
+                        label={`${phaseLabel(activePhase)} progress`}
                         className="mining-phase-bar"
                       />
-                    ) : (
-                      <div className="mining-preview-note">Press Mine to begin working this deposit.</div>
-                    )}
-                    <StaminaBar stamina={game.mining.stamina} showHelpIcons={game.settings.showHelpIcons} compact />
+                    </div>
+                  )}
+                  {!activeNode && (
+                    <div className="mining-live-idle">
+                      <span>Mining status</span>
+                      <strong>Idle</strong>
+                    </div>
+                  )}
+                  <div className="mining-live-stamina">
+                    <StaminaBar stamina={game.mining.stamina} showHelpIcons={game.settings.showHelpIcons} />
                   </div>
                   <RateSummary game={game} node={activeDisplayNode} />
                 </div>
@@ -542,10 +543,6 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 <div className="mining-selected-rock">
                 <div className="eyebrow">Selected deposit</div>
                 <h2>{selectedNode.name}</h2>
-                <p className="subtle">
-                  Mining Level {selectedNode.level} · Required Penetration{' '}
-                  {selectedNode.requiredPenetration}
-                </p>
                 <p>{selectedNode.description}</p>
                 <div className="mining-requirements">
                   <div className="eyebrow">Requirements</div>
@@ -556,11 +553,11 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                     <span>Respawn<strong>{formatDuration(selectedNode.respawnMs)}</strong></span>
                   </div>
                 </div>
+                <div className="eyebrow mining-section-label">Primary resource</div>
                 <ItemTooltip item={itemById[selectedNode.primaryRewardItemId]}>
                   <div className="mining-primary-resource">
-                    <ItemIcon itemId={selectedNode.primaryRewardItemId} size="lg" />
+                    <ItemIcon itemId={selectedNode.primaryRewardItemId} size="md" />
                     <div>
-                      <span>Primary resource</span>
                       <strong>{itemById[selectedNode.primaryRewardItemId]?.name}</strong>
                       <small>Owned: {formatNumber(ownedPrimary)}</small>
                     </div>
@@ -589,12 +586,18 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
 
               <UiPanelRegionSlot screen="mining" panelId="miningDetails" regionId="miningDetailsTool" layout={uiLayout}>
                 <div className="mining-tool-details">
-                <div className="eyebrow">Current pickaxe</div>
-                <h2>{activeTool.itemId ? itemById[activeTool.itemId]?.name : 'No pickaxe'}</h2>
                 <ItemTooltip item={activeTool.itemId ? itemById[activeTool.itemId] : undefined}>
-                  <div className="mining-tool-summary">
-                    <ItemIcon itemId={activeTool.itemId || undefined} size="md" />
-                    <div className="mining-stat-grid">
+                  <div className="mining-tool-information">
+                    <div className="mining-tool-identity">
+                      <ItemIcon itemId={activeTool.itemId || undefined} size="md" />
+                      <div>
+                        <div className="eyebrow">Current pickaxe</div>
+                        <h2>{activeTool.itemId ? itemById[activeTool.itemId]?.name : 'No pickaxe'}</h2>
+                      </div>
+                    </div>
+                    <div className="eyebrow mining-tool-section-label">Tool stats</div>
+                    <div className="mining-tool-summary">
+                      <div className="mining-stat-grid">
                     <span>
                       Rock damage<strong>{activeTool.rockDamage}</strong>
                     </span>
@@ -613,22 +616,25 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                     <span>
                       Required level<strong>{activeTool.requiredMiningLevel}</strong>
                     </span>
+                      </div>
                     </div>
                   </div>
                 </ItemTooltip>
                 <div className="mining-tool-comparison">
                   <div className="eyebrow">Vs {selectedNode.name}</div>
-                  <div className="mining-comparison-row">
-                    <ExplainedTerm concept="mining-penetration" showHelpIcon={game.settings.showHelpIcons}>
-                      Required penetration
-                    </ExplainedTerm>
-                    <strong>{selectedNode.requiredPenetration}</strong>
-                  </div>
-                  <div className="mining-comparison-row">
-                    <ExplainedTerm concept="mining-penetration" showHelpIcon={game.settings.showHelpIcons}>
-                      Your penetration
-                    </ExplainedTerm>
-                    <strong>{activeTool.penetration}</strong>
+                  <div className="mining-comparison-penetration">
+                    <div className="mining-comparison-cell">
+                      <ExplainedTerm concept="mining-penetration" showHelpIcon={game.settings.showHelpIcons}>
+                        Required penetration
+                      </ExplainedTerm>
+                      <strong>{selectedNode.requiredPenetration}</strong>
+                    </div>
+                    <div className="mining-comparison-cell">
+                      <ExplainedTerm concept="mining-penetration" showHelpIcon={game.settings.showHelpIcons}>
+                        Your penetration
+                      </ExplainedTerm>
+                      <strong>{activeTool.penetration}</strong>
+                    </div>
                   </div>
                   <div className="mining-comparison-highlight">
                     <span>
