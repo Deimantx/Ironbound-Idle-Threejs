@@ -1,4 +1,7 @@
 import { enemyById } from '../../content/enemies';
+import { areaById } from '../../content/areas';
+import { combatRegionById } from '../../content/combatRegions';
+import { combatSubRegionById } from '../../content/combatSubRegions';
 import { itemById } from '../../content/items';
 import { recipeById } from '../../content/recipes';
 import { createCombatRngForStart, initializeEnemySpawn } from './combatEncounter';
@@ -8,6 +11,7 @@ import { createMiningRuntimeState, normalizeMiningState } from '../formulas/mini
 import { getSmithingMaxCraftable, getSmithingStartBlockReason } from '../formulas/smithingFormulas';
 import { appendCombatLog } from '../logging/combatLog';
 import { COMBAT_TUNING } from '../../config/combatTuning';
+import { getDerivedStats } from '../formulas/statFormulas';
 import type { AreaId, CombatStyle, EnemyId, GameState, MiningNodeId, QuantityMode } from '../types';
 
 export const startMining = (
@@ -67,9 +71,23 @@ export const startCombat = (
   autoRepeat: boolean,
   now = Date.now(),
   autoSpecial = true,
+  ignoreRequirements = false,
 ): GameState => {
+  const area = areaById[areaId];
   const enemy = enemyById[enemyId];
-  if (!enemy) return { ...state, activeAction: { type: 'none' }, updatedAt: now };
+  const subRegion = area ? combatSubRegionById[area.subRegionId] : undefined;
+  const region = subRegion ? combatRegionById[subRegion.regionId] : undefined;
+  const validTarget = ignoreRequirements || Boolean(
+    enemy && area && subRegion && region &&
+      region.availability === 'available' &&
+      subRegion.availability === 'available' &&
+      area.availability === 'available' &&
+      state.unlockedAreas.includes(area.id) &&
+      area.enemyIds.includes(enemyId) &&
+      enemy.areaId === area.id &&
+      getDerivedStats(state).combatLevel >= area.requiredCombatLevel,
+  );
+  if (!validTarget) return { ...state, activeAction: { type: 'none' }, updatedAt: now };
   const rng = createCombatRngForStart(state, now, enemyId);
   const spawn = initializeEnemySpawn(state, enemyId, style, rng, 1, undefined, 0, now);
   const nextCombatState = spawn.eliteModifier

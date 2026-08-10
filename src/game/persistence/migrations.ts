@@ -25,6 +25,9 @@ import {
   MAX_LEVEL,
 } from '../formulas/experienceFormulas';
 import { miningNodeById } from '../../content/miningNodes';
+import { AREAS } from '../../content/areas';
+import { ENEMIES } from '../../content/enemies';
+import { createEnemyTraitState } from '../systems/enemyTraitSystem';
 import { SKILL_IDS } from '../types';
 import type {
   ActivityLogsState,
@@ -63,7 +66,7 @@ const LEGACY_AREA_MAP: Record<string, AreaId> = {
   'ironwood-pass': 'wolf-den',
 };
 
-const COMBAT_AREA_BY_ENEMY: Record<EnemyId, AreaId> = {
+const COMBAT_AREA_BY_ENEMY: Record<string, AreaId> = {
   'forest-rat': 'forest-path',
   'goblin-scavenger': 'forest-path',
   'cave-bat': 'old-shrine',
@@ -80,7 +83,10 @@ const COMBAT_AREA_BY_ENEMY: Record<EnemyId, AreaId> = {
   'watchtower-captain': 'ruined-watchtower',
 };
 
+const CURRENT_CONTENT_AREA_IDS = new Set(AREAS.map((area) => area.id));
+
 const isCurrentAreaId = (value: unknown): value is AreaId =>
+  (typeof value === 'string' && CURRENT_CONTENT_AREA_IDS.has(value as AreaId)) ||
   value === 'forest-path' ||
   value === 'wolf-den' ||
   value === 'abandoned-camp' ||
@@ -653,6 +659,53 @@ const migrateLifetimeStatistics = (input: GameState): GameState => ({
   schemaVersion: 15,
 });
 
+const CURRENT_AREA_IDS = new Set(AREAS.filter((area) => area.availability === 'available').map((area) => area.id));
+const CURRENT_ENEMY_IDS = new Set(ENEMIES.map((enemy) => enemy.id));
+const REMOVED_COMBAT_ITEM_IDS = new Set([
+  'rat-tail', 'tattered-hide', 'bat-wing', 'crab-shell', 'bandit-token', 'rusted-emblem',
+  'coarse-boar-hide', 'boar-tusk', 'stonehill-bristle', 'stonewool-fleece', 'ram-horn',
+  'dense-hoof-fragment', 'crawler-carapace', 'burrow-claw', 'glow-sac', 'bent-pick-head',
+  'miners-badge', 'blackened-lantern', 'old-claim-token', 'harpy-feather', 'hooked-talon',
+  'windworn-pinion', 'cliff-nest-trinket', 'marauder-insignia', 'riveted-leather-scrap',
+  'warband-token', 'notched-whetstone', 'sentinel-plate-fragment', 'rusted-gear', 'runed-rivet',
+  'watchtower-core', 'captains-sigil', 'watchtower-key-fragment', 'commanders-strap', 'old-garrison-seal',
+]);
+
+const migrateTauraqueContentReset = (input: GameState): GameState => {
+  const activeAction = input.activeAction.type === 'combat' &&
+    (!CURRENT_AREA_IDS.has(input.activeAction.areaId as never) || !CURRENT_ENEMY_IDS.has(input.activeAction.enemyId as never))
+    ? { type: 'none' as const }
+    : input.activeAction;
+  const discoveredMonsters = input.discoveredMonsters.filter((id) => CURRENT_ENEMY_IDS.has(id as never));
+  const killCounts = Object.fromEntries(Object.entries(input.killCounts).filter(([id]) => CURRENT_ENEMY_IDS.has(id as never))) as GameState['killCounts'];
+  const activityLogs = {
+    ...input.activityLogs,
+    combat: input.activityLogs.combat.filter((entry) => !entry.enemyId || CURRENT_ENEMY_IDS.has(entry.enemyId as never)),
+  };
+  const inventory = input.inventory.filter((stack) => !REMOVED_COMBAT_ITEM_IDS.has(stack.itemId));
+  const discoveredItems = input.discoveredItems.filter((id) => !REMOVED_COMBAT_ITEM_IDS.has(id));
+  const normalizedActive = activeAction.type === 'combat'
+    ? {
+        ...activeAction,
+        combatState: {
+          ...activeAction.combatState,
+          traitState: { ...createEnemyTraitState(), ...activeAction.combatState.traitState },
+        },
+      }
+    : activeAction;
+  return {
+    ...input,
+    activeAction: normalizedActive,
+    unlockedAreas: ['redknife-road-camp', 'greyfang-pastures', 'brambletooth-camp'],
+    discoveredMonsters,
+    killCounts,
+    inventory,
+    discoveredItems,
+    activityLogs,
+    schemaVersion: 16,
+  };
+};
+
 export const migrations: Record<number, SaveMigration> = {
   1: (input) => ({
     ...input,
@@ -699,9 +752,10 @@ export const migrations: Record<number, SaveMigration> = {
           eliteModifier: null,
           eliteAnnounced: true,
           traitState: {
-            firstAttackPending: enemy?.trait.id === 'scurry',
             enemyAttackCount: 0,
-            bleedStacks: 0,
+            consecutiveEnemyHits: 0,
+            packHunterStacks: 0,
+            scrappyStacks: 0,
           },
           encounterIndex: 1,
           encounterStartedAt: input.lastSimulatedAt,
@@ -722,6 +776,7 @@ export const migrations: Record<number, SaveMigration> = {
   13: migrateEnemySpecialFoundation,
   14: migratePeriodicCombatEffects,
   15: migrateLifetimeStatistics,
+  16: migrateTauraqueContentReset,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {

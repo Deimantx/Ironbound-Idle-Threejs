@@ -10,7 +10,6 @@ import {
   getHitChance,
 } from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
-import { hasCombatEffect, hasCombatEffectKind } from '../formulas/combatEffects';
 import { occupiedSlots } from '../systems/inventorySystem';
 import type {
   AreaId,
@@ -45,14 +44,14 @@ export const getHealthState = (current: number, max: number): HealthState => {
 
 export const selectSelectedCombatArea = (
   state: GameState,
-  fallback: AreaId = 'forest-path',
+  fallback: AreaId = 'redknife-road-camp',
 ): (typeof AREAS)[number] =>
   areaById[state.activeAction.type === 'combat' ? state.activeAction.areaId : fallback] ??
   areaById[fallback];
 
 export const selectSelectedEnemy = (
   state: GameState,
-  fallback: EnemyId = 'forest-rat',
+  fallback: EnemyId = 'redknife-lookout',
 ): EnemyDefinition =>
   enemyById[state.activeAction.type === 'combat' ? state.activeAction.enemyId : fallback] ??
   enemyById[fallback];
@@ -71,62 +70,13 @@ const getActiveCombatState = (state: GameState) =>
 export const selectPlayerCombatEffects = (state: GameState): ActiveCombatEffect[] => {
   const combatState = getActiveCombatState(state);
   if (!combatState) return [];
-  const effects = [...(combatState.effects?.player ?? [])];
-  const bleedStacks = combatState.traitState.bleedStacks;
-  if (bleedStacks > 0) {
-    effects.push({
-      instanceId: 'bleeding-trait',
-      effectId: 'bleeding',
-      target: 'player',
-      sourceEnemyId: state.activeAction.type === 'combat' ? state.activeAction.enemyId : undefined,
-      remainingMs: null,
-      stacks: bleedStacks,
-    });
-  }
-  return effects;
+  return [...(combatState.effects?.player ?? [])];
 };
 
 export const selectEnemyCombatEffects = (state: GameState): ActiveCombatEffect[] => {
   const combatState = getActiveCombatState(state);
   if (!combatState || state.activeAction.type !== 'combat') return [];
-  const enemy = enemyById[state.activeAction.enemyId];
-  if (!enemy) return [...(combatState.effects?.enemy ?? [])];
-  const effects = [...(combatState.effects?.enemy ?? [])];
-  const baseStats = getEnemyCombatStats(enemy, combatState.eliteModifier);
-  if (
-    enemy.trait.id === 'desperate-swing' &&
-    combatState.enemyHp <= baseStats.maxHealth * COMBAT_TUNING.goblinDesperateThreshold
-  ) {
-    effects.push({
-      instanceId: 'desperate-swing-trait',
-      effectId: 'desperate-swing',
-      target: 'enemy',
-      sourceEnemyId: enemy.id,
-      remainingMs: null,
-      stacks: 1,
-    });
-  }
-  const healthRatio = combatState.enemyHp / Math.max(1, combatState.enemyMaxHp);
-  const addDerived = (effectId: string): void => {
-    if (hasCombatEffect(effects, effectId)) return;
-    effects.push({
-      instanceId: `${effectId}-trait`,
-      effectId,
-      target: 'enemy',
-      sourceEnemyId: enemy.id,
-      remainingMs: null,
-      stacks: 1,
-    });
-  };
-  if (enemy.trait.id === 'cornered-fury' && healthRatio <= COMBAT_TUNING.corneredFuryHealthThreshold)
-    addDerived('cornered-fury');
-  if (enemy.trait.id === 'blood-scent' && hasCombatEffectKind(selectPlayerCombatEffects(state), 'bleed'))
-    addDerived('blood-scent');
-  if (enemy.trait.id === 'reinforced-plating' && healthRatio > COMBAT_TUNING.reinforcedPlatingHealthThreshold)
-    addDerived('reinforced-plating');
-  if (enemy.trait.id === 'last-stand' && healthRatio <= COMBAT_TUNING.lastStandHealthThreshold)
-    addDerived('last-stand');
-  return effects;
+  return [...(combatState.effects?.enemy ?? [])];
 };
 
 const selectEnemyStats = (state: GameState, enemy: EnemyDefinition) =>
@@ -145,6 +95,9 @@ const selectEnemyStats = (state: GameState, enemy: EnemyDefinition) =>
     state.activeAction.type === 'combat' && state.activeAction.enemyId === enemy.id
       ? selectPlayerCombatEffects(state)
       : [],
+    state.activeAction.type === 'combat' && state.activeAction.enemyId === enemy.id
+      ? state.activeAction.combatState.traitState
+      : undefined,
   );
 
 const interpolatedRemaining = (remainingMs: number, updatedAt: number, now: number): number =>
@@ -217,12 +170,7 @@ export const selectEnemyAttackProgress = (state: GameState, now = Date.now()): A
     state.updatedAt,
     now,
   );
-  const progressInterval = state.activeAction.combatState.traitState.firstAttackPending
-    ? Math.max(
-        COMBAT_TUNING.minimumAttackIntervalMs,
-        stats.attackIntervalMs * COMBAT_TUNING.ratFirstAttackMultiplier,
-      )
-    : stats.attackIntervalMs;
+  const progressInterval = stats.attackIntervalMs;
   const ratio = Math.max(0, Math.min(1, 1 - timeUntilAttackMs / progressInterval));
   return {
     ratio,
@@ -269,8 +217,7 @@ export const selectEnemyAverageDamage = (
   enemy = selectSelectedEnemy(state),
 ): number => {
   const stats = selectEnemyStats(state, enemy);
-  let average = getAverageDamageAfterFlatReduction(stats.maxHit, 0);
-  if (enemy.trait.id === 'bleeding-bites') average += COMBAT_TUNING.wolfBleedChance;
+  const average = getAverageDamageAfterFlatReduction(stats.maxHit, 0);
   return average;
 };
 
@@ -341,6 +288,8 @@ export const selectEnemySpecialProgress = (state: GameState): number =>
   selectEnemySpecialCharge(state) / COMBAT_TUNING.enemySpecialChargeMax;
 
 export const isCombatAreaUnlocked = (state: GameState, area: (typeof AREAS)[number]): boolean =>
+  area.availability === 'available' &&
+  state.unlockedAreas.includes(area.id) &&
   getDerivedStats(state).combatLevel >= area.requiredCombatLevel;
 
 export const selectCombatStatus = (state: GameState): string => {

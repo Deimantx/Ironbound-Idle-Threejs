@@ -1,48 +1,38 @@
-import type {
-  AreaId,
-  CombatRegionAvailability,
-  CombatRegionId,
-} from '../game/types';
+import type { CombatRegionAvailability, CombatRegionId, LootEntry } from '../game/types';
+import { COMBAT_SUB_REGIONS } from './combatSubRegions';
 
 export interface CombatRegionDefinition {
   id: CombatRegionId;
   name: string;
   description: string;
-  areaIds: AreaId[];
+  subRegionIds: typeof COMBAT_SUB_REGIONS[number]['id'][];
   availability: CombatRegionAvailability;
-  presentation: {
-    accent: string;
-    iconKey: 'tree' | 'mountain' | 'flame';
-  };
+  sharedLoot: LootEntry[];
+  presentation: { accent: string; iconKey: 'tree' | 'mountain' | 'flame' };
+  /** @deprecated Compatibility view; navigation uses subRegionIds. */
+  areaIds?: string[];
 }
+
+export const TAURAQUE_SHARED_LOOT: LootEntry[] = [
+  { itemId: 'black-stone', chance: 0.02, min: 1, max: 1 },
+  { itemId: 'magic-crystal-box', chance: 0.005, min: 1, max: 1 },
+];
 
 export const COMBAT_REGIONS: CombatRegionDefinition[] = [
   {
-    id: 'greenvale',
-    name: 'Greenvale',
-    description: 'Verdant frontier country surrounding the early settlements.',
-    areaIds: ['forest-path', 'wolf-den', 'abandoned-camp', 'old-shrine'],
+    id: 'tauraque',
+    name: 'Tauraque',
+    description: 'A broad temperate region of settled valleys, ancient forests, riverlands, coastlines, wetlands, hills, towns, and an increasingly wild eastern frontier.',
+    subRegionIds: COMBAT_SUB_REGIONS.map((subRegion) => subRegion.id),
     availability: 'available',
-    presentation: { accent: '#78936e', iconKey: 'tree' },
-  },
-  {
-    id: 'stonehill',
-    name: 'Stonehill',
-    description: 'Rocky uplands of old mines, broken roads, and fortified ruins.',
-    areaIds: ['rocky-foothills', 'abandoned-mine', 'mountain-pass', 'ruined-watchtower'],
-    availability: 'available',
-    presentation: { accent: '#8a877c', iconKey: 'mountain' },
-  },
-  {
-    id: 'ashmoor',
-    name: 'Ashmoor',
-    description: 'A scarred frontier of ash fields, dead woods, and forgotten strongholds.',
-    areaIds: [],
-    availability: 'coming-soon',
-    presentation: { accent: '#9b6f5a', iconKey: 'flame' },
+    sharedLoot: TAURAQUE_SHARED_LOOT,
+    presentation: { accent: '#b58b53', iconKey: 'tree' },
   },
 ];
 
 export const combatRegionById = Object.fromEntries(
   COMBAT_REGIONS.map((region) => [region.id, region]),
-) as Record<CombatRegionId, CombatRegionDefinition>;
+) as Record<string, CombatRegionDefinition>;
+
+export const getRegionForSubRegion = (subRegionId: string) =>
+  COMBAT_REGIONS.find((region) => region.subRegionIds.includes(subRegionId as never));

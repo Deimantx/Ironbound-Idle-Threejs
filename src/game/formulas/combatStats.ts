@@ -1,8 +1,9 @@
 import { COMBAT_TUNING } from '../../config/combatTuning';
 import { enemyById } from '../../content/enemies';
 import { eliteById } from '../../content/elites';
-import { getCombatEffectModifiers, hasCombatEffect, hasCombatEffectKind } from './combatEffects';
-import type { ActiveCombatEffect } from '../types';
+import { getCombatEffectModifiers } from './combatEffects';
+import { createEnemyTraitState, getEnemyTraitModifiers } from '../systems/enemyTraitSystem';
+import type { ActiveCombatEffect, CombatTraitState } from '../types';
 import type { EliteModifierId, EnemyDefinition, EnemyId } from '../types';
 
 export interface EffectiveEnemyStats {
@@ -26,52 +27,27 @@ export const getEnemyCombatStats = (
   playerHealthPercent = 1,
   effects: ActiveCombatEffect[] = [],
   playerEffects: ActiveCombatEffect[] = [],
+  traitState: CombatTraitState = createEnemyTraitState(),
 ): EffectiveEnemyStats => {
   const elite = eliteModifier;
   const effectiveMaxHealth = enemy.maxHealth * (eliteModifier ? COMBAT_TUNING.eliteHealthMultiplier : 1);
-  const lowHealth = currentHp <= effectiveMaxHealth * COMBAT_TUNING.goblinDesperateThreshold;
-  let maxHitMultiplier = 1;
-  let defenceMultiplier = 1;
+  const traitModifiers = getEnemyTraitModifiers(enemy, {
+    currentHp,
+    maxHp: effectiveMaxHealth,
+    playerHealthPercent,
+    playerEffects,
+    state: traitState,
+  });
+  let maxHitMultiplier = traitModifiers.maxHitMultiplier;
+  let defenceMultiplier = traitModifiers.defenceMultiplier;
   let intervalMultiplier = 1;
   let goldMultiplier = 1;
   let lootChanceMultiplier = 1;
   const effectModifiers = getCombatEffectModifiers(effects);
   let flatDamageReduction = effectModifiers.flatDamageReduction;
-  const corneredHealth = currentHp <= effectiveMaxHealth * COMBAT_TUNING.corneredFuryHealthThreshold;
-  const lastStandHealth = currentHp <= effectiveMaxHealth * COMBAT_TUNING.lastStandHealthThreshold;
-
-  let accuracyMultiplier = 1;
-  if (
-    enemy.trait.id === 'opportunist' &&
-    playerHealthPercent < COMBAT_TUNING.banditOpportunistHealthThreshold
-  )
-    accuracyMultiplier *= COMBAT_TUNING.banditOpportunistAccuracyMultiplier;
-
-  if (enemy.trait.id === 'desperate-swing' && lowHealth)
-    maxHitMultiplier *= COMBAT_TUNING.goblinDesperateMaxHitMultiplier;
-  if (enemy.trait.id === 'evasive') defenceMultiplier *= COMBAT_TUNING.batDefenceMultiplier;
-  if (enemy.trait.id === 'armoured-shell') flatDamageReduction += COMBAT_TUNING.crabFlatReduction;
-  if (enemy.trait.id === 'stonehide') flatDamageReduction += COMBAT_TUNING.stonehideFlatReduction;
-  if (enemy.trait.id === 'patchwork-plate') flatDamageReduction += COMBAT_TUNING.patchworkPlateFlatReduction;
-
-  if (enemy.trait.id === 'cornered-fury' && corneredHealth && !hasCombatEffect(effects, 'cornered-fury')) {
-    maxHitMultiplier *= COMBAT_TUNING.corneredFuryDamageMultiplier;
-    intervalMultiplier *= COMBAT_TUNING.corneredFuryAttackIntervalMultiplier;
-  }
-  if (
-    enemy.trait.id === 'blood-scent' &&
-    hasCombatEffectKind(playerEffects, 'bleed') &&
-    !hasCombatEffect(effects, 'blood-scent')
-  )
-    maxHitMultiplier *= COMBAT_TUNING.bloodScentDamageMultiplier;
-  if (enemy.trait.id === 'reinforced-plating' && currentHp > effectiveMaxHealth * COMBAT_TUNING.reinforcedPlatingHealthThreshold && !hasCombatEffect(effects, 'reinforced-plating')) {
-    defenceMultiplier *= COMBAT_TUNING.reinforcedPlatingDefenceMultiplier;
-    flatDamageReduction += COMBAT_TUNING.reinforcedPlatingFlatReduction;
-  }
-  if (enemy.trait.id === 'last-stand' && lastStandHealth && !hasCombatEffect(effects, 'last-stand')) {
-    accuracyMultiplier *= COMBAT_TUNING.lastStandAccuracyMultiplier;
-    intervalMultiplier *= COMBAT_TUNING.lastStandAttackIntervalMultiplier;
-  }
+  let accuracyMultiplier = traitModifiers.accuracyMultiplier;
+  maxHitMultiplier *= traitModifiers.damageMultiplier;
+  intervalMultiplier *= traitModifiers.attackIntervalMultiplier;
 
   if (elite === 'savage') maxHitMultiplier *= COMBAT_TUNING.eliteSavageMaxHitMultiplier;
   if (elite === 'armoured') {

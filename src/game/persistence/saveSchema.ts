@@ -3,6 +3,27 @@ import type { GameState } from '../types';
 import { GAME_CONFIG } from '../../config/gameConfig';
 import { migrateSave } from './migrations';
 
+const enemyIdSchema = z.enum([
+  'redknife-lookout', 'redknife-brigand', 'redknife-bowhand', 'redknife-enforcer',
+  'greyfang-wolf', 'greyfang-stalker', 'greyfang-ravager', 'greyfang-alpha',
+  'brambletooth-scavenger', 'brambletooth-spearman', 'brambletooth-trapper', 'brambletooth-boarhandler',
+]);
+const legacyEnemyIdSchema = z.enum([
+  'forest-rat', 'goblin-scavenger', 'cave-bat', 'stoneback-crab', 'grey-wolf', 'road-bandit',
+  'hill-boar', 'stonehide-ram', 'tunnel-crawler', 'forsaken-miner', 'cliff-harpy',
+  'stonehill-marauder', 'ironbound-sentinel', 'watchtower-captain',
+]);
+const currentAreaIdSchema = z.enum([
+  'redknife-road-camp', 'greyfang-pastures', 'brambletooth-camp',
+  'mossfang-encampment', 'deepwood-den', 'thornhide-grove',
+  'saltknife-cove', 'reefback-shore', 'gullwatch-cliffs',
+  'broken-banner-camp', 'redwater-reedbanks', 'mudtusk-crossing',
+  'the-drowned-fen', 'mirecrawler-nest', 'fenclaw-grounds',
+  'crowclaw-warband', 'ramstone-slopes', 'cragwing-roost',
+  'blackcloak-hideout', 'rookery-slums', 'old-barracks',
+  'gloomfang-territory', 'razorhorn-range', 'ashmane-hunting-grounds',
+]);
+
 export const saveRecordSchema = z.object({
   schemaVersion: z.number().int().positive(),
   profileId: z.string().min(1),
@@ -27,6 +48,9 @@ const activeCombatStateBaseSchema = z
         firstAttackPending: z.boolean().optional(),
         enemyAttackCount: z.number().finite().optional(),
         bleedStacks: z.number().finite().optional(),
+        consecutiveEnemyHits: z.number().finite().optional(),
+        packHunterStacks: z.number().finite().optional(),
+        scrappyStacks: z.number().finite().optional(),
       })
       .optional(),
     encounterIndex: z.number().finite().optional(),
@@ -91,8 +115,8 @@ const activeActionSchema = z.union([
   z
     .object({
       type: z.literal('combat'),
-      enemyId: z.string(),
-      areaId: z.string(),
+      enemyId: enemyIdSchema,
+      areaId: currentAreaIdSchema,
       style: z.enum(['accurate', 'aggressive', 'defensive']),
       autoRepeat: z.boolean(),
       pendingStyle: z.enum(['accurate', 'aggressive', 'defensive']).nullable().optional(),
@@ -125,7 +149,7 @@ const legacyActiveActionSchema = z.union([
   z
     .object({
       type: z.literal('combat'),
-      enemyId: z.string(),
+      enemyId: legacyEnemyIdSchema,
       areaId: z.string(),
       style: z.enum(['accurate', 'aggressive', 'defensive']),
       autoRepeat: z.boolean(),
@@ -174,22 +198,6 @@ const skillIdSchema = z.enum([
   'hitpoints',
   'mining',
   'smithing',
-]);
-const enemyIdSchema = z.enum([
-  'forest-rat',
-  'goblin-scavenger',
-  'cave-bat',
-  'stoneback-crab',
-  'grey-wolf',
-  'road-bandit',
-  'hill-boar',
-  'stonehide-ram',
-  'tunnel-crawler',
-  'forsaken-miner',
-  'cliff-harpy',
-  'stonehill-marauder',
-  'ironbound-sentinel',
-  'watchtower-captain',
 ]);
 const eliteModifierSchema = z.enum([
   'savage',
@@ -264,6 +272,10 @@ const activityLogsSchema = z.object({
   milestones: z.array(milestoneLogEntrySchema).max(50),
   combat: z.array(combatLogEntrySchema).max(120),
 });
+const legacyActivityLogsSchema = z.object({
+  milestones: z.array(milestoneLogEntrySchema).max(50).optional(),
+  combat: z.array(z.unknown()).max(120).optional(),
+});
 const legacyLogEntrySchema = z.object({
   id: z.string(),
   at: z.number(),
@@ -332,8 +344,9 @@ const savePayloadShape = {
 export const savePayloadSchema = z.object(savePayloadShape);
 export const legacySavePayloadSchema = z.object({
   ...savePayloadShape,
+  activeAction: legacyActiveActionSchema,
   settings: savePayloadShape.settings.extend({ showHelpIcons: z.boolean().optional() }),
-  activityLogs: activityLogsSchema.optional(),
+  activityLogs: legacyActivityLogsSchema.optional(),
   log: z.array(legacyLogEntrySchema).optional(),
   smithing: legacySmithingStateSchema.optional(),
   statistics: z.object({
@@ -349,7 +362,6 @@ export const legacySavePayloadSchema = z.object({
     playTimeMs: z.number().int().nonnegative().optional(),
   }),
   mining: savePayloadShape.mining.optional(),
-  activeAction: legacyActiveActionSchema,
   equipment: legacyEquipmentSchema,
 });
 

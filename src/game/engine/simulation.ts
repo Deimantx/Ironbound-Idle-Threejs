@@ -14,15 +14,19 @@ import {
 } from '../formulas/combatFormulas';
 import { COMBAT_TUNING } from '../../config/combatTuning';
 import { getEnemyCombatStats } from '../formulas/combatStats';
+import { getCombatGoldRange, getResolvedEnemyLoot } from '../formulas/combatLoot';
 import {
   applyCombatEffect,
   advanceCombatEffects,
-  getCombatEffectStacks,
   getTimeUntilNextCombatEffectEvent,
-  hasCombatEffectKind,
-  removeCombatEffectsByEffectId,
   resolveReadyCombatEffectTicks,
 } from '../formulas/combatEffects';
+import {
+  createEnemyTraitState,
+  onEnemyAttackResolved,
+  onEnemyDamaged,
+  syncEnemyTraitState,
+} from '../systems/enemyTraitSystem';
 import { initializeEnemySpawn } from './combatEncounter';
 import { addSkillXp } from '../formulas/experienceFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
@@ -61,6 +65,7 @@ import type {
   ActiveAction,
   ActiveCombatState,
   CombatVisualEvent,
+  EnemyId,
   GameState,
   MiningNodeDefinition,
   SkillId,
@@ -441,7 +446,7 @@ const simulateSmithing = (
 
 const grantLoot = (
   state: GameState,
-  enemyId: string,
+  enemyId: EnemyId,
   summary: SimulationSummary,
   rng: { rngSeed: number; rngCursor: number },
   lootChanceMultiplier = 1,
@@ -449,16 +454,18 @@ const grantLoot = (
   const enemy = enemyById[enemyId];
   if (!enemy) return { ok: true, items: [] };
   const items: Array<{ itemId: string; quantity: number }> = [];
-  for (const loot of enemy.loot)
+  for (const loot of getResolvedEnemyLoot(enemyId))
     if (nextCombatRandom(rng) <= Math.min(1, loot.chance * lootChanceMultiplier)) {
       const quantity = loot.min + Math.floor(nextCombatRandom(rng) * (loot.max - loot.min + 1));
-      const added = addItem(state.inventory, loot.itemId, quantity, GAME_CONFIG.inventorySlots);
-      if (added.rejected) return { ok: false, items };
-      state.inventory = added.inventory;
       items.push({ itemId: loot.itemId, quantity });
-      addSummaryNumber(summary.itemsGained, loot.itemId, quantity);
-      if (!state.discoveredItems.includes(loot.itemId)) state.discoveredItems.push(loot.itemId);
     }
+  const bundle = addItemBundle(state.inventory, items, GAME_CONFIG.inventorySlots);
+  if (bundle.rejected) return { ok: false, items: [] };
+  state.inventory = bundle.inventory;
+  for (const item of items) {
+    addSummaryNumber(summary.itemsGained, item.itemId, item.quantity);
+    if (!state.discoveredItems.includes(item.itemId)) state.discoveredItems.push(item.itemId);
+  }
   return { ok: true, items };
 };
 
@@ -511,14 +518,11 @@ const normalizeCombatAction = (
       eliteModifier,
       eliteAnnounced: raw.eliteAnnounced ?? true,
       traitState: {
-        firstAttackPending: raw.traitState?.firstAttackPending ?? enemy.trait.id === 'scurry',
+        ...createEnemyTraitState(),
         enemyAttackCount: Math.max(0, Math.floor(raw.traitState?.enemyAttackCount ?? 0)),
-        bleedStacks: Math.max(
-          0,
-          Math.min(COMBAT_TUNING.wolfMaxBleedStacks, Math.floor(raw.traitState?.bleedStacks ?? 0)),
-        ),
-        corneredFuryTriggered: raw.traitState?.corneredFuryTriggered ?? false,
-        lastStandTriggered: raw.traitState?.lastStandTriggered ?? false,
+        consecutiveEnemyHits: Math.max(0, Math.floor(raw.traitState?.consecutiveEnemyHits ?? 0)),
+        packHunterStacks: Math.max(0, Math.floor(raw.traitState?.packHunterStacks ?? 0)),
+        scrappyStacks: Math.max(0, Math.floor(raw.traitState?.scrappyStacks ?? 0)),
       },
       encounterIndex: Math.max(1, Math.floor(raw.encounterIndex ?? 1)),
       encounterStartedAt: Number.isFinite(raw.encounterStartedAt)
@@ -691,6 +695,9 @@ const simulateCombat = (
         );
       } else if (effect.kind === 'player-attack-delay') {
         combatState.playerAttackMs += Math.max(0, effect.amountMs);
+      } else if (effect.kind === 'player-attack-delay-fraction') {
+        const effectiveInterval = getDerivedStats(state, action.style, combatState.effects.player).attackIntervalMs;
+        combatState.playerAttackMs += Math.max(0, effectiveInterval * effect.fractionOfAttackInterval);
       } else {
         applyCombatEffect(combatState.effects, effect.effectId, effect.target, {
           sourceEnemyId: enemy.id,
@@ -699,48 +706,8 @@ const simulateCombat = (
       }
     }
   };
-  const syncEnemyTraitEffects = (at: number): void => {
-    const healthRatio = combatState.enemyHp / Math.max(1, combatState.enemyMaxHp);
-    if (
-      enemy.trait.id === 'cornered-fury' &&
-      healthRatio <= COMBAT_TUNING.corneredFuryHealthThreshold &&
-      !combatState.traitState.corneredFuryTriggered
-    ) {
-      applyCombatEffect(combatState.effects, 'cornered-fury', 'enemy', { sourceEnemyId: enemy.id });
-      combatState.traitState.corneredFuryTriggered = true;
-    }
-    if (
-      enemy.trait.id === 'last-stand' &&
-      healthRatio <= COMBAT_TUNING.lastStandHealthThreshold &&
-      !combatState.traitState.lastStandTriggered
-    ) {
-      applyCombatEffect(combatState.effects, 'last-stand', 'enemy', { sourceEnemyId: enemy.id });
-      combatState.traitState.lastStandTriggered = true;
-    }
-    if (enemy.trait.id === 'blood-scent') {
-      if (hasCombatEffectKind(combatState.effects.player, 'bleed'))
-        applyCombatEffect(combatState.effects, 'blood-scent', 'enemy', { sourceEnemyId: enemy.id });
-      else removeCombatEffectsByEffectId(combatState.effects, 'blood-scent', 'enemy');
-    }
-    if (enemy.trait.id === 'reinforced-plating') {
-      if (healthRatio > COMBAT_TUNING.reinforcedPlatingHealthThreshold)
-        applyCombatEffect(combatState.effects, 'reinforced-plating', 'enemy', { sourceEnemyId: enemy.id });
-      else removeCombatEffectsByEffectId(combatState.effects, 'reinforced-plating', 'enemy');
-    }
-    if (enemy.trait.id === 'battle-fury') {
-      const desiredStacks = Math.min(
-        COMBAT_TUNING.battleFuryMaxStacks,
-        Math.floor(Math.max(0, at - combatState.encounterStartedAt) / COMBAT_TUNING.battleFuryIntervalMs),
-      );
-      let currentStacks = getCombatEffectStacks(combatState.effects.enemy, 'battle-fury');
-      while (currentStacks < desiredStacks) {
-        applyCombatEffect(combatState.effects, 'battle-fury', 'enemy', {
-          sourceEnemyId: enemy.id,
-          stacks: 1,
-        });
-        currentStacks += 1;
-      }
-    }
+  const syncEnemyTraitEffects = (_at: number): void => {
+    syncEnemyTraitState(enemy, combatState.traitState, combatState.enemyHp, combatState.enemyMaxHp);
   };
   const resolvePeriodicEffects = (at: number): boolean => {
     for (const tick of resolveReadyCombatEffectTicks(combatState.effects)) {
@@ -801,6 +768,7 @@ const simulateCombat = (
         Math.max(1, getDerivedStats(state, action.style, combatState.effects.player).maxHealth),
       combatState.effects.enemy,
       combatState.effects.player,
+      combatState.traitState,
     );
     const nextEffectMs = getTimeUntilNextCombatEffectEvent(combatState.effects);
     const step = Math.min(
@@ -869,11 +837,6 @@ const simulateCombat = (
           encounterStartedAt: combatState.encounterStartedAt,
           special: useSpecial,
         });
-        if (enemy.trait.id === 'elusive-flight')
-          combatState.enemyAttackMs = Math.max(
-            0,
-            combatState.enemyAttackMs - currentEnemyStats.attackIntervalMs * COMBAT_TUNING.elusiveFlightAdvanceFraction,
-          );
       } else {
         const rolled = rollDamage(attackMaxHit, nextCombatRandom(rng));
         const reduced =
@@ -882,6 +845,7 @@ const simulateCombat = (
             : Math.max(1, rolled - currentEnemyStats.flatDamageReduction);
         const actualDamage = Math.min(reduced, combatState.enemyHp);
         combatState.enemyHp = Math.max(0, combatState.enemyHp - actualDamage);
+        onEnemyDamaged(enemy, combatState.traitState, targetHpAtStart, combatState.enemyHp, combatState.enemyMaxHp);
         combatState.adrenaline = Math.min(
           COMBAT_TUNING.adrenalineMax,
           combatState.adrenaline + COMBAT_TUNING.adrenalinePerPlayerHit,
@@ -931,12 +895,13 @@ const simulateCombat = (
         state.statistics.totalKills += 1;
         state.killCounts[enemy.id] = (state.killCounts[enemy.id] ?? 0) + 1;
         if (!state.discoveredMonsters.includes(enemy.id)) state.discoveredMonsters.push(enemy.id);
-        const enemyRewardStats = getEnemyCombatStats(enemy, eliteModifier, 0);
-        const baseGold = enemy.gold
-          ? enemy.gold[0] + Math.floor(nextCombatRandom(rng) * (enemy.gold[1] - enemy.gold[0] + 1))
+        const enemyRewardStats = getEnemyCombatStats(enemy, eliteModifier, 0, 1, [], [], combatState.traitState);
+        const goldRange = getCombatGoldRange(enemy.id);
+        const baseGold = goldRange
+          ? goldRange[0] + Math.floor(nextCombatRandom(rng) * (goldRange[1] - goldRange[0] + 1))
           : 0;
         const gold = Math.max(0, Math.round(baseGold * enemyRewardStats.goldMultiplier));
-        if (enemy.gold) {
+        if (goldRange) {
           state.gold += gold;
           summary.goldGained += gold;
         }
@@ -972,7 +937,7 @@ const simulateCombat = (
             itemId: item.itemId,
             quantity: item.quantity,
           });
-        if (enemy.gold)
+        if (goldRange)
           appendCombatLog(state, {
             kind: 'gold',
             enemyId: enemy.id,
@@ -994,7 +959,7 @@ const simulateCombat = (
             'Inventory is full; combat paused before loot could be collected.';
           break;
         }
-        combatState.traitState = { firstAttackPending: false, enemyAttackCount: 0, bleedStacks: 0 };
+        combatState.traitState = createEnemyTraitState();
         if (action.autoRepeat) {
           combatState.respawnMs = GAME_CONFIG.respawnMs;
           combatState.enemyHp = 0;
@@ -1008,33 +973,6 @@ const simulateCombat = (
     syncEnemyTraitEffects(clock);
     if (combatState.enemyHp > 0 && resolvePeriodicEffects(clock)) break;
     if (combatState.enemyAttackMs <= 0 && combatState.enemyHp > 0) {
-      if (enemy.trait.id === 'bleeding-bites' && combatState.traitState.bleedStacks > 0) {
-        const bleedDamage = Math.min(
-          state.player.currentHp,
-          combatState.traitState.bleedStacks * COMBAT_TUNING.wolfBleedDamagePerStack,
-        );
-        combatState.traitState.bleedStacks = Math.max(0, combatState.traitState.bleedStacks - 1);
-        state.player.currentHp = Math.max(0, state.player.currentHp - bleedDamage);
-        emit({
-          id: combatEventId('enemy-bleed', clock, rng.rngCursor),
-          type: 'enemy-bleed',
-          enemyId: enemy.id,
-          damage: bleedDamage,
-          at: clock,
-        });
-        appendCombatLog(state, {
-          kind: 'enemy-bleed',
-          enemyId: enemy.id,
-          at: clock,
-          encounterStartedAt: combatState.encounterStartedAt,
-          damage: bleedDamage,
-        });
-        if (state.player.currentHp <= 0) {
-          stopForPlayerDeath(clock, { kind: 'bleed', damage: bleedDamage });
-          break;
-        }
-      }
-      combatState.traitState.enemyAttackCount += 1;
       const enemyStats = getEnemyCombatStats(
         enemy,
         combatState.eliteModifier,
@@ -1043,8 +981,10 @@ const simulateCombat = (
           Math.max(1, getDerivedStats(state, action.style, combatState.effects.player).maxHealth),
         combatState.effects.enemy,
         combatState.effects.player,
+        combatState.traitState,
       );
       const special = enemy.specialAttack;
+      let enemyAttackHit = false;
       const useSpecial = Boolean(
         special && combatState.enemySpecialCharge >= COMBAT_TUNING.enemySpecialChargeMax,
       );
@@ -1090,11 +1030,15 @@ const simulateCombat = (
               encounterStartedAt: combatState.encounterStartedAt,
             });
           } else {
-            const maxHit = Math.max(
-              1,
-              Math.round(enemyStats.maxHit * (special.damageMultiplier ?? 1)),
-            );
+            const playerHealthPercent = state.player.currentHp /
+              Math.max(1, getDerivedStats(state, action.style, combatState.effects.player).maxHealth);
+            const conditionalMultiplier = special.playerHealthThreshold !== undefined &&
+              playerHealthPercent <= special.playerHealthThreshold
+              ? special.conditionalDamageMultiplier ?? 1
+              : 1;
+            const maxHit = Math.max(1, Math.round(enemyStats.maxHit * (special.damageMultiplier ?? 1) * conditionalMultiplier));
             const actualDamage = Math.min(rollDamage(maxHit, nextCombatRandom(rng)), state.player.currentHp);
+            enemyAttackHit = true;
             state.player.currentHp = Math.max(0, state.player.currentHp - actualDamage);
             combatState.adrenaline = Math.min(
               COMBAT_TUNING.adrenalineMax,
@@ -1177,14 +1121,7 @@ const simulateCombat = (
               COMBAT_TUNING.enemySpecialChargeMax,
               combatState.enemySpecialCharge + COMBAT_TUNING.enemySpecialChargePerNormalAttack,
             );
-          if (
-            enemy.trait.id === 'bleeding-bites' &&
-            nextCombatRandom(rng) < COMBAT_TUNING.wolfBleedChance
-          )
-            combatState.traitState.bleedStacks = Math.min(
-              COMBAT_TUNING.wolfMaxBleedStacks,
-              combatState.traitState.bleedStacks + 1,
-            );
+          enemyAttackHit = true;
           if (state.player.currentHp <= 0) {
             stopForPlayerDeath(clock, { kind: 'enemy-hit', damage: actualDamage, heavy: false });
             break;
@@ -1196,7 +1133,7 @@ const simulateCombat = (
             combatState.enemySpecialCharge + COMBAT_TUNING.enemySpecialChargePerNormalAttack,
           );
       }
-      combatState.traitState.firstAttackPending = false;
+      onEnemyAttackResolved(combatState.traitState, enemyAttackHit);
       combatState.enemyAttackMs +=
         getEnemyCombatStats(
           enemy,
@@ -1206,6 +1143,7 @@ const simulateCombat = (
             Math.max(1, getDerivedStats(state, action.style, combatState.effects.player).maxHealth),
           combatState.effects.enemy,
           combatState.effects.player,
+          combatState.traitState,
         ).attackIntervalMs;
     }
   }

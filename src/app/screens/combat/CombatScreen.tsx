@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { AREAS, areaById } from '../../../content/areas';
 import { COMBAT_REGIONS, combatRegionById } from '../../../content/combatRegions';
+import { COMBAT_SUB_REGIONS, combatSubRegionById } from '../../../content/combatSubRegions';
 import { enemyById } from '../../../content/enemies';
 import { eliteById } from '../../../content/elites';
 import { itemById } from '../../../content/items';
@@ -66,9 +67,7 @@ import type {
   EnemyId,
   GameState,
   ScreenId,
-  CombatContentCategory,
 } from '../../../game/types';
-import forestRatImage from '../../../Assets/Art/Monsters/ForestRat.png';
 import type { ConfirmDialogOptions } from '../../components/ConfirmDialog';
 import { ItemIcon } from '../../items/ItemIcon';
 import { ItemTooltip } from '../../items/ItemTooltip';
@@ -89,10 +88,10 @@ import { getActualDps, getActualKillsPerHour } from './sessionMetrics';
 import { SpecialAttackDetails } from '../../items/SpecialAttackDetails';
 import { COMBAT_TUNING } from '../../../config/combatTuning';
 import { formatDamageRange } from '../../combat/combatPresentation';
+import { getCombatGoldRange, getResolvedLootSections } from '../../../game/formulas/combatLoot';
 import { EnemySpecialDetails } from '../../combat/EnemySpecialDetails';
 import { CombatEffectLane } from './CombatEffectLanes';
 
-type CombatContentTab = CombatContentCategory;
 type OverviewTab = 'overview' | 'loot' | 'progression';
 
 const formatSeconds = (ms: number): string => `${(ms / 1000).toFixed(1)}s`;
@@ -269,14 +268,13 @@ function CombatPortrait({
   large?: boolean;
   ariaLabel?: string;
 }) {
-  const usesForestRatArt = enemy.id === 'forest-rat';
   return (
     <div
       className={`combat-portrait theme-${enemy.theme} ${large ? 'combat-portrait-large' : ''}`}
       role="img"
       aria-label={ariaLabel ?? `${enemy.name} portrait`}
     >
-      {usesForestRatArt ? <img src={forestRatImage} alt="" /> : enemyGlyph[enemy.theme]}
+      {enemyGlyph[enemy.theme]}
     </div>
   );
 }
@@ -483,6 +481,8 @@ function EnemySummaryPanel({
     game.player.currentHp /
       Math.max(1, getDerivedStats(game, active?.style ?? 'accurate', selectPlayerCombatEffects(game)).maxHealth),
     selectEnemyCombatEffects(game),
+    selectPlayerCombatEffects(game),
+    active?.combatState.traitState,
   );
   const baseEnemyDps =
     (1 + enemyStats.maxHit) / 2 / Math.max(0.001, enemyStats.attackIntervalMs / 1000);
@@ -554,7 +554,7 @@ function EnemySummaryPanel({
           </button>
         </div>
         <div className="combat-drop-list">
-          {enemy.loot.slice(0, 3).map((drop) => (
+          {getResolvedLootSections(enemy.id).flatMap((section) => section.entries).map((drop) => (
             <ItemTooltip
               item={itemById[drop.itemId]}
               disabled={!game.discoveredItems.includes(drop.itemId)}
@@ -584,10 +584,9 @@ function EnemySummaryPanel({
 }
 
 function CombatPortraitSmall({ enemy }: { enemy: EnemyDefinition }) {
-  const usesForestRatArt = enemy.id === 'forest-rat';
   return (
     <div className={`combat-roster-portrait theme-${enemy.theme}`} aria-hidden="true">
-      {usesForestRatArt ? <img src={forestRatImage} alt="" /> : enemyGlyph[enemy.theme]}
+      {enemyGlyph[enemy.theme]}
     </div>
   );
 }
@@ -642,6 +641,7 @@ function CombatBrowser({
   game,
   uiLayout,
   selectedRegionId,
+  selectedSubRegionId,
   selectedArea,
   selectedEnemy,
   activeEnemy,
@@ -650,6 +650,7 @@ function CombatBrowser({
   style,
   onSelectArea,
   onSelectRegion,
+  onSelectSubRegion,
   onSelectEnemy,
   onViewLoot,
   onToggleLocations,
@@ -657,6 +658,7 @@ function CombatBrowser({
   game: GameState;
   uiLayout: UiLayout;
   selectedRegionId: CombatRegionId;
+  selectedSubRegionId: keyof typeof combatSubRegionById;
   selectedArea: AreaId;
   selectedEnemy: EnemyId;
   activeEnemy: EnemyId | null;
@@ -665,18 +667,20 @@ function CombatBrowser({
   style: CombatStyle;
   onSelectArea: (areaId: AreaId) => void;
   onSelectRegion: (regionId: CombatRegionId) => void;
+  onSelectSubRegion: (subRegionId: keyof typeof combatSubRegionById) => void;
   onSelectEnemy: (enemyId: EnemyId, areaId: AreaId) => void;
   onViewLoot: (enemyId: EnemyId) => void;
   onToggleLocations: () => void;
 }) {
-  const region = combatRegionById[selectedRegionId] ?? combatRegionById.greenvale;
-  const sortedAreaIds = [...region.areaIds].sort(
+  const region = combatRegionById[selectedRegionId] ?? combatRegionById.tauraque;
+  const subRegion = combatSubRegionById[selectedSubRegionId] ?? combatSubRegionById['lornwick-vale'];
+  const sortedAreaIds = [...subRegion.areaIds].sort(
     (left, right) =>
       (areaById[left]?.requiredCombatLevel ?? Number.MAX_SAFE_INTEGER) -
       (areaById[right]?.requiredCombatLevel ?? Number.MAX_SAFE_INTEGER),
   );
-  const area = areaById[selectedArea] ?? areaById['forest-path'];
-  const selectedTarget = enemyById[selectedEnemy] ?? enemyById['forest-rat'];
+  const area = areaById[selectedArea] ?? areaById['redknife-road-camp'];
+  const selectedTarget = enemyById[selectedEnemy] ?? enemyById['redknife-lookout'];
   const currentArea = activeArea ? areaById[activeArea] : null;
   const currentTarget = activeEnemy ? enemyById[activeEnemy] : null;
   const browsingDifferentTarget = Boolean(
@@ -732,7 +736,7 @@ function CombatBrowser({
         hidden={!locationsExpanded}
       >
         <div className="combat-regions-heading">
-          <span className="combat-panel-kicker">Regions</span>
+          <span className="combat-panel-kicker">Region</span>
         </div>
         <div className="combat-region-selector" aria-label="Combat regions">
           {COMBAT_REGIONS.map((candidate) => {
@@ -760,6 +764,28 @@ function CombatBrowser({
           <strong>{region.name}</strong>
           <span>{region.description}</span>
         </div>
+        <div className="combat-regions-heading"><span className="combat-panel-kicker">Sub-regions</span></div>
+        <div className="combat-region-selector" aria-label="Combat sub-regions">
+          {COMBAT_SUB_REGIONS.map((candidate) => {
+            const available = candidate.availability === 'available';
+            return (
+              <button
+                type="button"
+                className={`combat-region-card ${available ? 'available' : 'coming-soon'} ${candidate.id === selectedSubRegionId ? 'selected' : ''}`}
+                aria-label={`${candidate.name}${available ? '' : ', locked'}`}
+                key={candidate.id}
+                onClick={() => onSelectSubRegion(candidate.id)}
+              >
+                <span><strong>{candidate.name}</strong></span>
+                {!available && <Lock size={14} aria-hidden="true" />}
+              </button>
+            );
+          })}
+        </div>
+        <div className="combat-region-description">
+          <strong>{subRegion.name}</strong>
+          <span>{subRegion.description}</span>
+        </div>
         <div className="combat-area-grid" aria-label={`${region.name} combat areas`}>
           {sortedAreaIds.map((areaId) => {
             const candidate = areaById[areaId];
@@ -772,7 +798,6 @@ function CombatBrowser({
                 type="button"
                 className={`combat-area-card ${selected ? 'selected' : ''} ${activeFight ? 'fighting' : ''} ${!unlocked ? 'locked' : ''}`}
                 aria-pressed={selected}
-                disabled={!unlocked}
                 key={candidate.id}
                 onClick={() => onSelectArea(candidate.id)}
               >
@@ -782,10 +807,15 @@ function CombatBrowser({
                   </span>
                   <span className="combat-area-card-copy">
                     <strong>{candidate.name}</strong>
+                    <small>{candidate.identity}</small>
                   </span>
                 </span>
                 <span className="combat-area-card-meta">
-                  Requires Combat Lv {candidate.requiredCombatLevel}
+                  Requires Combat Lv {candidate.requiredCombatLevel} Â· Recommended {candidate.recommendedLevel[0]}â€“{candidate.recommendedLevel[1]}
+                </span>
+                <span className="badge combat-area-card-type">AREA</span>
+                <span className="combat-area-card-loot">
+                  {candidate.sharedLoot.length ? `${candidate.sharedLoot.length} shared drops` : 'No drops yet'}
                 </span>
                 <span className="combat-area-card-footer">
                   <span className="combat-area-card-status">
@@ -820,61 +850,23 @@ function CombatBrowser({
               onSelect={onSelectEnemy}
             />
           </div>
-          <TargetAnalysis
-            game={game}
-            enemy={selectedTarget}
-            style={style}
-            onViewLoot={onViewLoot}
-          />
+            {area.enemyIds.length ? (
+              <TargetAnalysis
+                game={game}
+                enemy={selectedTarget}
+                style={style}
+                onViewLoot={onViewLoot}
+              />
+            ) : (
+              <div className="combat-future-content" aria-label="Locked Area preview">
+                <Lock size={19} />
+                <div><strong>Area locked</strong><span>Targets will be revealed when this Area becomes available.</span></div>
+              </div>
+            )}
         </div>
       </div>
       </UiPanelRegionSlot>
       </UiPanelRegionGrid>
-    </section>
-  );
-}
-
-function CombatContentTabs({
-  activeTab,
-  onChange,
-}: {
-  activeTab: CombatContentTab;
-  onChange: (tab: CombatContentTab) => void;
-}) {
-  const tabs: Array<{ id: CombatContentTab; label: string; description: string }> = [
-    { id: 'areas', label: 'Areas', description: 'Open-world combat locations' },
-    { id: 'dungeons', label: 'Dungeons', description: 'Future multi-stage encounters' },
-    { id: 'special', label: 'Special Areas', description: 'Future rules and encounters' },
-    { id: 'conquest', label: 'Conquest', description: 'Future territory campaigns' },
-  ];
-  return (
-    <div className="combat-content-tabs" role="tablist" aria-label="Combat content">
-      {tabs.map((tab) => (
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeTab === tab.id}
-          className={activeTab === tab.id ? 'selected' : ''}
-          key={tab.id}
-          onClick={() => onChange(tab.id)}
-        >
-          <span>{tab.label}</span>
-          <small>{tab.description}</small>
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function LockedCombatContent({ tab }: { tab: Exclude<CombatContentTab, 'areas'> }) {
-  const label = tab === 'dungeons' ? 'Dungeons' : tab === 'special' ? 'Special Areas' : 'Conquest';
-  return (
-    <section className="combat-future-content" role="tabpanel" aria-label={label}>
-      <Lock size={19} />
-      <div>
-        <strong>{label} are not available yet</strong>
-        <span>This content slot is ready for a future combat system.</span>
-      </div>
     </section>
   );
 }
@@ -1369,6 +1361,7 @@ function LootPanel({
     )
     .slice(-4)
     .reverse();
+  const goldRange = getCombatGoldRange(enemy.id);
   return (
     <section className="combat-overview-content combat-loot-content" aria-labelledby="loot-title">
       <div className="combat-section-heading">
@@ -1391,7 +1384,7 @@ function LootPanel({
           <span>Chance</span>
           <span>Owned</span>
         </div>
-        {enemy.loot.map((drop) => {
+        {getResolvedLootSections(enemy.id).flatMap((section) => section.entries).map((drop) => {
           const discovered = game.discoveredItems.includes(drop.itemId);
           const rarity = getLootRarity(drop.chance);
           return (
@@ -1417,7 +1410,7 @@ function LootPanel({
             </div>
           );
         })}
-        {enemy.gold && <div className="combat-loot-row gold">
+        {goldRange && <div className="combat-loot-row gold">
           <span className="combat-loot-item">
             <ItemIcon gold size="sm" />
             <span>
@@ -1425,7 +1418,7 @@ function LootPanel({
               <small>Guaranteed</small>
             </span>
           </span>
-          <span>{enemy.gold[0]}–{enemy.gold[1]}</span>
+          <span>{goldRange[0]}–{goldRange[1]}</span>
           <span>Guaranteed</span>
           <span>{formatNumber(game.gold)}</span>
         </div>}
@@ -1452,7 +1445,7 @@ function LootPanel({
 }
 
 function getNextUnlockText(game: GameState): { name: string; requirement: string } {
-  const next = AREAS.find((area) => !isCombatAreaUnlocked(game, area));
+  const next = AREAS.find((area) => area.availability === 'available' && !isCombatAreaUnlocked(game, area));
   return next
     ? { name: next.name, requirement: `Requires Combat Lv ${next.requiredCombatLevel}` }
     : {
@@ -1679,14 +1672,16 @@ export function CombatScreen({
   const activeStyle = active?.style;
   const activeAutoRepeat = active?.autoRepeat;
   const activeAutoSpecial = active?.autoSpecial;
-  const [contentTab, setContentTab] = useState<CombatContentTab>('areas');
   const [locationsExpanded, setLocationsExpanded] = useState(true);
   const [overviewTab, setOverviewTab] = useState<OverviewTab>('overview');
   const [lootEnemyId, setLootEnemyId] = useState<EnemyId | null>(null);
-  const [selectedArea, setSelectedArea] = useState<AreaId>(activeAreaId ?? 'forest-path');
-  const [selectedEnemy, setSelectedEnemy] = useState<EnemyId>(activeEnemyId ?? 'forest-rat');
+  const [selectedArea, setSelectedArea] = useState<AreaId>(activeAreaId ?? 'redknife-road-camp');
+  const [selectedEnemy, setSelectedEnemy] = useState<EnemyId>(activeEnemyId ?? 'redknife-lookout');
   const [selectedRegionId, setSelectedRegionId] = useState<CombatRegionId>(
-    areaById[activeAreaId ?? 'forest-path']?.regionId ?? 'greenvale',
+    areaById[activeAreaId ?? 'redknife-road-camp']?.regionId ?? 'tauraque',
+  );
+  const [selectedSubRegionId, setSelectedSubRegionId] = useState<keyof typeof combatSubRegionById>(
+    activeAreaId ? areaById[activeAreaId].subRegionId : 'lornwick-vale',
   );
   const [style, setStyle] = useState<CombatStyle>(activeStyle ?? 'accurate');
   const [autoRepeat, setAutoRepeat] = useState(activeAutoRepeat ?? true);
@@ -1716,11 +1711,11 @@ export function CombatScreen({
   };
   const currentAreaId = activeAreaId ?? selectedArea;
   const currentEnemyId = activeEnemyId ?? selectedEnemy;
-  const currentArea = areaById[currentAreaId] ?? areaById['forest-path'];
-  const currentEnemy = enemyById[currentEnemyId] ?? enemyById['forest-rat'];
+  const currentArea = areaById[currentAreaId] ?? areaById['redknife-road-camp'];
+  const currentEnemy = enemyById[currentEnemyId] ?? enemyById['redknife-lookout'];
   const lootEnemy = enemyById[lootEnemyId ?? currentEnemyId] ?? currentEnemy;
-  const selectedTargetArea = areaById[selectedArea] ?? areaById['forest-path'];
-  const selectedTarget = enemyById[selectedEnemy] ?? enemyById['forest-rat'];
+  const selectedTargetArea = areaById[selectedArea] ?? areaById['redknife-road-camp'];
+  const selectedTarget = enemyById[selectedEnemy] ?? enemyById['redknife-lookout'];
   const targetChanged = Boolean(
     active && (active.areaId !== selectedTargetArea.id || active.enemyId !== selectedTarget.id),
   );
@@ -1751,7 +1746,8 @@ export function CombatScreen({
       return;
     setSelectedArea(activeAreaId);
     setSelectedEnemy(activeEnemyId);
-    setSelectedRegionId(areaById[activeAreaId]?.regionId ?? 'greenvale');
+    setSelectedRegionId(areaById[activeAreaId]?.regionId ?? 'tauraque');
+    setSelectedSubRegionId(areaById[activeAreaId]?.subRegionId ?? 'lornwick-vale');
     setStyle(activeStyle);
     setAutoRepeat(activeAutoRepeat);
     setAutoSpecial(activeAutoSpecial ?? true);
@@ -1763,32 +1759,41 @@ export function CombatScreen({
 
   const selectArea = (areaId: AreaId) => {
     const area = areaById[areaId];
-    if (!area || !isCombatAreaUnlocked(game, area)) return;
+    if (!area) return;
     // Area and enemy changes are browsing-only while combat is active. The
     // action button applies the selected target to the live encounter.
     setSelectedArea(areaId);
     setSelectedRegionId(area.regionId);
-    setSelectedEnemy(area.enemyIds[0]);
+    setSelectedSubRegionId(area.subRegionId);
+    setSelectedEnemy(area.enemyIds[0] ?? 'redknife-lookout');
   };
 
   const selectRegion = (regionId: CombatRegionId) => {
-    const region = combatRegionById[regionId];
-    const firstAreaId = [...region.areaIds].sort(
-      (left, right) =>
-        (areaById[left]?.requiredCombatLevel ?? Number.MAX_SAFE_INTEGER) -
-        (areaById[right]?.requiredCombatLevel ?? Number.MAX_SAFE_INTEGER),
-    )[0];
+    const firstAreaId = combatSubRegionById['lornwick-vale'].areaIds[0] as AreaId;
     const area = firstAreaId ? areaById[firstAreaId] : undefined;
     setSelectedRegionId(regionId);
     if (area) {
       setSelectedArea(area.id);
-      setSelectedEnemy(area.enemyIds[0]);
+      setSelectedSubRegionId('lornwick-vale');
+      setSelectedEnemy(area.enemyIds[0] ?? 'redknife-lookout');
+    }
+  };
+
+  const selectSubRegion = (subRegionId: keyof typeof combatSubRegionById) => {
+    const subRegion = combatSubRegionById[subRegionId];
+    setSelectedSubRegionId(subRegionId);
+    const firstAreaId = subRegion.areaIds[0] as AreaId;
+    const area = areaById[firstAreaId];
+    if (area) {
+      setSelectedArea(area.id);
+      setSelectedEnemy(area.enemyIds[0] ?? 'redknife-lookout');
     }
   };
 
   const selectEnemy = (enemyId: EnemyId, areaId: AreaId) => {
     setSelectedArea(areaId);
-    setSelectedRegionId(areaById[areaId]?.regionId ?? 'greenvale');
+    setSelectedRegionId(areaById[areaId]?.regionId ?? 'tauraque');
+    setSelectedSubRegionId(areaById[areaId]?.subRegionId ?? 'lornwick-vale');
     setSelectedEnemy(enemyId);
   };
 
@@ -1896,7 +1901,6 @@ export function CombatScreen({
         <span className="context-spacer" />
         {targetChanged && <span className="combat-context-meta">Switch is explicit</span>}
       </div>
-      <CombatContentTabs activeTab={contentTab} onChange={setContentTab} />
       <UiPanelGrid screen="combat" className="combat-dashboard-grid">
         <UiPanelSlot
           screen="combat"
@@ -1904,26 +1908,24 @@ export function CombatScreen({
           layout={uiLayout}
           autoHeight={!locationsExpanded}
         >
-          {contentTab === 'areas' ? (
-            <CombatBrowser
-              game={game}
-              uiLayout={uiLayout}
-              selectedRegionId={selectedRegionId}
-              selectedArea={selectedArea}
-              selectedEnemy={selectedEnemy}
-              activeEnemy={active?.enemyId ?? null}
-              activeArea={active?.areaId ?? null}
-              locationsExpanded={locationsExpanded}
-              style={nextEncounterStyle}
-              onSelectArea={selectArea}
-              onSelectRegion={selectRegion}
-              onSelectEnemy={selectEnemy}
-              onViewLoot={handleViewLoot}
-              onToggleLocations={() => setLocationsExpanded((expanded) => !expanded)}
-            />
-          ) : (
-            <LockedCombatContent tab={contentTab} />
-          )}
+          <CombatBrowser
+            game={game}
+            uiLayout={uiLayout}
+            selectedRegionId={selectedRegionId}
+            selectedSubRegionId={selectedSubRegionId}
+            selectedArea={selectedArea}
+            selectedEnemy={selectedEnemy}
+            activeEnemy={active?.enemyId ?? null}
+            activeArea={active?.areaId ?? null}
+            locationsExpanded={locationsExpanded}
+            style={nextEncounterStyle}
+            onSelectArea={selectArea}
+            onSelectRegion={selectRegion}
+            onSelectSubRegion={selectSubRegion}
+            onSelectEnemy={selectEnemy}
+            onViewLoot={handleViewLoot}
+            onToggleLocations={() => setLocationsExpanded((expanded) => !expanded)}
+          />
         </UiPanelSlot>
         <UiPanelSlot screen="combat" id="player" layout={uiLayout}>
           <PlayerSummaryPanel

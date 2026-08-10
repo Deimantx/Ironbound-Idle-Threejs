@@ -21,33 +21,68 @@ export type EquipmentSlot =
   | 'ring'
   | 'cape'
   | 'tool';
-export type CombatRegionId = 'greenvale' | 'stonehill' | 'ashmoor';
-export type CombatRegionAvailability = 'available' | 'coming-soon';
+export type LegacyCombatRegionId = 'greenvale' | 'stonehill' | 'ashmoor';
+export type CombatRegionId = 'tauraque' | LegacyCombatRegionId;
+export type CombatSubRegionId =
+  | 'lornwick-vale'
+  | 'greymoss-woods'
+  | 'whitecliff-coast'
+  | 'redwater-basin'
+  | 'brackenmoor'
+  | 'crowmere-hills'
+  | 'alderwatch'
+  | 'veyran-reach';
+export type CombatAvailability = 'available' | 'locked';
+export type CombatRegionAvailability = CombatAvailability;
+/** @deprecated Future combat activity types are represented by Activity cards. */
 export type CombatContentCategory = 'areas' | 'dungeons' | 'special' | 'conquest';
-export type AreaId =
-  | 'forest-path'
-  | 'wolf-den'
-  | 'abandoned-camp'
-  | 'old-shrine'
-  | 'rocky-foothills'
-  | 'abandoned-mine'
-  | 'mountain-pass'
-  | 'ruined-watchtower';
-export type EnemyId =
-  | 'forest-rat'
-  | 'goblin-scavenger'
-  | 'cave-bat'
-  | 'stoneback-crab'
-  | 'grey-wolf'
-  | 'road-bandit'
-  | 'hill-boar'
-  | 'stonehide-ram'
-  | 'tunnel-crawler'
-  | 'forsaken-miner'
-  | 'cliff-harpy'
-  | 'stonehill-marauder'
-  | 'ironbound-sentinel'
-  | 'watchtower-captain';
+export type CurrentAreaId =
+  | 'redknife-road-camp'
+  | 'greyfang-pastures'
+  | 'brambletooth-camp'
+  | 'mossfang-encampment'
+  | 'deepwood-den'
+  | 'thornhide-grove'
+  | 'saltknife-cove'
+  | 'reefback-shore'
+  | 'gullwatch-cliffs'
+  | 'broken-banner-camp'
+  | 'redwater-reedbanks'
+  | 'mudtusk-crossing'
+  | 'the-drowned-fen'
+  | 'mirecrawler-nest'
+  | 'fenclaw-grounds'
+  | 'crowclaw-warband'
+  | 'ramstone-slopes'
+  | 'cragwing-roost'
+  | 'blackcloak-hideout'
+  | 'rookery-slums'
+  | 'old-barracks'
+  | 'gloomfang-territory'
+  | 'razorhorn-range'
+  | 'ashmane-hunting-grounds';
+export type LegacyAreaId =
+  | 'forest-path' | 'wolf-den' | 'abandoned-camp' | 'old-shrine'
+  | 'rocky-foothills' | 'abandoned-mine' | 'mountain-pass' | 'ruined-watchtower';
+export type AreaId = CurrentAreaId | LegacyAreaId;
+export type CurrentEnemyId =
+  | 'redknife-lookout'
+  | 'redknife-brigand'
+  | 'redknife-bowhand'
+  | 'redknife-enforcer'
+  | 'greyfang-wolf'
+  | 'greyfang-stalker'
+  | 'greyfang-ravager'
+  | 'greyfang-alpha'
+  | 'brambletooth-scavenger'
+  | 'brambletooth-spearman'
+  | 'brambletooth-trapper'
+  | 'brambletooth-boarhandler';
+export type LegacyEnemyId =
+  | 'forest-rat' | 'goblin-scavenger' | 'cave-bat' | 'stoneback-crab' | 'grey-wolf'
+  | 'road-bandit' | 'hill-boar' | 'stonehide-ram' | 'tunnel-crawler' | 'forsaken-miner'
+  | 'cliff-harpy' | 'stonehill-marauder' | 'ironbound-sentinel' | 'watchtower-captain';
+export type EnemyId = CurrentEnemyId | LegacyEnemyId;
 export type MiningNodeId = 'stone-outcrop' | 'iron-vein' | 'coal-seam';
 export type LegacyMiningNodeId = 'copper-vein' | 'tin-vein' | 'mithril-deposit';
 export type RecipeId = string;
@@ -65,20 +100,22 @@ export type ScreenId =
 export type QuantityMode = 1 | 10 | 'all' | 'continuous';
 export type CombatStyle = 'accurate' | 'aggressive' | 'defensive';
 export type EnemyTraitId =
-  | 'scurry'
-  | 'desperate-swing'
+  | 'watchful'
+  | 'dirty-fighter'
+  | 'precise'
+  | 'heavy-hitter'
+  | 'pack-hunter'
   | 'evasive'
-  | 'armoured-shell'
-  | 'bleeding-bites'
+  | 'ferocious'
+  | 'apex-predator'
+  | 'scrappy'
+  | 'cautious-fighter'
   | 'opportunist'
-  | 'cornered-fury'
-  | 'stonehide'
-  | 'blood-scent'
-  | 'patchwork-plate'
-  | 'elusive-flight'
-  | 'battle-fury'
-  | 'reinforced-plating'
-  | 'last-stand';
+  | 'beast-handler'
+  /** Legacy save/test identifiers; never used by current content. */
+  | 'scurry' | 'desperate-swing' | 'armoured-shell' | 'bleeding-bites' | 'cornered-fury'
+  | 'stonehide' | 'blood-scent' | 'patchwork-plate' | 'elusive-flight' | 'battle-fury'
+  | 'reinforced-plating' | 'last-stand';
 export type EliteModifierId = 'savage' | 'armoured' | 'swift' | 'wealthy' | 'treasure-touched';
 export type WeaponSpecialId = 'focused-slash' | 'sundering-strike' | 'executioners-cut';
 export type EnemySpecialId = string;
@@ -88,21 +125,15 @@ export type CombatEffectKind =
   | 'bleed'
   | 'stun'
   | 'defence-debuff'
+  | 'attack-speed-debuff'
+  | 'accuracy-debuff'
   | 'damage-buff'
   | 'defence-buff'
   | 'attack-speed-buff'
   | 'combined-buff'
   | 'status';
 export type EnemyVisualArchetype = 'rat' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
-export type ZoneVisualTheme =
-  | 'forest-path'
-  | 'wolf-den'
-  | 'abandoned-camp'
-  | 'old-shrine'
-  | 'rocky-foothills'
-  | 'abandoned-mine'
-  | 'mountain-pass'
-  | 'ruined-watchtower';
+export type ZoneVisualTheme = string;
 
 export interface ItemPresentation {
   iconKey?: string;
@@ -149,6 +180,7 @@ export interface ItemDefinition {
     miningSpeed: number;
   }>;
   specialAttack?: WeaponSpecial;
+  weaponHands?: 1 | 2;
 }
 
 export interface WeaponSpecial {
@@ -210,6 +242,7 @@ export type EnemySpecialEffect =
       applyOn: 'hit' | 'always';
     }
   | { kind: 'player-attack-delay'; amountMs: number; applyOn: 'hit' | 'always' }
+  | { kind: 'player-attack-delay-fraction'; fractionOfAttackInterval: number; applyOn: 'hit' | 'always' }
   | {
       kind: 'apply-combat-effect';
       effectId: string;
@@ -224,6 +257,8 @@ export interface EnemySpecialDefinition {
   delivery: 'attack' | 'self';
   damageMultiplier?: number;
   accuracyMultiplier?: number;
+  playerHealthThreshold?: number;
+  conditionalDamageMultiplier?: number;
   effects?: EnemySpecialEffect[];
 }
 
@@ -347,9 +382,8 @@ export interface EnemyDefinition {
     name: string;
     description: string;
   };
-  specialAttack?: EnemySpecialDefinition;
-  loot: LootEntry[];
-  gold?: [number, number];
+  specialAttack: EnemySpecialDefinition;
+  signatureLoot: LootEntry;
   theme: 'rodent' | 'goblin' | 'bat' | 'crab' | 'wolf' | 'bandit';
   presentation: EnemyPresentation;
 }
@@ -357,11 +391,16 @@ export interface EnemyDefinition {
 export interface AreaDefinition {
   id: AreaId;
   regionId: CombatRegionId;
+  subRegionId: CombatSubRegionId;
   name: string;
   description: string;
   identity: string;
+  activityType: 'area';
+  availability: CombatAvailability;
   requiredCombatLevel: number;
   enemyIds: EnemyId[];
+  sharedLoot: LootEntry[];
+  gold?: [number, number];
   accent: string;
   recommendedLevel: [number, number];
   presentation: ZonePresentation;
@@ -376,9 +415,13 @@ export interface InventoryStack {
 export type EquipmentLoadout = Partial<Record<EquipmentSlot, string>>;
 
 export interface CombatTraitState {
-  firstAttackPending: boolean;
   enemyAttackCount: number;
-  bleedStacks: number;
+  consecutiveEnemyHits: number;
+  packHunterStacks: number;
+  scrappyStacks: number;
+  /** @deprecated v15 save fields, read only during migration. */
+  firstAttackPending?: boolean;
+  bleedStacks?: number;
   corneredFuryTriggered?: boolean;
   lastStandTriggered?: boolean;
 }

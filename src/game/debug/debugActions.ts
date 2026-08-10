@@ -685,8 +685,8 @@ export const debugUnlockAllAreas = (state: GameState): DebugMutation =>
   });
 
 export const debugResetCombatUnlocks = (state: GameState): DebugMutation =>
-  mutate(state, 'Reset Combat progression and returned access to Forest Path.', (next) => {
-    next.unlockedAreas = ['forest-path'];
+  mutate(state, 'Reset Combat progression and returned access to Redknife Road Camp.', (next) => {
+    next.unlockedAreas = ['redknife-road-camp', 'greyfang-pastures', 'brambletooth-camp'];
     next.killCounts = {};
   });
 
@@ -870,7 +870,7 @@ export const debugStartCombat = (
   const enemy = enemyById[enemyId];
   if (!areaById[areaId] || !enemy || enemy.areaId !== areaId)
     return { result: failure('Select a current enemy from its registered Combat area.') };
-  const next = startCombat(state, areaId, enemy.id, style, autoRepeat, Date.now(), true);
+  const next = startCombat(state, areaId, enemy.id, style, autoRepeat, Date.now(), true, true);
   return {
     result: success(`Started combat against ${enemy.name}.`),
     state: next,

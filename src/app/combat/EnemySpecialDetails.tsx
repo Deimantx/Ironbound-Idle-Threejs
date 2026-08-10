@@ -21,6 +21,8 @@ export const getEnemySpecialRows = (
       rows.push(`${trigger}: pushes your attack progress back ${Math.round(effect.fractionOfAttackInterval * 100)}% of its interval`);
     else if (effect.kind === 'player-attack-delay')
       rows.push(`${trigger}: delays your next attack by ${(effect.amountMs / 1000).toFixed(2)}s`);
+    else if (effect.kind === 'player-attack-delay-fraction')
+      rows.push(`${trigger}: delays your next attack by ${Math.round(effect.fractionOfAttackInterval * 100)}% of its interval`);
     else {
       const definition = getCombatEffectDefinition(effect.effectId);
       rows.push(`${trigger}: applies ${definition?.name ?? effect.effectId}`);

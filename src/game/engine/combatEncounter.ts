@@ -4,6 +4,7 @@ import { getEnemyCombatStats } from '../formulas/combatStats';
 import { createCombatRng, nextCombatRandom } from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
 import { emptyCombatEffects } from '../formulas/combatEffects';
+import { createEnemyTraitState } from '../systems/enemyTraitSystem';
 import type {
   ActiveCombatState,
   ActiveCombatEffect,
@@ -43,17 +44,15 @@ export const initializeEnemySpawn = (
       ? rollEliteModifier(rng)
       : null
     : eliteModifier;
-  const stats = getEnemyCombatStats(enemy, modifier);
-  const firstAttackPending = enemy.trait.id === 'scurry';
+  const traitState = createEnemyTraitState();
+  const stats = getEnemyCombatStats(enemy, modifier, enemy.maxHealth, 1, [], playerEffects, traitState);
   return {
     eliteModifier: modifier,
     combatState: {
       enemyHp: stats.maxHealth,
       enemyMaxHp: stats.maxHealth,
       playerAttackMs: getDerivedStats(state, style, playerEffects).attackIntervalMs,
-      enemyAttackMs: firstAttackPending
-        ? Math.max(COMBAT_TUNING.minimumAttackIntervalMs, stats.attackIntervalMs * COMBAT_TUNING.ratFirstAttackMultiplier)
-        : stats.attackIntervalMs,
+      enemyAttackMs: stats.attackIntervalMs,
       respawnMs: 0,
       rngSeed: rng.rngSeed,
       rngCursor: rng.rngCursor,
@@ -62,13 +61,7 @@ export const initializeEnemySpawn = (
       effects: { ...emptyCombatEffects(), player: structuredClone(playerEffects) },
       eliteModifier: modifier,
       eliteAnnounced: false,
-      traitState: {
-        firstAttackPending,
-        enemyAttackCount: 0,
-        bleedStacks: 0,
-        corneredFuryTriggered: false,
-        lastStandTriggered: false,
-      },
+      traitState,
       encounterIndex,
       encounterStartedAt,
     },

@@ -1,120 +1,77 @@
 import { combatRegionById } from './combatRegions';
-import { areaById } from './areas';
-import { enemyById } from './enemies';
+import { COMBAT_SUB_REGIONS, combatSubRegionById } from './combatSubRegions';
+import { AREAS, areaById } from './areas';
+import { ENEMIES, enemyById } from './enemies';
 import { itemById } from './items';
 import { getCombatEffectDefinition } from '../game/formulas/combatEffects';
+import { getResolvedEnemyLoot } from '../game/formulas/combatLoot';
 
-const STONEHILL_AREAS = [
-  'rocky-foothills',
-  'abandoned-mine',
-  'mountain-pass',
-  'ruined-watchtower',
-] as const;
-
-const STONEHILL_ENEMIES = [
-  'hill-boar',
-  'stonehide-ram',
-  'tunnel-crawler',
-  'forsaken-miner',
-  'cliff-harpy',
-  'stonehill-marauder',
-  'ironbound-sentinel',
-  'watchtower-captain',
-] as const;
-
-const STONEHILL_GOLD_ENEMIES = new Set(['forsaken-miner', 'stonehill-marauder', 'watchtower-captain']);
-
-const EFFECT_IDS = [
-  'cornered-fury',
-  'stunned',
-  'rending-bleed',
-  'armour-broken',
-  'raking-wound',
-  'blood-scent',
-  'battle-fury',
-  'war-cry',
-  'fortified',
-  'reinforced-plating',
-  'last-stand',
-  'iron-command',
-] as const;
-
-const expectedDropSources: Record<string, string> = {
-  'coarse-boar-hide': 'Stonehill · Rocky Foothills · Hill Boar',
-  'boar-tusk': 'Stonehill · Rocky Foothills · Hill Boar',
-  'stonehill-bristle': 'Stonehill · Rocky Foothills · Hill Boar',
-  'stonewool-fleece': 'Stonehill · Rocky Foothills · Stonehide Ram',
-  'ram-horn': 'Stonehill · Rocky Foothills · Stonehide Ram',
-  'dense-hoof-fragment': 'Stonehill · Rocky Foothills · Stonehide Ram',
-  'crawler-carapace': 'Stonehill · Abandoned Mine · Tunnel Crawler',
-  'burrow-claw': 'Stonehill · Abandoned Mine · Tunnel Crawler',
-  'glow-sac': 'Stonehill · Abandoned Mine · Tunnel Crawler',
-  'bent-pick-head': 'Stonehill · Abandoned Mine · Forsaken Miner',
-  'miners-badge': 'Stonehill · Abandoned Mine · Forsaken Miner',
-  'blackened-lantern': 'Stonehill · Abandoned Mine · Forsaken Miner',
-  'old-claim-token': 'Stonehill · Abandoned Mine · Forsaken Miner',
-  'harpy-feather': 'Stonehill · Mountain Pass · Cliff Harpy',
-  'hooked-talon': 'Stonehill · Mountain Pass · Cliff Harpy',
-  'windworn-pinion': 'Stonehill · Mountain Pass · Cliff Harpy',
-  'cliff-nest-trinket': 'Stonehill · Mountain Pass · Cliff Harpy',
-  'marauder-insignia': 'Stonehill · Mountain Pass · Stonehill Marauder',
-  'riveted-leather-scrap': 'Stonehill · Mountain Pass · Stonehill Marauder',
-  'warband-token': 'Stonehill · Mountain Pass · Stonehill Marauder',
-  'notched-whetstone': 'Stonehill · Mountain Pass · Stonehill Marauder',
-  'sentinel-plate-fragment': 'Stonehill · Ruined Watchtower · Ironbound Sentinel',
-  'rusted-gear': 'Stonehill · Ruined Watchtower · Ironbound Sentinel',
-  'runed-rivet': 'Stonehill · Ruined Watchtower · Ironbound Sentinel',
-  'watchtower-core': 'Stonehill · Ruined Watchtower · Ironbound Sentinel',
-  'captains-sigil': "Stonehill · Ruined Watchtower · Watchtower Captain",
-  'watchtower-key-fragment': "Stonehill · Ruined Watchtower · Watchtower Captain",
-  'commanders-strap': "Stonehill · Ruined Watchtower · Watchtower Captain",
-  'old-garrison-seal': "Stonehill · Ruined Watchtower · Watchtower Captain",
+const validLoot = (itemId: string, chance: number, min: number, max: number, errors: string[], owner: string): void => {
+  if (!itemById[itemId]) errors.push(`${owner} references missing item ${itemId}.`);
+  if (!(chance > 0 && chance <= 1)) errors.push(`${owner} has invalid chance for ${itemId}.`);
+  if (!Number.isInteger(min) || !Number.isInteger(max) || min < 1 || max < min)
+    errors.push(`${owner} has invalid quantity range for ${itemId}.`);
 };
 
 export const validateCombatContent = (): string[] => {
   const errors: string[] = [];
-  const stonehill = combatRegionById.stonehill;
-  if (!stonehill || stonehill.availability !== 'available') errors.push('Stonehill must be available.');
-  if (stonehill?.areaIds.length !== 4) errors.push('Stonehill must contain exactly four areas.');
+  const region = combatRegionById.tauraque;
+  if (!region || region.availability !== 'available') errors.push('Tauraque must be available.');
+  if (region?.subRegionIds.length !== 8 || new Set(region?.subRegionIds).size !== 8)
+    errors.push('Tauraque must contain exactly eight unique Sub-regions.');
+  if (COMBAT_SUB_REGIONS.length !== 8) errors.push('There must be exactly eight Sub-regions.');
+  if (AREAS.length !== 24 || new Set(AREAS.map((area) => area.id)).size !== 24)
+    errors.push('There must be exactly twenty-four unique Areas.');
 
-  for (const areaId of STONEHILL_AREAS) {
-    const area = areaById[areaId];
-    if (!area) {
-      errors.push(`Missing Stonehill area: ${areaId}`);
-      continue;
-    }
-    if (area.regionId !== 'stonehill') errors.push(`${areaId} is not assigned to Stonehill.`);
-    if (area.enemyIds.length !== 2) errors.push(`${areaId} must contain exactly two enemies.`);
-    for (const enemyId of area.enemyIds) {
-      const enemy = enemyById[enemyId];
-      if (!enemy) errors.push(`Missing enemy ${enemyId} from ${areaId}.`);
-      else if (enemy.areaId !== area.id) errors.push(`${enemyId} points at the wrong area.`);
+  for (const subRegion of COMBAT_SUB_REGIONS) {
+    if (!region?.subRegionIds.includes(subRegion.id)) errors.push(`${subRegion.id} is not owned by Tauraque.`);
+    if (subRegion.regionId !== 'tauraque') errors.push(`${subRegion.id} points to the wrong Region.`);
+    if (subRegion.areaIds.length !== 3 || new Set(subRegion.areaIds).size !== 3)
+      errors.push(`${subRegion.id} must contain exactly three unique Areas.`);
+    for (const areaId of subRegion.areaIds) {
+      const area = areaById[areaId as keyof typeof areaById];
+      if (!area) {
+        errors.push(`Missing Area ${areaId}.`);
+        continue;
+      }
+      if (area.subRegionId !== subRegion.id) errors.push(`${areaId} points to the wrong Sub-region.`);
+      if (area.regionId !== subRegion.regionId) errors.push(`${areaId} points to the wrong Region.`);
+      if (area.activityType !== 'area') errors.push(`${areaId} is not an Area activity.`);
+      if (area.availability === 'locked') {
+        if (area.enemyIds.length !== 0) errors.push(`Locked Area ${areaId} must have no enemies.`);
+        if (area.sharedLoot.length !== 0 || area.gold) errors.push(`Locked Area ${areaId} must have no loot or Gold.`);
+      } else if (area.enemyIds.length !== 4) errors.push(`Playable Area ${areaId} must contain exactly four enemies.`);
+      for (const loot of area.sharedLoot) validLoot(loot.itemId, loot.chance, loot.min, loot.max, errors, areaId);
     }
   }
 
-  for (const enemyId of STONEHILL_ENEMIES) {
-    const enemy = enemyById[enemyId];
-    if (!enemy) {
-      errors.push(`Missing Stonehill enemy: ${enemyId}`);
-      continue;
-    }
-    if (!enemy.trait?.id) errors.push(`${enemyId} is missing its trait.`);
-    if (!enemy.specialAttack) errors.push(`${enemyId} is missing its special attack.`);
-    if (enemy.loot.length < 2 || enemy.loot.length > 4) errors.push(`${enemyId} must have 2–4 loot entries.`);
-    if (STONEHILL_GOLD_ENEMIES.has(enemyId) !== Boolean(enemy.gold))
-      errors.push(`${enemyId} has invalid Stonehill Gold configuration.`);
-    for (const loot of enemy.loot) {
-      if (!itemById[loot.itemId]) errors.push(`${enemyId} references missing loot ${loot.itemId}.`);
-      else if (expectedDropSources[loot.itemId] !== itemById[loot.itemId].source)
-        errors.push(`${loot.itemId} has an invalid Stonehill source.`);
-    }
-    for (const effect of enemy.specialAttack?.effects ?? []) {
+  if (ENEMIES.length !== 12) errors.push('There must be exactly twelve current enemies.');
+  for (const enemy of ENEMIES) {
+    const area = areaById[enemy.areaId];
+    if (!area || area.availability !== 'available' || !area.enemyIds.includes(enemy.id))
+      errors.push(`${enemy.id} is not assigned to a playable Area.`);
+    if (!enemy.trait?.id) errors.push(`${enemy.id} is missing its Trait.`);
+    if (!enemy.specialAttack?.id) errors.push(`${enemy.id} is missing its Special.`);
+    validLoot(enemy.signatureLoot.itemId, enemy.signatureLoot.chance, enemy.signatureLoot.min, enemy.signatureLoot.max, errors, enemy.id);
+    for (const effect of enemy.specialAttack.effects ?? [])
       if (effect.kind === 'apply-combat-effect' && !getCombatEffectDefinition(effect.effectId))
-        errors.push(`${enemyId} references missing combat effect ${effect.effectId}.`);
-    }
+        errors.push(`${enemy.id} references missing effect ${effect.effectId}.`);
+    const composed = getResolvedEnemyLoot(enemy.id);
+    if (new Set(composed.map((loot) => loot.itemId)).size !== composed.length)
+      errors.push(`${enemy.id} has duplicate composed loot.`);
   }
-  for (const effectId of EFFECT_IDS)
-    if (!getCombatEffectDefinition(effectId)) errors.push(`Missing Stonehill combat effect: ${effectId}`);
+
+  for (const loot of region?.sharedLoot ?? []) validLoot(loot.itemId, loot.chance, loot.min, loot.max, errors, 'Tauraque');
+  const playableAreas = AREAS.filter((area) => area.availability === 'available');
+  if (playableAreas.length !== 3) errors.push('There must be exactly three playable Areas.');
+  if (areaById['redknife-road-camp']?.gold === undefined) errors.push('Redknife Road Camp must define Gold.');
+  if (areaById['greyfang-pastures']?.gold !== undefined) errors.push('Greyfang Pastures must not define direct Gold.');
+  if (areaById['brambletooth-camp']?.gold !== undefined) errors.push('Brambletooth Camp must not define direct Gold.');
+  const trace = region?.sharedLoot.some((loot) => loot.itemId === 'trace-of-nature');
+  if (trace) errors.push('Trace of Nature must not be Tauraque shared loot.');
+  if (!areaById['greyfang-pastures']?.sharedLoot.some((loot) => loot.itemId === 'trace-of-nature')) errors.push('Greyfang Pastures must contain Trace of Nature.');
+  if (areaById['redknife-road-camp']?.sharedLoot.some((loot) => loot.itemId === 'trace-of-nature')) errors.push('Redknife Road Camp must not contain Trace of Nature.');
+  if (areaById['brambletooth-camp']?.sharedLoot.some((loot) => loot.itemId === 'trace-of-nature')) errors.push('Brambletooth Camp must not contain Trace of Nature.');
   return errors;
 };
 
@@ -122,3 +79,5 @@ export const assertCombatContent = (): void => {
   const errors = validateCombatContent();
   if (errors.length) throw new Error(`Combat content validation failed:\n${errors.join('\n')}`);
 };
+
+export { combatRegionById, combatSubRegionById, areaById, enemyById };

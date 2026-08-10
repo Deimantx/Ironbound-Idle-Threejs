@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { ArrowUpRight, Search } from 'lucide-react';
 import { AREAS } from '../../../content/areas';
 import { COMBAT_REGIONS } from '../../../content/combatRegions';
+import { combatSubRegionById } from '../../../content/combatSubRegions';
 import { itemById } from '../../../content/items';
 import { getEnemyCombatStats } from '../../../game/formulas/combatStats';
+import { getResolvedEnemyLoot } from '../../../game/formulas/combatLoot';
 import { getItemQuantity } from '../../../game/systems/inventorySystem';
 import type {
   CombatRegionId,
@@ -536,7 +538,7 @@ function MonsterCollection({
     () => COMBAT_REGIONS.filter((region) => region.availability === 'available'),
     [],
   );
-  const [regionId, setRegionId] = useState<CombatRegionId>(regions[0]?.id ?? 'greenvale');
+  const [regionId, setRegionId] = useState<CombatRegionId>(regions[0]?.id ?? 'tauraque');
   const regionEnemies = useMemo(() => getRegionCollectionEnemies(regionId), [regionId]);
   const visibleEnemies = useMemo(
     () => regionEnemies.filter((enemy) => {
@@ -638,6 +640,8 @@ function MonsterCollectionDetails({ enemy, game }: { enemy?: EnemyDefinition; ga
   }
   const area = AREAS.find((candidate) => candidate.id === enemy.areaId);
   const region = COMBAT_REGIONS.find((candidate) => candidate.id === area?.regionId);
+  const subRegion = area ? combatSubRegionById[area.subRegionId] : undefined;
+  const goldRange = area?.gold;
   const stats = getEnemyCombatStats(enemy);
   return (
     <aside className="collection-detail" aria-label={`${enemy.name} details`}>
@@ -646,7 +650,7 @@ function MonsterCollectionDetails({ enemy, game }: { enemy?: EnemyDefinition; ga
         <div>
           <span className="eyebrow">Bestiary record</span>
           <h2>{enemy.name}</h2>
-          <span className="muted">{region?.name} · {area?.name}</span>
+          <span className="muted">{region?.name} · {subRegion?.name} · {area?.name}</span>
         </div>
       </div>
       <div className="collection-detail-meta">
@@ -674,7 +678,7 @@ function MonsterCollectionDetails({ enemy, game }: { enemy?: EnemyDefinition; ga
       )}
       <div className="collection-detail-section">
         <span className="item-tooltip-kicker">Drops</span>
-        {enemy.loot.map((drop) => {
+        {getResolvedEnemyLoot(enemy.id).map((drop) => {
           const item = itemById[drop.itemId];
           const discovered = game.discoveredItems.includes(drop.itemId);
           return (
@@ -687,11 +691,11 @@ function MonsterCollectionDetails({ enemy, game }: { enemy?: EnemyDefinition; ga
             </ItemTooltip>
           );
         })}
-        {enemy.gold && (
+        {area?.gold && (
           <div className="collection-drop-row gold">
             <ItemIcon gold size="xs" />
             <span>Gold</span>
-            <small>{enemy.gold[0]}–{enemy.gold[1]}</small>
+            <small>{goldRange?.[0]}–{goldRange?.[1]}</small>
           </div>
         )}
       </div>

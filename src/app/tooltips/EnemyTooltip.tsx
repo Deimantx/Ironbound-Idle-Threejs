@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import type { EnemyDefinition } from '../../game/types';
 import { areaById } from '../../content/areas';
 import { combatRegionById } from '../../content/combatRegions';
+import { combatSubRegionById } from '../../content/combatSubRegions';
 import { getEnemyCombatStats, type EffectiveEnemyStats } from '../../game/formulas/combatStats';
 import { GameTooltip } from '../items/GameTooltip';
 import { EnemySpecialDetails } from '../combat/EnemySpecialDetails';
@@ -23,7 +24,7 @@ export function EnemyTooltipContent({
         <span>Level {enemy.displayLevel}</span>
       </div>
       <span className="enemy-tooltip-location">
-        {combatRegionById[areaById[enemy.areaId].regionId]?.name} · {areaById[enemy.areaId].name}
+        {combatRegionById[areaById[enemy.areaId].regionId]?.name} · {combatSubRegionById[areaById[enemy.areaId].subRegionId]?.name} · {areaById[enemy.areaId].name}
       </span>
       <p>{enemy.description}</p>
       <div className="enemy-tooltip-stats">

@@ -39,18 +39,29 @@ export const equipItem = (state: GameState, itemId: string): EquipmentResult => 
     };
   const stack = state.inventory.find((entry) => entry.itemId === itemId);
   if (!stack) return { state, ok: false, message: 'That item is not in your inventory.' };
-  const displaced = state.equipment[item.slot];
+  const equippedWeapon = itemById[state.equipment.weapon ?? ''];
+  if (item.slot === 'offhand' && equippedWeapon?.weaponHands === 2)
+    return { state, ok: false, message: 'Two-handed weapons leave no room for an offhand.' };
+  const displacedIds = [
+    state.equipment[item.slot],
+    ...(item.slot === 'weapon' && item.weaponHands === 2 ? [state.equipment.offhand] : []),
+  ].filter((id): id is string => Boolean(id));
   const removed = removeItem(state.inventory, itemId, 1);
   if (removed.rejected) return { state, ok: false, message: 'That item is not in your inventory.' };
-  const withDisplaced = displaced
-    ? addItem(removed.inventory, displaced, 1, GAME_CONFIG.inventorySlots)
-    : { inventory: removed.inventory, rejected: 0 };
-  if (withDisplaced.rejected)
+  let stagedInventory = removed.inventory;
+  for (const displaced of displacedIds) {
+    const withDisplaced = addItem(stagedInventory, displaced, 1, GAME_CONFIG.inventorySlots);
+    if (withDisplaced.rejected)
+      return { state, ok: false, message: 'You need an inventory slot for the displaced equipment.' };
+    stagedInventory = withDisplaced.inventory;
+  }
+  if (stagedInventory === state.inventory)
     return { state, ok: false, message: 'You need an inventory slot for the displaced equipment.' };
   const nextEquipment = { ...state.equipment, [item.slot]: itemId };
+  if (item.slot === 'weapon' && item.weaponHands === 2) delete nextEquipment.offhand;
   const nextState = {
     ...state,
-    inventory: withDisplaced.inventory,
+    inventory: stagedInventory,
     equipment: nextEquipment,
   };
   const maxHealth = getDerivedStats(nextState).maxHealth;
