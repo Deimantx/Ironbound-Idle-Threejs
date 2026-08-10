@@ -45,9 +45,7 @@ const activeCombatStateBaseSchema = z
     eliteAnnounced: z.boolean().optional(),
     traitState: z
       .object({
-        firstAttackPending: z.boolean().optional(),
         enemyAttackCount: z.number().finite().optional(),
-        bleedStacks: z.number().finite().optional(),
         consecutiveEnemyHits: z.number().finite().optional(),
         packHunterStacks: z.number().finite().optional(),
         scrappyStacks: z.number().finite().optional(),
@@ -222,7 +220,6 @@ const combatLogBaseShape = {
 const combatDefeatCauseSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('enemy-hit'), damage: z.number().finite().nonnegative(), heavy: z.boolean() }),
   z.object({ kind: z.literal('enemy-special'), specialId: z.string().min(1), damage: z.number().finite().nonnegative() }),
-  z.object({ kind: z.literal('bleed'), damage: z.number().finite().nonnegative() }),
   z.object({
     kind: z.literal('combat-effect'),
     effectId: z.string().min(1),
@@ -231,6 +228,12 @@ const combatDefeatCauseSchema = z.discriminatedUnion('kind', [
     damage: z.number().finite().nonnegative(),
   }),
 ]);
+// Accepted only so saves containing the retired Grey Wolf event can be normalized below.
+const legacyEnemyBleedCombatLogEntrySchema = z.object({
+  ...combatLogBaseShape,
+  kind: z.literal('enemy-bleed'),
+  damage: z.number().finite().nonnegative(),
+});
 const combatLogEntrySchema = z.discriminatedUnion('kind', [
   z.object({ ...combatLogBaseShape, kind: z.literal('player-hit'), damage: z.number().finite().nonnegative(), special: z.boolean() }),
   z.object({ ...combatLogBaseShape, kind: z.literal('player-miss'), special: z.boolean() }),
@@ -239,7 +242,6 @@ const combatLogEntrySchema = z.discriminatedUnion('kind', [
   z.object({ ...combatLogBaseShape, kind: z.literal('enemy-special-hit'), specialId: z.string().min(1), damage: z.number().finite().nonnegative() }),
   z.object({ ...combatLogBaseShape, kind: z.literal('enemy-special-miss'), specialId: z.string().min(1) }),
   z.object({ ...combatLogBaseShape, kind: z.literal('enemy-special-used'), specialId: z.string().min(1) }),
-  z.object({ ...combatLogBaseShape, kind: z.literal('enemy-bleed'), damage: z.number().finite().nonnegative() }),
   z.object({
     ...combatLogBaseShape,
     kind: z.literal('combat-effect-damage'),
@@ -268,9 +270,13 @@ const combatLogEntrySchema = z.discriminatedUnion('kind', [
     enemyId: enemyIdSchema.optional(),
   }),
 ]);
+const persistedCombatLogEntrySchema = z.union([
+  combatLogEntrySchema,
+  legacyEnemyBleedCombatLogEntrySchema,
+]);
 const activityLogsSchema = z.object({
   milestones: z.array(milestoneLogEntrySchema).max(50),
-  combat: z.array(combatLogEntrySchema).max(120),
+  combat: z.array(persistedCombatLogEntrySchema).max(120),
 });
 const legacyActivityLogsSchema = z.object({
   milestones: z.array(milestoneLogEntrySchema).max(50).optional(),

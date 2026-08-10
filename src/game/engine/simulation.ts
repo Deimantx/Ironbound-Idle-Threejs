@@ -584,8 +584,6 @@ const simulateCombat = (
         summary.combatStats.enemyHits += 1;
         summary.combatStats.damageTaken += event.damage;
       }
-    } else if (event.type === 'enemy-bleed') {
-      summary.combatStats.damageTaken += event.damage;
     } else if (event.type === 'combat-effect-damage' && event.target === 'player') {
       summary.combatStats.damageTaken += event.damage;
     }
@@ -595,7 +593,6 @@ const simulateCombat = (
     cause:
       | { kind: 'enemy-hit'; damage: number; heavy: boolean }
       | { kind: 'enemy-special'; specialId: string; damage: number }
-      | { kind: 'bleed'; damage: number }
       | {
           kind: 'combat-effect';
           effectId: string;

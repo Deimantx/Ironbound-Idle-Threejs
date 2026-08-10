@@ -139,6 +139,27 @@ describe('Activity Logging 2.0', () => {
     expect(parsed.activityLogs.combat[0]).toMatchObject({ kind: 'legacy' });
   });
 
+  it('normalizes retired enemy bleed records into generic legacy entries', () => {
+    const state = createNewGame(0, 'Retired Bleed Log', 0);
+    state.activityLogs.combat = [{
+      id: 'retired-bleed',
+      kind: 'enemy-bleed',
+      enemyId: 'redknife-lookout',
+      damage: 3,
+      at: 20,
+      encounterStartedAt: 15,
+    } as never];
+
+    const migrated = parseGameState(JSON.stringify(state));
+    expect(migrated.activityLogs.combat).toEqual([{
+      id: 'retired-bleed',
+      kind: 'legacy',
+      at: 20,
+      message: 'Legacy combat event: retired bleed damage.',
+      encounterStartedAt: 15,
+    }]);
+  });
+
   it('preserves active combat state during log migration', () => {
     const state = startCombat(
       createNewGame(0, 'Active Legacy', 0),

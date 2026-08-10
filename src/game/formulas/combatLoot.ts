@@ -39,8 +39,10 @@ export const getResolvedLootSections = (enemyId: EnemyId): ResolvedLootSection[]
 export const getResolvedEnemyLoot = (enemyId: EnemyId): LootEntry[] =>
   getResolvedLootSections(enemyId).flatMap((section) => section.entries.map((entry) => ({ ...entry })));
 
+export const sortLootByChance = (entries: LootEntry[]): LootEntry[] =>
+  [...entries].sort((left, right) => right.chance - left.chance);
+
 export const getCombatGoldRange = (enemyId: EnemyId): [number, number] | undefined => {
   const area = getAreaForEnemy(enemyId);
   return area?.gold;
 };
-

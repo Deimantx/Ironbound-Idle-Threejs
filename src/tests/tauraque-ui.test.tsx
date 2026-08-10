@@ -46,7 +46,8 @@ describe('Tauraque Combat navigation', () => {
     const areaCards = [...document.querySelectorAll<HTMLElement>('.combat-area-card')];
     expect(areaCards).toHaveLength(3);
     for (const card of areaCards) {
-      expect(card.textContent).toMatch(/Requires Combat Lv \d+ · Recommended \d+–\d+/);
+      expect(card.textContent).toMatch(/Requires Combat Lv \d+/);
+      expect(card.textContent).not.toContain('Recommended');
       expect(card.textContent).not.toMatch(/shared drops|Ã|Â|â/);
     }
   });

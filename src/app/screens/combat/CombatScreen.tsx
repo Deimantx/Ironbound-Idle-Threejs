@@ -88,7 +88,11 @@ import { getActualDps, getActualKillsPerHour } from './sessionMetrics';
 import { SpecialAttackDetails } from '../../items/SpecialAttackDetails';
 import { COMBAT_TUNING } from '../../../config/combatTuning';
 import { formatDamageRange } from '../../combat/combatPresentation';
-import { getCombatGoldRange, getResolvedLootSections } from '../../../game/formulas/combatLoot';
+import {
+  getCombatGoldRange,
+  getResolvedLootSections,
+  sortLootByChance,
+} from '../../../game/formulas/combatLoot';
 import { EnemySpecialDetails } from '../../combat/EnemySpecialDetails';
 import { CombatEffectLane } from './CombatEffectLanes';
 
@@ -559,7 +563,7 @@ function EnemySummaryPanel({
           aria-label={`${enemy.name} drop preview`}
           tabIndex={0}
         >
-          {getResolvedLootSections(enemy.id).flatMap((section) => section.entries).map((drop) => (
+          {sortLootByChance(getResolvedLootSections(enemy.id).flatMap((section) => section.entries)).map((drop) => (
             <ItemTooltip
               item={itemById[drop.itemId]}
               disabled={!game.discoveredItems.includes(drop.itemId)}
@@ -817,10 +821,6 @@ function CombatBrowser({
                 </span>
                 <span className="combat-area-card-meta">
                   Requires Combat Lv {candidate.requiredCombatLevel}
-                  {' \u00B7 '}
-                  Recommended {candidate.recommendedLevel[0]}
-                  {'\u2013'}
-                  {candidate.recommendedLevel[1]}
                 </span>
                 <span className="badge combat-area-card-type">AREA</span>
                 <span className="combat-area-card-footer">

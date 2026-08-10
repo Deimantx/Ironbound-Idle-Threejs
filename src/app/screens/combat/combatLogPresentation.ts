@@ -99,14 +99,6 @@ export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresen
         category: 'special',
         important: true,
       };
-    case 'enemy-bleed':
-      return {
-        text: `Bleeding bites dealt ${formatCombatDamage(entry.damage)} damage.`,
-        label: 'Bleed',
-        icon: Droplets,
-        category: 'enemy-hit',
-        important: true,
-      };
     case 'combat-effect-damage': {
       const effectName = combatEffectById[entry.effectId]?.name ?? entry.effectId;
       return {
@@ -162,9 +154,7 @@ export const getCombatLogPresentation = (entry: CombatLogEntry): CombatLogPresen
     case 'player-defeated':
       return {
         text:
-          entry.cause.kind === 'bleed'
-            ? `You were killed by ${enemyName} from bleeding bites for ${formatCombatDamage(entry.cause.damage)} damage.`
-            : entry.cause.kind === 'combat-effect'
+          entry.cause.kind === 'combat-effect'
               ? `You were killed by ${combatEffectById[entry.cause.effectId]?.name ?? entry.cause.effectId} for ${formatCombatDamage(entry.cause.damage)} damage.`
             : entry.cause.kind === 'enemy-special'
               ? `You were killed by ${enemyName}'s ${specialName} for ${formatCombatDamage(entry.cause.damage)} damage.`

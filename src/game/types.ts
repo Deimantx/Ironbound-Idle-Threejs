@@ -34,8 +34,6 @@ export type CombatSubRegionId =
   | 'veyran-reach';
 export type CombatAvailability = 'available' | 'locked';
 export type CombatRegionAvailability = CombatAvailability;
-/** @deprecated Future combat activity types are represented by Activity cards. */
-export type CombatContentCategory = 'areas' | 'dungeons' | 'special' | 'conquest';
 export type CurrentAreaId =
   | 'redknife-road-camp'
   | 'greyfang-pastures'
@@ -111,11 +109,7 @@ export type EnemyTraitId =
   | 'scrappy'
   | 'cautious-fighter'
   | 'opportunist'
-  | 'beast-handler'
-  /** Legacy save/test identifiers; never used by current content. */
-  | 'scurry' | 'desperate-swing' | 'armoured-shell' | 'bleeding-bites' | 'cornered-fury'
-  | 'stonehide' | 'blood-scent' | 'patchwork-plate' | 'elusive-flight' | 'battle-fury'
-  | 'reinforced-plating' | 'last-stand';
+  | 'beast-handler';
 export type EliteModifierId = 'savage' | 'armoured' | 'swift' | 'wealthy' | 'treasure-touched';
 export type WeaponSpecialId = 'focused-slash' | 'sundering-strike' | 'executioners-cut';
 export type EnemySpecialId = string;
@@ -419,11 +413,6 @@ export interface CombatTraitState {
   consecutiveEnemyHits: number;
   packHunterStacks: number;
   scrappyStacks: number;
-  /** @deprecated v15 save fields, read only during migration. */
-  firstAttackPending?: boolean;
-  bleedStacks?: number;
-  corneredFuryTriggered?: boolean;
-  lastStandTriggered?: boolean;
 }
 
 export interface ActiveCombatState {
@@ -493,7 +482,6 @@ export interface MilestoneLogEntry {
 export type CombatDefeatCause =
   | { kind: 'enemy-hit'; damage: number; heavy: boolean }
   | { kind: 'enemy-special'; specialId: EnemySpecialId; damage: number }
-  | { kind: 'bleed'; damage: number }
   | {
       kind: 'combat-effect';
       effectId: string;
@@ -517,7 +505,6 @@ export type CombatLogEntry =
   | (CombatLogBase & { kind: 'enemy-special-hit'; specialId: EnemySpecialId; damage: number })
   | (CombatLogBase & { kind: 'enemy-special-miss'; specialId: EnemySpecialId })
   | (CombatLogBase & { kind: 'enemy-special-used'; specialId: EnemySpecialId })
-  | (CombatLogBase & { kind: 'enemy-bleed'; damage: number })
   | (CombatLogBase & {
       kind: 'combat-effect-damage';
       effectId: string;
@@ -674,13 +661,6 @@ export type CombatVisualEvent =
       type: 'enemy-special-miss' | 'enemy-special-used';
       enemyId: EnemyId;
       specialId: EnemySpecialId;
-      at: number;
-    }
-  | {
-      id: string;
-      type: 'enemy-bleed';
-      enemyId: EnemyId;
-      damage: number;
       at: number;
     }
   | {

@@ -156,6 +156,20 @@ const migrateLegacyLog = (legacyLog: LegacyGameLogEntry[]): ActivityLogsState =>
   return { milestones: milestones.slice(0, 50), combat: combat.slice(0, 120) };
 };
 
+const normalizeRetiredCombatLogEntries = (entries: unknown[]): CombatLogEntry[] => entries.map((entry, index) => {
+  const candidate = entry as { kind?: unknown; id?: unknown; at?: unknown; encounterStartedAt?: unknown };
+  if (candidate.kind !== 'enemy-bleed') return entry as CombatLogEntry;
+  const at = Number(candidate.at);
+  const encounterStartedAt = Number(candidate.encounterStartedAt);
+  return {
+    id: typeof candidate.id === 'string' ? candidate.id : `legacy-enemy-bleed-${index}`,
+    kind: 'legacy',
+    at: Number.isFinite(at) ? at : 0,
+    message: 'Legacy combat event: retired bleed damage.',
+    encounterStartedAt: Number.isFinite(encounterStartedAt) ? encounterStartedAt : 0,
+  };
+});
+
 const migrateActivityLogs = (input: GameState): GameState => {
   const raw = input as unknown as Record<string, unknown>;
   const existing = raw.activityLogs as Partial<ActivityLogsState> | undefined;
@@ -163,7 +177,9 @@ const migrateActivityLogs = (input: GameState): GameState => {
   const activityLogs: ActivityLogsState = existing
     ? {
         milestones: Array.isArray(existing.milestones) ? existing.milestones.slice(0, 50) : [],
-        combat: Array.isArray(existing.combat) ? existing.combat.slice(0, 120) : [],
+        combat: Array.isArray(existing.combat)
+          ? normalizeRetiredCombatLogEntries(existing.combat.slice(0, 120))
+          : [],
       }
     : migrateLegacyLog(legacyLog ?? []);
   const next = { ...input, activityLogs, schemaVersion: 10 } as GameState;

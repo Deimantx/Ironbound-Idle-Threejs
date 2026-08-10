@@ -6,7 +6,12 @@ import { COMBAT_REGIONS } from '../content/combatRegions';
 import { COMBAT_SUB_REGIONS } from '../content/combatSubRegions';
 import { ENEMIES, enemyById } from '../content/enemies';
 import { itemById } from '../content/items';
-import { getResolvedEnemyLoot, getResolvedLootSections, getCombatGoldRange } from '../game/formulas/combatLoot';
+import {
+  getResolvedEnemyLoot,
+  getResolvedLootSections,
+  getCombatGoldRange,
+  sortLootByChance,
+} from '../game/formulas/combatLoot';
 import { createNewGame } from '../game/state/initialState';
 import { migrateSave } from '../game/persistence/migrations';
 import { parseGameState } from '../game/persistence/saveSchema';
@@ -59,6 +64,15 @@ describe('Tauraque combat content contract', () => {
     expect(getCombatGoldRange('greyfang-wolf')).toBeUndefined();
     for (const enemy of ENEMIES) {
       for (const loot of getResolvedEnemyLoot(enemy.id)) expect(itemById[loot.itemId]).toBeDefined();
+    }
+  });
+
+  it('sorts every enemy drop preview from most likely to rarest', () => {
+    for (const enemy of ENEMIES) {
+      const sorted = sortLootByChance(getResolvedEnemyLoot(enemy.id));
+      expect(sorted.map((drop) => drop.chance)).toEqual(
+        [...sorted].map((drop) => drop.chance).sort((left, right) => right - left),
+      );
     }
   });
 
