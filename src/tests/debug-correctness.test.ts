@@ -21,7 +21,7 @@ import { useGameStore } from '../game/state/gameStore';
 const fresh = (): GameState => createNewGame(0, 'Correctness Tester', 1000);
 
 const combatState = (): GameState => {
-  const state = debugStartCombat(fresh(), 'forest-path', 'forest-rat').state!;
+  const state = debugStartCombat(fresh(), 'redknife-road-camp', 'redknife-lookout').state!;
   for (const skill of ['attack', 'strength', 'defence', 'hitpoints'] as const)
     state.skills[skill] = { level: 100, xp: getXpForLevel(100) };
   state.player.currentHp = 100;
@@ -42,14 +42,14 @@ describe('Debug Tools 2.0.1 correctness', () => {
     const visualEvent: CombatVisualEvent = {
       id: 'existing-event',
       type: 'enemy-miss',
-      enemyId: 'forest-rat',
+      enemyId: 'redknife-lookout',
       damage: 0,
       at: 1000,
     };
     useGameStore.setState({
       combatEvents: [visualEvent],
       combatSession: {
-        ...emptyCombatSession('forest-rat', 1000, 1000),
+        ...emptyCombatSession('redknife-lookout', 1000, 1000),
         playerAttacks: 7,
         damageDealt: 12,
         goldGained: 4,
@@ -75,7 +75,7 @@ describe('Debug Tools 2.0.1 correctness', () => {
   it('merges debug Combat simulation summaries and appends visual events', async () => {
     useGameStore.getState().setGame(combatState());
     useGameStore.setState({
-      combatSession: { ...emptyCombatSession('forest-rat', 1000, 1000), playerAttacks: 3 },
+      combatSession: { ...emptyCombatSession('redknife-lookout', 1000, 1000), playerAttacks: 3 },
       combatEvents: [],
     });
     const controller = createStoreController();

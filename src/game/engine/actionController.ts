@@ -77,16 +77,25 @@ export const startCombat = (
   const enemy = enemyById[enemyId];
   const subRegion = area ? combatSubRegionById[area.subRegionId] : undefined;
   const region = subRegion ? combatRegionById[subRegion.regionId] : undefined;
-  const validTarget = ignoreRequirements || Boolean(
-    enemy && area && subRegion && region &&
+  const structurallyValid = Boolean(
+    enemy &&
+      area &&
+      subRegion &&
+      region &&
+      area.enemyIds.includes(enemyId) &&
+      enemy.areaId === area.id,
+  );
+  const requirementsMet = Boolean(
+    region &&
+      subRegion &&
+      area &&
       region.availability === 'available' &&
       subRegion.availability === 'available' &&
       area.availability === 'available' &&
       state.unlockedAreas.includes(area.id) &&
-      area.enemyIds.includes(enemyId) &&
-      enemy.areaId === area.id &&
       getDerivedStats(state).combatLevel >= area.requiredCombatLevel,
   );
+  const validTarget = structurallyValid && (ignoreRequirements || requirementsMet);
   if (!validTarget) return { ...state, activeAction: { type: 'none' }, updatedAt: now };
   const rng = createCombatRngForStart(state, now, enemyId);
   const spawn = initializeEnemySpawn(state, enemyId, style, rng, 1, undefined, 0, now);

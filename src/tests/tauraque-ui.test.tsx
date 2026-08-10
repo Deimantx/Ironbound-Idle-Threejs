@@ -37,4 +37,33 @@ describe('Tauraque Combat navigation', () => {
     expect(screen.getAllByText('AREA')).toHaveLength(3);
     expect(screen.getByRole('button', { name: /Select target Redknife Lookout/ })).toBeInTheDocument();
   });
+
+  it('renders clean Area metadata without shared-drop summaries', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+
+    const areaCards = [...document.querySelectorAll<HTMLElement>('.combat-area-card')];
+    expect(areaCards).toHaveLength(3);
+    for (const card of areaCards) {
+      expect(card.textContent).toMatch(/Requires Combat Lv \d+ · Recommended \d+–\d+/);
+      expect(card.textContent).not.toMatch(/shared drops|Ã|Â|â/);
+    }
+  });
+
+  it('keeps Target Preview typography hooks and the Enemy drop preview accessible', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+
+    expect(document.querySelector('.combat-analysis-trait-heading')).toHaveTextContent('Watchful');
+    expect(document.querySelector('.combat-analysis-special .enemy-special-details > strong')).toHaveTextContent('Quick Jab');
+    expect(document.querySelector('.combat-analysis-special .enemy-special-details')).toBeInTheDocument();
+
+    const dropList = screen.getByRole('region', { name: 'Redknife Lookout drop preview' });
+    expect(dropList).toHaveAttribute('tabindex', '0');
+    expect(dropList).toHaveClass('combat-drop-list');
+    expect(within(dropList).getAllByText('Undiscovered').length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Full drop table' }).length).toBeGreaterThanOrEqual(2);
+  });
 });

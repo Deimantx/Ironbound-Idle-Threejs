@@ -39,7 +39,7 @@ describe('Combat 2.3 health attrition', () => {
   });
 
   it('does not recover during combat, including when auto-repeat is respawning', () => {
-    const state = startCombat(woundedState(), 'forest-path', 'forest-rat', 'accurate', true, 0);
+    const state = startCombat(woundedState(), 'redknife-road-camp', 'redknife-lookout', 'accurate', true, 0);
     if (state.activeAction.type !== 'combat') throw new Error('Expected combat.');
     state.activeAction.combatState = {
       ...state.activeAction.combatState,
@@ -62,7 +62,7 @@ describe('Combat 2.3 health attrition', () => {
   });
 
   it('recovers after death without automatically resuming combat', () => {
-    const state = startCombat(woundedState(), 'forest-path', 'forest-rat', 'accurate', false, 0);
+    const state = startCombat(woundedState(), 'redknife-road-camp', 'redknife-lookout', 'accurate', false, 0);
     if (state.activeAction.type !== 'combat') throw new Error('Expected combat.');
     state.player.currentHp = 1;
     state.activeAction.combatState = {

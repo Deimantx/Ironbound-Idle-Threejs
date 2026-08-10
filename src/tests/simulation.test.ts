@@ -43,7 +43,7 @@ describe('deterministic action simulation', () => {
   });
   it('combat resolves invalid content safely and supports style XP assignment', () => {
     let state = createNewGame(0, 'Fighter');
-    state = startCombat(state, 'forest-path', 'forest-rat', 'aggressive', false);
+    state = startCombat(state, 'redknife-road-camp', 'redknife-lookout', 'aggressive', false);
     const result = simulateElapsed(state, 12_000);
     expect(result.state.statistics.totalKills).toBeGreaterThanOrEqual(0);
     expect(result.state.skills.strength.xp).toBeGreaterThanOrEqual(0);
@@ -51,7 +51,7 @@ describe('deterministic action simulation', () => {
   it('preserves player health when auto-repeat queues the next monster', () => {
     let state = createNewGame(0, 'Repeater');
     state.player.currentHp = 1;
-    state = startCombat(state, 'forest-path', 'forest-rat', 'accurate', true);
+    state = startCombat(state, 'redknife-road-camp', 'redknife-lookout', 'accurate', true);
     if (state.activeAction.type === 'combat') {
       state.activeAction = {
         ...state.activeAction,
@@ -77,14 +77,14 @@ describe('deterministic action simulation', () => {
   it('starts a newly selected combat target with preserved current health', () => {
     const state = createNewGame(0, 'Target Switch');
     state.player.currentHp = 1;
-    const next = startCombat(state, 'forest-path', 'goblin-scavenger', 'defensive', false);
+    const next = startCombat(state, 'redknife-road-camp', 'redknife-brigand', 'defensive', false);
     expect(next.player.currentHp).toBe(1);
   });
   it('stops combat and records the killer when the player dies', () => {
     const state = startCombat(
       createNewGame(0, 'Fallen Fighter'),
-      'forest-path',
-      'forest-rat',
+      'redknife-road-camp',
+      'redknife-lookout',
       'accurate',
       false,
       0,
@@ -106,15 +106,15 @@ describe('deterministic action simulation', () => {
     );
     expect(death).toMatchObject({
       kind: 'player-defeated',
-      enemyId: 'forest-rat',
+      enemyId: 'redknife-lookout',
       cause: { kind: 'enemy-hit' },
     });
   });
   it('resets the encounter clock when auto-repeat spawns a new monster', () => {
     const state = startCombat(
       createNewGame(0, 'Repeating Fighter', 0),
-      'forest-path',
-      'forest-rat',
+      'redknife-road-camp',
+      'redknife-lookout',
       'accurate',
       true,
       0,

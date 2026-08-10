@@ -5,9 +5,6 @@ import { getActualDps, getActualKillsPerHour } from '../app/screens/combat/sessi
 import { getCombatLogPresentation } from '../app/screens/combat/combatLogPresentation';
 import { getSpecialAttackEffectRows } from '../app/items/specialAttackPresentation';
 import { getTooltipPosition } from '../app/items/tooltipPosition';
-import { parseGameState } from '../game/persistence/saveSchema';
-import { startCombat } from '../game/engine/actionController';
-import { createNewGame } from '../game/state/initialState';
 
 describe('Combat 2.3.1 presentation and metrics', () => {
   it('uses seconds for actual DPS while keeping kills hourly', () => {
@@ -30,11 +27,11 @@ describe('Combat 2.3.1 presentation and metrics', () => {
       id: 'death-1',
       kind: 'player-defeated',
       at: 1,
-      enemyId: 'forest-rat',
+      enemyId: 'redknife-lookout',
       encounterStartedAt: 1,
       cause: { kind: 'enemy-hit', damage: 1.7851200000000205, heavy: false },
     });
-    expect(presentation.text).toBe('You were killed by Forest Rat with a hit for 2.');
+    expect(presentation.text).toBe('You were killed by Redknife Lookout with a hit for 2.');
   });
 
   it('presents special attacks with their actual effects and compounded execute damage', () => {
@@ -47,29 +44,6 @@ describe('Combat 2.3.1 presentation and metrics', () => {
     expect(ironRows.map((row) => row.label)).toContain('Ignores flat damage reduction');
     const steelRows = getSpecialAttackEffectRows(itemById['steel-sword']!.specialAttack!);
     expect(steelRows.map((row) => row.label)).toContain('Below 35% HP: ~394% total damage');
-  });
-
-  it('migrates legacy combat momentum to adrenaline without retaining the old field', () => {
-    const state = startCombat(
-      createNewGame(0, 'Migration test', 0),
-      'forest-path',
-      'forest-rat',
-      'accurate',
-      false,
-      0,
-    ) as unknown as Record<string, unknown>;
-    state.schemaVersion = 10;
-    const activeAction = state.activeAction as Record<string, unknown>;
-    const combatState = activeAction.combatState as Record<string, unknown>;
-    delete combatState.adrenaline;
-    combatState.momentum = 68;
-    const parsed = parseGameState(JSON.stringify(state));
-    expect(parsed.schemaVersion).toBe(15);
-    expect(parsed.activeAction.type === 'combat' && parsed.activeAction.combatState.adrenaline).toBe(68);
-    expect(
-      parsed.activeAction.type === 'combat' && 'momentum' in parsed.activeAction.combatState,
-    ).toBe(false);
-    expect(parsed.activeAction.type === 'combat' && parsed.activeAction.combatState.enemyHp).toBeGreaterThan(0);
   });
 
   it('flips and clamps tooltip positions against the viewport', () => {

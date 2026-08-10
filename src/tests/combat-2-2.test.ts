@@ -13,7 +13,7 @@ import { createNewGame } from '../game/state/initialState';
 import type { AreaId, CombatStyle, EnemyId, GameState } from '../game/types';
 
 const readyCombat = (
-  enemyId: EnemyId = 'forest-rat',
+  enemyId: EnemyId = 'redknife-lookout',
   style: CombatStyle = 'accurate',
 ): GameState => {
   const state = createNewGame(0, 'Combat 2.2', 0);
@@ -63,7 +63,7 @@ describe('Combat 2.2 stance timing', () => {
   });
 
   it('applies Aggressive → Defensive after the current attack', () => {
-    let state = readyCombat('forest-rat', 'aggressive');
+    let state = readyCombat('redknife-lookout', 'aggressive');
     state = setCombatStyle(state, 'defensive');
     expect(state.activeAction.type === 'combat' && state.activeAction.style).toBe('aggressive');
     expect(state.activeAction.type === 'combat' && state.activeAction.pendingStyle).toBe(
@@ -127,7 +127,7 @@ describe('Combat 2.2 stance timing', () => {
   });
 
   it('uses the newly active Defensive style for an enemy attack at the same timestamp', () => {
-    const state = readyCombat('road-bandit');
+    const state = readyCombat('brambletooth-boarhandler');
     state.skills.attack.level = 1;
     state.skills.defence.level = 50;
     state.player.currentHp = getDerivedStats(state).maxHealth;
@@ -138,11 +138,11 @@ describe('Combat 2.2 stance timing', () => {
       state.activeAction.combatState.rngCursor = 0;
     }
     const accurateChance = getHitChance(
-      getEnemyCombatStats(enemyById['road-bandit']).accuracyRating,
+      getEnemyCombatStats(enemyById['brambletooth-boarhandler']).accuracyRating,
       getDerivedStats(state, 'accurate').effectiveDefenceRating,
     );
     const defensiveChance = getHitChance(
-      getEnemyCombatStats(enemyById['road-bandit']).accuracyRating,
+      getEnemyCombatStats(enemyById['brambletooth-boarhandler']).accuracyRating,
       getDerivedStats(state, 'defensive').effectiveDefenceRating,
     );
     expect(defensiveChance).toBeLessThan(accurateChance);
@@ -161,13 +161,13 @@ describe('Combat 2.2 target switching and selectors', () => {
     const state = createNewGame(0, 'Target HP', 0);
     state.skills.hitpoints.level = 4;
     state.equipment.head = 'bronze-helmet';
-    const active = startCombat(state, 'forest-path', 'forest-rat', 'accurate', true, 0);
+    const active = startCombat(state, 'redknife-road-camp', 'redknife-lookout', 'accurate', true, 0);
     active.player.currentHp = 31;
     const inventoryBefore = structuredClone(active.inventory);
     const next = switchCombatTarget(
       active,
-      'forest-path',
-      'goblin-scavenger',
+      'redknife-road-camp',
+      'redknife-brigand',
       'accurate',
       true,
       10,
@@ -175,7 +175,7 @@ describe('Combat 2.2 target switching and selectors', () => {
     expect(getDerivedStats(active).maxHealth).toBe(52);
     expect(next.player.currentHp).toBe(31);
     expect(next.activeAction.type === 'combat' && next.activeAction.enemyId).toBe(
-      'goblin-scavenger',
+      'redknife-brigand',
     );
     expect(
       next.activeAction.type === 'combat' && next.activeAction.combatState.enemyHp,
@@ -185,11 +185,11 @@ describe('Combat 2.2 target switching and selectors', () => {
 
   it('estimates selected-style combat XP/hour from realistic kill throughput', () => {
     const state = readyCombat();
-    const xpPerHour = selectCombatSkillXpPerHour(state, enemyById['forest-rat'], 'accurate');
+    const xpPerHour = selectCombatSkillXpPerHour(state, enemyById['redknife-lookout'], 'accurate');
     expect(xpPerHour).toBeGreaterThan(0);
     expect(xpPerHour).toBeCloseTo(
-      selectExpectedKillsPerHour(state, enemyById['forest-rat'], 'accurate') *
-        getCombatDamageXp(getEnemyCombatStats(enemyById['forest-rat']).maxHealth),
+      selectExpectedKillsPerHour(state, enemyById['redknife-lookout'], 'accurate') *
+        getCombatDamageXp(getEnemyCombatStats(enemyById['redknife-lookout']).maxHealth),
       0,
     );
   });

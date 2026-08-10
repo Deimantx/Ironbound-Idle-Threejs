@@ -83,8 +83,13 @@ export const getEnemyTraitModifiers = (
   return result;
 };
 
-export const onEnemyAttackResolved = (state: CombatTraitState, didHit: boolean): void => {
+export const onEnemyAttackResolved = (
+  enemy: EnemyDefinition,
+  state: CombatTraitState,
+  didHit: boolean,
+): void => {
   state.enemyAttackCount += 1;
+  if (enemy.trait.id !== 'pack-hunter') return;
   if (didHit) {
     state.consecutiveEnemyHits += 1;
     state.packHunterStacks = Math.min(COMBAT_TUNING.packHunterMaxStacks, state.packHunterStacks + 1);

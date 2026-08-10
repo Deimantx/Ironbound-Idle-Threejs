@@ -83,18 +83,19 @@ describe('central enemy Trait system', () => {
     const watchful = enemyById['redknife-lookout'];
     const watchfulState = createEnemyTraitState();
     expect(getEnemyTraitModifiers(watchful, { currentHp: 14, maxHp: 14, playerHealthPercent: 1, state: watchfulState }).attackIntervalMultiplier).toBe(0.6);
-    onEnemyAttackResolved(watchfulState, true);
-    expect(getEnemyTraitModifiers(watchful, { currentHp: 14, maxHp: 14, playerHealthPercent: 1, state: watchfulState }).attackIntervalMultiplier).toBe(0.6);
-    onEnemyAttackResolved(watchfulState, true);
-    expect(getEnemyTraitModifiers(watchful, { currentHp: 14, maxHp: 14, playerHealthPercent: 1, state: watchfulState }).attackIntervalMultiplier).toBe(1);
+      onEnemyAttackResolved(watchful, watchfulState, true);
+      expect(getEnemyTraitModifiers(watchful, { currentHp: 14, maxHp: 14, playerHealthPercent: 1, state: watchfulState }).attackIntervalMultiplier).toBe(0.6);
+      onEnemyAttackResolved(watchful, watchfulState, true);
+      expect(getEnemyTraitModifiers(watchful, { currentHp: 14, maxHp: 14, playerHealthPercent: 1, state: watchfulState }).attackIntervalMultiplier).toBe(1);
+      expect(watchfulState.packHunterStacks).toBe(0);
 
     const packHunter = enemyById['greyfang-wolf'];
     const packState = createEnemyTraitState();
-    onEnemyAttackResolved(packState, true);
-    onEnemyAttackResolved(packState, true);
+    onEnemyAttackResolved(packHunter, packState, true);
+    onEnemyAttackResolved(packHunter, packState, true);
     expect(packState.packHunterStacks).toBe(2);
     expect(getEnemyTraitModifiers(packHunter, { currentHp: 36, maxHp: 36, playerHealthPercent: 1, state: packState }).damageMultiplier).toBeCloseTo(1.1025);
-    onEnemyAttackResolved(packState, false);
+    onEnemyAttackResolved(packHunter, packState, false);
     expect(packState.packHunterStacks).toBe(0);
   });
 
@@ -156,7 +157,6 @@ describe('Tauraque specials, gold, and Collection sources', () => {
     const enemyIds = getCollectionEligibleEnemies().map((enemy) => enemy.id);
     const itemIds = getCollectionEligibleItemIds();
     expect(enemyIds).toHaveLength(12);
-    expect(enemyIds).not.toContain('forest-rat');
     expect(new Set(itemIds).size).toBe(itemIds.length);
     expect(getCollectionItemSourceLabel('black-stone')).toBe('Tauraque · Combat');
     expect(getCollectionItemSourceLabel('redknife-token')).toBe('Tauraque · Lornwick Vale · Redknife Road Camp · All targets');
@@ -291,7 +291,8 @@ describe('Tauraque migration and equipment contracts', () => {
   it('allows the starting Area and rejects locked or under-level targets', () => {
     const state = createNewGame(0, 'Combat Gate Test', 0);
     expect(startCombat(state, 'redknife-road-camp', 'redknife-lookout', 'accurate', false, 0).activeAction.type).toBe('combat');
-    expect(startCombat(state, 'mossfang-encampment', 'redknife-lookout', 'accurate', false, 0).activeAction).toEqual({ type: 'none' });
-    expect(startCombat(state, 'greyfang-pastures', 'greyfang-wolf', 'accurate', false, 0).activeAction).toEqual({ type: 'none' });
+      expect(startCombat(state, 'mossfang-encampment', 'redknife-lookout', 'accurate', false, 0).activeAction).toEqual({ type: 'none' });
+      expect(startCombat(state, 'greyfang-pastures', 'greyfang-wolf', 'accurate', false, 0).activeAction).toEqual({ type: 'none' });
+      expect(startCombat(state, 'greyfang-pastures', 'redknife-lookout', 'accurate', false, 0, true, true).activeAction).toEqual({ type: 'none' });
   });
 });

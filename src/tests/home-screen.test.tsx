@@ -120,10 +120,10 @@ describe('HomeScreen 2.3', () => {
     const { rerender } = render(<HomeScreen game={game} onNavigate={navigate} />);
     expect(screen.getByText('Idle')).toBeInTheDocument();
 
-    const activeGame = startCombat(game, 'forest-path', 'forest-rat', 'accurate', true, 1_000);
+    const activeGame = startCombat(game, 'redknife-road-camp', 'redknife-lookout', 'accurate', true, 1_000);
     const before = structuredClone(activeGame.activeAction);
     rerender(<HomeScreen game={activeGame} onNavigate={navigate} />);
-    expect(screen.getByText(/Combat .* Forest Rat/)).toBeInTheDocument();
+    expect(screen.getByText(/Combat .* Redknife Lookout/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Return to Combat' })).toBeInTheDocument();
     expect(screen.queryByText(/Session/)).not.toBeInTheDocument();
     expect(activeGame.activeAction).toEqual(before);

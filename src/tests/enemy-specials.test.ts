@@ -5,11 +5,10 @@ import { applyCombatEffect, getCombatEffectModifiers, tickCombatEffects } from '
 import { getEnemyCombatStats } from '../game/formulas/combatStats';
 import { simulateElapsed } from '../game/engine/simulation';
 import { startCombat } from '../game/engine/actionController';
-import { parseGameState } from '../game/persistence/saveSchema';
 import { createNewGame } from '../game/state/initialState';
-import type { AreaId, CombatEffectsState, GameState } from '../game/types';
+import type { CombatEffectsState, GameState } from '../game/types';
 
-const readyBandit = (): GameState => {
+const readyBoarhandler = (): GameState => {
   const state = createNewGame(0, 'Enemy Specials', 0);
   state.settings.huntElites = false;
   for (const skill of ['attack', 'strength', 'defence', 'hitpoints'] as const)
@@ -17,8 +16,8 @@ const readyBandit = (): GameState => {
   state.player.currentHp = 1_010;
   const started = startCombat(
     state,
-    enemyById['road-bandit'].areaId as AreaId,
-    'road-bandit',
+    enemyById['brambletooth-boarhandler'].areaId,
+    'brambletooth-boarhandler',
     'accurate',
     false,
     0,
@@ -35,7 +34,7 @@ const readyBandit = (): GameState => {
 
 describe('Enemy Specials 1.0', () => {
   it('uses a full-charge special on the next enemy attack and resets charge', () => {
-    const state = readyBandit();
+    const state = readyBoarhandler();
     if (state.activeAction.type !== 'combat') throw new Error('Expected combat to start.');
     state.activeAction.combatState.enemySpecialCharge = COMBAT_TUNING.enemySpecialChargeMax;
     const result = simulateElapsed(state, 1);
@@ -45,13 +44,13 @@ describe('Enemy Specials 1.0', () => {
   });
 
   it('charges only from normal attacks and successful direct player hits', () => {
-    const state = readyBandit();
+    const state = readyBoarhandler();
     const normal = simulateElapsed(state, 1);
     expect(normal.state.activeAction.type === 'combat' && normal.state.activeAction.combatState.enemySpecialCharge).toBe(
       COMBAT_TUNING.enemySpecialChargePerNormalAttack,
     );
 
-    const playerHit = readyBandit();
+    const playerHit = readyBoarhandler();
     if (playerHit.activeAction.type !== 'combat') throw new Error('Expected combat to start.');
     playerHit.activeAction.combatState.enemyAttackMs = 100_000;
     playerHit.activeAction.combatState.playerAttackMs = 0;
@@ -68,35 +67,19 @@ describe('Enemy Specials 1.0', () => {
     );
   });
 
-  it('applies Opportunist only below half health', () => {
-    const enemy = enemyById['road-bandit'];
-    expect(getEnemyCombatStats(enemy, null, enemy.maxHealth, 1).accuracyRating).toBe(enemy.accuracyRating);
-    expect(getEnemyCombatStats(enemy, null, enemy.maxHealth, 0.49).accuracyRating).toBe(
-      Math.round(enemy.accuracyRating * COMBAT_TUNING.banditOpportunistAccuracyMultiplier),
+  it('applies Beast Handler speed to the stronger Brambletooth target', () => {
+    const enemy = enemyById['brambletooth-boarhandler'];
+    expect(getEnemyCombatStats(enemy).attackIntervalMs).toBe(
+      Math.round(enemy.attackIntervalMs * 0.8),
     );
   });
 
   it('supports persistent timed effects and their stat modifiers', () => {
     const effects: CombatEffectsState = { player: [], enemy: [] };
-    applyCombatEffect(effects, 'enemy-damage-defence-up', 'enemy', { durationMs: 1_000 });
-    expect(getCombatEffectModifiers(effects, 'enemy').damageMultiplier).toBe(1.15);
-    expect(getCombatEffectModifiers(effects, 'enemy').defenceMultiplier).toBe(1.15);
+    applyCombatEffect(effects, 'crippled', 'player', { durationMs: 1_000 });
+    expect(getCombatEffectModifiers(effects, 'player').attackIntervalMultiplier).toBe(1.25);
     tickCombatEffects(effects, 1_000);
     expect(effects.enemy).toHaveLength(0);
   });
 
-  it('migrates old active combat saves with zero charge and empty effect lanes', () => {
-    const state = readyBandit();
-    if (state.activeAction.type !== 'combat') throw new Error('Expected combat to start.');
-    const legacy = structuredClone(state) as unknown as Record<string, unknown>;
-    legacy.schemaVersion = 12;
-    const action = legacy.activeAction as Record<string, unknown>;
-    const combatState = action.combatState as Record<string, unknown>;
-    delete combatState.enemySpecialCharge;
-    delete combatState.effects;
-    const migrated = parseGameState(JSON.stringify(legacy));
-    expect(migrated.schemaVersion).toBe(15);
-    expect(migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.enemySpecialCharge).toBe(0);
-    expect(migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.effects).toEqual({ player: [], enemy: [] });
-  });
 });

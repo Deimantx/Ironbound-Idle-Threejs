@@ -153,11 +153,11 @@ describe('Debug Tools action boundary', () => {
     let state = fresh();
     for (const skill of ['attack', 'strength', 'defence', 'hitpoints'] as const)
       state.skills[skill] = { level: 100, xp: getXpForLevel(100) };
-    state = debugStartCombat(state, 'forest-path', 'forest-rat').state!;
+    state = debugStartCombat(state, 'redknife-road-camp', 'redknife-lookout').state!;
     const result = debugKillCurrentEnemy(state);
     expect(result.result.ok).toBe(true);
     expect(result.summary?.enemiesDefeated).toBe(1);
-    expect(result.state?.killCounts['forest-rat']).toBe(1);
+    expect(result.state?.killCounts['redknife-lookout']).toBe(1);
   });
 
   it('clears equipment only through normal unequip actions', () => {

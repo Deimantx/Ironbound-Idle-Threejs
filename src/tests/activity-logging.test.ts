@@ -18,7 +18,7 @@ describe('Activity Logging 2.0', () => {
     for (let index = 0; index < 125; index += 1)
       appendCombatLog(state, {
         kind: 'player-miss',
-        enemyId: 'forest-rat',
+        enemyId: 'redknife-lookout',
         at: index,
         encounterStartedAt: 0,
         special: false,
@@ -33,7 +33,7 @@ describe('Activity Logging 2.0', () => {
     appendMilestone(state, { skillId: 'mining', level: 42, at: 100 });
     appendCombatLog(state, {
       kind: 'player-hit',
-      enemyId: 'forest-rat',
+      enemyId: 'redknife-lookout',
       damage: 3,
       special: false,
       at: 101,
@@ -41,8 +41,8 @@ describe('Activity Logging 2.0', () => {
     });
     appendCombatLog(state, {
       kind: 'loot',
-      enemyId: 'forest-rat',
-      itemId: 'rat-tail',
+      enemyId: 'redknife-lookout',
+      itemId: 'redknife-token',
       quantity: 1,
       at: 102,
       encounterStartedAt: 101,
@@ -52,8 +52,8 @@ describe('Activity Logging 2.0', () => {
     expect(state.activityLogs.milestones[0]).toMatchObject({ kind: 'level-up', skillId: 'mining' });
     expect(state.activityLogs.combat).toHaveLength(2);
     expect(state.activityLogs.combat.map((entry) => getCombatLogPresentation(entry).text)).toEqual([
-      'Received 1 Rat Tail.',
-      'You hit Forest Rat for 3.',
+      'Received 1 Redknife Token.',
+      'You hit Redknife Lookout for 3.',
     ]);
   });
 
@@ -62,24 +62,24 @@ describe('Activity Logging 2.0', () => {
     for (let index = 0; index < 120; index += 1)
       appendCombatLog(state, {
         kind: 'loot',
-        enemyId: 'forest-rat',
-        itemId: 'rat-tail',
+        enemyId: 'redknife-lookout',
+        itemId: 'redknife-token',
         quantity: 1,
         at: 500,
         encounterStartedAt: 500,
       });
     appendCombatLog(state, {
       kind: 'loot',
-      enemyId: 'forest-rat',
-      itemId: 'rat-tail',
+      enemyId: 'redknife-lookout',
+      itemId: 'redknife-token',
       quantity: 1,
       at: 500,
       encounterStartedAt: 500,
     });
     appendCombatLog(state, {
       kind: 'loot',
-      enemyId: 'forest-rat',
-      itemId: 'rat-tail',
+      enemyId: 'redknife-lookout',
+      itemId: 'redknife-token',
       quantity: 1,
       at: 500,
       encounterStartedAt: 500,
@@ -94,14 +94,14 @@ describe('Activity Logging 2.0', () => {
     const presentation = getCombatLogPresentation({
       id: 'hit-1',
       kind: 'player-hit',
-      enemyId: 'forest-rat',
+      enemyId: 'redknife-lookout',
       damage: 4,
       special: false,
       at: 2_000,
       encounterStartedAt: 1_000,
     });
     expect(presentation).toMatchObject({
-      text: 'You hit Forest Rat for 4.',
+      text: 'You hit Redknife Lookout for 4.',
       label: 'Player hit',
       category: 'player-hit',
     });
@@ -125,7 +125,7 @@ describe('Activity Logging 2.0', () => {
     state.schemaVersion = 9;
 
     const migrated = migrateSave(state, 9);
-    expect(migrated.schemaVersion).toBe(15);
+    expect(migrated.schemaVersion).toBe(16);
     expect(migrated.activityLogs.milestones).toMatchObject([
       { kind: 'level-up', skillId: 'mining', level: 42 },
     ]);
@@ -134,7 +134,7 @@ describe('Activity Logging 2.0', () => {
     ]);
     expect(migrated.activityLogs.combat).toHaveLength(1);
     const parsed = parseGameState(JSON.stringify(state));
-    expect(parsed.schemaVersion).toBe(15);
+    expect(parsed.schemaVersion).toBe(16);
     expect(parsed.activityLogs.milestones[0]).toMatchObject({ skillId: 'mining', level: 42 });
     expect(parsed.activityLogs.combat[0]).toMatchObject({ kind: 'legacy' });
   });
@@ -142,8 +142,8 @@ describe('Activity Logging 2.0', () => {
   it('preserves active combat state during log migration', () => {
     const state = startCombat(
       createNewGame(0, 'Active Legacy', 0),
-      'forest-path',
-      'forest-rat',
+      'redknife-road-camp',
+      'redknife-lookout',
       'accurate',
       true,
       0,

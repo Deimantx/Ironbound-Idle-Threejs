@@ -45,13 +45,13 @@ describe('Tooltip 1.0 concepts and enemies', () => {
 
   it('presents known enemy data without inventing a separate enemy model', () => {
     vi.useFakeTimers();
-    const enemy = enemyById['forest-rat'];
+    const enemy = enemyById['redknife-lookout'];
     render(
       <EnemyTooltip enemy={enemy} kills={7}>
-        <button type="button">Forest Rat</button>
+        <button type="button">Redknife Lookout</button>
       </EnemyTooltip>,
     );
-    fireEvent.focus(screen.getByRole('button', { name: 'Forest Rat' }));
+    fireEvent.focus(screen.getByRole('button', { name: 'Redknife Lookout' }));
     openTooltip();
     const tooltip = screen.getByRole('tooltip');
     expect(tooltip).toHaveTextContent(enemy.name);

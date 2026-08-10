@@ -1133,7 +1133,7 @@ const simulateCombat = (
             combatState.enemySpecialCharge + COMBAT_TUNING.enemySpecialChargePerNormalAttack,
           );
       }
-      onEnemyAttackResolved(combatState.traitState, enemyAttackHit);
+      onEnemyAttackResolved(enemy, combatState.traitState, enemyAttackHit);
       combatState.enemyAttackMs +=
         getEnemyCombatStats(
           enemy,

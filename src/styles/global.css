@@ -6312,12 +6312,6 @@ h3 {
   padding: 2px 5px;
   font-size: 8px;
 }
-.combat-area-card-loot {
-  grid-column: 1 / -1;
-  margin-top: 4px;
-  color: #9daaa5;
-  font-size: 9px;
-}
 .combat-area-card-footer {
   display: flex;
   justify-content: flex-end;
@@ -6973,6 +6967,14 @@ h3 {
   display: grid;
   gap: 4px;
   margin-top: 7px;
+  max-height: 160px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.combat-drop-list::-webkit-scrollbar {
+  display: none;
 }
 .combat-drop-item {
   display: grid;
@@ -7753,6 +7755,19 @@ h3 {
 }
 .combat-analysis-special .enemy-special-kicker.emphasized {
   font-weight: var(--font-weight-stat-compact);
+}
+.combat-analysis-trait-heading,
+.combat-analysis-special .enemy-special-details > strong {
+  font-size: 14px;
+}
+.combat-analysis-trait-copy,
+.combat-analysis-special .enemy-special-description,
+.combat-analysis-special .enemy-special-row,
+.combat-analysis-special .enemy-special-details small {
+  font-size: calc(var(--font-size-small) + 2px);
+}
+.combat-analysis-special .enemy-special-kicker.emphasized {
+  font-size: calc(var(--font-size-small) + 2px);
 }
 .combat-analysis-trait-copy b {
   color: #d5bd82;

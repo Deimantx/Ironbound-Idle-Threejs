@@ -553,7 +553,12 @@ function EnemySummaryPanel({
             Full drop table <ArrowUpRight size={13} />
           </button>
         </div>
-        <div className="combat-drop-list">
+        <div
+          className="combat-drop-list"
+          role="region"
+          aria-label={`${enemy.name} drop preview`}
+          tabIndex={0}
+        >
           {getResolvedLootSections(enemy.id).flatMap((section) => section.entries).map((drop) => (
             <ItemTooltip
               item={itemById[drop.itemId]}
@@ -811,12 +816,13 @@ function CombatBrowser({
                   </span>
                 </span>
                 <span className="combat-area-card-meta">
-                  Requires Combat Lv {candidate.requiredCombatLevel} Â· Recommended {candidate.recommendedLevel[0]}â€“{candidate.recommendedLevel[1]}
+                  Requires Combat Lv {candidate.requiredCombatLevel}
+                  {' \u00B7 '}
+                  Recommended {candidate.recommendedLevel[0]}
+                  {'\u2013'}
+                  {candidate.recommendedLevel[1]}
                 </span>
                 <span className="badge combat-area-card-type">AREA</span>
-                <span className="combat-area-card-loot">
-                  {candidate.sharedLoot.length ? `${candidate.sharedLoot.length} shared drops` : 'No drops yet'}
-                </span>
                 <span className="combat-area-card-footer">
                   <span className="combat-area-card-status">
                     {activeFight

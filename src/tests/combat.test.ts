@@ -30,7 +30,7 @@ describe('combat selectors and visual events', () => {
 
   it('derives authoritative attack progress and estimates from combat state', () => {
     let state = createNewGame(0, 'Selector');
-    state = startCombat(state, 'forest-path', 'forest-rat', 'accurate', true);
+    state = startCombat(state, 'redknife-road-camp', 'redknife-lookout', 'accurate', true);
     state.updatedAt = 1_000;
     expect(selectPlayerAttackProgress(state, 1_000).ratio).toBe(0);
     expect(selectEnemyAttackProgress(state, 1_000).ratio).toBe(0);
@@ -61,8 +61,8 @@ describe('combat selectors and visual events', () => {
   it('exposes a bounded authoritative visual event stream from combat simulation', () => {
     const state = startCombat(
       createNewGame(0, 'Events'),
-      'forest-path',
-      'forest-rat',
+      'redknife-road-camp',
+      'redknife-lookout',
       'accurate',
       true,
     );
@@ -74,13 +74,13 @@ describe('combat selectors and visual events', () => {
 
   it('uses Combat Level only for normal area availability', () => {
     const state = createNewGame(0, 'Progress');
-    const wolfDen = areaById['wolf-den'];
-    state.killCounts['forest-rat'] = 10_000;
-    expect(isCombatAreaUnlocked(state, wolfDen)).toBe(false);
+    const greyfangPastures = areaById['greyfang-pastures'];
+    state.killCounts['redknife-lookout'] = 10_000;
+    expect(isCombatAreaUnlocked(state, greyfangPastures)).toBe(false);
     state.skills.attack.level = 18;
     state.skills.strength.level = 18;
     state.skills.defence.level = 18;
     state.skills.hitpoints.level = 18;
-    expect(isCombatAreaUnlocked(state, wolfDen)).toBe(true);
+    expect(isCombatAreaUnlocked(state, greyfangPastures)).toBe(true);
   });
 });

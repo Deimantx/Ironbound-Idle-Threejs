@@ -76,8 +76,8 @@ describe('save validation and migration', () => {
       { ...state, schemaVersion: 0, settings: { ...state.settings, threeQuality: 'low' } },
       0,
     );
-    expect(migrated.schemaVersion).toBe(15);
-    expect(migrated.unlockedAreas).toContain('forest-path');
+    expect(migrated.schemaVersion).toBe(16);
+    expect(migrated.unlockedAreas).toContain('redknife-road-camp');
   });
   it('rejects malformed save data', () => {
     expect(() => parseGameState('{"nope":true}')).toThrow();
@@ -107,14 +107,8 @@ describe('save validation and migration', () => {
       },
     } as unknown as GameState['activeAction'];
     const migrated = parseGameState(JSON.stringify(legacy));
-    expect(migrated.schemaVersion).toBe(15);
-    expect(
-      migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.adrenaline,
-    ).toBe(0);
-    expect(migrated.activeAction.type === 'combat' && migrated.activeAction.autoSpecial).toBe(true);
-    expect(
-      migrated.activeAction.type === 'combat' && migrated.activeAction.combatState.rngCursor,
-    ).toBe(0);
+    expect(migrated.schemaVersion).toBe(16);
+    expect(migrated.activeAction).toEqual({ type: 'none' });
   });
 
   it('adds Mining runtime state and converts legacy Copper Mining to Stone', () => {
@@ -235,7 +229,7 @@ describe('save validation and migration', () => {
       const migrated = migrateSave(state, 5);
       expect(migrated.skills.mining.level).toBe(level);
       expect(migrated.skills.mining.xp).toBe(getXpForLevel(level));
-      expect(migrated.schemaVersion).toBe(15);
+      expect(migrated.schemaVersion).toBe(16);
     }
   });
 
@@ -334,6 +328,6 @@ describe('save validation and migration', () => {
     const reloaded = migrateSave(migrated, migrated.schemaVersion);
     expect(reloaded.skills.mining).toEqual(migrated.skills.mining);
     expect(reloaded.activeAction).toEqual(migrated.activeAction);
-    expect(reloaded.schemaVersion).toBe(15);
+    expect(reloaded.schemaVersion).toBe(16);
   });
 });

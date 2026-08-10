@@ -53,8 +53,8 @@ describe('Home lifetime statistics', () => {
 
   it('counts accepted combat and offline loot once while ignoring rejected quantities', () => {
     const summary = emptySummary(60_000);
-    summary.offlineContext = { activity: 'combat', enemyId: 'forest-rat' };
-    summary.itemsGained = { 'rat-tail': 4, rejected: -2 };
+    summary.offlineContext = { activity: 'combat', enemyId: 'redknife-lookout' };
+    summary.itemsGained = { 'redknife-token': 4, rejected: -2 };
     const game = createNewGame(0, 'Combat Lifetime');
     useGameStore.getState().setGame(game, summary);
     expect(useGameStore.getState().game?.statistics.totalItemsGained).toBe(4);

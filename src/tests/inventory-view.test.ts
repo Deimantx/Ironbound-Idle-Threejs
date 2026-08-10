@@ -36,7 +36,7 @@ describe('inventory view helpers', () => {
     const stacks: InventoryStack[] = [
       { itemId: 'copper-ore', quantity: 8, locked: false },
       { itemId: 'iron-sword', quantity: 1, locked: false },
-      { itemId: 'rat-tail', quantity: 3, locked: false },
+      { itemId: 'goblin-scrap', quantity: 3, locked: false },
     ];
     const original = structuredClone(stacks);
     expect(getVisibleInventoryStacks(stacks, itemById, 'materials', '  mining  ')).toEqual([
@@ -51,7 +51,7 @@ describe('inventory view helpers', () => {
       { itemId: 'copper-ore', quantity: 124, locked: false },
       { itemId: 'iron-bar', quantity: 8, locked: false },
       { itemId: 'iron-sword', quantity: 1, locked: false },
-      { itemId: 'rat-tail', quantity: 0, locked: false },
+      { itemId: 'goblin-scrap', quantity: 0, locked: false },
     ];
     expect(getInventoryGroupCounts(stacks, itemById)).toEqual({
       all: 3,
@@ -64,7 +64,7 @@ describe('inventory view helpers', () => {
 
   it('groups visible stacks by display group without mutating order or adding empty groups', () => {
     const stacks: InventoryStack[] = [
-      { itemId: 'rat-tail', quantity: 3, locked: false },
+      { itemId: 'goblin-scrap', quantity: 3, locked: false },
       { itemId: 'copper-ore', quantity: 8, locked: false },
       { itemId: 'iron-sword', quantity: 1, locked: false },
       { itemId: 'unknown-item', quantity: 2, locked: false },
