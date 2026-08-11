@@ -62,13 +62,17 @@ export function ItemIcon({
         ? 0.94
         : resolvedVariant === 'item-collection'
           ? 0.88
-          : resolvedVariant === 'item-equipment'
-            ? 0.92
-            : framed
-              ? 0.86
-              : size === 'tile'
-                ? 0.94
-                : 1;
+          : resolvedVariant === 'item-detail'
+            ? 0.9
+            : resolvedVariant === 'item-row'
+              ? 0.84
+              : resolvedVariant === 'item-equipment'
+                ? 0.92
+                : framed
+                  ? 0.86
+                  : size === 'tile'
+                    ? 0.94
+                    : 1;
   const className = framed
     ? `loot-icon loot-icon-${size} loot-icon-${gold ? 'gold' : (item?.category ?? 'unknown')} loot-rarity-${rarity} ${!discovered ? 'is-hidden' : ''}`
     : `item-art item-art-${size} loot-rarity-${rarity} ${!discovered ? 'is-hidden' : ''}`;

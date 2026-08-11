@@ -16,8 +16,9 @@ import type {
 } from '../../../game/types';
 import { formatNumber } from '../../shared/formatters';
 import { getEquipmentBonusLabel, formatEquipmentBonus } from '../../shared/equipmentView';
-import { ItemIcon } from '../../items/ItemIcon';
 import { ArtViewport } from '../../art/ArtViewport';
+import { ItemDetailHeader } from '../../items/ItemDetailHeader';
+import { ItemIcon } from '../../items/ItemIcon';
 import { EnemyArt } from '../../art/EnemyArt';
 import { ItemTooltip } from '../../items/ItemTooltip';
 import { ProfessionToolDetails } from '../../items/ProfessionToolDetails';
@@ -412,18 +413,17 @@ function ItemCollectionDetails({
   const sourceLabel = getCollectionItemSourceLabel(item.id);
   return (
     <aside className="collection-detail" aria-label={`${item.name} details`}>
-      <div className="collection-detail-heading">
-        <ArtViewport className="collection-detail-item-viewport">
-          <ItemIcon itemId={item.id} size="lg" framed={false} artVariant="item-equipment" />
-        </ArtViewport>
-        <div>
-          <span className="eyebrow">{getCollectionItemCategory(item)}</span>
-          <h2>{item.name}</h2>
-          <span className="muted">
-            {titleCase(item.rarity)}{item.slot ? ` · ${titleCase(item.slot)}` : ''}{item.tier ? ` · ${titleCase(item.tier)}` : ''}
-          </span>
-        </div>
-      </div>
+      <ItemDetailHeader
+        item={item}
+        eyebrow={getCollectionItemCategory(item)}
+        metadata={
+          <>
+            {titleCase(item.rarity)}
+            {item.slot ? ` · ${titleCase(item.slot)}` : ` · ${titleCase(item.category)}`}
+            {item.tier ? ` · ${titleCase(item.tier)}` : ''}
+          </>
+        }
+      />
       <p className="collection-detail-description">{item.description}</p>
       <div className="collection-detail-meta">
         <div className="collection-detail-row"><span>Owned</span><strong className="ui-stat-compact">{formatNumber(getItemQuantity(game.inventory, item.id))}</strong></div>

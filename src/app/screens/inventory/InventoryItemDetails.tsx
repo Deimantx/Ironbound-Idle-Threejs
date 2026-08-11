@@ -4,7 +4,7 @@ import { getEquipmentSlotLabel } from '../../../game/equipmentSlots';
 import { formatNumber } from '../../shared/formatters';
 import { formatEquipmentBonus, getEquipmentBonusLabel } from '../../shared/equipmentView';
 import { getInventoryDisplayGroup, getInventoryValueLabel } from '../../shared/inventoryView';
-import { ItemIcon } from '../../items/ItemIcon';
+import { ItemDetailHeader } from '../../items/ItemDetailHeader';
 import { ProfessionToolDetails } from '../../items/ProfessionToolDetails';
 import { SpecialAttackDetails } from '../../items/SpecialAttackDetails';
 
@@ -27,7 +27,6 @@ export function InventoryItemDetails({
   onToggleLock,
   onDestroyOne,
 }: InventoryItemDetailsProps) {
-  const name = item?.name ?? 'Unknown item';
   const displayGroup = getInventoryDisplayGroup(item?.category);
   const slot = item?.slot;
   const isEquippable = Boolean(slot);
@@ -38,13 +37,12 @@ export function InventoryItemDetails({
   if (!item) {
     return (
       <section className="inventory-item-details" aria-labelledby={headingId}>
-        <div className="inventory-details-hero">
-          <ItemIcon itemId={stack.itemId} size="md" />
-          <div>
-            <div className="inventory-card-rarity rarity-unknown">Unknown item</div>
-            <h2 id={headingId}>Unknown item</h2>
-          </div>
-        </div>
+        <ItemDetailHeader
+          itemId={stack.itemId}
+          headingId={headingId}
+          eyebrow="Item"
+          metadata="Unknown item"
+        />
         <p className="subtle">
           This stack is preserved safely, but its item definition is unavailable. No actions are
           available.
@@ -59,18 +57,18 @@ export function InventoryItemDetails({
 
   return (
     <section className="inventory-item-details" aria-labelledby={headingId}>
-      <div className="inventory-details-hero">
-        <ItemIcon itemId={item.id} size="md" />
-        <div className="inventory-details-title">
-          <div className={`inventory-card-rarity rarity-${item.rarity}`}>
-            {getInventoryValueLabel(item.rarity)}
-          </div>
-          <h2 id={headingId}>{name}</h2>
-          <div className="inventory-details-category">
-            {displayGroup ? getInventoryValueLabel(displayGroup) : 'Item'}
-          </div>
-        </div>
-      </div>
+      <ItemDetailHeader
+        item={item}
+        headingId={headingId}
+        eyebrow={displayGroup ? getInventoryValueLabel(displayGroup) : 'Item'}
+        metadata={
+          <>
+            {getInventoryValueLabel(item.rarity)} ·{' '}
+            {slot ? getEquipmentSlotLabel(slot) : displayGroup ? getInventoryValueLabel(displayGroup) : 'Item'}
+            {item.tier ? ` · ${getInventoryValueLabel(item.tier)}` : ''}
+          </>
+        }
+      />
       <p className="subtle inventory-details-description">{item.description}</p>
       <dl className="inventory-details-metadata">
         <div className="stat-line">

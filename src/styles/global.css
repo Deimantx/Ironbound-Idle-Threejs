@@ -12290,3 +12290,148 @@ h3 {
     height: 104px;
   }
 }
+
+/* Canonical detail and list-row item surfaces. */
+.item-detail-header {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #303b3e;
+}
+.item-detail-icon-viewport {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  background: radial-gradient(circle at 50% 42%, rgba(125, 145, 143, 0.2), transparent 72%), #1b2325;
+  border: 1px solid #3a4547;
+  border-radius: 8px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
+}
+.item-detail-icon-viewport > .item-art {
+  width: 52px;
+  height: 52px;
+}
+.item-detail-header-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.item-detail-header-copy h2 {
+  min-width: 0;
+  margin: 0;
+  color: #eee4d1;
+  font-size: clamp(17px, 2vw, 22px);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+.item-detail-meta {
+  min-width: 0;
+  color: #a8b1aa;
+  font-size: 11px;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.item-row-icon-viewport {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  background: radial-gradient(circle at 50% 42%, rgba(125, 145, 143, 0.18), transparent 72%), #1b2325;
+  border: 1px solid #3a4547;
+  border-radius: 7px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+}
+.item-row-icon-viewport > .loot-icon-md {
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+}
+.smithing-recipe-output {
+  min-width: 0;
+  gap: 10px;
+}
+
+/* Combat readability pass: reserve a real text column beside every portrait. */
+.combat-enemy-card {
+  grid-template-columns: 48px minmax(0, 1fr) 16px;
+  flex-basis: 220px;
+  min-height: 78px;
+  padding: 8px;
+}
+.combat-roster-portrait {
+  width: 48px;
+  height: 56px;
+}
+.combat-enemy-card-copy strong {
+  display: -webkit-box;
+  min-height: 24px;
+  overflow: hidden;
+  line-height: 1.1;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.combat-enemy-card-copy span,
+.combat-enemy-card-copy small {
+  line-height: 1.15;
+}
+.combat-enemy-heading-line {
+  align-items: flex-start;
+}
+.combat-enemy-heading-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+  align-self: center;
+}
+.combat-enemy-heading-copy h2 {
+  margin: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+  white-space: normal;
+}
+.combat-analysis-target {
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr) auto;
+  flex: 1 1 520px;
+  min-width: 0;
+  margin-right: 0;
+  gap: 12px;
+  align-items: center;
+}
+.combat-analysis-target-copy strong {
+  overflow-wrap: anywhere;
+  line-height: 1.15;
+  white-space: normal;
+}
+.combat-analysis-target > .combat-text-link {
+  margin-left: 0;
+  justify-self: start;
+}
+
+@media (max-width: 900px) {
+  .combat-enemy-card {
+    flex-basis: 205px;
+  }
+  .combat-analysis-target {
+    flex-basis: 100%;
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+  .combat-analysis-target > .combat-text-link {
+    grid-column: 2;
+  }
+  .combat-analysis-target .combat-portrait-target-preview {
+    flex-basis: 96px;
+    width: 96px;
+    height: 108px;
+  }
+}
+
+@media (max-width: 600px) {
+  .combat-enemy-card {
+    flex-basis: 200px;
+  }
+}

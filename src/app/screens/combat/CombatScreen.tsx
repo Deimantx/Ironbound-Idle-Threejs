@@ -495,7 +495,7 @@ function EnemySummaryPanel({
         <div className="combat-panel-kicker">Enemy</div>
         <div className="combat-enemy-heading-line">
           <CombatPortrait enemy={enemy} large ariaLabel={`${enemy.name} target preview`} />
-          <div>
+          <div className="combat-enemy-heading-copy">
             <h2 id="enemy-title">{enemy.name}</h2>
             <span className="muted">Level {enemy.displayLevel}</span>
             {active?.combatState.eliteModifier && (

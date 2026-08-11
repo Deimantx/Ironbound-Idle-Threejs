@@ -104,6 +104,8 @@ export type ArtVariant =
   | 'item-tooltip'
   | 'item-inventory'
   | 'item-collection'
+  | 'item-detail'
+  | 'item-row'
   | 'item-equipment'
   | 'equipment-slot'
   | 'enemy-roster'
@@ -146,7 +148,11 @@ export const ITEM_ART: Record<string, ArtAsset> = {
   'raw-wolf-meat': itemArt(rawWolfMeat, {}, collectionOnly(0.9)),
   'torn-cloth': itemArt(tornCloth, {}, collectionOnly(0.86)),
   'goblin-scrap': itemArt(goblinScrap),
-  'redknife-token': itemArt(redknifeToken),
+  'redknife-token': itemArt(redknifeToken, {}, {
+    'item-inventory': { scale: 0.9 },
+    'item-collection': { scale: 0.84 },
+    'item-detail': { scale: 0.86 },
+  }),
   'frayed-cloth': itemArt(frayedCloth, {}, collectionOnly(0.84)),
   'lookouts-sapphire-ring': itemArt(lookoutsSapphireRing, {}, collectionOnly(0.86)),
   'magic-crystal-box': itemArt(magicCrystalBox),
@@ -162,9 +168,14 @@ export const ITEM_ART: Record<string, ArtAsset> = {
   'wolf-pelt': itemArt(wolfPelt, {}, collectionOnly(0.88)),
   'vial-of-wolf-blood': itemArt(vialOfWolfBlood),
   'pristine-wolf-pelt': itemArt(pristineWolfPelt, {}, collectionOnly(0.9)),
-  'rough-gem': itemArt(roughGem, {}, collectionOnly(0.88)),
+  'rough-gem': itemArt(roughGem, {}, {
+    ...collectionOnly(0.88),
+    'item-detail': { scale: 0.86 },
+  }),
   'stone-ore': itemArt(stoneOre, {}, collectionOnly(0.84)),
-  'iron-ore': itemArt(ironOre, {}, collectionOnly(0.88)),
+  // The source files are named for the opposite presentation: the compact vein
+  // chunk is the inventory resource icon, while the broad ore pile is the node art.
+  'iron-ore': itemArt(ironVein, {}, collectionOnly(0.88)),
   coal: itemArt(coal),
   'worn-pickaxe': itemArt(wornPickaxe, { scale: 0.9 }),
   'iron-pickaxe': itemArt(ironPickaxe, { scale: 0.86 }),
@@ -200,7 +211,7 @@ export const ENEMY_ART: Record<string, ArtAsset> = {
 
 export const MINING_NODE_ART: Record<string, ArtSource> = {
   'stone-outcrop': stoneOutcrop,
-  'iron-vein': ironVein,
+  'iron-vein': ironOre,
   'coal-seam': coalSeam,
 };
 

@@ -33,6 +33,7 @@ import type {
 import { getItemQuantity } from '../../../game/systems/inventorySystem';
 import { formatHoursMinutes, formatNumber, formatRatePerHour } from '../../shared/formatters';
 import { ItemIcon } from '../../items/ItemIcon';
+import { ItemRowIcon } from '../../items/ItemRowIcon';
 import { SmithingFacilityArt } from '../../art/SmithingFacilityArt';
 import { ScreenHeading } from '../../shell/ScreenHeading';
 import { UiPanelSlot } from '../../ui-editor/UiPanelSlot';
@@ -154,7 +155,7 @@ export function RecipeOutput({ recipe }: { recipe: RecipeDefinition }) {
   return (
     <ItemTooltip item={itemById[recipe.outputItemId]}>
       <div className="smithing-recipe-output">
-        <ItemIcon itemId={recipe.outputItemId} size="md" />
+        <ItemRowIcon itemId={recipe.outputItemId} />
         <div>
           <strong>{outputName}</strong>
           {recipeName !== outputName.trim() && <small>{recipeName}</small>}
