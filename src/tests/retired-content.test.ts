@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { ITEM_ART, ENEMY_ART, MINING_NODE_ART } from '../app/art/artRegistry';
+import { ITEM_ART, MINING_NODE_ART } from '../app/art/artRegistry';
+import { ENEMY_ART } from '../app/art/enemyArtRegistry';
 import { getCollectionEligibleItemIds } from '../app/screens/collection/collectionSelectors';
 import { ITEMS, itemById } from '../content/items';
 import { RETIRED_ITEM_IDS, RETIRED_RECIPE_IDS } from '../game/persistence/retiredContent';
@@ -78,8 +79,8 @@ describe('retired profession content', () => {
   });
 
   it('keeps mining deposit art separate from the resource item art', () => {
-    expect(ITEM_ART['iron-ore']?.src).toContain('iron-vein');
-    expect(MINING_NODE_ART['iron-vein']).toContain('iron-ore');
+    expect(ITEM_ART['iron-ore']?.src).toContain('iron-ore');
+    expect(MINING_NODE_ART['iron-vein']).toContain('iron-vein');
     expect(MINING_NODE_ART['iron-vein']).not.toBe(ITEM_ART['iron-ore']?.src);
     expect(MINING_NODE_ART['stone-outcrop']).toContain('stone-outcrop');
     expect(MINING_NODE_ART['coal-seam']).toContain('coal-seam');

@@ -1,22 +1,8 @@
 import type { ActiveEquipmentSlot } from '../../game/equipmentSlots';
 import type { ScreenId } from '../../game/types';
 
-import ironOre from '../../Assets/Art/Items/Resources/iron-ore.png';
-
-import brambletoothBoarhandler from '../../Assets/Art/Monsters/brambletooth-boarhandler.png';
-import brambletoothScavenger from '../../Assets/Art/Monsters/brambletooth-scavenger.png';
-import brambletoothSpearman from '../../Assets/Art/Monsters/brambletooth-spearman.png';
-import brambletoothTrapper from '../../Assets/Art/Monsters/brambletooth-trapper.png';
-import greyfangAlpha from '../../Assets/Art/Monsters/greyfang-alpha.png';
-import greyfangRavager from '../../Assets/Art/Monsters/greyfang-ravager.png';
-import greyfangStalker from '../../Assets/Art/Monsters/greyfang-stalker.png';
-import greyfangWolf from '../../Assets/Art/Monsters/greyfang-wolf.png';
-import redknifeBowhand from '../../Assets/Art/Monsters/redknife-bowhand.png';
-import redknifeBrigand from '../../Assets/Art/Monsters/redknife-brigand.png';
-import redknifeEnforcer from '../../Assets/Art/Monsters/redknife-enforcer.png';
-import redknifeLookout from '../../Assets/Art/Monsters/redknife-lookout.png';
-
 import stoneOutcrop from '../../Assets/Art/Mining/Nodes/stone-outcrop.png';
+import ironVein from '../../Assets/Art/Mining/Nodes/iron-vein.png';
 import coalSeam from '../../Assets/Art/Mining/Nodes/coal-seam.png';
 
 import amuletSlot from '../../Assets/Art/UI/EquipmentSlots/amulet.png';
@@ -54,59 +40,14 @@ import brambletoothCamp from '../../Assets/Art/World/Areas/brambletooth-camp.png
 import greyfangPastures from '../../Assets/Art/World/Areas/greyfang-pastures.png';
 import redknifeRoadCamp from '../../Assets/Art/World/Areas/redknife-road-camp.png';
 
-export type ArtVariant =
-  | 'equipment-slot'
-  | 'enemy-roster'
-  | 'enemy-target'
-  | 'enemy-preview'
-  | 'enemy-detail'
-  | 'enemy-arena';
-
-export interface ArtTransform {
-  /** Visual scale inside its viewport. */
-  scale?: number;
-  /** Translation in percentage points inside the viewport. */
-  x?: number;
-  y?: number;
-  objectPosition?: string;
-}
-
-export interface ArtAsset {
-  src: string;
-  /** Source-specific correction applied before the presentation context. */
-  base?: ArtTransform;
-  /** Optional correction for a particular presentation context. */
-  variants?: Partial<Record<ArtVariant, ArtTransform>>;
-}
-
-const itemArt = (
-  src: string,
-  base: ArtTransform = {},
-  variants: Partial<Record<ArtVariant, ArtTransform>> = {},
-): ArtAsset => ({ src, base, variants });
-
 export type ArtSource = string;
 
 export { GOLD_ART, ITEM_ART } from '../items/itemArtRegistry';
-
-export const ENEMY_ART: Record<string, ArtAsset> = {
-  'brambletooth-boarhandler': itemArt(brambletoothBoarhandler, { scale: 0.78, y: -1 }),
-  'brambletooth-scavenger': itemArt(brambletoothScavenger, { scale: 0.8 }),
-  'brambletooth-spearman': itemArt(brambletoothSpearman, { scale: 0.78, y: -1 }),
-  'brambletooth-trapper': itemArt(brambletoothTrapper, { scale: 0.78, y: -1 }),
-  'greyfang-alpha': itemArt(greyfangAlpha, { scale: 0.8, y: -1 }),
-  'greyfang-ravager': itemArt(greyfangRavager, { scale: 0.78, y: -1 }),
-  'greyfang-stalker': itemArt(greyfangStalker, { scale: 0.82 }),
-  'greyfang-wolf': itemArt(greyfangWolf, { scale: 0.78, y: -1 }),
-  'redknife-bowhand': itemArt(redknifeBowhand, { scale: 0.78, y: -1 }),
-  'redknife-brigand': itemArt(redknifeBrigand, { scale: 0.78, y: -1 }),
-  'redknife-enforcer': itemArt(redknifeEnforcer, { scale: 0.76, y: -1 }),
-  'redknife-lookout': itemArt(redknifeLookout, { scale: 0.8, y: -1 }),
-};
+export { ENEMY_ART } from './enemyArtRegistry';
 
 export const MINING_NODE_ART: Record<string, ArtSource> = {
   'stone-outcrop': stoneOutcrop,
-  'iron-vein': ironOre,
+  'iron-vein': ironVein,
   'coal-seam': coalSeam,
 };
 

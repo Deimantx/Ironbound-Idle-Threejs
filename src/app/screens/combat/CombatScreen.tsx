@@ -98,6 +98,7 @@ import {
 } from '../../../game/formulas/combatLoot';
 import { EnemySpecialDetails } from '../../combat/EnemySpecialDetails';
 import { CombatEffectLane } from './CombatEffectLanes';
+import { EnemyArtwork } from '../../art/EnemyArtwork';
 
 type OverviewTab = 'overview' | 'loot' | 'progression';
 
@@ -1136,6 +1137,7 @@ function LiveCombatResolution({
           <div className="combat-panel-kicker">Live combat resolution</div>
           <h2 id="live-combat-title">{enemy.name}</h2>
         </div>
+        <EnemyArtwork enemyId={enemy.id} size="sm" className="combat-live-enemy-art" />
         <div className="combat-live-status" aria-live="polite">
           {statusIcon} {status}
         </div>

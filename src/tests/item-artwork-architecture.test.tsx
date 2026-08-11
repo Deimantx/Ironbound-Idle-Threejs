@@ -12,7 +12,27 @@ describe('canonical item artwork system', () => {
       expect(itemById[itemId], `${itemId} should reference a current item`).toBeDefined();
       expect(Object.keys(profile).every((key) => allowedKeys.has(key))).toBe(true);
       expect(profile.src).toBeTruthy();
+      expect(typeof profile.scale, `${itemId} should define scale`).toBe('number');
+      expect(typeof profile.x, `${itemId} should define x`).toBe('number');
+      expect(typeof profile.y, `${itemId} should define y`).toBe('number');
     }
+  });
+
+  it('propagates one registry calibration through the shared renderer', () => {
+    const { container } = render(<ItemArtwork itemId="rough-gem" size="sm" />);
+    const viewport = container.querySelector<HTMLElement>('.item-artwork');
+
+    expect(viewport?.style.getPropertyValue('--item-artwork-scale')).toBe(String(ITEM_ART['rough-gem'].scale));
+    expect(viewport?.style.getPropertyValue('--item-artwork-x')).toBe(`${ITEM_ART['rough-gem'].x}%`);
+    expect(viewport?.style.getPropertyValue('--item-artwork-y')).toBe(`${ITEM_ART['rough-gem'].y}%`);
+  });
+
+  it('maps semantic resource and tool IDs to their matching assets', () => {
+    expect(ITEM_ART['iron-ore']?.src).toContain('iron-ore');
+    expect(ITEM_ART['iron-pickaxe']?.src).toContain('iron-pickaxe');
+    expect(ITEM_ART['steel-pickaxe']?.src).toContain('steel-pickaxe');
+    expect(ITEM_ART['iron-smithing-hammer']?.src).toContain('iron-smithing-hammer');
+    expect(ITEM_ART['steel-smithing-hammer']?.src).toContain('steel-smithing-hammer');
   });
 
   it('uses one canonical pose at every physical viewport size', () => {
