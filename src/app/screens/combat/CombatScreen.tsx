@@ -70,6 +70,9 @@ import type {
 } from '../../../game/types';
 import type { ConfirmDialogOptions } from '../../components/ConfirmDialog';
 import { ItemIcon } from '../../items/ItemIcon';
+import { EnemyArt } from '../../art/EnemyArt';
+import { WorldArt } from '../../art/WorldArt';
+import { AREA_ART, REGION_ART, SUB_REGION_ART } from '../../art/artRegistry';
 import { ItemTooltip } from '../../items/ItemTooltip';
 import { GameTooltip } from '../../items/GameTooltip';
 import { ExplainedTerm } from '../../tooltips/GameConceptTooltip';
@@ -131,15 +134,6 @@ const regionIcon = {
   tree: TreePine,
   mountain: Mountain,
   flame: Flame,
-};
-
-const enemyGlyph: Record<EnemyDefinition['theme'], string> = {
-  rodent: '◒',
-  goblin: '♟',
-  bat: '⋈',
-  crab: '⬢',
-  wolf: '◇',
-  bandit: '⚔',
 };
 
 const getCombatantHp = (
@@ -278,7 +272,7 @@ function CombatPortrait({
       role="img"
       aria-label={ariaLabel ?? `${enemy.name} portrait`}
     >
-      {enemyGlyph[enemy.theme]}
+      <EnemyArt enemyId={enemy.id} large={large} />
     </div>
   );
 }
@@ -595,7 +589,7 @@ function EnemySummaryPanel({
 function CombatPortraitSmall({ enemy }: { enemy: EnemyDefinition }) {
   return (
     <div className={`combat-roster-portrait theme-${enemy.theme}`} aria-hidden="true">
-      {enemyGlyph[enemy.theme]}
+      <EnemyArt enemyId={enemy.id} />
     </div>
   );
 }
@@ -760,7 +754,11 @@ function CombatBrowser({
                 key={candidate.id}
                 onClick={() => available && onSelectRegion(candidate.id)}
               >
-                <RegionIcon size={17} />
+                {REGION_ART[candidate.id] ? (
+                  <WorldArt kind="region" id={candidate.id} />
+                ) : (
+                  <RegionIcon size={17} aria-hidden="true" />
+                )}
                 <span>
                   <strong>{candidate.name}</strong>
                 </span>
@@ -785,6 +783,9 @@ function CombatBrowser({
                 key={candidate.id}
                 onClick={() => onSelectSubRegion(candidate.id)}
               >
+                {SUB_REGION_ART[candidate.id] ? (
+                  <WorldArt kind="sub-region" id={candidate.id} />
+                ) : null}
                 <span><strong>{candidate.name}</strong></span>
                 {!available && <Lock size={14} aria-hidden="true" />}
               </button>
@@ -812,7 +813,15 @@ function CombatBrowser({
               >
                 <span className="combat-area-card-header">
                   <span className="combat-area-card-icon" style={{ background: candidate.accent }}>
-                    {unlocked ? <Icon size={18} /> : <Lock size={16} />}
+                    {unlocked ? (
+                      AREA_ART[candidate.id] ? (
+                        <WorldArt kind="area" id={candidate.id} />
+                      ) : (
+                        <Icon size={18} aria-hidden="true" />
+                      )
+                    ) : (
+                      <Lock size={16} aria-hidden="true" />
+                    )}
                   </span>
                   <span className="combat-area-card-copy">
                     <strong>{candidate.name}</strong>

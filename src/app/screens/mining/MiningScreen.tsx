@@ -28,6 +28,7 @@ import { getItemQuantity } from '../../../game/systems/inventorySystem';
 import { ThreeScene } from '../../../three/ThreeScene';
 import { formatDropChance, formatNumber } from '../../shared/formatters';
 import { ItemIcon } from '../../items/ItemIcon';
+import { MiningNodeArt } from '../../art/MiningNodeArt';
 import { ScreenHeading } from '../../shell/ScreenHeading';
 import { UiPanelSlot } from '../../ui-editor/UiPanelSlot';
 import { UiPanelGrid } from '../../ui-editor/UiPanelGrid';
@@ -480,7 +481,7 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                         aria-label={`Inspect ${node.name}`}
                         aria-pressed={isSelected}
                       >
-                        <ItemIcon itemId={primary?.id} size="md" />
+                        <MiningNodeArt nodeId={node.id} />
                       <span className="row-main">
                         <strong>
                           {node.name}
@@ -542,6 +543,7 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
               <UiPanelRegionSlot screen="mining" panelId="miningDetails" regionId="miningDetailsRock" layout={uiLayout}>
                 <div className="mining-selected-rock">
                 <div className="eyebrow">Selected deposit</div>
+                <MiningNodeArt nodeId={selectedNode.id} className="mining-selected-node-art" />
                 <h2>{selectedNode.name}</h2>
                 <p>{selectedNode.description}</p>
                 <div className="mining-requirements">

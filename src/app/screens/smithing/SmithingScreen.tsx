@@ -1,4 +1,4 @@
-import { ArrowUp, ChevronDown, Flame, Hammer, Lock } from 'lucide-react';
+import { ArrowUp, ChevronDown, Lock } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { SMITHING_BAR_BY_TIER, type SmithingTier } from '../../../config/smithingTuning';
 import {
@@ -33,6 +33,7 @@ import type {
 import { getItemQuantity } from '../../../game/systems/inventorySystem';
 import { formatHoursMinutes, formatNumber, formatRatePerHour } from '../../shared/formatters';
 import { ItemIcon } from '../../items/ItemIcon';
+import { SmithingFacilityArt } from '../../art/SmithingFacilityArt';
 import { ScreenHeading } from '../../shell/ScreenHeading';
 import { UiPanelSlot } from '../../ui-editor/UiPanelSlot';
 import { UiPanelGrid } from '../../ui-editor/UiPanelGrid';
@@ -1019,7 +1020,7 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
             <UiPanelRegionGrid screen="smithing" panelId="smithingForge" layout={uiLayout} className="smithing-forge-layout">
               <UiPanelRegionSlot screen="smithing" panelId="smithingForge" regionId="smithingForgeHeading" layout={uiLayout}>
                 <FacilityHeader
-                  icon={<Flame size={19} />}
+                  icon={<SmithingFacilityArt facility="forge" />}
                   title="Forge"
                   subtitle="Smelt ore into usable metal bars."
                   controls={
@@ -1068,7 +1069,7 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
             <UiPanelRegionGrid screen="smithing" panelId="smithingAnvil" layout={uiLayout} className="smithing-anvil-layout">
               <UiPanelRegionSlot screen="smithing" panelId="smithingAnvil" regionId="smithingAnvilHeading" layout={uiLayout}>
                 <FacilityHeader
-                  icon={<Hammer size={19} />}
+                  icon={<SmithingFacilityArt facility="anvil" />}
                   title="Anvil"
                   subtitle="Forge bars into equipment and profession tools."
                   controls={

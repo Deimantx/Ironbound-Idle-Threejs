@@ -365,7 +365,7 @@
   color: var(--muted);
   font-size: 10px;
 }
-.enemy-art-large {
+.enemy-art-detail {
   display: grid;
   width: 42px;
   height: 42px;
@@ -547,6 +547,13 @@ select:focus-visible {
   color: #778487;
   text-align: center;
 }
+.nav-icon-image {
+  display: block;
+  width: 19px;
+  height: 19px;
+  object-fit: contain;
+  margin: 0 auto;
+}
 .nav-button.active .nav-icon {
   color: var(--gold);
 }
@@ -607,6 +614,13 @@ select:focus-visible {
   font-family: var(--font-family-stat);
   font-variant-numeric: tabular-nums lining-nums;
   margin-left: 5px;
+}
+.header-gold-art {
+  display: inline-block;
+  width: 17px;
+  height: 17px;
+  vertical-align: -3px;
+  object-fit: contain;
 }
 .save-state {
   display: flex;
@@ -1027,6 +1041,13 @@ h3 {
   border-radius: 9px;
   font-size: 22px;
 }
+.enemy-art > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+}
 .filterbar {
   display: flex;
   flex-wrap: wrap;
@@ -1202,6 +1223,12 @@ h3 {
   background: #2b2925;
   border: 1px solid #5c4d35;
   border-radius: 8px;
+}
+.smithing-facility-art {
+  display: block;
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
 }
 .smithing-facility-title {
   display: grid;
@@ -2111,6 +2138,12 @@ h3 {
   margin: 1px auto 0;
   color: #657175;
   opacity: 0.86;
+}
+.equipment-slot-art {
+  display: block;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
 }
 .equipment-loadout-workspace {
   display: grid;
@@ -5593,6 +5626,13 @@ h3 {
   border-radius: 6px;
   background: #ae8650;
 }
+.loot-icon img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+}
 .loot-icon-sm {
   width: 29px;
   height: 29px;
@@ -6149,6 +6189,14 @@ h3 {
   flex: 0 0 auto;
   color: #c5a967;
 }
+.combat-region-card > .world-art {
+  display: block;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+  border-radius: 5px;
+}
 .combat-region-card.coming-soon > svg:first-child {
   color: #9c9b91;
 }
@@ -6255,6 +6303,13 @@ h3 {
   height: 30px;
   color: #211e1a;
   border-radius: 7px;
+}
+.combat-area-card-icon > .world-art {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
 }
 .combat-area-card.locked .combat-area-card-icon {
   color: #b7c0bd;
@@ -6723,6 +6778,14 @@ h3 {
   width: 100%;
   height: 100%;
   object-fit: contain;
+}
+.combat-portrait .enemy-art,
+.combat-roster-portrait .enemy-art {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border-radius: inherit;
+  font-size: inherit;
 }
 .combat-panel-divider {
   height: 1px;
@@ -10244,6 +10307,13 @@ h3 {
   text-align: left;
   cursor: pointer;
 }
+.mining-node-art {
+  display: block;
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
 .mining-node-select:hover,
 .mining-node-select:focus-visible {
   background: rgba(255, 255, 255, 0.035);
@@ -10322,6 +10392,13 @@ h3 {
 .mining-selected-rock,
 .mining-tool-details {
   min-width: 0;
+}
+.mining-selected-node-art {
+  display: block;
+  width: 86px;
+  height: 86px;
+  margin: 9px 0 4px;
+  object-fit: contain;
 }
 .mining-selected-rock h2,
 .mining-tool-details h2 {

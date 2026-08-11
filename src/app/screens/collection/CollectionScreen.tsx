@@ -17,6 +17,7 @@ import type {
 import { formatNumber } from '../../shared/formatters';
 import { getEquipmentBonusLabel, formatEquipmentBonus } from '../../shared/equipmentView';
 import { ItemIcon } from '../../items/ItemIcon';
+import { EnemyArt } from '../../art/EnemyArt';
 import { ItemTooltip } from '../../items/ItemTooltip';
 import { ProfessionToolDetails } from '../../items/ProfessionToolDetails';
 import { SpecialAttackDetails } from '../../items/SpecialAttackDetails';
@@ -516,7 +517,7 @@ function MonsterCard({
       aria-current={selected ? 'true' : undefined}
       onClick={onSelect}
     >
-      <span className="enemy-art">{discovered ? '◈' : '?'}</span>
+      <EnemyArt enemyId={enemy.id} discovered={discovered} />
       <span>
         <strong>{discovered ? enemy.name : 'Unknown foe'}</strong>
         <small>{discovered ? `Level ${enemy.displayLevel} · ${formatNumber(kills)} kills` : 'Undiscovered'}</small>
@@ -645,7 +646,7 @@ function MonsterCollectionDetails({ enemy, game }: { enemy?: EnemyDefinition; ga
   return (
     <aside className="collection-detail" aria-label={`${enemy.name} details`}>
       <div className="collection-detail-heading">
-        <span className="enemy-art enemy-art-large">◈</span>
+        <EnemyArt enemyId={enemy.id} large />
         <div>
           <span className="eyebrow">Bestiary record</span>
           <h2>{enemy.name}</h2>

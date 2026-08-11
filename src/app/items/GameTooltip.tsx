@@ -15,7 +15,7 @@ import { createPortal } from 'react-dom';
 import { getTooltipPosition, type TooltipPlacement } from './tooltipPosition';
 
 const OPEN_DELAY_MS = 150;
-const CLOSE_DELAY_MS = 80;
+const CLOSE_DELAY_MS = 50;
 let activeTooltipCloser: (() => void) | null = null;
 
 const assignRef = <T,>(ref: Ref<T> | undefined, value: T | null): void => {

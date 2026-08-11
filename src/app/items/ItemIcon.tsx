@@ -12,6 +12,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { itemById } from '../../content/items';
+import { ArtImage } from '../art/ArtImage';
+import { GOLD_ART, ITEM_ART } from '../art/artRegistry';
 
 const iconByKey: Record<string, LucideIcon> = {
   armor: Shirt,
@@ -44,16 +46,21 @@ export function ItemIcon({
       ? (item?.presentation?.iconKey ?? item?.category ?? 'drop')
       : '';
   const Icon = iconByKey[iconKey] ?? CircleHelp;
+  const artSource = gold ? GOLD_ART : discovered && itemId ? ITEM_ART[itemId] : undefined;
   const rarity = item?.rarity ?? 'uncommon';
   return (
     <span
       className={`loot-icon loot-icon-${size} loot-icon-${gold ? 'gold' : (item?.category ?? 'unknown')} loot-rarity-${rarity} ${!discovered ? 'is-hidden' : ''}`}
       aria-hidden="true"
     >
-      <Icon
-        size={size === 'xs' ? 12 : size === 'lg' ? 24 : size === 'md' ? 18 : 15}
-        strokeWidth={1.8}
-      />
+      {artSource ? (
+        <ArtImage src={artSource} alt="" aria-hidden="true" />
+      ) : (
+        <Icon
+          size={size === 'xs' ? 12 : size === 'lg' ? 24 : size === 'md' ? 18 : 15}
+          strokeWidth={1.8}
+        />
+      )}
     </span>
   );
 }

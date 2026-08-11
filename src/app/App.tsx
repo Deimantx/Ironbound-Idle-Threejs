@@ -46,6 +46,8 @@ import { MiningScreen } from './screens/mining/MiningScreen';
 import { SmithingScreen } from './screens/smithing/SmithingScreen';
 import { SettingsScreen } from './screens/settings/SettingsScreen';
 import { HelpScreen } from './screens/help/HelpScreen';
+import { GoldArt } from './art/GoldArt';
+import { NavigationArt } from './art/NavigationArt';
 
 const DebugMenu = import.meta.env.DEV ? lazy(() => import('./debug/DebugMenu')) : null;
 
@@ -295,7 +297,9 @@ function Sidebar({
                   item.locked ? onLocked(item.label, item.description) : onNavigate(item.id)
                 }
               >
-                <span className="nav-icon">{item.icon}</span>
+                <span className="nav-icon">
+                  <NavigationArt screenId={item.id} fallback={item.icon} />
+                </span>
                 <span>{item.label}</span>
                 {item.locked && <span className="lock">⌑</span>}
               </button>
@@ -338,7 +342,7 @@ function Header({
       </div>
       <div className="header-stats">
         <span className="header-stat">
-          Gold <strong>◈ {formatNumber(game.gold)}</strong>
+          Gold <strong><GoldArt /> {formatNumber(game.gold)}</strong>
         </span>
         <span className="header-stat">
           HP{' '}

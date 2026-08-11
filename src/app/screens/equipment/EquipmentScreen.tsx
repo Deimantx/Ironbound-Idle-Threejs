@@ -1,17 +1,6 @@
 import {
-  Circle,
   ChevronDown,
-  Flag,
-  Footprints,
-  Gem,
-  Hand,
-  HardHat,
-  Pickaxe,
-  Shirt,
-  Shield,
   Sparkles,
-  Sword,
-  type LucideIcon,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { itemById } from '../../../content/items';
@@ -47,6 +36,7 @@ import { UiPanelRegionGrid } from '../../ui-editor/UiPanelRegionGrid';
 import { UiPanelRegionSlot } from '../../ui-editor/UiPanelRegionSlot';
 import { ItemTooltip } from '../../items/ItemTooltip';
 import { SpecialAttackDetails } from '../../items/SpecialAttackDetails';
+import { EquipmentSlotArt } from '../../art/EquipmentSlotArt';
 import {
   formatMiningToolSummary,
   formatSmithingToolSummary,
@@ -128,19 +118,6 @@ const formatCombatStatDelta = (id: string, current: number, candidate: number): 
   return `${delta > 0 ? '+' : ''}${delta}`;
 };
 
-const EMPTY_SLOT_ICONS: Record<ActiveEquipmentSlot, LucideIcon> = {
-  head: HardHat,
-  armor: Shirt,
-  gloves: Hand,
-  boots: Footprints,
-  weapon: Sword,
-  offhand: Shield,
-  amulet: Gem,
-  ring: Circle,
-  cape: Flag,
-  tool: Pickaxe,
-};
-
 const CONTENT_BEARING_SLOTS = new Set<ActiveEquipmentSlot>([
   'head',
   'armor',
@@ -183,10 +160,7 @@ function EquipmentSlotCard({
         ) : (
           <>
             <span className="equipment-empty-slot-icon">
-              {(() => {
-                const Icon = EMPTY_SLOT_ICONS[slot];
-                return <Icon size={18} aria-hidden="true" />;
-              })()}
+              <EquipmentSlotArt slot={slot} />
             </span>
             <span className="empty-slot">Empty</span>
           </>
