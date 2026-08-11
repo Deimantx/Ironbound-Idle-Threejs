@@ -42,7 +42,7 @@ export function InventoryItemCard({
       <button
         ref={cardRef}
         type="button"
-        className={`item-card inventory-item-card ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''} ${isDragSource ? 'is-drag-source' : ''} ${dropPosition ? `is-drop-${dropPosition}` : ''}`}
+        className={`item-card inventory-item-card inventory-rarity-${item?.rarity ?? 'uncommon'} ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''} ${isDragSource ? 'is-drag-source' : ''} ${dropPosition ? `is-drop-${dropPosition}` : ''}`}
         onClick={(event) => onSelect(stack.itemId, event)}
         onDragStart={dragEnabled ? (event) => onDragStart?.(event, stack.itemId) : undefined}
         onDragOver={dragEnabled ? (event) => onDragOver?.(event, stack.itemId) : undefined}
@@ -54,7 +54,7 @@ export function InventoryItemCard({
         aria-pressed={selected}
       >
         <span className="inventory-card-art">
-          <ItemIcon itemId={item?.id ?? stack.itemId} size="tile" />
+          <ItemIcon itemId={item?.id ?? stack.itemId} size="tile" framed={false} />
         </span>
         <span className="quantity inventory-card-quantity">×{formatNumber(stack.quantity)}</span>
         {stack.locked && (

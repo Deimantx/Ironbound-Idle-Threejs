@@ -15,7 +15,7 @@ describe('live Inventory preference reset', () => {
     const state = createNewGame(0, 'Preference Tester');
     state.inventory = [
       { itemId: 'iron-ore', quantity: 4, locked: false },
-      { itemId: 'bronze-sword', quantity: 1, locked: false },
+      { itemId: 'iron-sword', quantity: 1, locked: false },
     ];
     useGameStore.getState().setGame(state);
   });
@@ -31,7 +31,7 @@ describe('live Inventory preference reset', () => {
         sortMode: 'name',
         sortDirection: 'desc',
         lastAutoSortMode: 'name',
-        manualOrder: ['bronze-sword', 'iron-ore'],
+        manualOrder: ['iron-sword', 'iron-ore'],
       }),
     );
     window.localStorage.setItem(otherKey, 'preserve-me');

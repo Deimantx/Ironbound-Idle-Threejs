@@ -24,7 +24,7 @@ for (const node of MINING_NODES) {
   collectionItemIds.add(node.primaryRewardItemId);
   for (const drop of node.bonusDrops) collectionItemIds.add(drop.itemId);
 }
-for (const recipe of RECIPES) if (!recipe.legacy) collectionItemIds.add(recipe.outputItemId);
+for (const recipe of RECIPES) collectionItemIds.add(recipe.outputItemId);
 for (const tool of [...MINING_TOOLS, ...SMITHING_TOOLS]) collectionItemIds.add(tool.itemId);
 
 const collectionCombatSourceByItemId = new Map<string, string>();
@@ -55,7 +55,7 @@ for (const node of MINING_NODES) {
   sourceNavigationByItemId.set(node.primaryRewardItemId, { screen: 'mining', label: 'Open Mining' });
   for (const drop of node.bonusDrops) sourceNavigationByItemId.set(drop.itemId, { screen: 'mining', label: 'Open Mining' });
 }
-for (const recipe of RECIPES) if (!recipe.legacy) sourceNavigationByItemId.set(recipe.outputItemId, { screen: 'smithing', label: 'Open Smithing' });
+for (const recipe of RECIPES) sourceNavigationByItemId.set(recipe.outputItemId, { screen: 'smithing', label: 'Open Smithing' });
 
 const collectionEligibleItems = [...new Map(ITEMS.filter((item) => collectionItemIds.has(item.id)).map((item) => [item.id, item])).values()];
 export const getCollectionEligibleItemIds = (): string[] => collectionEligibleItems.map((item) => item.id);

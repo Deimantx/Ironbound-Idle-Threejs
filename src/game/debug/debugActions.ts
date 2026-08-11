@@ -32,7 +32,6 @@ import {
   occupiedSlots,
 } from '../systems/inventorySystem';
 import { ACTIVE_EQUIPMENT_SLOTS, EQUIPMENT_SLOT_LABELS } from '../equipmentSlots';
-import { migrateSave } from '../persistence/migrations';
 import type {
   AreaId,
   CombatStyle,
@@ -1088,23 +1087,6 @@ export const debugApplyPreset = (state: GameState, preset: DebugPresetId): Debug
   };
 };
 
-export const debugMigrateFixture = (state: GameState, fixture: GameState): DebugMutation => {
-  const migrated = migrateSave(fixture, fixture.schemaVersion);
-  const next = {
-    ...migrated,
-    profileId: state.profileId,
-    profileSlot: state.profileSlot,
-    player: { ...migrated.player, name: state.player.name },
-  };
-  return {
-    result: success('Loaded and migrated the fixture into the current profile.', [
-      'Profile identity and name were preserved.',
-    ]),
-    state: normalizeAfterMutation(next),
-    replaceCombatSession: true,
-  };
-};
-
 let debugSaveQueue: Promise<unknown> = Promise.resolve();
 
 export const enqueueDebugSave = (save: () => Promise<boolean>): Promise<boolean> => {
@@ -1133,10 +1115,5 @@ export const createDebugController = (runtime: DebugRuntime) => ({
     return enqueueDebugSave(() => runtime.saveNow());
   },
 });
-
-export const debugActionForState = (
-  state: GameState,
-  operation: (state: GameState) => DebugMutation,
-): DebugMutation => withGame(state, operation);
 
 export const DEBUG_REGISTRIES = { ITEMS, ENEMIES, AREAS, MINING_NODES, RECIPES };

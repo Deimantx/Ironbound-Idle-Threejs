@@ -52,7 +52,7 @@ describe('Home selectors', () => {
     expect(getHomeContinueDestination(game)).toBe('mining');
     game.activeAction = {
       type: 'smithing',
-      recipeId: 'bronze-bar',
+      recipeId: 'iron-bar',
       quantityMode: 'continuous',
       remaining: null,
       progressMs: 0,

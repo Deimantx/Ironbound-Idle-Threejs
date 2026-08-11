@@ -1,24 +1,13 @@
 import { useState } from 'react';
-import {
-  debugActionForState,
-  debugApplyPreset,
-  debugMigrateFixture,
-} from '../../game/debug/debugActions';
-import {
-  createLegacyArmorFixture,
-  createLegacyShieldFixture,
-  previewMigration,
-  validateFixture,
-} from '../../game/debug/debugFixtures';
+import { debugApplyPreset } from '../../game/debug/debugActions';
 import { exportProfile, importProfile } from '../../game/persistence/saveManager';
 import { savePayloadSchema } from '../../game/persistence/saveSchema';
 import { useGameStore } from '../../game/state/gameStore';
 import { DEFAULT_UI_LAYOUT, saveUiLayout } from '../ui-editor/uiLayout';
 import { resetInventoryViewPreferences } from '../shared/inventoryPreferences';
-import { ActionButton, Field, Section } from './DebugComponents';
+import { ActionButton, Section } from './DebugComponents';
 import { createDebugController } from '../../game/debug/debugActions';
 import type { PanelProps } from './debugUiTypes';
-import type { DebugActionResult } from '../../game/debug/debugTypes';
 import type { ScreenId } from '../../game/types';
 
 export function SavesPanel({
@@ -37,9 +26,7 @@ export function SavesPanel({
   onResetAllLayouts?: () => void;
   onResetCurrentScreenLayout?: (screen: ScreenId) => void;
 }) {
-  const [migration, setMigration] = useState<'armor' | 'shield'>('armor');
   const [fixtureFeedback, setFixtureFeedback] = useState<string[]>([]);
-  const fixture = migration === 'armor' ? createLegacyArmorFixture() : createLegacyShieldFixture();
   const downloadExport = async () => {
     const text = await exportProfile(game);
     const link = document.createElement('a');
@@ -188,70 +175,6 @@ export function SavesPanel({
           </ActionButton>
         </div>
       </Section>
-      <Section
-        title="Migration Fixtures"
-        description="Factories return fresh legacy objects. Preview is read-only; Load uses the migration path into the current profile."
-      >
-        <div className="debug-tools-grid">
-          <Field label="Fixture">
-            <select
-              value={migration}
-              onChange={(event) => {
-                setMigration(event.target.value as typeof migration);
-                setFixtureFeedback([]);
-              }}
-            >
-              <option value="armor">Legacy Armor Save</option>
-              <option value="shield">Legacy Shield Save</option>
-            </select>
-          </Field>
-        </div>
-        <div className="debug-tools-preview">
-          <p>
-            <strong>Preview Migration Result</strong>
-          </p>
-          {previewMigration(fixture).map((change) => (
-            <span key={change}>{change}</span>
-          ))}
-        </div>
-        <div className="button-row">
-          <ActionButton onClick={() => setFixtureFeedback([validateFixture(fixture).message])}>
-            Validate Fixture
-          </ActionButton>
-          <ActionButton onClick={() => setFixtureFeedback(previewMigration(fixture))}>
-            Preview Migration Result
-          </ActionButton>
-          <ActionButton
-            danger
-            onClick={() =>
-              confirm(
-                {
-                  title: 'Load legacy fixture?',
-                  message:
-                    'The fixture will be migrated and loaded into the current profile while preserving profile identity.',
-                  confirmLabel: 'Load Fixture',
-                  danger: true,
-                },
-                () => {
-                  const result = controller.execute((state) =>
-                    debugActionForState(state, (current) =>
-                      debugMigrateFixture(
-                        current,
-                        migration === 'armor'
-                          ? createLegacyArmorFixture()
-                          : createLegacyShieldFixture(),
-                      ),
-                    ),
-                  );
-                  return recordExternal(result);
-                },
-              )
-            }
-          >
-            Load Fixture into Current Profile
-          </ActionButton>
-        </div>
-      </Section>
       <Section title="Danger Zone" className="debug-tools-danger-zone">
         <ActionButton
           danger
@@ -273,8 +196,4 @@ export function SavesPanel({
       </Section>
     </>
   );
-  function recordExternal(result: DebugActionResult): DebugActionResult {
-    setFixtureFeedback([result.message]);
-    return result;
-  }
 }

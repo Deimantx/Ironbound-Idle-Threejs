@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIVE_SMITHING_RECIPES, LEGACY_SMITHING_RECIPES, recipeById } from '../content/recipes';
+import { ACTIVE_SMITHING_RECIPES, recipeById } from '../content/recipes';
 import { ITEMS, itemById } from '../content/items';
 import { SMITHING_TOOLS } from '../content/smithingTools';
 import { equipItem } from '../game/systems/equipmentSystem';
@@ -29,7 +29,7 @@ const levelSmithing = (state: GameState, level: number): void => {
 };
 
 describe('Smithing 1.0 content and formulas', () => {
-  it('keeps active Iron/Steel progression separate from legacy Bronze', () => {
+  it('keeps the active Iron/Steel progression free of retired Bronze content', () => {
     expect(recipeById['iron-bar']).toMatchObject({
       level: 1,
       xp: 20,
@@ -42,7 +42,7 @@ describe('Smithing 1.0 content and formulas', () => {
       forgeFuelUnits: 2,
       fuel: { itemId: 'coal', quantity: 2 },
     });
-    expect(LEGACY_SMITHING_RECIPES.every((recipe) => recipe.legacy)).toBe(true);
+    expect(ACTIVE_SMITHING_RECIPES.every((recipe) => !recipe.id.startsWith('bronze-'))).toBe(true);
     expect(ACTIVE_SMITHING_RECIPES.some((recipe) => recipe.id === 'bronze-bar')).toBe(false);
     expect(itemById['iron-smithing-hammer']?.slot).toBe('tool');
     expect(itemById['steel-smithing-hammer']?.slot).toBe('tool');

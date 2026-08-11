@@ -244,12 +244,12 @@ function ItemCard({
   const card = (
     <button
       type="button"
-      className={`collection-card collection-item-card ${!discovered ? 'unknown' : ''} ${selected ? 'selected' : ''}`}
+      className={`collection-card collection-item-card collection-rarity-${item.rarity} ${!discovered ? 'unknown' : ''} ${selected ? 'selected' : ''}`}
       aria-label={discovered ? item.name : 'Unknown item'}
       aria-current={selected ? 'true' : undefined}
       onClick={onSelect}
     >
-      <ItemIcon itemId={item.id} discovered={discovered} size="tile" />
+      <ItemIcon itemId={item.id} discovered={discovered} size="tile" framed={false} />
     </button>
   );
   return <ItemTooltip item={item} disabled={!discovered}>{card}</ItemTooltip>;
@@ -404,7 +404,7 @@ function ItemCollectionDetails({
   return (
     <aside className="collection-detail" aria-label={`${item.name} details`}>
       <div className="collection-detail-heading">
-        <ItemIcon itemId={item.id} size="lg" />
+        <ItemIcon itemId={item.id} size="lg" framed={false} artVariant="equipment-slot" />
         <div>
           <span className="eyebrow">{getCollectionItemCategory(item)}</span>
           <h2>{item.name}</h2>
@@ -642,7 +642,7 @@ function MonsterCollectionDetails({ enemy, game }: { enemy?: EnemyDefinition; ga
   return (
     <aside className="collection-detail" aria-label={`${enemy.name} details`}>
       <div className="collection-detail-heading">
-      <EnemyArt enemyId={enemy.id} variant="detail" large />
+        <EnemyArt enemyId={enemy.id} variant="detail" large />
         <div>
           <span className="eyebrow">Bestiary record</span>
           <h2>{enemy.name}</h2>

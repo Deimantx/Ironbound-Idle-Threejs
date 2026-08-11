@@ -27,7 +27,6 @@ describe('Tauraque Collection Log selectors', () => {
     expect(eligible).toContain('iron-bar');
     expect(eligible).toContain('worn-pickaxe');
     expect(eligible).toContain('redknife-token');
-    expect(eligible).not.toContain('mithril-ore');
     expect(getCollectionEligibleEnemies()).toHaveLength(12);
   });
 

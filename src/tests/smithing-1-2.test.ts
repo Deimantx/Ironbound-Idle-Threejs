@@ -35,7 +35,7 @@ describe('Smithing 1.2 Forge fuel', () => {
     expect(getForgeFuelUnitsRequired(recipeById['iron-bar'])).toBe(1);
     expect(getForgeFuelUnitsRequired(recipeById['steel-bar'])).toBe(2);
     expect(recipeById['bronze-bar']).toBeUndefined();
-    expect(ACTIVE_SMITHING_RECIPES.every((recipe) => !recipe.legacy)).toBe(true);
+    expect(ACTIVE_SMITHING_RECIPES.every((recipe) => !recipe.id.startsWith('bronze-'))).toBe(true);
     expect(
       ACTIVE_SMITHING_RECIPES.every((recipe) => itemById[recipe.outputItemId]?.tier !== 'bronze'),
     ).toBe(true);

@@ -19,11 +19,24 @@ export function EnemyArt({
   const enemyName = enemyById[enemyId]?.name ?? 'Unknown enemy';
   const resolvedVariant = variant ?? (large ? 'detail' : 'roster');
   const defaultScale =
-    resolvedVariant === 'roster' ? 0.82 : resolvedVariant === 'preview' ? 0.88 : 0.92;
+    resolvedVariant === 'roster'
+      ? 0.78
+      : resolvedVariant === 'preview'
+        ? 0.94
+        : resolvedVariant === 'detail'
+          ? 1.08
+          : 1.16;
+  const artVariant = `enemy-${resolvedVariant}` as const;
   return (
     <span className={`enemy-art enemy-art-${resolvedVariant} ${large ? 'enemy-art-detail' : ''} ${className}`.trim()}>
       {source ? (
-        <ArtImage asset={source} defaultScale={defaultScale} alt="" aria-hidden="true" />
+        <ArtImage
+          asset={source}
+          defaultScale={defaultScale}
+          variant={artVariant}
+          alt=""
+          aria-hidden="true"
+        />
       ) : (
         <span aria-hidden="true">?</span>
       )}

@@ -78,7 +78,8 @@ describe('Offline Report 2.0', () => {
     smithingSummary.itemsGained = { 'bronze-bar': 3 };
     smithingSummary.xpGained = { smithing: 72 };
     render(<OfflineModal game={smithing} summary={smithingSummary} onClose={() => undefined} />);
-    expect(screen.getAllByText('Bronze Bar').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Retired Smithing Recipe').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Retired item').length).toBeGreaterThan(0);
     expect(screen.getByText('+72')).toBeInTheDocument();
     expect(screen.queryByText('foes defeated')).not.toBeInTheDocument();
   });

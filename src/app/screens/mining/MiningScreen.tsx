@@ -25,7 +25,6 @@ import type {
   ScreenId,
 } from '../../../game/types';
 import { getItemQuantity } from '../../../game/systems/inventorySystem';
-import { ThreeScene } from '../../../three/ThreeScene';
 import { formatDropChance, formatNumber } from '../../shared/formatters';
 import { ItemIcon } from '../../items/ItemIcon';
 import { MiningNodeArt } from '../../art/MiningNodeArt';
@@ -342,11 +341,9 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 layout={uiLayout}
                 className="mining-overview-scene-region"
               >
-                <ThreeScene
-                  screen="mining"
-                  settings={game.settings}
-                  miningTheme={activeDisplayNode.theme}
-                  miningStage={activeDisplayRuntime.stageIndex}
+                <MiningNodeArt
+                  nodeId={activeDisplayNode.id}
+                  className="mining-overview-node-art"
                 />
               </UiPanelRegionSlot>
               <UiPanelRegionSlot

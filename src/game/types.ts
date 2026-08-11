@@ -334,7 +334,6 @@ export interface RecipeDefinition {
   outputQuantity: number;
   xp: number;
   description: string;
-  legacy?: boolean;
   forgeFuelUnits?: number;
   /** @deprecated Use forgeFuelUnits with the Forge hopper. */
   fuel?: { itemId: string; quantity: number };

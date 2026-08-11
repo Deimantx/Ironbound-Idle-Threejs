@@ -1,19 +1,15 @@
 import type { RecipeDefinition } from '../game/types';
 import { getSmithingXpPerBar } from '../config/smithingTuning';
 
-const smithingRecipe = (
-  recipe: Omit<RecipeDefinition, 'legacy'> & { legacy?: boolean },
-): RecipeDefinition => recipe;
+const smithingRecipe = (recipe: RecipeDefinition): RecipeDefinition => recipe;
 
 const forgeRecipe = (
-  tier: 'bronze' | 'iron' | 'steel',
+  tier: 'iron' | 'steel',
   item: string,
   name: string,
   level: number,
   bars: number,
   intervalMs: number,
-  legacy = false,
-  legacyXp = 0,
 ): RecipeDefinition =>
   smithingRecipe({
     id: `${tier}-${item}`,
@@ -24,29 +20,11 @@ const forgeRecipe = (
     inputs: [{ itemId: `${tier}-bar`, quantity: bars }],
     outputItemId: `${tier}-${item}`,
     outputQuantity: 1,
-    xp: tier === 'bronze' ? legacyXp : bars * getSmithingXpPerBar(tier),
+    xp: bars * getSmithingXpPerBar(tier),
     description: `Forge a ${tier} ${name.toLowerCase()} from prepared bars.`,
-    legacy,
   });
 
-const ALL_RECIPES: RecipeDefinition[] = [
-  // Bronze remains valid for old inventories and active old saves, but is no longer normal progression.
-  smithingRecipe({
-    id: 'bronze-bar',
-    name: 'Bronze Bar',
-    category: 'smelting',
-    level: 1,
-    intervalMs: 2400,
-    inputs: [
-      { itemId: 'copper-ore', quantity: 1 },
-      { itemId: 'tin-ore', quantity: 1 },
-    ],
-    outputItemId: 'bronze-bar',
-    outputQuantity: 1,
-    xp: 24,
-    description: 'Blend copper and tin into a durable alloy.',
-    legacy: true,
-  }),
+export const RECIPES: RecipeDefinition[] = [
   smithingRecipe({
     id: 'iron-bar',
     name: 'Iron Bar',
@@ -75,12 +53,6 @@ const ALL_RECIPES: RecipeDefinition[] = [
     forgeFuelUnits: 2,
     fuel: { itemId: 'coal', quantity: 2 },
   }),
-  // Legacy Bronze equipment recipes retain their historical IDs and balance.
-  forgeRecipe('bronze', 'sword', 'Bronze Sword', 1, 3, 2800, true, 30),
-  forgeRecipe('bronze', 'helmet', 'Bronze Helm', 3, 2, 2800, true, 34),
-  forgeRecipe('bronze', 'armor', 'Bronze Armor', 6, 9, 5600, true, 78),
-  forgeRecipe('bronze', 'shield', 'Bronze Buckler', 4, 4, 2800, true, 38),
-  forgeRecipe('bronze', 'pickaxe', 'Bronze Pick', 8, 4, 2800, true, 42),
   // Active Iron progression.
   forgeRecipe('iron', 'sword', 'Iron Sword', 15, 4, 4200),
   forgeRecipe('iron', 'helmet', 'Iron Helm', 17, 3, 4200),
@@ -97,15 +69,10 @@ const ALL_RECIPES: RecipeDefinition[] = [
   forgeRecipe('steel', 'pickaxe', 'Steel Pick', 37, 6, 6000),
 ];
 
-export const ACTIVE_SMITHING_RECIPES = ALL_RECIPES.filter((recipe) => !recipe.legacy);
-export const LEGACY_SMITHING_RECIPES = ALL_RECIPES.filter((recipe) => recipe.legacy);
-export const RECIPES = ACTIVE_SMITHING_RECIPES;
+export const ACTIVE_SMITHING_RECIPES = RECIPES;
 export const recipeById = Object.fromEntries(RECIPES.map((recipe) => [recipe.id, recipe]));
 
 export const getSmithingRecipesForCategory = (
   category: RecipeDefinition['category'],
-  includeLegacy = false,
 ): RecipeDefinition[] =>
-  (includeLegacy ? ALL_RECIPES : RECIPES).filter(
-    (recipe) => recipe.category === category && (includeLegacy || !recipe.legacy),
-  );
+  RECIPES.filter((recipe) => recipe.category === category);

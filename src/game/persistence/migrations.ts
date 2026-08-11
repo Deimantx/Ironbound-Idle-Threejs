@@ -3,9 +3,7 @@ import { COMBAT_TUNING } from '../../config/combatTuning';
 import { enemyById } from '../../content/enemies';
 import { combatEffectById } from '../../content/combatEffects';
 import { itemById } from '../../content/items';
-import { legacyItemById, RETIRED_PROFESSION_ITEM_IDS } from '../../content/legacyItems';
 import { recipeById } from '../../content/recipes';
-import { legacyRecipeById } from '../../content/legacyRecipes';
 import { createCombatRng } from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
 import { clampHealth } from '../systems/healthSystem';
@@ -42,6 +40,7 @@ import type {
   MilestoneLogEntry,
   SkillId,
 } from '../types';
+import { RETIRED_ITEM_IDS, RETIRED_RECIPE_IDS } from './retiredContent';
 
 const LEGACY_MINING_NODE_MAP: Record<string, 'stone-outcrop' | null> = {
   'copper-vein': 'stone-outcrop',
@@ -51,7 +50,7 @@ const LEGACY_MINING_NODE_MAP: Record<string, 'stone-outcrop' | null> = {
 
 export type SaveMigration = (input: GameState) => GameState;
 
-const migrationItemById = { ...legacyItemById, ...itemById };
+const migrationItemById = itemById;
 
 export const LEGACY_ARMOR_ITEM_MAP: Record<string, string> = {
   'bronze-platebody': 'bronze-armor',
@@ -214,6 +213,9 @@ const getMigratedArmorId = (itemId: unknown): string | null => {
   return migrationItemById[mapped]?.slot === 'armor' ? mapped : null;
 };
 
+const isRetiredMigrationEquipment = (itemId: unknown): itemId is string =>
+  typeof itemId === 'string' && RETIRED_ITEM_IDS.has(itemId);
+
 const getTierRank = (itemId: string): number => {
   const tier = migrationItemById[itemId]?.tier;
   return tier === 'steel' ? 3 : tier === 'iron' ? 2 : tier === 'bronze' ? 1 : 0;
@@ -271,6 +273,8 @@ const migrateEquipment = (
   const existingArmor =
     typeof legacy.armor === 'string' && migrationItemById[legacy.armor]?.slot === 'armor'
       ? legacy.armor
+      : isRetiredMigrationEquipment(legacy.armor)
+        ? legacy.armor
       : undefined;
   for (const source of ['body', 'legs'] as const) {
     const value = legacy[source];
@@ -324,7 +328,7 @@ const migrateActiveSmithing = (input: GameState): GameState['activeAction'] => {
   const recipeId = LEGACY_ARMOR_RECIPE_MAP[input.activeAction.recipeId];
   if (!recipeId) return input.activeAction;
   const interval =
-    (recipeById[recipeId] ?? legacyRecipeById[recipeId])?.intervalMs ??
+    recipeById[recipeId]?.intervalMs ??
     input.activeAction.progressMs + 1;
   const progressMs = Number.isFinite(input.activeAction.progressMs)
     ? Math.max(0, Math.min(interval - 1, input.activeAction.progressMs))
@@ -353,6 +357,9 @@ const migrateEquipmentAndClampHealth = (input: GameState): GameState => {
 const isValidOffhandItem = (itemId: unknown): itemId is string =>
   typeof itemId === 'string' && migrationItemById[itemId]?.slot === 'offhand';
 
+const isMigratedOffhandValue = (itemId: unknown): itemId is string =>
+  isValidOffhandItem(itemId) || isRetiredMigrationEquipment(itemId);
+
 const migrateShieldSlot = (input: GameState): GameState => {
   const legacy = input.equipment as Record<string, unknown>;
   const inventory = input.inventory.slice();
@@ -364,10 +371,10 @@ const migrateShieldSlot = (input: GameState): GameState => {
     if (typeof itemId === 'string') nextEquipment[slot as keyof GameState['equipment']] = itemId;
   }
 
-  if (isValidOffhandItem(legacy.offhand)) nextEquipment.offhand = legacy.offhand;
+  if (isMigratedOffhandValue(legacy.offhand)) nextEquipment.offhand = legacy.offhand;
   else if (typeof legacy.offhand === 'string') invalidOffhandIds.push(legacy.offhand);
 
-  if (isValidOffhandItem(legacy.shield)) {
+  if (isMigratedOffhandValue(legacy.shield)) {
     if (nextEquipment.offhand) mergeMigratedStack(inventory, legacy.shield, 1, false);
     else nextEquipment.offhand = legacy.shield;
   } else if (typeof legacy.shield === 'string') {
@@ -538,7 +545,7 @@ const migrateSmithing = (input: GameState): GameState => {
   );
   let activeAction = input.activeAction;
   if (activeAction.type === 'smithing') {
-    const recipe = recipeById[activeAction.recipeId] ?? legacyRecipeById[activeAction.recipeId];
+    const recipe = recipeById[activeAction.recipeId];
     const quantityMode =
       activeAction.quantityMode === 1 ||
       activeAction.quantityMode === 10 ||
@@ -549,7 +556,11 @@ const migrateSmithing = (input: GameState): GameState => {
     const remaining =
       quantityMode === 'continuous'
         ? null
-        : quantityMode === 'all' && activeAction.remaining === null
+        : !recipe
+          ? quantityMode === 'all'
+            ? 0
+            : quantityMode
+          : quantityMode === 'all' && activeAction.remaining === null
           ? getSmithingMaxCraftable({ ...input, smithing }, recipe)
           : quantityMode === 'all'
             ? Math.max(0, Math.floor(activeAction.remaining ?? 0))
@@ -729,16 +740,16 @@ const migrateTauraqueContentReset = (input: GameState): GameState => {
 };
 
 const migrateRetiredProfessionContent = (input: GameState): GameState => {
-  const inventory = input.inventory.filter((stack) => !RETIRED_PROFESSION_ITEM_IDS.has(stack.itemId));
+  const inventory = input.inventory.filter((stack) => !RETIRED_ITEM_IDS.has(stack.itemId));
   const discoveredItems = input.discoveredItems.filter(
-    (itemId) => !RETIRED_PROFESSION_ITEM_IDS.has(itemId),
+    (itemId) => !RETIRED_ITEM_IDS.has(itemId),
   );
   const equipment = { ...input.equipment };
   const retiredToolWasEquipped = equipment.tool
-    ? RETIRED_PROFESSION_ITEM_IDS.has(equipment.tool)
+    ? RETIRED_ITEM_IDS.has(equipment.tool)
     : false;
   for (const [slot, itemId] of Object.entries(equipment)) {
-    if (itemId && RETIRED_PROFESSION_ITEM_IDS.has(itemId))
+    if (itemId && RETIRED_ITEM_IDS.has(itemId))
       delete equipment[slot as keyof GameState['equipment']];
   }
   if (retiredToolWasEquipped) {
@@ -747,7 +758,7 @@ const migrateRetiredProfessionContent = (input: GameState): GameState => {
   }
 
   const activeAction =
-    input.activeAction.type === 'smithing' && legacyRecipeById[input.activeAction.recipeId]
+    input.activeAction.type === 'smithing' && RETIRED_RECIPE_IDS.has(input.activeAction.recipeId)
       ? { type: 'none' as const }
       : input.activeAction;
 

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ITEM_ART, ENEMY_ART } from '../app/art/artRegistry';
 import { getCollectionEligibleItemIds } from '../app/screens/collection/collectionSelectors';
 import { ITEMS, itemById } from '../content/items';
-import { RETIRED_PROFESSION_ITEM_IDS } from '../content/legacyItems';
+import { RETIRED_ITEM_IDS, RETIRED_RECIPE_IDS } from '../game/persistence/retiredContent';
 import { ACTIVE_SMITHING_RECIPES, recipeById } from '../content/recipes';
 import { MINING_TOOLS, miningToolByItemId } from '../content/miningTools';
 import { createNewGame } from '../game/state/initialState';
@@ -12,13 +12,13 @@ import type { GameState } from '../game/types';
 
 describe('retired profession content', () => {
   it('keeps retired item IDs out of active registries and collection eligibility', () => {
-    for (const itemId of RETIRED_PROFESSION_ITEM_IDS) {
+    for (const itemId of RETIRED_ITEM_IDS) {
       expect(itemById[itemId]).toBeUndefined();
       expect(getCollectionEligibleItemIds()).not.toContain(itemId);
     }
     expect(ITEMS).not.toEqual(expect.arrayContaining([{ id: 'copper-ore' }]));
-    expect(recipeById['bronze-bar']).toBeUndefined();
-    expect(ACTIVE_SMITHING_RECIPES.some((recipe) => recipe.legacy)).toBe(false);
+    for (const recipeId of RETIRED_RECIPE_IDS) expect(recipeById[recipeId]).toBeUndefined();
+    expect(ACTIVE_SMITHING_RECIPES.every((recipe) => !recipe.id.startsWith('bronze-'))).toBe(true);
     expect(miningToolByItemId['bronze-pickaxe']).toBeUndefined();
     expect(MINING_TOOLS.map((tool) => tool.itemId)).toEqual([
       'worn-pickaxe',
@@ -32,10 +32,10 @@ describe('retired profession content', () => {
     expect(debugAddItem(state, 'copper-ore', 1).result.ok).toBe(false);
 
     const filled = debugFillInventory(state).state;
-    expect(filled?.inventory.some((stack) => RETIRED_PROFESSION_ITEM_IDS.has(stack.itemId))).toBe(false);
+    expect(filled?.inventory.some((stack) => RETIRED_ITEM_IDS.has(stack.itemId))).toBe(false);
 
     const discovered = debugDiscoverAllItems(state).state;
-    expect(discovered?.discoveredItems.some((itemId) => RETIRED_PROFESSION_ITEM_IDS.has(itemId))).toBe(false);
+    expect(discovered?.discoveredItems.some((itemId) => RETIRED_ITEM_IDS.has(itemId))).toBe(false);
   });
 
   it('sanitizes version 16 retired stacks, equipment, discoveries, and work', () => {

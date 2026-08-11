@@ -11831,3 +11831,224 @@ h3 {
     text-align: left;
   }
 }
+
+/* Art presentation pass: outer surfaces own the frame; artwork owns only its viewport. */
+.item-art {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  color: inherit;
+}
+.item-art img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.item-art-xs {
+  width: 21px;
+  height: 21px;
+}
+.item-art-sm {
+  width: 34px;
+  height: 34px;
+}
+.item-art-md {
+  width: 46px;
+  height: 46px;
+}
+.item-art-lg {
+  width: 56px;
+  height: 56px;
+}
+.item-art-tile {
+  width: 76px;
+  height: 76px;
+}
+
+.inventory-bank-grid {
+  grid-template-columns: repeat(auto-fill, minmax(92px, 92px));
+}
+.inventory-item-card {
+  width: 92px;
+  height: 92px;
+  min-height: 92px;
+  padding: 7px;
+}
+.inventory-card-art {
+  width: 76px;
+  height: 76px;
+}
+.inventory-item-card.inventory-rarity-common {
+  border-color: #7b8780;
+  box-shadow: inset 0 0 0 1px rgba(123, 135, 128, 0.26);
+}
+.inventory-item-card.inventory-rarity-uncommon {
+  border-color: #7bb18b;
+  box-shadow: inset 0 0 0 1px rgba(123, 177, 139, 0.28);
+}
+.inventory-item-card.inventory-rarity-rare {
+  border-color: #7daed2;
+  box-shadow: inset 0 0 0 1px rgba(125, 174, 210, 0.32);
+}
+.inventory-item-card.inventory-rarity-epic {
+  border-color: #ce92e0;
+  box-shadow: inset 0 0 0 1px rgba(206, 146, 224, 0.34);
+}
+
+.collection-item-grid {
+  grid-template-columns: repeat(auto-fill, minmax(92px, 92px));
+}
+.collection-item-card {
+  width: 92px;
+  height: 92px;
+  min-height: 92px;
+  padding: 7px;
+  overflow: hidden;
+}
+.collection-item-card.collection-rarity-common {
+  border-color: #7b8780;
+}
+.collection-item-card.collection-rarity-uncommon {
+  border-color: #7bb18b;
+}
+.collection-item-card.collection-rarity-rare {
+  border-color: #7daed2;
+}
+.collection-item-card.collection-rarity-epic {
+  border-color: #ce92e0;
+}
+.collection-item-card .item-art-tile {
+  width: 76px;
+  height: 76px;
+}
+.collection-item-card.selected {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 36%, transparent);
+}
+.inventory-item-card.is-selected {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(224, 189, 111, 0.38);
+}
+
+.equipment-item-icon {
+  min-height: 56px;
+}
+.equipment-slot-card .item-art-lg,
+.equipment-item-summary-heading .item-art-lg {
+  width: 56px;
+  height: 56px;
+}
+
+.enemy-art {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+  overflow: visible;
+  color: var(--gold);
+  background: transparent;
+  border-radius: 0;
+  font-size: 22px;
+}
+.enemy-art > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.enemy-art > span:not(.sr-only) {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  place-items: center;
+}
+.enemy-art-detail {
+  flex: 0 0 100px;
+  width: 100px;
+  height: 112px;
+  overflow: visible;
+  background: transparent;
+}
+.collection-monster-grid .collection-card {
+  min-height: 92px;
+}
+.collection-monster-grid .enemy-art {
+  flex: 0 0 68px;
+  width: 68px;
+  height: 76px;
+  overflow: hidden;
+}
+
+.combat-roster-portrait {
+  width: 66px;
+  height: 74px;
+  flex-basis: 66px;
+}
+.combat-portrait {
+  flex-basis: 92px;
+  width: 92px;
+  height: 96px;
+}
+.combat-portrait-large {
+  flex-basis: 112px;
+  width: 112px;
+  height: 122px;
+}
+.combat-analysis-target .combat-portrait {
+  flex-basis: 92px;
+  width: 92px;
+  height: 96px;
+}
+
+.mining-overview-scene-region {
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 50% 44%, rgba(126, 143, 143, 0.2), transparent 53%),
+    var(--ui-panel-color, var(--panel));
+}
+.mining-overview-node-art {
+  display: block;
+  width: min(150px, 60%);
+  height: min(150px, 60%);
+  object-fit: contain;
+  filter: drop-shadow(0 12px 14px rgba(0, 0, 0, 0.38));
+}
+
+@media (max-width: 900px) {
+  .inventory-bank-grid,
+  .collection-item-grid {
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  }
+  .inventory-item-card,
+  .collection-item-card {
+    width: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .combat-portrait {
+    flex-basis: 84px;
+    width: 84px;
+    height: 88px;
+  }
+  .combat-portrait-large {
+    flex-basis: 96px;
+    width: 96px;
+    height: 104px;
+  }
+  .combat-analysis-target .combat-portrait {
+    flex-basis: 84px;
+    width: 84px;
+    height: 88px;
+  }
+  .mining-overview-node-art {
+    width: 120px;
+    height: 120px;
+  }
+}

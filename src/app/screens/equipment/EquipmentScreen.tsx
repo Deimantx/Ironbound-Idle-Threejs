@@ -78,7 +78,12 @@ function ItemSummary({
       aria-label={item ? `${heading}: ${item.name}` : undefined}
     >
       <div className="equipment-item-summary-heading">
-        <ItemIcon itemId={item?.id ?? itemId} size="md" />
+        <ItemIcon
+          itemId={item?.id ?? itemId}
+          size="lg"
+          framed={false}
+          artVariant="equipment-slot"
+        />
         <div className="equipment-item-summary-title">
           <div className="eyebrow">{heading}</div>
           <strong>{item?.name ?? (itemId ? 'Unknown item' : 'Empty')}</strong>
@@ -153,7 +158,7 @@ function EquipmentSlotCard({
         {item ? (
           <>
             <span className="equipment-item-icon">
-              <ItemIcon itemId={item.id} size="md" />
+              <ItemIcon itemId={item.id} size="lg" framed={false} artVariant="equipment-slot" />
             </span>
             <small>{item.name}</small>
           </>

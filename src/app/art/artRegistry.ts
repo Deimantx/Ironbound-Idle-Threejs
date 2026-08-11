@@ -98,19 +98,35 @@ import brambletoothCamp from '../../Assets/Art/World/Areas/brambletooth-camp.png
 import greyfangPastures from '../../Assets/Art/World/Areas/greyfang-pastures.png';
 import redknifeRoadCamp from '../../Assets/Art/World/Areas/redknife-road-camp.png';
 
-export interface ArtAsset {
-  src: string;
-  /** Visual scale inside its frame. This is presentation metadata, not gameplay data. */
+export type ArtVariant =
+  | 'item-small'
+  | 'item-tile'
+  | 'equipment-slot'
+  | 'enemy-roster'
+  | 'enemy-preview'
+  | 'enemy-detail'
+  | 'enemy-arena';
+
+export interface ArtTransform {
+  /** Visual scale inside its viewport. */
   scale?: number;
-  /** Translation in percentage points inside the frame. */
+  /** Translation in percentage points inside the viewport. */
   x?: number;
   y?: number;
   objectPosition?: string;
 }
 
-const itemArt = (src: string, presentation: Omit<ArtAsset, 'src'> = {}): ArtAsset => ({
+export interface ArtAsset {
+  src: string;
+  /** Source-specific correction applied before the presentation context. */
+  base?: ArtTransform;
+  /** Optional correction for a particular presentation context. */
+  variants?: Partial<Record<ArtVariant, ArtTransform>>;
+}
+
+const itemArt = (src: string, base: ArtTransform = {}): ArtAsset => ({
   src,
-  ...presentation,
+  base,
 });
 
 export type ArtSource = string;
@@ -142,14 +158,14 @@ export const ITEM_ART: Record<string, ArtAsset> = {
   'iron-ore': itemArt(ironOre),
   coal: itemArt(coal),
   'worn-pickaxe': itemArt(wornPickaxe, { scale: 0.9 }),
-  'iron-pickaxe': itemArt(ironPickaxe),
-  'steel-pickaxe': itemArt(steelPickaxe),
-  'iron-smithing-hammer': itemArt(ironSmithingHammer),
-  'steel-smithing-hammer': itemArt(steelSmithingHammer),
+  'iron-pickaxe': itemArt(ironPickaxe, { scale: 0.86 }),
+  'steel-pickaxe': itemArt(steelPickaxe, { scale: 0.84 }),
+  'iron-smithing-hammer': itemArt(ironSmithingHammer, { scale: 0.86 }),
+  'steel-smithing-hammer': itemArt(steelSmithingHammer, { scale: 0.9 }),
   'iron-bar': itemArt(ironBar),
   'steel-bar': itemArt(steelBar),
-  'iron-sword': itemArt(ironSword),
-  'steel-sword': itemArt(steelSword),
+  'iron-sword': itemArt(ironSword, { scale: 0.92 }),
+  'steel-sword': itemArt(steelSword, { scale: 0.86 }),
   'iron-helmet': itemArt(ironHelmet),
   'steel-helmet': itemArt(steelHelmet),
   'iron-armor': itemArt(ironArmor, { scale: 0.82 }),
