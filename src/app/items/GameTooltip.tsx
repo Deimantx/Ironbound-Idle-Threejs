@@ -191,6 +191,7 @@ export function GameTooltip({
               id={tooltipId.current}
               role="tooltip"
               className="game-tooltip"
+              data-ui-inspector-ignore
               data-placement={position.placement}
               style={{
                 top: position.top,

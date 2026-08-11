@@ -174,7 +174,7 @@ export function UiInspector({ active, onDeactivate }: { active: boolean; onDeact
   const rows = target ? getUiInspectorDisplayRows(target) : [];
 
   return (
-    <div className="ui-inspector-layer" data-ui-inspector-ignore aria-hidden="true">
+    <div className="ui-inspector-layer" data-ui-inspector-ignore>
       {target && (
         <>
           <div

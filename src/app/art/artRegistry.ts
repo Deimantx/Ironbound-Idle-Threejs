@@ -12,7 +12,9 @@ import traceOfNature from '../../Assets/Art/Items/Materials/trace-of-nature.png'
 import blackStone from '../../Assets/Art/Items/Materials/black-stone.png';
 import leatherScraps from '../../Assets/Art/Items/Materials/leather-scraps.png';
 import ironMetalScraps from '../../Assets/Art/Items/Materials/iron-metal-scraps.png';
+import roughLeather from '../../Assets/Art/Items/Materials/rough-leather.png';
 import wolfPelt from '../../Assets/Art/Items/Materials/wolf-pelt.png';
+import wolfFang from '../../Assets/Art/Items/Materials/wolf-fang.png';
 import vialOfWolfBlood from '../../Assets/Art/Items/Materials/vial-of-wolf-blood.png';
 import ironBar from '../../Assets/Art/Items/Materials/iron-bar.png';
 import steelBar from '../../Assets/Art/Items/Materials/steel-bar.png';
@@ -20,12 +22,18 @@ import steelBar from '../../Assets/Art/Items/Materials/steel-bar.png';
 import magicCrystalBox from '../../Assets/Art/Items/Drops/magic-crystal-box.png';
 import smallCoinPouch from '../../Assets/Art/Items/Drops/small-coin-pouch.png';
 import stalkersClaw from '../../Assets/Art/Items/Drops/stalkers-claw.png';
+import greyfangTrophy from '../../Assets/Art/Items/Drops/greyfang-trophy.png';
+import ravagerFang from '../../Assets/Art/Items/Drops/ravager-fang.png';
 
 import lookoutsSapphireRing from '../../Assets/Art/Items/Equipment/lookouts-sapphire-ring.png';
 import redknifeCape from '../../Assets/Art/Items/Equipment/redknife-cape.png';
 import redknifeHuntingBow from '../../Assets/Art/Items/Equipment/redknife-hunting-bow.png';
 import redknifeReinforcedGreatsword from '../../Assets/Art/Items/Equipment/redknife-reinforced-greatsword.png';
 import pristineWolfPelt from '../../Assets/Art/Items/Equipment/pristine-wolf-pelt.png';
+import boarhandlersHarness from '../../Assets/Art/Items/Equipment/boarhandlers-harness.png';
+import jaggedGoblinSpear from '../../Assets/Art/Items/Equipment/jagged-goblin-spear.png';
+import scavengersDagger from '../../Assets/Art/Items/Equipment/scavengers-dagger.png';
+import trappersKnife from '../../Assets/Art/Items/Equipment/trappers-knife.png';
 import ironSword from '../../Assets/Art/Items/Equipment/iron-sword.png';
 import steelSword from '../../Assets/Art/Items/Equipment/steel-sword.png';
 import ironHelmet from '../../Assets/Art/Items/Equipment/iron-helmet.png';
@@ -168,6 +176,14 @@ export const ITEM_ART: Record<string, ArtAsset> = {
   'stalkers-claw': itemArt(stalkersClaw),
   'leather-scraps': itemArt(leatherScraps, {}, collectionOnly(0.86)),
   'iron-metal-scraps': itemArt(ironMetalScraps, {}, collectionOnly(0.86)),
+  'rough-leather': itemArt(roughLeather),
+  'wolf-fang': itemArt(wolfFang),
+  'greyfang-trophy': itemArt(greyfangTrophy),
+  'ravager-fang': itemArt(ravagerFang),
+  'boarhandlers-harness': itemArt(boarhandlersHarness),
+  'jagged-goblin-spear': itemArt(jaggedGoblinSpear),
+  'scavengers-dagger': itemArt(scavengersDagger),
+  'trappers-knife': itemArt(trappersKnife),
   'redknife-reinforced-greatsword': itemArt(redknifeReinforcedGreatsword, { scale: 0.8 }, collectionOnly(0.9)),
   'redknife-cape': itemArt(redknifeCape, {}, collectionOnly(0.84)),
   'wolf-pelt': itemArt(wolfPelt, {}, collectionOnly(0.88)),

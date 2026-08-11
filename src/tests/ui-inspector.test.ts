@@ -9,6 +9,7 @@ import {
   saveUiInspectorPreferences,
   UI_INSPECTOR_PREFERENCES_KEY,
 } from '../app/debug/ui-inspector/uiInspectorPreferences';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('UI Inspector preferences', () => {
   beforeEach(() => window.localStorage.clear());

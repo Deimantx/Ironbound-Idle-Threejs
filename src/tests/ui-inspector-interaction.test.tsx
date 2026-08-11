@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useState } from 'react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { UiInspector } from '../app/debug/ui-inspector/UiInspector';
 
 describe('UI Inspector interaction safety', () => {
@@ -55,6 +56,20 @@ describe('UI Inspector interaction safety', () => {
 
     render(<Harness />);
     fireEvent.keyDown(document, { key: 'Escape' });
+    expect(document.querySelector('.ui-inspector-layer')).not.toBeInTheDocument();
+  });
+
+  it('does not install inspection behavior while inactive', () => {
+    const gameClick = vi.fn();
+    render(<UiInspector active={false} onDeactivate={vi.fn()} />);
+    const button = document.createElement('button');
+    button.textContent = 'Normal action';
+    button.addEventListener('click', gameClick);
+    document.body.appendChild(button);
+
+    fireEvent.click(button);
+
+    expect(gameClick).toHaveBeenCalledOnce();
     expect(document.querySelector('.ui-inspector-layer')).not.toBeInTheDocument();
   });
 });
