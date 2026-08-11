@@ -12,7 +12,7 @@ export function EnemyArt({
   enemyId: string;
   discovered?: boolean;
   large?: boolean;
-  variant?: 'roster' | 'preview' | 'detail' | 'arena';
+  variant?: 'roster' | 'target' | 'preview' | 'detail' | 'arena';
   className?: string;
 }) {
   const source = discovered ? ENEMY_ART[enemyId] : undefined;
@@ -21,11 +21,13 @@ export function EnemyArt({
   const defaultScale =
     resolvedVariant === 'roster'
       ? 0.78
-      : resolvedVariant === 'preview'
+      : resolvedVariant === 'target'
         ? 0.94
-        : resolvedVariant === 'detail'
-          ? 1.08
-          : 1.16;
+        : resolvedVariant === 'preview'
+          ? 0.94
+          : resolvedVariant === 'detail'
+            ? 1.08
+            : 1.16;
   const artVariant = `enemy-${resolvedVariant}` as const;
   return (
     <span className={`enemy-art enemy-art-${resolvedVariant} ${large ? 'enemy-art-detail' : ''} ${className}`.trim()}>

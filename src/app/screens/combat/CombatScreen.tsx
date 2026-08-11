@@ -70,7 +70,6 @@ import type {
 } from '../../../game/types';
 import type { ConfirmDialogOptions } from '../../components/ConfirmDialog';
 import { ItemCompactIcon } from '../../items/ItemCompactIcon';
-import { EnemyArt } from '../../art/EnemyArt';
 import { WorldArt } from '../../art/WorldArt';
 import { AREA_ART, REGION_ART, SUB_REGION_ART } from '../../art/artRegistry';
 import { ItemTooltip } from '../../items/ItemTooltip';
@@ -88,6 +87,7 @@ import { UiPanelRegionSlot } from '../../ui-editor/UiPanelRegionSlot';
 import { getCombatLogPresentation } from './combatLogPresentation';
 import { formatHealth } from '../../shared/formatters';
 import { getActualDps, getActualKillsPerHour } from './sessionMetrics';
+import { CombatTargetPortrait } from './CombatTargetPortrait';
 import { SpecialAttackDetails } from '../../items/SpecialAttackDetails';
 import { COMBAT_TUNING } from '../../../config/combatTuning';
 import { formatDamageRange } from '../../combat/combatPresentation';
@@ -253,29 +253,6 @@ function StatLine({
         {concept ? <ExplainedTerm concept={concept} label={label} showHelpIcon={showHelpIcons} /> : label}
       </span>
       <strong className="ui-stat-compact combat-stat-value">{value}</strong>
-    </div>
-  );
-}
-
-function CombatPortrait({
-  enemy,
-  large = false,
-  targetPreview = false,
-  ariaLabel,
-}: {
-  enemy: EnemyDefinition;
-  large?: boolean;
-  targetPreview?: boolean;
-  ariaLabel?: string;
-}) {
-  const variant = targetPreview ? 'preview' : large ? 'arena' : 'preview';
-  return (
-    <div
-      className={`combat-portrait theme-${enemy.theme} ${large ? 'combat-portrait-large' : ''} ${targetPreview ? 'combat-portrait-target-preview' : ''}`}
-      role="img"
-      aria-label={ariaLabel ?? `${enemy.name} portrait`}
-    >
-      <EnemyArt enemyId={enemy.id} variant={variant} large={large && !targetPreview} />
     </div>
   );
 }
@@ -494,7 +471,11 @@ function EnemySummaryPanel({
       <div className="combat-panel-heading">
         <div className="combat-panel-kicker">Enemy</div>
         <div className="combat-enemy-heading-line">
-          <CombatPortrait enemy={enemy} large ariaLabel={`${enemy.name} target preview`} />
+          <CombatTargetPortrait
+            enemy={enemy}
+            context="selected"
+            ariaLabel={`${enemy.name} target preview`}
+          />
           <div className="combat-enemy-heading-copy">
             <h2 id="enemy-title">{enemy.name}</h2>
             <span className="muted">Level {enemy.displayLevel}</span>
@@ -589,14 +570,6 @@ function EnemySummaryPanel({
   );
 }
 
-function CombatPortraitSmall({ enemy }: { enemy: EnemyDefinition }) {
-  return (
-    <div className={`combat-roster-portrait theme-${enemy.theme}`} aria-hidden="true">
-      <EnemyArt enemyId={enemy.id} variant="roster" />
-    </div>
-  );
-}
-
 function EnemyRoster({
   game,
   area,
@@ -628,7 +601,7 @@ function EnemyRoster({
               aria-label={`${action} ${enemy.name}, level ${enemy.displayLevel}`}
               onClick={() => onSelect(enemyId, area.id)}
             >
-              <CombatPortraitSmall enemy={enemy} />
+              <CombatTargetPortrait enemy={enemy} context="roster" />
               <span className="combat-enemy-card-copy">
                 <strong>{enemy.name}</strong>
                 <span>Lv {enemy.displayLevel}</span>
@@ -951,7 +924,7 @@ function TargetAnalysis({
           role="group"
           aria-label={`Selected target: ${enemy.name}, level ${enemy.displayLevel}`}
         >
-          <CombatPortrait enemy={enemy} targetPreview />
+          <CombatTargetPortrait enemy={enemy} context="preview" />
           <span className="combat-analysis-target-copy">
             <strong>{enemy.name}</strong>
               <span>Enemy Lv {enemy.displayLevel}</span>

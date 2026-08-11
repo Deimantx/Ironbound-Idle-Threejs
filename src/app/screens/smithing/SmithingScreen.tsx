@@ -908,13 +908,7 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
   const active = game.activeAction.type === 'smithing' ? game.activeAction : null;
   const activeRecipe = active ? recipeById[active.recipeId] : undefined;
   const forgeRecipes = useMemo(
-    () =>
-      getSmithingRecipesForCategory('smelting')
-        .map((recipe, index) => ({ recipe, index }))
-        .sort(
-          (first, second) => first.recipe.level - second.recipe.level || first.index - second.index,
-        )
-        .map(({ recipe }) => recipe),
+    () => getSmithingRecipesForCategory('smelting'),
     [],
   );
   const visibleForgeRecipes = useMemo(
@@ -935,7 +929,7 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
   }, []);
   const anvilRecipes = useMemo(
     () =>
-      ACTIVE_SMITHING_RECIPES.filter((recipe) => {
+      getSmithingRecipesForCategory('forging').filter((recipe) => {
         if (recipe.category !== 'forging') return false;
         const item = itemById[recipe.outputItemId];
         return (

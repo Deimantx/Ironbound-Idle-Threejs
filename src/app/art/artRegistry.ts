@@ -110,6 +110,7 @@ export type ArtVariant =
   | 'item-equipment'
   | 'equipment-slot'
   | 'enemy-roster'
+  | 'enemy-target'
   | 'enemy-preview'
   | 'enemy-detail'
   | 'enemy-arena';

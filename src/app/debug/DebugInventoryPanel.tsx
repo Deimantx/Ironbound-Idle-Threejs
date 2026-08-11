@@ -18,7 +18,8 @@ import {
 } from '../../game/debug/debugActions';
 import { EQUIPMENT_SLOT_LABELS } from '../../game/equipmentSlots';
 import type { EquipmentSlot } from '../../game/types';
-import { ItemIcon } from '../items/ItemIcon';
+import { ItemCompactIcon } from '../items/ItemCompactIcon';
+import { ItemDetailHeader } from '../items/ItemDetailHeader';
 import { ActionButton, Field, Section, labelize, uniqueSorted } from './DebugComponents';
 import type { PanelProps } from './debugUiTypes';
 
@@ -66,8 +67,9 @@ export function InventoryPanel({ game, run, confirm }: PanelProps) {
   return (
     <>
       <Section
-        title="Item spawner"
-        description="Search and filter the real item registry; normal adding respects stack merging and capacity."
+        title="Item browser"
+        description="Search the live item registry, inspect a stack, and add or remove quantities without bypassing normal Inventory rules."
+        className="debug-tools-inventory-browser"
       >
         <div className="debug-tools-search">
           <Search size={15} />
@@ -129,7 +131,7 @@ export function InventoryPanel({ game, run, confirm }: PanelProps) {
                 className={`debug-tools-item-row ${selected?.id === item.id ? 'selected' : ''}`}
                 onClick={() => selectFirst(item.id)}
               >
-                <ItemIcon itemId={item.id} />
+                <ItemCompactIcon itemId={item.id} size="sm" />
                 <span>
                   <strong>{item.name}</strong>
                   <small>
@@ -143,13 +145,11 @@ export function InventoryPanel({ game, run, confirm }: PanelProps) {
           <div className="debug-tools-item-details">
             {selected && (
               <>
-                <div className="debug-tools-item-title">
-                  <ItemIcon itemId={selected.id} size="md" />
-                  <div>
-                    <h4>{selected.name}</h4>
-                    <small>{selected.id}</small>
-                  </div>
-                </div>
+                <ItemDetailHeader
+                  item={selected}
+                  eyebrow="Selected item"
+                  metadata={`${selected.id} · ${labelize(selected.category)}`}
+                />
                 <dl className="debug-tools-definition-list">
                   <div>
                     <dt>Category</dt>
@@ -223,8 +223,8 @@ export function InventoryPanel({ game, run, confirm }: PanelProps) {
         </div>
       </Section>
       <Section
-        title="Bulk and edge actions"
-        description="Destructive operations are confirmed. Edge actions target quantities or simulate capacity without corrupting Inventory."
+        title="Inventory utilities"
+        description="Bulk, discovery, and edge-case actions stay grouped here. Destructive operations are confirmed before they change the current profile."
         className="debug-tools-danger-zone"
       >
         <div className="button-row">

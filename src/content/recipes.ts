@@ -75,4 +75,10 @@ export const recipeById = Object.fromEntries(RECIPES.map((recipe) => [recipe.id,
 export const getSmithingRecipesForCategory = (
   category: RecipeDefinition['category'],
 ): RecipeDefinition[] =>
-  RECIPES.filter((recipe) => recipe.category === category);
+  RECIPES
+    .map((recipe, index) => ({ recipe, index }))
+    .filter(({ recipe }) => recipe.category === category)
+    .sort(
+      (left, right) => left.recipe.level - right.recipe.level || left.index - right.index,
+    )
+    .map(({ recipe }) => recipe);

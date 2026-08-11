@@ -12501,3 +12501,231 @@ h3 {
     flex-basis: 200px;
   }
 }
+
+/* Debug utility surfaces use the same quiet Inventory panel language. */
+.debug-tools-dialog {
+  background: var(--panel);
+  border-color: var(--line);
+  border-radius: var(--radius);
+}
+.debug-tools-header {
+  padding: 18px 20px 16px;
+  background: linear-gradient(135deg, rgba(117, 82, 48, 0.2), transparent 68%);
+  border-bottom-color: var(--line);
+}
+.debug-tools-header .eyebrow {
+  color: var(--gold);
+}
+.debug-tools-warning {
+  color: var(--muted);
+}
+.debug-tools-nav {
+  background: #111619;
+  border-right-color: var(--line);
+}
+.debug-tools-nav-button {
+  color: var(--muted);
+  border-radius: 7px;
+}
+.debug-tools-nav-button:hover,
+.debug-tools-nav-button:focus-visible,
+.debug-tools-nav-button.active {
+  color: var(--gold);
+  background: #20282c;
+  border-color: #6d5739;
+}
+.debug-tools-content {
+  background: #111619;
+}
+.debug-tools-summary span,
+.debug-tools-stat-grid > div {
+  color: var(--text);
+  background: var(--panel-2);
+  border-color: var(--line);
+  border-radius: 7px;
+}
+.debug-tools-summary b,
+.debug-tools-stat-grid span {
+  color: var(--muted);
+}
+.debug-tools-section {
+  padding: 16px;
+  background: var(--panel);
+  border-color: var(--line);
+  border-radius: 9px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
+}
+.debug-tools-section h3 {
+  color: #e8d0a0;
+}
+.debug-tools-section-heading p,
+.debug-tools-section > p {
+  color: var(--muted);
+}
+.debug-tools-field > span {
+  color: #aeb8b2;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.debug-tools-field input,
+.debug-tools-field select,
+.debug-tools-search {
+  color: var(--text);
+  background: #111619;
+  border-color: var(--line);
+  border-radius: 7px;
+}
+.debug-tools-field input,
+.debug-tools-field select {
+  min-height: 38px;
+  padding: 8px 10px;
+}
+.debug-tools-search {
+  min-height: 40px;
+}
+.debug-tools-search:focus-within {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px rgba(213, 170, 98, 0.12);
+}
+.debug-tools-field input:focus-visible,
+.debug-tools-field select:focus-visible,
+.debug-tools-search input:focus-visible {
+  outline-color: var(--gold);
+}
+.debug-tools-item-list {
+  background: #111619;
+  border-color: var(--line);
+  border-radius: 8px;
+}
+.debug-tools-item-row {
+  gap: 10px;
+  padding: 8px 10px;
+  color: #cbd3cd;
+  border-bottom-color: #2c373b;
+}
+.debug-tools-item-row:hover,
+.debug-tools-item-row.selected {
+  color: var(--gold);
+  background: #242b2c;
+}
+.debug-tools-item-details {
+  padding: 14px;
+  background: var(--panel-2);
+  border-color: var(--line);
+  border-radius: 8px;
+}
+.debug-tools-item-details .item-detail-header {
+  margin-bottom: 13px;
+}
+.debug-tools-definition-list div,
+.debug-tools-preset,
+.debug-tools-equipment-slot {
+  background: #252c31;
+  border: 1px solid #354047;
+  border-radius: 7px;
+}
+.debug-tools-definition-list div {
+  padding: 8px;
+}
+.debug-tools-definition-list dt,
+.debug-tools-equipment-slot span,
+.debug-tools-equipment-slot small {
+  color: var(--muted);
+}
+.debug-tools-definition-list dd,
+.debug-tools-equipment-slot strong {
+  color: var(--text);
+}
+.debug-tools-preview {
+  background: #20282c;
+  border-color: var(--line);
+  border-radius: 7px;
+}
+.debug-tools-danger-zone {
+  border-color: #684b41;
+  background: linear-gradient(145deg, rgba(54, 38, 35, 0.58), var(--panel));
+}
+.debug-tools-disclosure {
+  color: var(--gold);
+}
+.debug-tools-result {
+  background: #20282c;
+  border-left-color: #6d7b77;
+}
+
+/* One portrait family for every repeated enemy in the target-selection flow. */
+.combat-target-portrait {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 4px;
+  overflow: hidden;
+  isolation: isolate;
+  color: #e8d0a0;
+  background: radial-gradient(circle at 50% 38%, rgba(125, 145, 143, 0.2), transparent 70%), #1b2325;
+  border: 1px solid #3a4547;
+  border-radius: 8px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
+}
+.combat-target-portrait > .enemy-art {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  background: transparent;
+  border-radius: 4px;
+}
+.combat-target-portrait-roster {
+  width: 48px;
+  height: 56px;
+}
+.combat-target-portrait-selected {
+  width: 112px;
+  height: 122px;
+}
+.combat-target-portrait-preview {
+  width: 108px;
+  height: 120px;
+}
+.combat-target-portrait.theme-rodent {
+  background: radial-gradient(circle at 50% 38%, rgba(164, 145, 113, 0.22), transparent 70%), #40352d;
+}
+.combat-target-portrait.theme-goblin {
+  background: radial-gradient(circle at 50% 38%, rgba(128, 165, 112, 0.2), transparent 70%), #314734;
+}
+.combat-target-portrait.theme-bat {
+  background: radial-gradient(circle at 50% 38%, rgba(181, 148, 199, 0.2), transparent 70%), #3d3150;
+}
+.combat-target-portrait.theme-crab {
+  background: radial-gradient(circle at 50% 38%, rgba(206, 145, 117, 0.2), transparent 70%), #54382f;
+}
+.combat-target-portrait.theme-wolf {
+  background: radial-gradient(circle at 50% 38%, rgba(157, 183, 195, 0.2), transparent 70%), #37464c;
+}
+.combat-target-portrait.theme-bandit {
+  background: radial-gradient(circle at 50% 38%, rgba(198, 154, 111, 0.2), transparent 70%), #49372e;
+}
+
+@media (max-width: 900px) {
+  .debug-tools-content {
+    background: #111619;
+  }
+  .combat-target-portrait-preview {
+    width: 96px;
+    height: 108px;
+  }
+}
+
+@media (max-width: 600px) {
+  .combat-target-portrait-selected {
+    width: 96px;
+    height: 104px;
+  }
+  .combat-target-portrait-preview {
+    width: 92px;
+    height: 104px;
+  }
+}

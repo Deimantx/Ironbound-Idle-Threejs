@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ACTIVE_SMITHING_RECIPES, recipeById } from '../content/recipes';
+import { ACTIVE_SMITHING_RECIPES, getSmithingRecipesForCategory, recipeById } from '../content/recipes';
 import { ITEMS, itemById } from '../content/items';
 import { SMITHING_TOOLS } from '../content/smithingTools';
 import { equipItem } from '../game/systems/equipmentSystem';
@@ -29,6 +29,13 @@ const levelSmithing = (state: GameState, level: number): void => {
 };
 
 describe('Smithing 1.0 content and formulas', () => {
+  it('orders Forge and Anvil selections from the lowest level to the highest', () => {
+    for (const category of ['smelting', 'forging'] as const) {
+      const levels = getSmithingRecipesForCategory(category).map((recipe) => recipe.level);
+      expect(levels).toEqual([...levels].sort((left, right) => left - right));
+    }
+  });
+
   it('keeps the active Iron/Steel progression free of retired Bronze content', () => {
     expect(recipeById['iron-bar']).toMatchObject({
       level: 1,
