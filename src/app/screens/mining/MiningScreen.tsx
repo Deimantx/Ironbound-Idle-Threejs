@@ -26,7 +26,7 @@ import type {
 } from '../../../game/types';
 import { getItemQuantity } from '../../../game/systems/inventorySystem';
 import { formatDropChance, formatNumber } from '../../shared/formatters';
-import { ItemIcon } from '../../items/ItemIcon';
+import { ItemCompactIcon } from '../../items/ItemCompactIcon';
 import { MiningNodeArt } from '../../art/MiningNodeArt';
 import { ScreenHeading } from '../../shell/ScreenHeading';
 import { UiPanelSlot } from '../../ui-editor/UiPanelSlot';
@@ -250,7 +250,7 @@ const ByproductRows = ({
       return (
         <ItemTooltip item={item} key={drop.itemId}>
           <div className="mining-reward-row">
-            <ItemIcon itemId={drop.itemId} size="md" />
+            <ItemCompactIcon itemId={drop.itemId} size="sm" />
             <div>
               <strong>{item?.name ?? drop.itemId}</strong>
               <small>
@@ -555,7 +555,7 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 <div className="eyebrow mining-section-label">Primary resource</div>
                 <ItemTooltip item={itemById[selectedNode.primaryRewardItemId]}>
                   <div className="mining-primary-resource">
-                    <ItemIcon itemId={selectedNode.primaryRewardItemId} size="md" />
+                    <ItemCompactIcon itemId={selectedNode.primaryRewardItemId} size="md" />
                     <div>
                       <strong>{itemById[selectedNode.primaryRewardItemId]?.name}</strong>
                       <small>Owned: {formatNumber(ownedPrimary)}</small>
@@ -588,7 +588,7 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 <ItemTooltip item={activeTool.itemId ? itemById[activeTool.itemId] : undefined}>
                   <div className="mining-tool-information">
                     <div className="mining-tool-identity">
-                      <ItemIcon itemId={activeTool.itemId || undefined} size="md" />
+                      <ItemCompactIcon itemId={activeTool.itemId || undefined} size="md" />
                       <div>
                         <div className="eyebrow">Current pickaxe</div>
                         <h2>{activeTool.itemId ? itemById[activeTool.itemId]?.name : 'No pickaxe'}</h2>

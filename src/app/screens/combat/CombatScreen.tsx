@@ -69,7 +69,7 @@ import type {
   ScreenId,
 } from '../../../game/types';
 import type { ConfirmDialogOptions } from '../../components/ConfirmDialog';
-import { ItemIcon } from '../../items/ItemIcon';
+import { ItemCompactIcon } from '../../items/ItemCompactIcon';
 import { EnemyArt } from '../../art/EnemyArt';
 import { WorldArt } from '../../art/WorldArt';
 import { AREA_ART, REGION_ART, SUB_REGION_ART } from '../../art/artRegistry';
@@ -295,7 +295,7 @@ function EquipmentStrip({ game }: { game: GameState }) {
             aria-label={`${label}: ${itemLabel}`}
           >
             <span className="combat-equip-slot-label">{label}</span>
-            {item ? <ItemIcon itemId={item.id} size="xs" /> : <b>—</b>}
+            {item ? <ItemCompactIcon itemId={item.id} size="xs" /> : <b>—</b>}
             <small className="combat-equip-slot-item">{itemLabel}</small>
           </div>
         </ItemTooltip>
@@ -567,7 +567,7 @@ function EnemySummaryPanel({
               key={drop.itemId}
             >
               <div className="combat-drop-item">
-                <ItemIcon
+                <ItemCompactIcon
                   itemId={drop.itemId}
                   discovered={game.discoveredItems.includes(drop.itemId)}
                   size="xs"
@@ -1409,7 +1409,7 @@ function LootPanel({
             <div className="combat-loot-row" key={drop.itemId}>
               <ItemTooltip item={itemById[drop.itemId]} disabled={!discovered}>
                 <span className="combat-loot-item">
-                  <ItemIcon itemId={drop.itemId} discovered={discovered} size="sm" />
+                  <ItemCompactIcon itemId={drop.itemId} discovered={discovered} size="sm" />
                   <span>
                     <strong>{discovered ? itemById[drop.itemId]?.name : 'Undiscovered'}</strong>
                     <small
@@ -1430,7 +1430,7 @@ function LootPanel({
         })}
         {goldRange && <div className="combat-loot-row gold">
           <span className="combat-loot-item">
-            <ItemIcon gold size="sm" />
+            <ItemCompactIcon gold size="sm" />
             <span>
               <strong>Gold</strong>
               <small>Guaranteed</small>

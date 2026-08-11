@@ -32,7 +32,7 @@ import type {
 } from '../../../game/types';
 import { getItemQuantity } from '../../../game/systems/inventorySystem';
 import { formatHoursMinutes, formatNumber, formatRatePerHour } from '../../shared/formatters';
-import { ItemIcon } from '../../items/ItemIcon';
+import { ItemCompactIcon } from '../../items/ItemCompactIcon';
 import { ItemRowIcon } from '../../items/ItemRowIcon';
 import { SmithingFacilityArt } from '../../art/SmithingFacilityArt';
 import { ScreenHeading } from '../../shell/ScreenHeading';
@@ -759,7 +759,7 @@ function ActiveOrder({
     <div className="smithing-active-order">
       <div className="smithing-active-heading">
         <div className="smithing-active-order-identity">
-          <ItemIcon itemId={recipe.outputItemId} size="lg" />
+          <ItemCompactIcon itemId={recipe.outputItemId} size="lg" />
           <div>
             <div className="eyebrow">Active Order</div>
             <h2>{recipe.name}</h2>

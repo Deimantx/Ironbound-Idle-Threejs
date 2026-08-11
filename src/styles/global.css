@@ -12344,10 +12344,76 @@ h3 {
   border-radius: 7px;
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
 }
-.item-row-icon-viewport > .loot-icon-md {
+.item-row-icon-viewport > .item-art {
   width: 34px;
   height: 34px;
-  border-radius: 6px;
+}
+.item-row-icon-viewport.is-hidden {
+  border-style: dashed;
+  background: #202b2e;
+}
+
+.item-compact-icon-viewport {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  background: radial-gradient(circle at 50% 42%, rgba(125, 145, 143, 0.2), transparent 72%), #1b2325;
+  border: 1px solid #3a4547;
+  border-radius: 7px;
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
+}
+.item-compact-icon-xs {
+  width: 30px;
+  height: 30px;
+}
+.item-compact-icon-sm {
+  width: 40px;
+  height: 40px;
+}
+.item-compact-icon-md {
+  width: 50px;
+  height: 50px;
+}
+.item-compact-icon-lg {
+  width: 58px;
+  height: 58px;
+}
+.item-compact-icon-xs > .item-art {
+  width: 23px;
+  height: 23px;
+}
+.item-compact-icon-sm > .item-art {
+  width: 32px;
+  height: 32px;
+}
+.item-compact-icon-md > .item-art {
+  width: 42px;
+  height: 42px;
+}
+.item-compact-icon-lg > .item-art {
+  width: 50px;
+  height: 50px;
+}
+.item-compact-icon-viewport.is-hidden {
+  border-style: dashed;
+  background: #202b2e;
+}
+.combat-redesign .combat-equip-slot > .item-compact-icon-viewport {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  margin: 3px auto;
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: normal;
+  text-transform: none;
+}
+.combat-drop-item {
+  grid-template-columns: 30px minmax(0, 1fr) auto;
+}
+.combat-drop-item > .item-compact-icon-viewport {
+  width: 30px;
+  height: 30px;
 }
 .smithing-recipe-output {
   min-width: 0;

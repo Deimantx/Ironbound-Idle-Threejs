@@ -29,6 +29,7 @@ import {
 } from '../../shared/equipmentView';
 import { formatNumber } from '../../shared/formatters';
 import { getInventoryValueLabel } from '../../shared/inventoryView';
+import { ItemCompactIcon } from '../../items/ItemCompactIcon';
 import { ItemIcon } from '../../items/ItemIcon';
 import { ScreenHeading } from '../../shell/ScreenHeading';
 import { UiPanelSlot } from '../../ui-editor/UiPanelSlot';
@@ -541,7 +542,7 @@ export function EquipmentScreen({ game, uiLayout, onNavigate }: EquipmentScreenP
                               aria-pressed={selected}
                               aria-label={`Inspect ${item?.name ?? 'Unknown item'}, quantity ${stack.quantity}${stack.locked ? ', locked' : ''}`}
                             >
-                              <ItemIcon itemId={stack.itemId} size="sm" />
+                              <ItemCompactIcon itemId={stack.itemId} size="sm" />
                               <span>
                                 <strong>{item?.name ?? 'Unknown item'}</strong>
                                 <small>

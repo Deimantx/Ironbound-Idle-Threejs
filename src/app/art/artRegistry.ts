@@ -106,6 +106,7 @@ export type ArtVariant =
   | 'item-collection'
   | 'item-detail'
   | 'item-row'
+  | 'item-compact'
   | 'item-equipment'
   | 'equipment-slot'
   | 'enemy-roster'
