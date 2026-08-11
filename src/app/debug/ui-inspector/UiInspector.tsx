@@ -205,4 +205,11 @@ export function UiInspector({ active, onDeactivate }: { active: boolean; onDeact
           </div>
         </>
       )}
-     
+      {copyStatus && (
+        <div className="ui-inspector-copy-toast" data-ui-inspector-ignore role="status">
+          {copyStatus === 'copied' ? 'UI reference copied' : 'Copy failed'}
+        </div>
+      )}
+    </div>
+  );
+}
