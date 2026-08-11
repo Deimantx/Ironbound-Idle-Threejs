@@ -522,14 +522,16 @@ function ForgeVisibilityControl({
       <div className="filterbar smithing-filterbar">
         <button
           type="button"
-          className={`button ${value === 'all' ? 'gold' : 'ghost'}`}
+          className={`inventory-filter ${value === 'all' ? 'is-active' : ''}`}
+          aria-pressed={value === 'all'}
           onClick={() => onChange('all')}
         >
           All Bars
         </button>
         <button
           type="button"
-          className={`button ${value === 'unlocked' ? 'gold' : 'ghost'}`}
+          className={`inventory-filter ${value === 'unlocked' ? 'is-active' : ''}`}
+          aria-pressed={value === 'unlocked'}
           onClick={() => onChange('unlocked')}
         >
           Unlocked
@@ -551,7 +553,9 @@ function QuantitySelector({
       <span className="muted">Quantity:</span>
       {quantityOptions.map((option) => (
         <button
-          className={`button ${mode === option ? 'gold' : 'ghost'}`}
+          type="button"
+          className={`inventory-filter ${mode === option ? 'is-active' : ''}`}
+          aria-pressed={mode === option}
           key={String(option)}
           onClick={() => setMode(option)}
         >
@@ -1102,7 +1106,8 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
                         <button
                           type="button"
                           key={option}
-                          className={`button ${filter === option ? 'gold' : 'ghost'}`}
+                          className={`inventory-filter ${filter === option ? 'is-active' : ''}`}
+                          aria-pressed={filter === option}
                           onClick={() => setFilter(option)}
                         >
                           {option === 'all'
@@ -1125,7 +1130,8 @@ export function SmithingScreen({ game, uiLayout, requestAction }: SmithingScreen
                         <button
                           type="button"
                           key={option}
-                          className={`button ${metalFilter === option ? 'gold' : 'ghost'}`}
+                          className={`inventory-filter ${metalFilter === option ? 'is-active' : ''}`}
+                          aria-pressed={metalFilter === option}
                           onClick={() => setMetalFilter(option)}
                         >
                           {option === 'all'

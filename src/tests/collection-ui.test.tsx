@@ -39,12 +39,15 @@ describe('Collection Log screen', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: /Collection Log/ }));
-    expect(screen.getByRole('group', { name: 'Discovery Status' })).toBeInTheDocument();
+    const discoveryGroup = screen.getByRole('group', { name: 'Discovery Status' });
+    expect(discoveryGroup).toBeInTheDocument();
     const categoryGroup = screen.getByRole('group', { name: 'Category' });
-    const divider = document.querySelector('.collection-filter-divider');
-    expect(divider?.previousElementSibling).toBe(screen.getByRole('group', { name: 'Discovery Status' }));
-    expect(divider?.nextElementSibling).toBe(categoryGroup);
+    const filterDivider = categoryGroup.previousElementSibling;
+    expect(filterDivider).toHaveClass('collection-filter-divider');
+    expect(filterDivider?.previousElementSibling).toBe(discoveryGroup);
+    expect(within(discoveryGroup).getByRole('button', { name: 'All' })).toHaveClass('inventory-filter', 'is-active');
     expect(within(categoryGroup).getByRole('button', { name: /All Items/ })).toHaveTextContent(/\d+\/47/);
+    expect(within(categoryGroup).getByRole('button', { name: /All Items/ })).toHaveClass('inventory-filter', 'is-active');
     expect(screen.getByRole('heading', { name: 'Discovered Items' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Undiscovered Items' })).toBeInTheDocument();
 

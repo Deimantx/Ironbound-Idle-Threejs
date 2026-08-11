@@ -88,7 +88,7 @@
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   margin-top: 12px;
 }
 .collection-search {
@@ -114,21 +114,13 @@
 .collection-filter-group {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 5px;
+  align-items: flex-start;
+  gap: 0;
 }
 .collection-filter-buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
-}
-.collection-filter-caption {
-  color: var(--muted);
-  font-size: 8px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  line-height: 1;
-  text-transform: uppercase;
+  gap: 6px;
 }
 .collection-filter-divider {
   flex: 0 0 1px;
@@ -136,21 +128,6 @@
   width: 1px;
   margin: 0 8px;
   background: var(--line);
-}
-.collection-filter-group .button {
-  min-height: 30px;
-  padding: 5px 9px;
-  font-size: 10px;
-}
-.collection-count-button {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-}
-.collection-count-button small {
-  color: inherit;
-  font-size: 9px;
-  opacity: 0.72;
 }
 .collection-browser {
   display: grid;
@@ -419,10 +396,10 @@
     align-items: flex-start;
   }
   .collection-filter-divider {
-    display: none;
-  }
-  .collection-filter-caption {
-    padding-left: 2px;
+    width: 100%;
+    height: 1px;
+    min-height: 1px;
+    margin: 4px 0;
   }
 }
 @media (max-width: 560px) {
@@ -1718,7 +1695,11 @@ h3 {
   width: 100%;
 }
 .smithing-filterbar {
+  gap: 6px;
   margin: 13px 0 0;
+}
+.smithing-quantity-row {
+  gap: 6px;
 }
 .smithing-filter-groups {
   display: grid;
@@ -7824,6 +7805,7 @@ h3 {
   overflow-y: auto;
   padding-right: 3px;
   scrollbar-color: #675535 #172023;
+  scrollbar-width: thin;
 }
 .combat-live-log-entry {
   display: grid;
@@ -7962,9 +7944,13 @@ h3 {
 }
 .combat-loot-table {
   margin: 0 16px;
+  max-height: 320px;
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid #344044;
   border-radius: 7px;
-  overflow: hidden;
+  scrollbar-color: #675535 #172023;
+  scrollbar-width: thin;
 }
 .combat-loot-row {
   display: grid;

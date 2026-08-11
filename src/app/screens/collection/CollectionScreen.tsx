@@ -107,7 +107,6 @@ function FilterGroup({ label, children }: { label: string; children: ReactNode }
   return (
     <div className="collection-filter-group" role="group" aria-label={label}>
       <div className="collection-filter-buttons">{children}</div>
-      <div className="collection-filter-caption">{label}</div>
     </div>
   );
 }
@@ -124,7 +123,7 @@ function DiscoveryFilterGroup({
       {DISCOVERY_FILTERS.map((option) => (
         <button
           type="button"
-          className={`button ${filter === option ? 'gold' : 'ghost'}`}
+          className={`inventory-filter ${filter === option ? 'is-active' : ''}`}
           aria-pressed={filter === option}
           key={option}
           onClick={() => onChange(option)}
@@ -203,7 +202,7 @@ function ItemToolbar({
   return (
     <div className="collection-filter-row">
       <DiscoveryFilterGroup filter={filter} onChange={onFilterChange} />
-      <div className="collection-filter-divider" aria-hidden="true" />
+      <span className="collection-filter-divider" aria-hidden="true" />
       <FilterGroup label="Category">
         {ITEM_CATEGORIES.map((option) => {
           const ids = eligibleItems
@@ -215,13 +214,13 @@ function ItemToolbar({
           return (
             <button
               type="button"
-              className={`button collection-count-button ${category === option ? 'gold' : 'ghost'}`}
+              className={`inventory-filter ${category === option ? 'is-active' : ''} ${progress.total === 0 ? 'is-empty' : ''}`}
               aria-pressed={category === option}
               key={option}
               onClick={() => onCategoryChange(option)}
             >
               <span>{option}</span>
-              <small>{progress.discovered}/{progress.total}</small>
+              <small className="inventory-filter-count">{progress.discovered}/{progress.total}</small>
             </button>
           );
         })}
@@ -471,7 +470,7 @@ function MonsterToolbar({
   return (
     <div className="collection-filter-row">
       <DiscoveryFilterGroup filter={filter} onChange={onFilterChange} />
-      <div className="collection-filter-divider" aria-hidden="true" />
+      <span className="collection-filter-divider" aria-hidden="true" />
       <FilterGroup label="Region">
         {regions.map((region) => {
           const progress = getCollectionProgress(
@@ -481,13 +480,13 @@ function MonsterToolbar({
           return (
             <button
               type="button"
-              className={`button collection-count-button ${region.id === regionId ? 'gold' : 'ghost'}`}
+              className={`inventory-filter ${region.id === regionId ? 'is-active' : ''} ${progress.total === 0 ? 'is-empty' : ''}`}
               aria-pressed={region.id === regionId}
               key={region.id}
               onClick={() => onRegionChange(region.id)}
             >
               <span>{region.name}</span>
-              <small>{progress.discovered}/{progress.total}</small>
+              <small className="inventory-filter-count">{progress.discovered}/{progress.total}</small>
             </button>
           );
         })}

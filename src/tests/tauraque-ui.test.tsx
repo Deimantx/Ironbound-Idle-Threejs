@@ -67,4 +67,17 @@ describe('Tauraque Combat navigation', () => {
     expect(within(dropList).getAllByText('Undiscovered').length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: 'Full drop table' }).length).toBeGreaterThanOrEqual(2);
   });
+
+  it('sorts the Rewards and discovery loot table from most likely to rarest', async () => {
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getAllByRole('button', { name: /Combat/ })[0]);
+    await user.click(screen.getByRole('tab', { name: 'Loot' }));
+
+    const lootTable = document.querySelector<HTMLElement>('.combat-loot-table');
+    expect(lootTable).not.toBeNull();
+    const chances = [...lootTable!.querySelectorAll<HTMLElement>('.combat-loot-row:not(.header):not(.gold)')]
+      .map((row) => row.children[2]?.textContent);
+    expect(chances).toEqual(['45%', '35%', '32%', '25%', '2%', '1%', '1%']);
+  });
 });

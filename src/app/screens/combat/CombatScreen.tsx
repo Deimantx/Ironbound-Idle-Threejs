@@ -1390,7 +1390,7 @@ function LootPanel({
           <span>Chance</span>
           <span>Owned</span>
         </div>
-        {getResolvedLootSections(enemy.id).flatMap((section) => section.entries).map((drop) => {
+        {sortLootByChance(getResolvedLootSections(enemy.id).flatMap((section) => section.entries)).map((drop) => {
           const discovered = game.discoveredItems.includes(drop.itemId);
           const rarity = getLootRarity(drop.chance);
           return (
