@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { ItemDefinition } from '../../game/types';
 import { ArtViewport } from '../art/ArtViewport';
-import { ItemIcon } from './ItemIcon';
+import { ItemArtwork } from './ItemArtwork';
 
 export function ItemDetailHeader({
   item,
@@ -19,12 +19,7 @@ export function ItemDetailHeader({
   return (
     <div className="item-detail-header">
       <ArtViewport className="item-detail-icon-viewport" aria-hidden="true">
-        <ItemIcon
-          itemId={item?.id ?? itemId}
-          size="lg"
-          framed={false}
-          artVariant="item-detail"
-        />
+        <ItemArtwork itemId={item?.id ?? itemId} size="lg" />
       </ArtViewport>
       <div className="item-detail-header-copy">
         <span className="eyebrow">{eyebrow}</span>

@@ -18,7 +18,7 @@ import { formatNumber } from '../../shared/formatters';
 import { getEquipmentBonusLabel, formatEquipmentBonus } from '../../shared/equipmentView';
 import { ArtViewport } from '../../art/ArtViewport';
 import { ItemDetailHeader } from '../../items/ItemDetailHeader';
-import { ItemIcon } from '../../items/ItemIcon';
+import { ItemArtwork } from '../../items/ItemArtwork';
 import { EnemyArt } from '../../art/EnemyArt';
 import { ItemTooltip } from '../../items/ItemTooltip';
 import { ProfessionToolDetails } from '../../items/ProfessionToolDetails';
@@ -255,13 +255,7 @@ function ItemCard({
       onClick={onSelect}
     >
       <ArtViewport className="collection-item-art-viewport">
-        <ItemIcon
-          itemId={item.id}
-          discovered={discovered}
-          size="tile"
-          framed={false}
-          artVariant="item-collection"
-        />
+        <ItemArtwork itemId={item.id} discovered={discovered} size="tile" />
       </ArtViewport>
     </button>
   );
@@ -697,7 +691,9 @@ function MonsterCollectionDetails({ enemy, game }: { enemy?: EnemyDefinition; ga
           return (
             <ItemTooltip item={item} disabled={!discovered} key={drop.itemId}>
               <div className="collection-drop-row">
-                <ItemIcon itemId={drop.itemId} discovered={discovered} size="xs" />
+                <ArtViewport className={`loot-icon loot-icon-xs loot-icon-${item?.category ?? 'unknown'}`}>
+                  <ItemArtwork itemId={drop.itemId} discovered={discovered} size="xs" />
+                </ArtViewport>
                 <span>{discovered ? item?.name : 'Undiscovered drop'}</span>
                 <small>{Math.round(drop.chance * 100)}%</small>
               </div>
@@ -706,7 +702,9 @@ function MonsterCollectionDetails({ enemy, game }: { enemy?: EnemyDefinition; ga
         })}
         {area?.gold && (
           <div className="collection-drop-row gold">
-            <ItemIcon gold size="xs" />
+            <ArtViewport className="loot-icon loot-icon-xs loot-icon-gold">
+              <ItemArtwork gold size="xs" />
+            </ArtViewport>
             <span>Gold</span>
             <small>{goldRange?.[0]}–{goldRange?.[1]}</small>
           </div>

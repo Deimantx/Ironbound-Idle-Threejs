@@ -1,6 +1,5 @@
-import { GOLD_ART } from './artRegistry';
-import { ArtImage } from './ArtImage';
+import { ItemArtwork } from '../items/ItemArtwork';
 
 export function GoldArt() {
-  return <ArtImage className="header-gold-art" src={GOLD_ART} alt="" aria-hidden="true" />;
+  return <ItemArtwork className="header-gold-art" gold size="xs" />;
 }

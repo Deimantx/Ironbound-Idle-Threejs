@@ -11832,9 +11832,16 @@ h3 {
   }
 }
 
-/* Art presentation pass: outer surfaces own the frame; artwork owns only its viewport. */
-.item-art {
+/* Canonical item artwork: the registry owns pose; callers choose only size. */
+.item-artwork {
+  --item-artwork-scale: 1;
+  --item-artwork-x: 0%;
+  --item-artwork-y: 0%;
+  --item-artwork-position: center;
+  position: relative;
   display: grid;
+  width: var(--item-artwork-size);
+  height: var(--item-artwork-size);
   flex: 0 0 auto;
   place-items: center;
   overflow: hidden;
@@ -11843,31 +11850,27 @@ h3 {
   box-shadow: none;
   color: inherit;
 }
-.item-art img {
+.item-artwork-image {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: contain;
+  object-position: var(--item-artwork-position);
+  transform: translate(var(--item-artwork-x), var(--item-artwork-y)) scale(var(--item-artwork-scale));
+  transform-origin: center;
 }
-.item-art-xs {
-  width: 21px;
-  height: 21px;
+.item-artwork-fallback {
+  width: 60%;
+  height: 60%;
 }
-.item-art-sm {
-  width: 34px;
-  height: 34px;
+.item-artwork.header-gold-art {
+  width: 17px;
+  height: 17px;
 }
-.item-art-md {
-  width: 46px;
-  height: 46px;
-}
-.item-art-lg {
-  width: 56px;
-  height: 56px;
-}
-.item-art-tile {
-  width: 76px;
-  height: 76px;
+.item-artwork.is-hidden {
+  color: #b5c0be;
+  background: #283236;
+  border: 1px dashed rgba(181, 192, 190, 0.5);
 }
 
 .inventory-bank-grid {
@@ -11922,10 +11925,6 @@ h3 {
 .collection-item-card.collection-rarity-epic {
   border-color: #ce92e0;
 }
-.collection-item-card .item-art-tile {
-  width: 76px;
-  height: 76px;
-}
 .collection-item-card.selected {
   border-color: var(--gold);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 36%, transparent);
@@ -11938,12 +11937,6 @@ h3 {
 .equipment-item-icon {
   min-height: 56px;
 }
-.equipment-slot-card .item-art-lg,
-.equipment-item-summary-heading .item-art-lg {
-  width: 56px;
-  height: 56px;
-}
-
 .enemy-art {
   display: grid;
   width: 100%;
@@ -12063,7 +12056,7 @@ h3 {
   overflow: hidden;
   isolation: isolate;
 }
-.art-viewport > .item-art,
+.art-viewport > .item-artwork,
 .art-viewport > .loot-icon,
 .art-viewport > .enemy-art {
   max-width: 100%;
@@ -12071,6 +12064,10 @@ h3 {
 }
 .loot-icon {
   overflow: hidden;
+}
+.loot-icon > .item-artwork {
+  max-width: 100%;
+  max-height: 100%;
 }
 
 .item-rarity-common {
@@ -12134,10 +12131,6 @@ h3 {
   padding: 6px 7px 0;
   background: radial-gradient(circle at 50% 44%, rgba(125, 145, 143, 0.18), transparent 68%);
 }
-.inventory-card-art > .item-art {
-  width: 74px;
-  height: 74px;
-}
 .inventory-card-footer {
   box-sizing: border-box;
   display: flex;
@@ -12197,10 +12190,6 @@ h3 {
 .collection-item-card > .collection-item-art-viewport {
   gap: 0;
 }
-.collection-item-art-viewport > .item-art {
-  width: 74px;
-  height: 74px;
-}
 .collection-detail-item-viewport,
 .equipment-item-summary-viewport,
 .equipment-item-viewport {
@@ -12208,12 +12197,6 @@ h3 {
   height: 56px;
   flex: 0 0 56px;
   gap: 0;
-}
-.collection-detail-item-viewport > .item-art,
-.equipment-item-summary-viewport > .item-art,
-.equipment-item-viewport > .item-art {
-  width: 56px;
-  height: 56px;
 }
 .equipment-item-icon {
   overflow: hidden;
@@ -12232,10 +12215,6 @@ h3 {
   flex: 0 0 42px;
   background: radial-gradient(circle at 50% 42%, rgba(125, 145, 143, 0.22), transparent 72%);
   border-radius: 6px;
-}
-.item-tooltip-icon-viewport > .item-art {
-  width: 42px;
-  height: 42px;
 }
 .item-tooltip-header-copy {
   display: grid;
@@ -12310,10 +12289,6 @@ h3 {
   border-radius: 8px;
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.04);
 }
-.item-detail-icon-viewport > .item-art {
-  width: 65px;
-  height: 65px;
-}
 .item-detail-header-copy {
   display: grid;
   min-width: 0;
@@ -12344,10 +12319,6 @@ h3 {
   border-radius: 7px;
   box-shadow: inset 0 1px rgba(255, 255, 255, 0.035);
 }
-.item-row-icon-viewport > .item-art {
-  width: 34px;
-  height: 34px;
-}
 .item-row-icon-viewport.is-hidden {
   border-style: dashed;
   background: #202b2e;
@@ -12377,22 +12348,6 @@ h3 {
 .item-compact-icon-lg {
   width: 58px;
   height: 58px;
-}
-.item-compact-icon-xs > .item-art {
-  width: 23px;
-  height: 23px;
-}
-.item-compact-icon-sm > .item-art {
-  width: 32px;
-  height: 32px;
-}
-.item-compact-icon-md > .item-art {
-  width: 42px;
-  height: 42px;
-}
-.item-compact-icon-lg > .item-art {
-  width: 50px;
-  height: 50px;
 }
 .item-compact-icon-viewport.is-hidden {
   border-style: dashed;

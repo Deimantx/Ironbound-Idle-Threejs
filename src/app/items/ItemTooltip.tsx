@@ -2,7 +2,7 @@ import type { ReactElement } from 'react';
 import type { ItemDefinition } from '../../game/types';
 import { getEquipmentBonusLabel, formatEquipmentBonus, getEquipmentSlotLabel } from '../shared/equipmentView';
 import { ArtViewport } from '../art/ArtViewport';
-import { ItemIcon } from './ItemIcon';
+import { ItemArtwork } from './ItemArtwork';
 import { GameTooltip } from './GameTooltip';
 import { ProfessionToolDetails } from './ProfessionToolDetails';
 import { SpecialAttackDetails } from './SpecialAttackDetails';
@@ -22,7 +22,7 @@ export function ItemTooltipContent({ item }: { item?: ItemDefinition }) {
     <div className="item-tooltip-content">
       <div className="item-tooltip-header">
         <ArtViewport className="item-tooltip-icon-viewport" aria-hidden="true">
-          <ItemIcon itemId={item.id} size="md" framed={false} artVariant="item-tooltip" />
+          <ItemArtwork itemId={item.id} size="md" />
         </ArtViewport>
         <div className="item-tooltip-header-copy">
           <strong>{item.name}</strong>

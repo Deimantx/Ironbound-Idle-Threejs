@@ -4,7 +4,8 @@ import { miningNodeById } from '../../content/miningNodes';
 import { recipeById } from '../../content/recipes';
 import type { GameState, SimulationContext, SimulationSummary, SkillId } from '../../game/types';
 import { formatNumber } from '../shared/formatters';
-import { ItemIcon } from '../items/ItemIcon';
+import { ArtViewport } from '../art/ArtViewport';
+import { ItemArtwork } from '../items/ItemArtwork';
 
 const skillLabels: Record<SkillId, string> = {
   attack: 'Attack',
@@ -103,7 +104,9 @@ function OfflineItems({
       <div className="offline-gain-list">
         {ids.map((itemId) => (
           <div className="offline-gain-row" key={itemId}>
-            <ItemIcon itemId={itemId} size="md" />
+            <ArtViewport className={`loot-icon loot-icon-md loot-icon-${itemById[itemId]?.category ?? 'unknown'}`}>
+              <ItemArtwork itemId={itemId} size="sm" />
+            </ArtViewport>
             <span>{itemById[itemId]?.name ?? 'Retired item'}</span>
             <strong className="numeric">+{formatNumber(summary.itemsGained[itemId])}</strong>
           </div>

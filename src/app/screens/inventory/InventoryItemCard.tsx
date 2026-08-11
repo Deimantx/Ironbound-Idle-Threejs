@@ -4,7 +4,7 @@ import type { InventoryStack, ItemDefinition } from '../../../game/types';
 import { formatNumber } from '../../shared/formatters';
 import { ArtViewport } from '../../art/ArtViewport';
 import type { InventoryDropPosition } from './inventoryOrdering';
-import { ItemIcon } from '../../items/ItemIcon';
+import { ItemArtwork } from '../../items/ItemArtwork';
 import { ItemTooltip } from '../../items/ItemTooltip';
 
 export interface InventoryItemCardProps {
@@ -58,12 +58,7 @@ export function InventoryItemCard({
         aria-pressed={selected}
       >
         <ArtViewport className="inventory-card-art">
-          <ItemIcon
-            itemId={item?.id ?? stack.itemId}
-            size="tile"
-            framed={false}
-            artVariant="item-inventory"
-          />
+          <ItemArtwork itemId={item?.id ?? stack.itemId} size="tile" />
         </ArtViewport>
         <span className="inventory-card-footer">
           <span className="quantity inventory-card-quantity">×{formatNumber(stack.quantity)}</span>

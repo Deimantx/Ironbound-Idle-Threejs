@@ -1,58 +1,7 @@
 import type { ActiveEquipmentSlot } from '../../game/equipmentSlots';
 import type { ScreenId } from '../../game/types';
 
-import gold from '../../Assets/Art/Items/Currency/gold.png';
-
-import rawWolfMeat from '../../Assets/Art/Items/Materials/raw-wolf-meat.png';
-import tornCloth from '../../Assets/Art/Items/Materials/torn-cloth.png';
-import goblinScrap from '../../Assets/Art/Items/Materials/goblin-scrap.png';
-import redknifeToken from '../../Assets/Art/Items/Materials/redknife-token.png';
-import frayedCloth from '../../Assets/Art/Items/Materials/frayed-cloth.png';
-import traceOfNature from '../../Assets/Art/Items/Materials/trace-of-nature.png';
-import blackStone from '../../Assets/Art/Items/Materials/black-stone.png';
-import leatherScraps from '../../Assets/Art/Items/Materials/leather-scraps.png';
-import ironMetalScraps from '../../Assets/Art/Items/Materials/iron-metal-scraps.png';
-import roughLeather from '../../Assets/Art/Items/Materials/rough-leather.png';
-import wolfPelt from '../../Assets/Art/Items/Materials/wolf-pelt.png';
-import wolfFang from '../../Assets/Art/Items/Materials/wolf-fang.png';
-import vialOfWolfBlood from '../../Assets/Art/Items/Materials/vial-of-wolf-blood.png';
-import ironBar from '../../Assets/Art/Items/Materials/iron-bar.png';
-import steelBar from '../../Assets/Art/Items/Materials/steel-bar.png';
-
-import magicCrystalBox from '../../Assets/Art/Items/Drops/magic-crystal-box.png';
-import smallCoinPouch from '../../Assets/Art/Items/Drops/small-coin-pouch.png';
-import stalkersClaw from '../../Assets/Art/Items/Drops/stalkers-claw.png';
-import greyfangTrophy from '../../Assets/Art/Items/Drops/greyfang-trophy.png';
-import ravagerFang from '../../Assets/Art/Items/Drops/ravager-fang.png';
-
-import lookoutsSapphireRing from '../../Assets/Art/Items/Equipment/lookouts-sapphire-ring.png';
-import redknifeCape from '../../Assets/Art/Items/Equipment/redknife-cape.png';
-import redknifeHuntingBow from '../../Assets/Art/Items/Equipment/redknife-hunting-bow.png';
-import redknifeReinforcedGreatsword from '../../Assets/Art/Items/Equipment/redknife-reinforced-greatsword.png';
-import pristineWolfPelt from '../../Assets/Art/Items/Equipment/pristine-wolf-pelt.png';
-import boarhandlersHarness from '../../Assets/Art/Items/Equipment/boarhandlers-harness.png';
-import jaggedGoblinSpear from '../../Assets/Art/Items/Equipment/jagged-goblin-spear.png';
-import scavengersDagger from '../../Assets/Art/Items/Equipment/scavengers-dagger.png';
-import trappersKnife from '../../Assets/Art/Items/Equipment/trappers-knife.png';
-import ironSword from '../../Assets/Art/Items/Equipment/iron-sword.png';
-import steelSword from '../../Assets/Art/Items/Equipment/steel-sword.png';
-import ironHelmet from '../../Assets/Art/Items/Equipment/iron-helmet.png';
-import steelHelmet from '../../Assets/Art/Items/Equipment/steel-helmet.png';
-import ironArmor from '../../Assets/Art/Items/Equipment/iron-armor.png';
-import steelArmor from '../../Assets/Art/Items/Equipment/steel-armor.png';
-import ironShield from '../../Assets/Art/Items/Equipment/iron-shield.png';
-import steelShield from '../../Assets/Art/Items/Equipment/steel-shield.png';
-
-import roughGem from '../../Assets/Art/Items/Resources/rough-gem.png';
-import stoneOre from '../../Assets/Art/Items/Resources/stone-ore.png';
 import ironOre from '../../Assets/Art/Items/Resources/iron-ore.png';
-import coal from '../../Assets/Art/Items/Resources/coal.png';
-
-import wornPickaxe from '../../Assets/Art/Items/Tools/worn-pickaxe.png';
-import ironPickaxe from '../../Assets/Art/Items/Tools/iron-pickaxe.png';
-import steelPickaxe from '../../Assets/Art/Items/Tools/steel-pickaxe.png';
-import ironSmithingHammer from '../../Assets/Art/Items/Tools/iron-smithing-hammer.png';
-import steelSmithingHammer from '../../Assets/Art/Items/Tools/steel-smithing-hammer.png';
 
 import brambletoothBoarhandler from '../../Assets/Art/Monsters/brambletooth-boarhandler.png';
 import brambletoothScavenger from '../../Assets/Art/Monsters/brambletooth-scavenger.png';
@@ -68,7 +17,6 @@ import redknifeEnforcer from '../../Assets/Art/Monsters/redknife-enforcer.png';
 import redknifeLookout from '../../Assets/Art/Monsters/redknife-lookout.png';
 
 import stoneOutcrop from '../../Assets/Art/Mining/Nodes/stone-outcrop.png';
-import ironVein from '../../Assets/Art/Mining/Nodes/iron-vein.png';
 import coalSeam from '../../Assets/Art/Mining/Nodes/coal-seam.png';
 
 import amuletSlot from '../../Assets/Art/UI/EquipmentSlots/amulet.png';
@@ -107,15 +55,6 @@ import greyfangPastures from '../../Assets/Art/World/Areas/greyfang-pastures.png
 import redknifeRoadCamp from '../../Assets/Art/World/Areas/redknife-road-camp.png';
 
 export type ArtVariant =
-  | 'item-small'
-  | 'item-tile'
-  | 'item-tooltip'
-  | 'item-inventory'
-  | 'item-collection'
-  | 'item-detail'
-  | 'item-row'
-  | 'item-compact'
-  | 'item-equipment'
   | 'equipment-slot'
   | 'enemy-roster'
   | 'enemy-target'
@@ -146,76 +85,9 @@ const itemArt = (
   variants: Partial<Record<ArtVariant, ArtTransform>> = {},
 ): ArtAsset => ({ src, base, variants });
 
-const collectionOnly = (scale: number): Partial<Record<ArtVariant, ArtTransform>> => ({
-  'item-collection': { scale },
-});
-
 export type ArtSource = string;
 
-export const GOLD_ART = gold;
-
-export const ITEM_ART: Record<string, ArtAsset> = {
-  'raw-wolf-meat': itemArt(rawWolfMeat, {}, collectionOnly(0.9)),
-  'torn-cloth': itemArt(tornCloth, {}, collectionOnly(0.86)),
-  'goblin-scrap': itemArt(goblinScrap),
-  'redknife-token': itemArt(redknifeToken, {}, {
-    'item-inventory': { scale: 0.75, y: -15, },
-    'item-collection': { scale: 0.84, y: -15,},
-    'item-detail': { scale: 0.86 },
-  }),
-  'frayed-cloth': itemArt(frayedCloth, {}, {
-    'item-inventory': { scale: 0.87 },
-    'item-collection': { scale: 0.92 },
-  }),
-  'lookouts-sapphire-ring': itemArt(lookoutsSapphireRing, {}, collectionOnly(0.86)),
-  'magic-crystal-box': itemArt(magicCrystalBox),
-  'trace-of-nature': itemArt(traceOfNature),
-  'redknife-hunting-bow': itemArt(redknifeHuntingBow, { scale: 0.82 }),
-  'small-coin-pouch': itemArt(smallCoinPouch),
-  'black-stone': itemArt(blackStone, {}, collectionOnly(0.9)),
-  'stalkers-claw': itemArt(stalkersClaw),
-  'leather-scraps': itemArt(leatherScraps, {}, collectionOnly(0.86)),
-  'iron-metal-scraps': itemArt(ironMetalScraps, {}, collectionOnly(0.86)),
-  'rough-leather': itemArt(roughLeather),
-  'wolf-fang': itemArt(wolfFang),
-  'greyfang-trophy': itemArt(greyfangTrophy),
-  'ravager-fang': itemArt(ravagerFang),
-  'boarhandlers-harness': itemArt(boarhandlersHarness),
-  'jagged-goblin-spear': itemArt(jaggedGoblinSpear),
-  'scavengers-dagger': itemArt(scavengersDagger),
-  'trappers-knife': itemArt(trappersKnife),
-  'redknife-reinforced-greatsword': itemArt(redknifeReinforcedGreatsword, { scale: 0.8 }, collectionOnly(0.9)),
-  'redknife-cape': itemArt(redknifeCape, {}, collectionOnly(0.84)),
-  'wolf-pelt': itemArt(wolfPelt, {}, collectionOnly(0.88)),
-  'vial-of-wolf-blood': itemArt(vialOfWolfBlood),
-  'pristine-wolf-pelt': itemArt(pristineWolfPelt, {}, collectionOnly(0.9)),
-  'rough-gem': itemArt(roughGem, {}, {
-    ...collectionOnly(0.88),
-    'item-detail': { scale: 0.86 },
-  }),
-  'stone-ore': itemArt(stoneOre, {}, collectionOnly(0.84)),
-  // The source files are named for the opposite presentation: the compact vein
-  // chunk is the inventory resource icon, while the broad ore pile is the node art.
-  'iron-ore': itemArt(ironVein, {}, collectionOnly(0.88)),
-  coal: itemArt(coal),
-  'worn-pickaxe': itemArt(wornPickaxe, { scale: 0.9 }),
-  // Tool source files use the opposite material presentation; keep the item IDs
-  // stable while assigning the visible icons to the intended tier.
-  'iron-pickaxe': itemArt(steelPickaxe, { scale: 0.84 }),
-  'steel-pickaxe': itemArt(ironPickaxe, { scale: 0.86 }),
-  'iron-smithing-hammer': itemArt(steelSmithingHammer, { scale: 0.9 }),
-  'steel-smithing-hammer': itemArt(ironSmithingHammer, { scale: 0.86 }, collectionOnly(0.88)),
-  'iron-bar': itemArt(ironBar, {}, collectionOnly(0.88)),
-  'steel-bar': itemArt(steelBar, {}, collectionOnly(0.88)),
-  'iron-sword': itemArt(ironSword, { scale: 0.92 }),
-  'steel-sword': itemArt(steelSword, { scale: 0.86 }),
-  'iron-helmet': itemArt(ironHelmet),
-  'steel-helmet': itemArt(steelHelmet, {}, collectionOnly(0.9)),
-  'iron-armor': itemArt(ironArmor, { scale: 0.82 }),
-  'steel-armor': itemArt(steelArmor, { scale: 0.82 }, collectionOnly(0.9)),
-  'iron-shield': itemArt(ironShield, { scale: 0.82 }),
-  'steel-shield': itemArt(steelShield, { scale: 0.82 }, collectionOnly(0.86)),
-};
+export { GOLD_ART, ITEM_ART } from '../items/itemArtRegistry';
 
 export const ENEMY_ART: Record<string, ArtAsset> = {
   'brambletooth-boarhandler': itemArt(brambletoothBoarhandler, { scale: 0.78, y: -1 }),

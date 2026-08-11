@@ -1,16 +1,11 @@
 import { ArtViewport } from '../art/ArtViewport';
-import { ItemIcon } from './ItemIcon';
+import { ItemArtwork } from './ItemArtwork';
 
+/** Row-surface convenience wrapper; it does not alter the item's canonical pose. */
 export function ItemRowIcon({ itemId, discovered = true }: { itemId: string; discovered?: boolean }) {
   return (
     <ArtViewport className={`item-row-icon-viewport ${!discovered ? 'is-hidden' : ''}`} aria-hidden="true">
-      <ItemIcon
-        itemId={itemId}
-        discovered={discovered}
-        size="md"
-        framed={false}
-        artVariant="item-row"
-      />
+      <ItemArtwork itemId={itemId} discovered={discovered} size="md" />
     </ArtViewport>
   );
 }

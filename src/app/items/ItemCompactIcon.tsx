@@ -1,8 +1,9 @@
 import { ArtViewport } from '../art/ArtViewport';
-import { ItemIcon } from './ItemIcon';
+import { ItemArtwork } from './ItemArtwork';
 
 type ItemCompactSize = 'xs' | 'sm' | 'md' | 'lg';
 
+/** Surface convenience wrapper; all item geometry is delegated to ItemArtwork. */
 export function ItemCompactIcon({
   itemId,
   discovered = true,
@@ -19,13 +20,11 @@ export function ItemCompactIcon({
       className={`item-compact-icon-viewport item-compact-icon-${size} ${!discovered ? 'is-hidden' : ''}`}
       aria-hidden="true"
     >
-      <ItemIcon
+      <ItemArtwork
         itemId={itemId}
         discovered={discovered}
         gold={gold}
         size={size}
-        framed={false}
-        artVariant="item-compact"
       />
     </ArtViewport>
   );

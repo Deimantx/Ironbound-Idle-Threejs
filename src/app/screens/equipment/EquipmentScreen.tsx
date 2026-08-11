@@ -30,7 +30,7 @@ import {
 import { formatNumber } from '../../shared/formatters';
 import { getInventoryValueLabel } from '../../shared/inventoryView';
 import { ItemCompactIcon } from '../../items/ItemCompactIcon';
-import { ItemIcon } from '../../items/ItemIcon';
+import { ItemArtwork } from '../../items/ItemArtwork';
 import { ScreenHeading } from '../../shell/ScreenHeading';
 import { UiPanelSlot } from '../../ui-editor/UiPanelSlot';
 import { UiPanelGrid } from '../../ui-editor/UiPanelGrid';
@@ -81,12 +81,7 @@ function ItemSummary({
     >
       <div className="equipment-item-summary-heading">
         <ArtViewport className="equipment-item-summary-viewport">
-          <ItemIcon
-            itemId={item?.id ?? itemId}
-            size="lg"
-            framed={false}
-            artVariant="item-equipment"
-          />
+          <ItemArtwork itemId={item?.id ?? itemId} size="lg" />
         </ArtViewport>
         <div className="equipment-item-summary-title">
           <div className="eyebrow">{heading}</div>
@@ -167,7 +162,7 @@ function EquipmentSlotCard({
           <>
             <span className="equipment-item-icon">
               <ArtViewport className="equipment-item-viewport">
-                <ItemIcon itemId={item.id} size="lg" framed={false} artVariant="item-equipment" />
+                <ItemArtwork itemId={item.id} size="lg" />
               </ArtViewport>
             </span>
             <small>{item.name}</small>
