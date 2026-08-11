@@ -28,14 +28,14 @@ describe('Combat 2.3 health attrition', () => {
     expect(mining.summary.completed['mine-swing:stone-outcrop']).toBe(1);
 
     const smithingState = woundedState();
-    smithingState.inventory = addItem([], 'copper-ore', 2, 60).inventory;
-    smithingState.inventory = addItem(smithingState.inventory, 'tin-ore', 2, 60).inventory;
+    smithingState.inventory = addItem([], 'iron-ore', 2, 60).inventory;
+    smithingState.inventory = addItem(smithingState.inventory, 'coal', 2, 60).inventory;
     const smithing = simulateElapsed(
-      startSmithing(smithingState, 'bronze-bar', 'continuous', 0),
-      3_000,
+      startSmithing(smithingState, 'iron-bar', 'continuous', 0),
+      4_000,
     );
-    expect(smithing.state.player.currentHp).toBeCloseTo(43, 8);
-    expect(smithing.summary.completed['smelting:bronze-bar']).toBe(1);
+    expect(smithing.state.player.currentHp).toBeCloseTo(44, 8);
+    expect(smithing.summary.completed['smelting:iron-bar']).toBe(1);
   });
 
   it('does not recover during combat, including when auto-repeat is respawning', () => {

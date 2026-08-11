@@ -37,7 +37,7 @@ export function ItemIcon({
   itemId?: string;
   discovered?: boolean;
   gold?: boolean;
-  size?: 'xs' | 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'tile';
 }) {
   const item = itemId ? itemById[itemId] : undefined;
   const iconKey = gold
@@ -46,7 +46,7 @@ export function ItemIcon({
       ? (item?.presentation?.iconKey ?? item?.category ?? 'drop')
       : '';
   const Icon = iconByKey[iconKey] ?? CircleHelp;
-  const artSource = gold ? GOLD_ART : discovered && itemId ? ITEM_ART[itemId] : undefined;
+  const artSource = gold ? { src: GOLD_ART } : discovered && itemId ? ITEM_ART[itemId] : undefined;
   const rarity = item?.rarity ?? 'uncommon';
   return (
     <span
@@ -54,10 +54,10 @@ export function ItemIcon({
       aria-hidden="true"
     >
       {artSource ? (
-        <ArtImage src={artSource} alt="" aria-hidden="true" />
+        <ArtImage asset={artSource} defaultScale={0.86} alt="" aria-hidden="true" />
       ) : (
         <Icon
-          size={size === 'xs' ? 12 : size === 'lg' ? 24 : size === 'md' ? 18 : 15}
+          size={size === 'xs' ? 12 : size === 'lg' ? 24 : size === 'tile' ? 32 : size === 'md' ? 18 : 15}
           strokeWidth={1.8}
         />
       )}

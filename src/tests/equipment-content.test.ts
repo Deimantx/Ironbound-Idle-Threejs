@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { RECIPES, recipeById } from '../content/recipes';
 import { ITEMS, itemById } from '../content/items';
+import { legacyItemById } from '../content/legacyItems';
+import { legacyRecipeById } from '../content/legacyRecipes';
 import {
   ACTIVE_EQUIPMENT_SLOTS,
   COMBAT_EQUIPMENT_SLOTS,
@@ -30,7 +32,7 @@ describe('Equipment 2.1 content', () => {
   });
 
   it('keeps unified Armor and Shield taxonomy while moving Shields to Off-hand', () => {
-    expect(itemById['bronze-armor']).toMatchObject({
+    expect(legacyItemById['bronze-armor']).toMatchObject({
       id: 'bronze-armor',
       category: 'armor',
       slot: 'armor',
@@ -46,8 +48,9 @@ describe('Equipment 2.1 content', () => {
       slot: 'armor',
       bonuses: { defence: 67, health: 32 },
     });
-    for (const id of ['bronze-shield', 'iron-shield', 'steel-shield'])
+    for (const id of ['iron-shield', 'steel-shield'])
       expect(itemById[id]).toMatchObject({ category: 'shield', slot: 'offhand' });
+    expect(itemById['bronze-shield']).toBeUndefined();
     expect(ITEMS.some((item) => (item.slot as string | undefined) === 'shield')).toBe(false);
     for (const id of [
       'bronze-platebody',
@@ -61,7 +64,6 @@ describe('Equipment 2.1 content', () => {
   });
 
   it('keeps pickaxe stats outside generic item bonuses', () => {
-    expect(itemById['bronze-sword']?.bonuses).toEqual({ attack: 8, strength: 5, attackSpeed: 0 });
     expect(itemById['iron-sword']?.bonuses).toEqual({
       attack: 18,
       strength: 12,
@@ -72,17 +74,15 @@ describe('Equipment 2.1 content', () => {
       strength: 24,
       attackSpeed: 0.1,
     });
-    expect(itemById['bronze-pickaxe']?.bonuses).toEqual({});
     expect(itemById['iron-pickaxe']?.bonuses).toEqual({});
     expect(itemById['steel-pickaxe']?.bonuses).toEqual({});
     expect(ITEMS.flatMap((item) => Object.keys(item.bonuses ?? {}))).not.toContain('speed');
   });
 
   it('keeps existing Shield recipes and removes legacy Armor recipes', () => {
-    expect(recipeById['bronze-shield']).toMatchObject({ outputItemId: 'bronze-shield' });
     expect(recipeById['iron-shield']).toMatchObject({ outputItemId: 'iron-shield' });
     expect(recipeById['steel-shield']).toMatchObject({ outputItemId: 'steel-shield' });
-    expect(recipeById['bronze-armor']).toMatchObject({
+    expect(legacyRecipeById['bronze-armor']).toMatchObject({
       level: 6,
       intervalMs: 5600,
       inputs: [{ itemId: 'bronze-bar', quantity: 9 }],
@@ -95,5 +95,6 @@ describe('Equipment 2.1 content', () => {
       RECIPES.some((recipe) => /platebody|platelegs|Cuirass|Greaves/.test(recipe.id + recipe.name)),
     ).toBe(false);
     expect(RECIPES.every((recipe) => itemById[recipe.outputItemId])).toBe(true);
+    expect(recipeById['bronze-armor']).toBeUndefined();
   });
 });

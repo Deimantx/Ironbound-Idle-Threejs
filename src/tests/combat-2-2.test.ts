@@ -113,7 +113,7 @@ describe('Combat 2.2 stance timing', () => {
     ).toBe('aggressive');
 
     let special = readyCombat();
-    special.equipment.weapon = 'bronze-sword';
+    special.equipment.weapon = 'iron-sword';
     if (special.activeAction.type !== 'combat') throw new Error('Expected active combat.');
     special.activeAction.combatState.adrenaline = 100;
     special = setCombatStyle(special, 'aggressive');
@@ -160,7 +160,7 @@ describe('Combat 2.2 target switching and selectors', () => {
   it('preserves current HP when switching from one active target to another', () => {
     const state = createNewGame(0, 'Target HP', 0);
     state.skills.hitpoints.level = 4;
-    state.equipment.head = 'bronze-helmet';
+    state.equipment.head = 'iron-helmet';
     const active = startCombat(state, 'redknife-road-camp', 'redknife-lookout', 'accurate', true, 0);
     active.player.currentHp = 31;
     const inventoryBefore = structuredClone(active.inventory);
@@ -172,7 +172,7 @@ describe('Combat 2.2 target switching and selectors', () => {
       true,
       10,
     );
-    expect(getDerivedStats(active).maxHealth).toBe(52);
+    expect(getDerivedStats(active).maxHealth).toBe(56);
     expect(next.player.currentHp).toBe(31);
     expect(next.activeAction.type === 'combat' && next.activeAction.enemyId).toBe(
       'redknife-brigand',

@@ -138,7 +138,7 @@ describe('Smithing 1.0 atomic cycles and quantity modes', () => {
     rejected.equipment.tool = 'iron-smithing-hammer';
     rejected.smithing = { ...rejected.smithing, rngSeed: 1972, rngCursor: 0 };
     rejected.inventory.push(
-      ...Array.from({ length: 59 }, () => ({ itemId: 'tin-ore', quantity: 1, locked: false })),
+      ...Array.from({ length: 59 }, () => ({ itemId: 'stone-ore', quantity: 1, locked: false })),
     );
     const rejectedResult = simulateElapsed(startSmithing(rejected, 'iron-sword', 1, 0), 3864);
     expect(getItemQuantity(rejectedResult.state.inventory, 'iron-bar')).toBe(5);
@@ -152,7 +152,7 @@ describe('Smithing 1.0 atomic cycles and quantity modes', () => {
     levelSmithing(state, 15);
     state.inventory = [
       { itemId: 'iron-bar', quantity: 4, locked: false },
-      ...Array.from({ length: 59 }, () => ({ itemId: 'tin-ore', quantity: 1, locked: false })),
+      ...Array.from({ length: 59 }, () => ({ itemId: 'stone-ore', quantity: 1, locked: false })),
     ];
     const result = simulateElapsed(startSmithing(state, 'iron-sword', 1, 0), 4200);
     expect(getItemQuantity(result.state.inventory, 'iron-bar')).toBe(0);
@@ -215,7 +215,7 @@ describe('Smithing schema 8 migration', () => {
     };
     const xp = state.skills.smithing.xp;
     const migrated = migrateSave(state, 7);
-    expect(migrated.schemaVersion).toBe(16);
+    expect(migrated.schemaVersion).toBe(17);
     expect(migrated.smithing).toMatchObject({
       rngSeed: 1972,
       rngCursor: 9,
@@ -227,9 +227,9 @@ describe('Smithing schema 8 migration', () => {
       },
     });
     expect(migrated.skills.smithing.xp).toBe(xp);
-    expect(migrated.inventory).toEqual(state.inventory);
+    expect(migrated.inventory).toEqual([]);
     expect(migrated.equipment).toEqual(state.equipment);
-    expect(migrated.activeAction).toMatchObject({ recipeId: 'bronze-armor' });
+    expect(migrated.activeAction).toEqual({ type: 'none' });
   });
 
   it('repairs a current-save Smithing level that disagrees with its XP', () => {

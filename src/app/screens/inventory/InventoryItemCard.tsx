@@ -53,11 +53,10 @@ export function InventoryItemCard({
         aria-label={`View ${name}, quantity ${formatNumber(stack.quantity)}${stack.locked ? ', locked' : ''}`}
         aria-pressed={selected}
       >
-        <span className="inventory-card-top">
-          <ItemIcon itemId={item?.id ?? stack.itemId} size="md" />
-          <span className="quantity inventory-card-quantity">×{formatNumber(stack.quantity)}</span>
+        <span className="inventory-card-art">
+          <ItemIcon itemId={item?.id ?? stack.itemId} size="tile" />
         </span>
-        <strong>{name}</strong>
+        <span className="quantity inventory-card-quantity">×{formatNumber(stack.quantity)}</span>
         {stack.locked && (
           <span className="item-card-lock" title="Locked stack" aria-label="Locked stack">
             <Lock size={14} aria-hidden="true" />

@@ -40,7 +40,6 @@ import stoneOre from '../../Assets/Art/Items/Resources/stone-ore.png';
 import ironOre from '../../Assets/Art/Items/Resources/iron-ore.png';
 import coal from '../../Assets/Art/Items/Resources/coal.png';
 
-import bronzePickaxe from '../../Assets/Art/Items/Tools/bronze-pickaxe.png';
 import wornPickaxe from '../../Assets/Art/Items/Tools/worn-pickaxe.png';
 import ironPickaxe from '../../Assets/Art/Items/Tools/iron-pickaxe.png';
 import steelPickaxe from '../../Assets/Art/Items/Tools/steel-pickaxe.png';
@@ -99,65 +98,79 @@ import brambletoothCamp from '../../Assets/Art/World/Areas/brambletooth-camp.png
 import greyfangPastures from '../../Assets/Art/World/Areas/greyfang-pastures.png';
 import redknifeRoadCamp from '../../Assets/Art/World/Areas/redknife-road-camp.png';
 
+export interface ArtAsset {
+  src: string;
+  /** Visual scale inside its frame. This is presentation metadata, not gameplay data. */
+  scale?: number;
+  /** Translation in percentage points inside the frame. */
+  x?: number;
+  y?: number;
+  objectPosition?: string;
+}
+
+const itemArt = (src: string, presentation: Omit<ArtAsset, 'src'> = {}): ArtAsset => ({
+  src,
+  ...presentation,
+});
+
 export type ArtSource = string;
 
 export const GOLD_ART = gold;
 
-export const ITEM_ART: Record<string, ArtSource> = {
-  'raw-wolf-meat': rawWolfMeat,
-  'torn-cloth': tornCloth,
-  'goblin-scrap': goblinScrap,
-  'redknife-token': redknifeToken,
-  'frayed-cloth': frayedCloth,
-  'lookouts-sapphire-ring': lookoutsSapphireRing,
-  'magic-crystal-box': magicCrystalBox,
-  'trace-of-nature': traceOfNature,
-  'redknife-hunting-bow': redknifeHuntingBow,
-  'small-coin-pouch': smallCoinPouch,
-  'black-stone': blackStone,
-  'stalkers-claw': stalkersClaw,
-  'leather-scraps': leatherScraps,
-  'iron-metal-scraps': ironMetalScraps,
-  'redknife-reinforced-greatsword': redknifeReinforcedGreatsword,
-  'redknife-cape': redknifeCape,
-  'wolf-pelt': wolfPelt,
-  'vial-of-wolf-blood': vialOfWolfBlood,
-  'pristine-wolf-pelt': pristineWolfPelt,
-  'rough-gem': roughGem,
-  'stone-ore': stoneOre,
-  'iron-ore': ironOre,
-  coal,
-  'bronze-pickaxe': bronzePickaxe,
-  'worn-pickaxe': wornPickaxe,
-  'iron-pickaxe': ironPickaxe,
-  'steel-pickaxe': steelPickaxe,
-  'iron-smithing-hammer': ironSmithingHammer,
-  'steel-smithing-hammer': steelSmithingHammer,
-  'iron-bar': ironBar,
-  'steel-bar': steelBar,
-  'iron-sword': ironSword,
-  'steel-sword': steelSword,
-  'iron-helmet': ironHelmet,
-  'steel-helmet': steelHelmet,
-  'iron-armor': ironArmor,
-  'steel-armor': steelArmor,
-  'iron-shield': ironShield,
-  'steel-shield': steelShield,
+export const ITEM_ART: Record<string, ArtAsset> = {
+  'raw-wolf-meat': itemArt(rawWolfMeat),
+  'torn-cloth': itemArt(tornCloth),
+  'goblin-scrap': itemArt(goblinScrap),
+  'redknife-token': itemArt(redknifeToken),
+  'frayed-cloth': itemArt(frayedCloth),
+  'lookouts-sapphire-ring': itemArt(lookoutsSapphireRing),
+  'magic-crystal-box': itemArt(magicCrystalBox),
+  'trace-of-nature': itemArt(traceOfNature),
+  'redknife-hunting-bow': itemArt(redknifeHuntingBow, { scale: 0.82 }),
+  'small-coin-pouch': itemArt(smallCoinPouch),
+  'black-stone': itemArt(blackStone),
+  'stalkers-claw': itemArt(stalkersClaw),
+  'leather-scraps': itemArt(leatherScraps),
+  'iron-metal-scraps': itemArt(ironMetalScraps),
+  'redknife-reinforced-greatsword': itemArt(redknifeReinforcedGreatsword, { scale: 0.8 }),
+  'redknife-cape': itemArt(redknifeCape),
+  'wolf-pelt': itemArt(wolfPelt),
+  'vial-of-wolf-blood': itemArt(vialOfWolfBlood),
+  'pristine-wolf-pelt': itemArt(pristineWolfPelt),
+  'rough-gem': itemArt(roughGem),
+  'stone-ore': itemArt(stoneOre),
+  'iron-ore': itemArt(ironOre),
+  coal: itemArt(coal),
+  'worn-pickaxe': itemArt(wornPickaxe, { scale: 0.9 }),
+  'iron-pickaxe': itemArt(ironPickaxe),
+  'steel-pickaxe': itemArt(steelPickaxe),
+  'iron-smithing-hammer': itemArt(ironSmithingHammer),
+  'steel-smithing-hammer': itemArt(steelSmithingHammer),
+  'iron-bar': itemArt(ironBar),
+  'steel-bar': itemArt(steelBar),
+  'iron-sword': itemArt(ironSword),
+  'steel-sword': itemArt(steelSword),
+  'iron-helmet': itemArt(ironHelmet),
+  'steel-helmet': itemArt(steelHelmet),
+  'iron-armor': itemArt(ironArmor, { scale: 0.82 }),
+  'steel-armor': itemArt(steelArmor, { scale: 0.82 }),
+  'iron-shield': itemArt(ironShield, { scale: 0.82 }),
+  'steel-shield': itemArt(steelShield, { scale: 0.82 }),
 };
 
-export const ENEMY_ART: Record<string, ArtSource> = {
-  'brambletooth-boarhandler': brambletoothBoarhandler,
-  'brambletooth-scavenger': brambletoothScavenger,
-  'brambletooth-spearman': brambletoothSpearman,
-  'brambletooth-trapper': brambletoothTrapper,
-  'greyfang-alpha': greyfangAlpha,
-  'greyfang-ravager': greyfangRavager,
-  'greyfang-stalker': greyfangStalker,
-  'greyfang-wolf': greyfangWolf,
-  'redknife-bowhand': redknifeBowhand,
-  'redknife-brigand': redknifeBrigand,
-  'redknife-enforcer': redknifeEnforcer,
-  'redknife-lookout': redknifeLookout,
+export const ENEMY_ART: Record<string, ArtAsset> = {
+  'brambletooth-boarhandler': itemArt(brambletoothBoarhandler, { scale: 0.78, y: -1 }),
+  'brambletooth-scavenger': itemArt(brambletoothScavenger, { scale: 0.8 }),
+  'brambletooth-spearman': itemArt(brambletoothSpearman, { scale: 0.78, y: -1 }),
+  'brambletooth-trapper': itemArt(brambletoothTrapper, { scale: 0.78, y: -1 }),
+  'greyfang-alpha': itemArt(greyfangAlpha, { scale: 0.8, y: -1 }),
+  'greyfang-ravager': itemArt(greyfangRavager, { scale: 0.78, y: -1 }),
+  'greyfang-stalker': itemArt(greyfangStalker, { scale: 0.82 }),
+  'greyfang-wolf': itemArt(greyfangWolf, { scale: 0.78, y: -1 }),
+  'redknife-bowhand': itemArt(redknifeBowhand, { scale: 0.78, y: -1 }),
+  'redknife-brigand': itemArt(redknifeBrigand, { scale: 0.78, y: -1 }),
+  'redknife-enforcer': itemArt(redknifeEnforcer, { scale: 0.76, y: -1 }),
+  'redknife-lookout': itemArt(redknifeLookout, { scale: 0.8, y: -1 }),
 };
 
 export const MINING_NODE_ART: Record<string, ArtSource> = {

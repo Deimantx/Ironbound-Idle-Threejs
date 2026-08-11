@@ -113,7 +113,7 @@ export function EquipmentPanel({ game, run, confirm }: PanelProps) {
       </Section>
       <Section title="Equipment presets">
         <div className="button-row">
-          {(['bronze', 'iron', 'steel'] as const).map((tier) => (
+          {(['iron', 'steel'] as const).map((tier) => (
             <span className="debug-tools-button-group" key={tier}>
               <ActionButton onClick={() => run((state) => debugGrantSet(state, tier))}>
                 Grant {labelize(tier)} Set

@@ -35,11 +35,6 @@ describe('Combat 2.3.1 presentation and metrics', () => {
   });
 
   it('presents special attacks with their actual effects and compounded execute damage', () => {
-    const bronzeRows = getSpecialAttackEffectRows(itemById['bronze-sword']!.specialAttack!);
-    expect(bronzeRows.map((row) => row.label)).toEqual([
-      'Deals 160% damage',
-      '+25% Accuracy',
-    ]);
     const ironRows = getSpecialAttackEffectRows(itemById['iron-sword']!.specialAttack!);
     expect(ironRows.map((row) => row.label)).toContain('Ignores flat damage reduction');
     const steelRows = getSpecialAttackEffectRows(itemById['steel-sword']!.specialAttack!);

@@ -34,7 +34,7 @@ describe('Smithing 1.2 Forge fuel', () => {
     expect(smithingFuelById.coal.fuelValue).toBe(1);
     expect(getForgeFuelUnitsRequired(recipeById['iron-bar'])).toBe(1);
     expect(getForgeFuelUnitsRequired(recipeById['steel-bar'])).toBe(2);
-    expect(getForgeFuelUnitsRequired(recipeById['bronze-bar'])).toBe(0);
+    expect(recipeById['bronze-bar']).toBeUndefined();
     expect(ACTIVE_SMITHING_RECIPES.every((recipe) => !recipe.legacy)).toBe(true);
     expect(
       ACTIVE_SMITHING_RECIPES.every((recipe) => itemById[recipe.outputItemId]?.tier !== 'bronze'),
@@ -73,7 +73,7 @@ describe('Smithing 1.2 Forge fuel', () => {
 
     const full = createNewGame(0, 'Full Hopper');
     full.inventory = Array.from({ length: 60 }, (_, index) => ({
-      itemId: index === 0 ? 'iron-ore' : 'copper-ore',
+      itemId: index === 0 ? 'iron-ore' : 'stone-ore',
       quantity: 1,
       locked: false,
     }));
@@ -185,7 +185,7 @@ describe('Smithing 1.2 Forge fuel', () => {
       { itemId: 'iron-ore', quantity: 2, locked: false },
       { itemId: 'coal', quantity: 21, locked: false },
       ...Array.from({ length: 58 }, () => ({
-        itemId: 'copper-ore',
+        itemId: 'stone-ore',
         quantity: 1,
         locked: false,
       })),
@@ -256,7 +256,7 @@ describe('Smithing 1.2 Forge fuel', () => {
     const migrated = migrateSave(state, 7);
     const parsed = parseGameState(JSON.stringify(state));
     for (const result of [migrated, parsed]) {
-      expect(result.schemaVersion).toBe(16);
+      expect(result.schemaVersion).toBe(17);
       expect(result.skills.smithing).toEqual({ level: 15, xp: smithingXp });
       expect(result.smithing).toMatchObject({
         rngSeed: 9876,
@@ -269,7 +269,7 @@ describe('Smithing 1.2 Forge fuel', () => {
         },
       });
       expect(result.inventory).toEqual([{ itemId: 'coal', quantity: 7, locked: true }]);
-      expect(result.activeAction).toMatchObject({ recipeId: 'bronze-armor' });
+      expect(result.activeAction).toEqual({ type: 'none' });
     }
   });
 });

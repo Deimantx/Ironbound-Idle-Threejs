@@ -29,7 +29,7 @@ const forgeRecipe = (
     legacy,
   });
 
-export const RECIPES: RecipeDefinition[] = [
+const ALL_RECIPES: RecipeDefinition[] = [
   // Bronze remains valid for old inventories and active old saves, but is no longer normal progression.
   smithingRecipe({
     id: 'bronze-bar',
@@ -97,12 +97,15 @@ export const RECIPES: RecipeDefinition[] = [
   forgeRecipe('steel', 'pickaxe', 'Steel Pick', 37, 6, 6000),
 ];
 
+export const ACTIVE_SMITHING_RECIPES = ALL_RECIPES.filter((recipe) => !recipe.legacy);
+export const LEGACY_SMITHING_RECIPES = ALL_RECIPES.filter((recipe) => recipe.legacy);
+export const RECIPES = ACTIVE_SMITHING_RECIPES;
 export const recipeById = Object.fromEntries(RECIPES.map((recipe) => [recipe.id, recipe]));
-export const ACTIVE_SMITHING_RECIPES = RECIPES.filter((recipe) => !recipe.legacy);
-export const LEGACY_SMITHING_RECIPES = RECIPES.filter((recipe) => recipe.legacy);
 
 export const getSmithingRecipesForCategory = (
   category: RecipeDefinition['category'],
   includeLegacy = false,
 ): RecipeDefinition[] =>
-  RECIPES.filter((recipe) => recipe.category === category && (includeLegacy || !recipe.legacy));
+  (includeLegacy ? ALL_RECIPES : RECIPES).filter(
+    (recipe) => recipe.category === category && (includeLegacy || !recipe.legacy),
+  );

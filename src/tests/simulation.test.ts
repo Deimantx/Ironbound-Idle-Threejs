@@ -22,7 +22,7 @@ describe('deterministic action simulation', () => {
   it('mining stops safely when the reward cannot enter a full inventory', () => {
     let state = createNewGame(0, 'Miner');
     state.inventory = Array.from({ length: 60 }, () => ({
-      itemId: 'tin-ore',
+      itemId: 'iron-ore',
       quantity: 1,
       locked: false,
     }));
@@ -33,12 +33,12 @@ describe('deterministic action simulation', () => {
   });
   it('smithing consumes exact materials and stops when they run out', () => {
     let state = createNewGame(0, 'Smith');
-    state.inventory = addItem([], 'copper-ore', 2, 60).inventory;
-    state.inventory = addItem(state.inventory, 'tin-ore', 2, 60).inventory;
-    state = startSmithing(state, 'bronze-bar', 'continuous', 0);
-    const result = simulateElapsed(state, 6_000);
-    expect(getItemQuantity(result.state.inventory, 'bronze-bar')).toBe(2);
-    expect(getItemQuantity(result.state.inventory, 'copper-ore')).toBe(0);
+    state.inventory = addItem([], 'iron-ore', 2, 60).inventory;
+    state.inventory = addItem(state.inventory, 'coal', 2, 60).inventory;
+    state = startSmithing(state, 'iron-bar', 'continuous', 0);
+    const result = simulateElapsed(state, 12_000);
+    expect(getItemQuantity(result.state.inventory, 'iron-bar')).toBe(2);
+    expect(getItemQuantity(result.state.inventory, 'iron-ore')).toBe(0);
     expect(result.state.activeAction.type).toBe('none');
   });
   it('combat resolves invalid content safely and supports style XP assignment', () => {

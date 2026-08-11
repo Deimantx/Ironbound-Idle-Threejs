@@ -202,7 +202,7 @@ describe('Tauraque migration and equipment contracts', () => {
       combatState: {} as never,
     };
     const migrated = migrateSave(state, 15);
-    expect(migrated.schemaVersion).toBe(16);
+    expect(migrated.schemaVersion).toBe(17);
     expect(migrated.activeAction).toEqual({ type: 'none' });
     expect(migrated.unlockedAreas).toEqual(['redknife-road-camp', 'greyfang-pastures', 'brambletooth-camp']);
     expect(migrated.inventory).toEqual([{ itemId: 'wolf-pelt', quantity: 3, locked: false }]);

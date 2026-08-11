@@ -3,7 +3,9 @@ import { COMBAT_TUNING } from '../../config/combatTuning';
 import { enemyById } from '../../content/enemies';
 import { combatEffectById } from '../../content/combatEffects';
 import { itemById } from '../../content/items';
+import { legacyItemById, RETIRED_PROFESSION_ITEM_IDS } from '../../content/legacyItems';
 import { recipeById } from '../../content/recipes';
+import { legacyRecipeById } from '../../content/legacyRecipes';
 import { createCombatRng } from '../formulas/combatFormulas';
 import { getDerivedStats } from '../formulas/statFormulas';
 import { clampHealth } from '../systems/healthSystem';
@@ -48,6 +50,8 @@ const LEGACY_MINING_NODE_MAP: Record<string, 'stone-outcrop' | null> = {
 };
 
 export type SaveMigration = (input: GameState) => GameState;
+
+const migrationItemById = { ...legacyItemById, ...itemById };
 
 export const LEGACY_ARMOR_ITEM_MAP: Record<string, string> = {
   'bronze-platebody': 'bronze-armor',
@@ -207,11 +211,11 @@ const migrateMomentumToAdrenaline = (input: GameState): GameState => {
 const getMigratedArmorId = (itemId: unknown): string | null => {
   if (typeof itemId !== 'string') return null;
   const mapped = LEGACY_ARMOR_ITEM_MAP[itemId] ?? itemId;
-  return itemById[mapped]?.slot === 'armor' ? mapped : null;
+  return migrationItemById[mapped]?.slot === 'armor' ? mapped : null;
 };
 
 const getTierRank = (itemId: string): number => {
-  const tier = itemById[itemId]?.tier;
+  const tier = migrationItemById[itemId]?.tier;
   return tier === 'steel' ? 3 : tier === 'iron' ? 2 : tier === 'bronze' ? 1 : 0;
 };
 
@@ -265,7 +269,7 @@ const migrateEquipment = (
   const candidates: LegacyEquipmentCandidate[] = [];
   const invalidLegacyIds: string[] = [];
   const existingArmor =
-    typeof legacy.armor === 'string' && itemById[legacy.armor]?.slot === 'armor'
+    typeof legacy.armor === 'string' && migrationItemById[legacy.armor]?.slot === 'armor'
       ? legacy.armor
       : undefined;
   for (const source of ['body', 'legs'] as const) {
@@ -319,7 +323,9 @@ const migrateActiveSmithing = (input: GameState): GameState['activeAction'] => {
   if (input.activeAction.type !== 'smithing') return input.activeAction;
   const recipeId = LEGACY_ARMOR_RECIPE_MAP[input.activeAction.recipeId];
   if (!recipeId) return input.activeAction;
-  const interval = recipeById[recipeId]?.intervalMs ?? input.activeAction.progressMs + 1;
+  const interval =
+    (recipeById[recipeId] ?? legacyRecipeById[recipeId])?.intervalMs ??
+    input.activeAction.progressMs + 1;
   const progressMs = Number.isFinite(input.activeAction.progressMs)
     ? Math.max(0, Math.min(interval - 1, input.activeAction.progressMs))
     : 0;
@@ -345,7 +351,7 @@ const migrateEquipmentAndClampHealth = (input: GameState): GameState => {
 };
 
 const isValidOffhandItem = (itemId: unknown): itemId is string =>
-  typeof itemId === 'string' && itemById[itemId]?.slot === 'offhand';
+  typeof itemId === 'string' && migrationItemById[itemId]?.slot === 'offhand';
 
 const migrateShieldSlot = (input: GameState): GameState => {
   const legacy = input.equipment as Record<string, unknown>;
@@ -532,7 +538,7 @@ const migrateSmithing = (input: GameState): GameState => {
   );
   let activeAction = input.activeAction;
   if (activeAction.type === 'smithing') {
-    const recipe = recipeById[activeAction.recipeId];
+    const recipe = recipeById[activeAction.recipeId] ?? legacyRecipeById[activeAction.recipeId];
     const quantityMode =
       activeAction.quantityMode === 1 ||
       activeAction.quantityMode === 10 ||
@@ -722,6 +728,39 @@ const migrateTauraqueContentReset = (input: GameState): GameState => {
   };
 };
 
+const migrateRetiredProfessionContent = (input: GameState): GameState => {
+  const inventory = input.inventory.filter((stack) => !RETIRED_PROFESSION_ITEM_IDS.has(stack.itemId));
+  const discoveredItems = input.discoveredItems.filter(
+    (itemId) => !RETIRED_PROFESSION_ITEM_IDS.has(itemId),
+  );
+  const equipment = { ...input.equipment };
+  const retiredToolWasEquipped = equipment.tool
+    ? RETIRED_PROFESSION_ITEM_IDS.has(equipment.tool)
+    : false;
+  for (const [slot, itemId] of Object.entries(equipment)) {
+    if (itemId && RETIRED_PROFESSION_ITEM_IDS.has(itemId))
+      delete equipment[slot as keyof GameState['equipment']];
+  }
+  if (retiredToolWasEquipped) {
+    equipment.tool = 'worn-pickaxe';
+    if (!discoveredItems.includes('worn-pickaxe')) discoveredItems.push('worn-pickaxe');
+  }
+
+  const activeAction =
+    input.activeAction.type === 'smithing' && legacyRecipeById[input.activeAction.recipeId]
+      ? { type: 'none' as const }
+      : input.activeAction;
+
+  return {
+    ...input,
+    inventory,
+    discoveredItems,
+    equipment,
+    activeAction,
+    schemaVersion: 17,
+  };
+};
+
 export const migrations: Record<number, SaveMigration> = {
   1: (input) => ({
     ...input,
@@ -793,6 +832,7 @@ export const migrations: Record<number, SaveMigration> = {
   14: migratePeriodicCombatEffects,
   15: migrateLifetimeStatistics,
   16: migrateTauraqueContentReset,
+  17: migrateRetiredProfessionContent,
 };
 
 export const migrateSave = (input: GameState, fromVersion = input.schemaVersion): GameState => {

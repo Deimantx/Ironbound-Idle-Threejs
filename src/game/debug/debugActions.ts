@@ -215,6 +215,8 @@ export const debugRemoveStack = (state: GameState, itemId: string): DebugMutatio
   debugRemoveQuantity(state, itemId, getItemQuantity(state.inventory, itemId));
 
 export const debugToggleLock = (state: GameState, itemId: string): DebugMutation => {
+  const itemError = withItem(itemId);
+  if (itemError) return { result: itemError };
   if (!getItemQuantity(state.inventory, itemId))
     return { result: failure('That item is not in the inventory.') };
   return mutate(state, `Toggled the lock on ${itemById[itemId]?.name ?? itemId}.`, (next) => {
@@ -413,7 +415,7 @@ export const debugSimulateFullInventoryUnequip = (
   };
 };
 
-const tierItemIds = (tier: 'bronze' | 'iron' | 'steel'): string[] =>
+const tierItemIds = (tier: 'iron' | 'steel'): string[] =>
   ACTIVE_EQUIPMENT_SLOTS.map(
     (slot) => ITEMS.find((item) => item.tier === tier && item.slot === slot)?.id,
   ).filter((id): id is string => Boolean(id));
@@ -434,12 +436,12 @@ const grantIds = (state: GameState, itemIds: string[]): DebugMutation => {
   };
 };
 
-export const debugGrantSet = (state: GameState, tier: 'bronze' | 'iron' | 'steel'): DebugMutation =>
+export const debugGrantSet = (state: GameState, tier: 'iron' | 'steel'): DebugMutation =>
   grantIds(state, tierItemIds(tier));
 
 export const debugEquipSet = (
   state: GameState,
-  tier: 'bronze' | 'iron' | 'steel',
+  tier: 'iron' | 'steel',
 ): DebugMutation => {
   let next = structuredClone(state);
   for (const itemId of tierItemIds(tier)) {

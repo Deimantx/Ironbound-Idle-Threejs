@@ -14,34 +14,34 @@ import type { InventoryStack } from '../game/types';
 describe('Equipment view helpers and separated bonuses', () => {
   it('filters compatible inventory gear without mutating input order', () => {
     const stacks: InventoryStack[] = [
-      { itemId: 'bronze-armor', quantity: 1, locked: false },
       { itemId: 'steel-armor', quantity: 1, locked: true },
+      { itemId: 'iron-armor', quantity: 1, locked: false },
       { itemId: 'iron-sword', quantity: 1, locked: false },
       { itemId: 'unknown', quantity: 2, locked: false },
     ];
     const original = structuredClone(stacks);
     expect(
       getCompatibleEquipmentStacks(stacks, itemById, 'armor').map((stack) => stack.itemId),
-    ).toEqual(['steel-armor', 'bronze-armor']);
+    ).toEqual(['steel-armor', 'iron-armor']);
     expect(stacks).toEqual(original);
     expect(getCompatibleEquipmentStacks(stacks, itemById, 'armor')[0].locked).toBe(true);
   });
 
   it('ranks tiers and compares only meaningful slot-aware bonuses', () => {
     expect(getEquipmentTierRank('steel')).toBeGreaterThan(getEquipmentTierRank('iron'));
-    expect(getEquipmentBonusComparison(itemById['bronze-armor'], itemById['iron-armor'])).toEqual([
-      { id: 'defence', label: 'Defence', current: 16, candidate: 38, delta: 22 },
-      { id: 'health', label: 'Health', current: 7, candidate: 18, delta: 11 },
+    expect(getEquipmentBonusComparison(itemById['iron-armor'], itemById['steel-armor'])).toEqual([
+      { id: 'defence', label: 'Defence', current: 38, candidate: 67, delta: 29 },
+      { id: 'health', label: 'Health', current: 18, candidate: 32, delta: 14 },
     ]);
     expect(
       getEquipmentBonusComparison(
-        itemById['bronze-pickaxe'],
+        itemById['iron-pickaxe'],
         itemById['iron-pickaxe'],
         'profession',
       ),
     ).toEqual([]);
     expect(
-      getEquipmentBonusComparison(itemById['bronze-pickaxe'], itemById['iron-pickaxe']),
+      getEquipmentBonusComparison(itemById['iron-pickaxe'], itemById['steel-pickaxe']),
     ).toEqual([]);
   });
 

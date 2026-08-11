@@ -17,7 +17,7 @@ describe('Collection Log screen', () => {
     render(<App />);
     await user.click(screen.getByRole('button', { name: /Collection Log/ }));
     expect(screen.getByRole('heading', { name: 'Collection Log' })).toBeInTheDocument();
-    expect(screen.getByText('1 / 47')).toBeInTheDocument();
+    expect(screen.getByText('1 / 46')).toBeInTheDocument();
     expect(screen.getByText('0 / 12')).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Skills / Achievements' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: 'Monsters' }));
@@ -46,7 +46,7 @@ describe('Collection Log screen', () => {
     expect(filterDivider).toHaveClass('collection-filter-divider');
     expect(filterDivider?.previousElementSibling).toBe(discoveryGroup);
     expect(within(discoveryGroup).getByRole('button', { name: 'All' })).toHaveClass('inventory-filter', 'is-active');
-    expect(within(categoryGroup).getByRole('button', { name: /All Items/ })).toHaveTextContent(/\d+\/47/);
+    expect(within(categoryGroup).getByRole('button', { name: /All Items/ })).toHaveTextContent(/\d+\/46/);
     expect(within(categoryGroup).getByRole('button', { name: /All Items/ })).toHaveClass('inventory-filter', 'is-active');
     expect(screen.getByRole('heading', { name: 'Discovered Items' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Undiscovered Items' })).toBeInTheDocument();

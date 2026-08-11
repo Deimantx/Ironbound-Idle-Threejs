@@ -272,7 +272,7 @@ function CombatPortrait({
       role="img"
       aria-label={ariaLabel ?? `${enemy.name} portrait`}
     >
-      <EnemyArt enemyId={enemy.id} large={large} />
+      <EnemyArt enemyId={enemy.id} variant={large ? 'arena' : 'preview'} large={large} />
     </div>
   );
 }
@@ -589,7 +589,7 @@ function EnemySummaryPanel({
 function CombatPortraitSmall({ enemy }: { enemy: EnemyDefinition }) {
   return (
     <div className={`combat-roster-portrait theme-${enemy.theme}`} aria-hidden="true">
-      <EnemyArt enemyId={enemy.id} />
+      <EnemyArt enemyId={enemy.id} variant="roster" />
     </div>
   );
 }

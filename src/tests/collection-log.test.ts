@@ -21,7 +21,7 @@ import { formatRewardSummary } from '../app/combat/combatPresentation';
 describe('Tauraque Collection Log selectors', () => {
   it('derives eligibility from implemented current acquisition paths', () => {
     const eligible = getCollectionEligibleItemIds();
-    expect(eligible).toHaveLength(47);
+    expect(eligible).toHaveLength(46);
     expect(eligible).toContain('stone-ore');
     expect(eligible).toContain('rough-gem');
     expect(eligible).toContain('iron-bar');
@@ -32,8 +32,8 @@ describe('Tauraque Collection Log selectors', () => {
   });
 
   it('uses functional item categories and hides undiscovered names', () => {
-    expect(getCollectionItemCategory(itemById['bronze-sword'])).toBe('Equipment');
-    expect(getCollectionItemCategory(itemById['bronze-pickaxe'])).toBe('Tools');
+    expect(getCollectionItemCategory(itemById['iron-sword'])).toBe('Equipment');
+    expect(getCollectionItemCategory(itemById['iron-pickaxe'])).toBe('Tools');
     expect(getCollectionItemCategory(itemById['iron-ore'])).toBe('Resources');
     expect(getCollectionItemCategory(itemById['goblin-scrap'])).toBe('Combat Drops');
     expect(collectionItemMatchesSearch(itemById['goblin-scrap'], 'Goblin Scrap', false)).toBe(false);

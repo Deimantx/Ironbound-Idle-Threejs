@@ -1,7 +1,9 @@
 import { enemyById } from '../../content/enemies';
 import { itemById, ITEMS } from '../../content/items';
+import { legacyItemById } from '../../content/legacyItems';
 import { miningNodeById } from '../../content/miningNodes';
 import { recipeById } from '../../content/recipes';
+import { legacyRecipeById } from '../../content/legacyRecipes';
 import type { GameState, SimulationContext, SimulationSummary, SkillId } from '../../game/types';
 import { formatNumber } from '../shared/formatters';
 import { ItemIcon } from '../items/ItemIcon';
@@ -21,6 +23,8 @@ const rarityOrder: Record<string, number> = {
   rare: 2,
   epic: 3,
 };
+
+const displayItemById = { ...legacyItemById, ...itemById };
 
 export const formatOfflineDuration = (milliseconds: number): string => {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
@@ -68,8 +72,8 @@ const orderedItemIds = (summary: SimulationSummary, context: SimulationContext):
     .sort(([leftId], [rightId]) => {
       if (leftId === primaryId) return -1;
       if (rightId === primaryId) return 1;
-      const left = itemById[leftId];
-      const right = itemById[rightId];
+      const left = displayItemById[leftId];
+      const right = displayItemById[rightId];
       const rarityDelta =
         (rarityOrder[left?.rarity ?? 'common'] ?? 0) -
         (rarityOrder[right?.rarity ?? 'common'] ?? 0);
@@ -104,7 +108,7 @@ function OfflineItems({
         {ids.map((itemId) => (
           <div className="offline-gain-row" key={itemId}>
             <ItemIcon itemId={itemId} size="md" />
-            <span>{itemById[itemId]?.name ?? itemId}</span>
+            <span>{displayItemById[itemId]?.name ?? itemId}</span>
             <strong className="numeric">+{formatNumber(summary.itemsGained[itemId])}</strong>
           </div>
         ))}
@@ -176,7 +180,9 @@ export function OfflineModal({
 }) {
   const context = summary.offlineContext ?? { activity: 'idle' as const };
   const nodeName = context.miningNodeId ? miningNodeById[context.miningNodeId]?.name : undefined;
-  const recipeName = context.recipeId ? recipeById[context.recipeId]?.name : undefined;
+  const recipeName = context.recipeId
+    ? (recipeById[context.recipeId] ?? legacyRecipeById[context.recipeId])?.name
+    : undefined;
   const enemyName = context.enemyId ? enemyById[context.enemyId]?.name : undefined;
   const subjectName = nodeName ?? recipeName ?? enemyName;
   const status = summary.stoppedReason

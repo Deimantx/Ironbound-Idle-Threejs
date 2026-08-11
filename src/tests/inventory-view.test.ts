@@ -34,7 +34,7 @@ describe('inventory view helpers', () => {
 
   it('combines a trimmed search with a display-group filter without changing stack order', () => {
     const stacks: InventoryStack[] = [
-      { itemId: 'copper-ore', quantity: 8, locked: false },
+      { itemId: 'stone-ore', quantity: 8, locked: false },
       { itemId: 'iron-sword', quantity: 1, locked: false },
       { itemId: 'goblin-scrap', quantity: 3, locked: false },
     ];
@@ -48,7 +48,7 @@ describe('inventory view helpers', () => {
 
   it('counts occupied stacks rather than item quantities', () => {
     const stacks: InventoryStack[] = [
-      { itemId: 'copper-ore', quantity: 124, locked: false },
+      { itemId: 'stone-ore', quantity: 124, locked: false },
       { itemId: 'iron-bar', quantity: 8, locked: false },
       { itemId: 'iron-sword', quantity: 1, locked: false },
       { itemId: 'goblin-scrap', quantity: 0, locked: false },
@@ -65,7 +65,7 @@ describe('inventory view helpers', () => {
   it('groups visible stacks by display group without mutating order or adding empty groups', () => {
     const stacks: InventoryStack[] = [
       { itemId: 'goblin-scrap', quantity: 3, locked: false },
-      { itemId: 'copper-ore', quantity: 8, locked: false },
+      { itemId: 'stone-ore', quantity: 8, locked: false },
       { itemId: 'iron-sword', quantity: 1, locked: false },
       { itemId: 'unknown-item', quantity: 2, locked: false },
     ];

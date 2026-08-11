@@ -69,26 +69,6 @@ const ALL_ITEMS: ItemDefinition[] = [
     'Mining Â· Stone Outcrop',
   ),
   {
-    id: 'stone-fragment',
-    name: 'Stone Fragment',
-    category: 'material',
-    description: 'Common chips shaken loose from worked rock.',
-    source: 'Mining',
-    stackable: true,
-    rarity: 'common',
-    presentation: { iconKey: 'ore', visualCategory: 'material' },
-  },
-  {
-    id: 'sharpening-grit',
-    name: 'Sharpening Grit',
-    category: 'material',
-    description: 'Abrasive mineral reserved for future tool work.',
-    source: 'Mining',
-    stackable: true,
-    rarity: 'uncommon',
-    presentation: { iconKey: 'ore', visualCategory: 'material' },
-  },
-  {
     id: 'rough-gem',
     name: 'Rough Gem',
     category: 'material',
@@ -98,61 +78,10 @@ const ALL_ITEMS: ItemDefinition[] = [
     rarity: 'rare',
     presentation: { iconKey: 'gem', visualCategory: 'material' },
   },
-  material(
-    'copper-ore',
-    'Copper Ore',
-    'Warm orange ore from shallow veins.',
-    'Mining Â· Copper Vein',
-  ),
-  material('tin-ore', 'Tin Ore', 'Soft grey ore used with copper.', 'Mining Â· Tin Vein'),
   material('iron-ore', 'Iron Ore', 'Dense ore that takes a dark polish.', 'Mining Â· Iron Vein'),
   material('coal', 'Coal Ore', 'Dense fuel ore for a hotter, cleaner forge.', 'Mining Â· Coal Seam'),
-  material(
-    'mithril-ore',
-    'Mithril Ore',
-    'A preview mineral from deeper strata.',
-    'Mining Â· Mithril Deposit',
-  ),
-  bar('bronze-bar', 'Bronze Bar', 'A reliable copper-tin alloy.', 'Smithing Â· Smelting'),
   bar('iron-bar', 'Iron Bar', 'A strong foundation for practical gear.', 'Smithing Â· Smelting'),
   bar('steel-bar', 'Steel Bar', 'Coal-hardened iron for elite gear.', 'Smithing Â· Smelting'),
-  gear(
-    'bronze-sword',
-    'Bronze Sword',
-    'weapon',
-    'bronze',
-    { attack: 8, strength: 5, attackSpeed: 0 },
-    'Bronze',
-    {
-      id: 'focused-slash',
-      name: 'Focused Slash',
-      description: 'A controlled strike with increased damage and accuracy.',
-      damageMultiplier: 1.6,
-      accuracyMultiplier: 1.25,
-    },
-  ),
-  gear('bronze-helmet', 'Bronze Helm', 'head', 'bronze', { defence: 5, health: 2 }, 'Bronze'),
-  gear(
-    'bronze-armor',
-    'Bronze Armor',
-    'armor',
-    'bronze',
-    { defence: 16, health: 7 },
-    'Bronze',
-    undefined,
-    'A complete bronze field harness covering the torso and lower body.',
-  ),
-  gear(
-    'bronze-shield',
-    'Bronze Buckler',
-    'offhand',
-    'bronze',
-    { defence: 10, health: 3 },
-    'Bronze',
-    undefined,
-    undefined,
-    'shield',
-  ),
   {
     id: 'worn-pickaxe',
     name: 'Worn Pickaxe',
@@ -165,7 +94,6 @@ const ALL_ITEMS: ItemDefinition[] = [
     slot: 'tool',
     bonuses: {},
   },
-  gear('bronze-pickaxe', 'Bronze Pick', 'tool', 'bronze', {}, 'Bronze'),
   gear(
     'iron-sword',
     'Iron Sword',
@@ -306,9 +234,8 @@ const ALL_ITEMS: ItemDefinition[] = [
   } as ItemDefinition)),
 ];
 
-export const ITEMS: ItemDefinition[] = [
-  ...ALL_ITEMS,
-];
+export const ACTIVE_ITEMS: ItemDefinition[] = ALL_ITEMS;
+export const ITEMS = ACTIVE_ITEMS;
 
 export const itemById = Object.fromEntries(ITEMS.map((item) => [item.id, item])) as Record<
   string,

@@ -151,7 +151,6 @@ export const applyDebugPreset = (input: GameState, preset: DebugPresetId): Debug
       break;
     case 'mining':
       state.inventory = [];
-      add(state, 'bronze-pickaxe', 1);
       add(state, 'iron-pickaxe', 1);
       add(state, 'steel-pickaxe', 1);
       setSkill(state, 'mining', MAX_LEVEL);

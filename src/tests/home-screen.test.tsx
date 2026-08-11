@@ -51,7 +51,7 @@ describe('HomeScreen 2.3', () => {
   it('integrates recent progress and keeps navigation unambiguous', () => {
     const game = createNewGame(0, 'Dashboard Tester');
     game.settings.threeQuality = 'off';
-    game.equipment.weapon = 'bronze-sword';
+    game.equipment.weapon = 'iron-sword';
     useGameStore.getState().setGame(game);
 
     render(<HomeScreen game={game} onNavigate={vi.fn()} />);

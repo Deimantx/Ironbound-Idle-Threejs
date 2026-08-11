@@ -244,16 +244,12 @@ function ItemCard({
   const card = (
     <button
       type="button"
-      className={`collection-card ${!discovered ? 'unknown' : ''} ${selected ? 'selected' : ''}`}
+      className={`collection-card collection-item-card ${!discovered ? 'unknown' : ''} ${selected ? 'selected' : ''}`}
       aria-label={discovered ? item.name : 'Unknown item'}
       aria-current={selected ? 'true' : undefined}
       onClick={onSelect}
     >
-      <ItemIcon itemId={item.id} discovered={discovered} size="md" />
-      <span>
-        <strong>{discovered ? item.name : '???'}</strong>
-        <small>{discovered ? getCollectionItemCategory(item) : 'Undiscovered'}</small>
-      </span>
+      <ItemIcon itemId={item.id} discovered={discovered} size="tile" />
     </button>
   );
   return <ItemTooltip item={item} disabled={!discovered}>{card}</ItemTooltip>;
@@ -279,7 +275,7 @@ function CollectionItemSection({
         <h3>{title}</h3>
         <span className="collection-section-count">{items.length} items</span>
       </div>
-      <div className="collection-grid">
+      <div className="collection-grid collection-item-grid">
         {items.map((item) => {
           const discovered = discoveredIds.includes(item.id);
           return (
@@ -517,7 +513,7 @@ function MonsterCard({
       aria-current={selected ? 'true' : undefined}
       onClick={onSelect}
     >
-      <EnemyArt enemyId={enemy.id} discovered={discovered} />
+      <EnemyArt enemyId={enemy.id} discovered={discovered} variant="roster" />
       <span>
         <strong>{discovered ? enemy.name : 'Unknown foe'}</strong>
         <small>{discovered ? `Level ${enemy.displayLevel} · ${formatNumber(kills)} kills` : 'Undiscovered'}</small>
@@ -646,7 +642,7 @@ function MonsterCollectionDetails({ enemy, game }: { enemy?: EnemyDefinition; ga
   return (
     <aside className="collection-detail" aria-label={`${enemy.name} details`}>
       <div className="collection-detail-heading">
-        <EnemyArt enemyId={enemy.id} large />
+      <EnemyArt enemyId={enemy.id} variant="detail" large />
         <div>
           <span className="eyebrow">Bestiary record</span>
           <h2>{enemy.name}</h2>

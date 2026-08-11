@@ -161,11 +161,11 @@ describe('Debug Tools action boundary', () => {
   });
 
   it('clears equipment only through normal unequip actions', () => {
-    let state = debugGrantAndEquip(fresh(), 'bronze-sword').state!;
-    state = debugGrantAndEquip(state, 'bronze-helmet').state!;
+    let state = debugGrantAndEquip(fresh(), 'iron-sword').state!;
+    state = debugGrantAndEquip(state, 'iron-helmet').state!;
     const result = debugClearEquipment(state);
     expect(result.result.ok).toBe(true);
     expect(result.state?.equipment).toEqual({});
-    expect(getItemQuantity(result.state?.inventory ?? [], 'bronze-sword')).toBe(1);
+    expect(getItemQuantity(result.state?.inventory ?? [], 'iron-sword')).toBe(1);
   });
 });

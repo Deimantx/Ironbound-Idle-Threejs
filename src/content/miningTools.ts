@@ -11,14 +11,6 @@ export const MINING_TOOLS: MiningToolDefinition[] = [
     staminaCost: 20,
   },
   {
-    itemId: 'bronze-pickaxe',
-    requiredMiningLevel: 8,
-    rockDamage: 16,
-    penetration: 25,
-    swingIntervalMs: 2_800,
-    staminaCost: 18,
-  },
-  {
     itemId: 'iron-pickaxe',
     requiredMiningLevel: 20,
     rockDamage: 28,

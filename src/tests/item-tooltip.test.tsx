@@ -15,27 +15,27 @@ describe('custom item tooltips', () => {
     vi.useRealTimers();
   });
 
-  it('shows Bronze weapon effects on hover and keeps the tooltip out of layout flow', () => {
+  it('shows Iron weapon effects on hover and keeps the tooltip out of layout flow', () => {
     vi.useFakeTimers();
     render(
-      <ItemTooltip item={itemById['bronze-sword']}>
-        <button type="button">Bronze Sword</button>
+      <ItemTooltip item={itemById['iron-sword']}>
+        <button type="button">Iron Sword</button>
       </ItemTooltip>,
     );
     fireEvent.pointerEnter(screen.getByRole('button'));
     openTooltip();
     const tooltip = screen.getByRole('tooltip');
-    expect(tooltip).toHaveTextContent('Bronze Sword');
-    expect(tooltip).toHaveTextContent('Deals 160% damage');
-    expect(tooltip).toHaveTextContent('+25% Accuracy');
+    expect(tooltip).toHaveTextContent('Iron Sword');
+    expect(tooltip).toHaveTextContent('Deals 175% damage');
+    expect(tooltip).toHaveTextContent('+15% Accuracy');
     expect(tooltip.parentElement).toBe(document.body);
   });
 
   it('supports keyboard focus, Escape, armor bonuses, and empty slots without fake data', () => {
     vi.useFakeTimers();
     const { rerender } = render(
-      <ItemTooltip item={itemById['bronze-helmet']}>
-        <button type="button">Bronze Helm</button>
+      <ItemTooltip item={itemById['iron-helmet']}>
+        <button type="button">Iron Helm</button>
       </ItemTooltip>,
     );
     const trigger = screen.getByRole('button');
@@ -59,18 +59,18 @@ describe('custom item tooltips', () => {
   it('shows definition-backed mining fields for each pickaxe', () => {
     vi.useFakeTimers();
     render(
-      <ItemTooltip item={itemById['bronze-pickaxe']}>
-        <button type="button">Bronze Pickaxe</button>
+      <ItemTooltip item={itemById['iron-pickaxe']}>
+        <button type="button">Iron Pickaxe</button>
       </ItemTooltip>,
     );
     screen.getByRole('button').focus();
     openTooltip();
     const tooltip = screen.getByRole('tooltip');
-    expect(tooltip).toHaveTextContent('Required Mining Level: 8');
-    expect(tooltip).toHaveTextContent('Rock Damage: 16');
-    expect(tooltip).toHaveTextContent('Penetration: 25');
-    expect(tooltip).toHaveTextContent('Swing Interval: 2.8s');
-    expect(tooltip).toHaveTextContent('Stamina Cost: 18');
+    expect(tooltip).toHaveTextContent('Required Mining Level: 20');
+    expect(tooltip).toHaveTextContent('Rock Damage: 28');
+    expect(tooltip).toHaveTextContent('Penetration: 45');
+    expect(tooltip).toHaveTextContent('Swing Interval: 2.5s');
+    expect(tooltip).toHaveTextContent('Stamina Cost: 16');
     expect(tooltip).not.toHaveTextContent('Smithing Hammer');
   });
 
@@ -89,7 +89,7 @@ describe('custom item tooltips', () => {
     expect(tooltip).toHaveTextContent('Material Preservation: 6%');
     expect(tooltip).not.toHaveTextContent('Mining Tool');
 
-    const presentation = getProfessionToolPresentation(itemById['bronze-sword']?.id);
+    const presentation = getProfessionToolPresentation(itemById['iron-sword']?.id);
     expect(presentation).toBeNull();
   });
 
