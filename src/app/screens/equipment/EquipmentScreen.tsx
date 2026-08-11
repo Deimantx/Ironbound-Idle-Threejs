@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { itemById } from '../../../content/items';
+import { ArtViewport } from '../../art/ArtViewport';
 import { MINING_TUNING } from '../../../config/miningTuning';
 import { getMiningToolDefinition } from '../../../content/miningTools';
 import { getSmithingHammerDefinition } from '../../../content/smithingTools';
@@ -78,12 +79,14 @@ function ItemSummary({
       aria-label={item ? `${heading}: ${item.name}` : undefined}
     >
       <div className="equipment-item-summary-heading">
-        <ItemIcon
-          itemId={item?.id ?? itemId}
-          size="lg"
-          framed={false}
-          artVariant="equipment-slot"
-        />
+        <ArtViewport className="equipment-item-summary-viewport">
+          <ItemIcon
+            itemId={item?.id ?? itemId}
+            size="lg"
+            framed={false}
+            artVariant="item-equipment"
+          />
+        </ArtViewport>
         <div className="equipment-item-summary-title">
           <div className="eyebrow">{heading}</div>
           <strong>{item?.name ?? (itemId ? 'Unknown item' : 'Empty')}</strong>
@@ -158,7 +161,9 @@ function EquipmentSlotCard({
         {item ? (
           <>
             <span className="equipment-item-icon">
-              <ItemIcon itemId={item.id} size="lg" framed={false} artVariant="equipment-slot" />
+              <ArtViewport className="equipment-item-viewport">
+                <ItemIcon itemId={item.id} size="lg" framed={false} artVariant="item-equipment" />
+              </ArtViewport>
             </span>
             <small>{item.name}</small>
           </>

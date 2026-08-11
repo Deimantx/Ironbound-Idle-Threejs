@@ -6415,7 +6415,7 @@ h3 {
 }
 .combat-browser-roster .combat-enemy-roster {
   flex-wrap: wrap;
-  overflow: visible;
+  overflow: hidden;
 }
 .combat-browser-selection > .combat-analysis {
   margin: 0;
@@ -11971,7 +11971,7 @@ h3 {
   flex: 0 0 100px;
   width: 100px;
   height: 112px;
-  overflow: visible;
+  overflow: hidden;
   background: transparent;
 }
 .collection-monster-grid .collection-card {
@@ -12050,5 +12050,243 @@ h3 {
   .mining-overview-node-art {
     width: 120px;
     height: 120px;
+  }
+}
+
+/* Final art framing pass: every transformed item/enemy image gets a hard viewport. */
+.art-viewport {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  place-items: center;
+  overflow: hidden;
+  isolation: isolate;
+}
+.art-viewport > .item-art,
+.art-viewport > .loot-icon,
+.art-viewport > .enemy-art {
+  max-width: 100%;
+  max-height: 100%;
+}
+.loot-icon {
+  overflow: hidden;
+}
+
+.item-rarity-common {
+  --item-rarity-accent: #7b8780;
+}
+.item-rarity-uncommon {
+  --item-rarity-accent: #7bb18b;
+}
+.item-rarity-rare {
+  --item-rarity-accent: #7daed2;
+}
+.item-rarity-epic {
+  --item-rarity-accent: #ce92e0;
+}
+
+.inventory-bank-grid,
+.collection-item-grid {
+  grid-template-columns: repeat(auto-fill, 92px);
+  justify-content: start;
+}
+.inventory-item-card,
+.collection-item-card {
+  box-sizing: border-box;
+  border: 1px solid #354247;
+  border-top: 2px solid var(--item-rarity-accent, #354247);
+  box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
+}
+.inventory-item-card {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 22px;
+  align-content: stretch;
+  justify-items: stretch;
+  width: 92px;
+  height: 106px;
+  min-height: 106px;
+  padding: 0;
+  overflow: hidden;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+.inventory-item-card:hover {
+  transform: none;
+  background: linear-gradient(145deg, rgba(42, 50, 51, 0.96), rgba(17, 22, 24, 0.98));
+  border-color: #687678;
+  border-top-color: var(--item-rarity-accent, #687678);
+}
+.inventory-item-card.is-selected,
+.inventory-item-card:focus-visible,
+.collection-item-card.selected {
+  border-color: var(--gold);
+  border-top-color: var(--gold);
+  box-shadow: 0 0 0 1px rgba(224, 189, 111, 0.36), 0 0 14px rgba(224, 189, 111, 0.14);
+}
+.inventory-item-card.is-selected {
+  background: linear-gradient(145deg, rgba(59, 52, 36, 0.9), rgba(20, 23, 23, 0.98));
+}
+.inventory-card-art {
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: 6px 7px 0;
+  background: radial-gradient(circle at 50% 44%, rgba(125, 145, 143, 0.18), transparent 68%);
+}
+.inventory-card-art > .item-art {
+  width: 74px;
+  height: 74px;
+}
+.inventory-card-footer {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  height: 22px;
+  padding: 0 6px;
+  background: rgba(8, 12, 13, 0.42);
+  border-top: 1px solid rgba(126, 143, 143, 0.16);
+}
+.inventory-card-quantity {
+  position: static;
+  display: inline-flex;
+  align-items: center;
+  min-height: 0;
+  padding: 0;
+  color: #f0d292;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  font-size: 10px;
+}
+.inventory-card-footer .item-card-lock {
+  position: static;
+  display: grid;
+  width: 14px;
+  height: 14px;
+  place-items: center;
+  color: var(--gold);
+}
+
+.collection-item-card {
+  display: grid;
+  width: 92px;
+  height: 92px;
+  min-height: 92px;
+  padding: 7px;
+  overflow: hidden;
+  place-items: center;
+  transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+.collection-item-card:not(.unknown):hover,
+.collection-item-card:not(.unknown):focus-visible {
+  transform: none;
+  background: #1c2527;
+  border-color: #687678;
+  border-top-color: var(--item-rarity-accent, #687678);
+  box-shadow: inset 0 0 0 1px rgba(126, 143, 143, 0.2);
+  outline: 0;
+}
+.collection-item-art-viewport {
+  width: 74px;
+  height: 74px;
+  gap: 0;
+}
+.collection-item-card > .collection-item-art-viewport {
+  gap: 0;
+}
+.collection-item-art-viewport > .item-art {
+  width: 74px;
+  height: 74px;
+}
+.collection-detail-item-viewport,
+.equipment-item-summary-viewport,
+.equipment-item-viewport {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 56px;
+  gap: 0;
+}
+.collection-detail-item-viewport > .item-art,
+.equipment-item-summary-viewport > .item-art,
+.equipment-item-viewport > .item-art {
+  width: 56px;
+  height: 56px;
+}
+.equipment-item-icon {
+  overflow: hidden;
+}
+
+.item-tooltip-header {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.item-tooltip-icon-viewport {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  background: radial-gradient(circle at 50% 42%, rgba(125, 145, 143, 0.22), transparent 72%);
+  border-radius: 6px;
+}
+.item-tooltip-icon-viewport > .item-art {
+  width: 42px;
+  height: 42px;
+}
+.item-tooltip-header-copy {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.item-tooltip-header-copy strong,
+.item-tooltip-header-copy span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.item-tooltip-header-copy strong {
+  white-space: nowrap;
+}
+
+.enemy-art,
+.combat-portrait,
+.combat-roster-portrait {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.combat-portrait {
+  display: grid;
+  place-items: center;
+}
+.combat-analysis-target .combat-portrait-target-preview {
+  flex: 0 0 108px;
+  width: 108px;
+  height: 120px;
+  overflow: hidden;
+}
+
+@media (max-width: 900px) {
+  .inventory-bank-grid,
+  .collection-item-grid {
+    grid-template-columns: repeat(auto-fill, 92px);
+    justify-content: start;
+  }
+  .inventory-item-card,
+  .collection-item-card {
+    width: 92px;
+  }
+}
+
+@media (max-width: 600px) {
+  .combat-analysis-target .combat-portrait-target-preview {
+    flex-basis: 92px;
+    width: 92px;
+    height: 104px;
   }
 }

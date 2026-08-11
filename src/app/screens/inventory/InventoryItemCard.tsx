@@ -2,6 +2,7 @@ import { Lock } from 'lucide-react';
 import type { DragEvent, MouseEvent } from 'react';
 import type { InventoryStack, ItemDefinition } from '../../../game/types';
 import { formatNumber } from '../../shared/formatters';
+import { ArtViewport } from '../../art/ArtViewport';
 import type { InventoryDropPosition } from './inventoryOrdering';
 import { ItemIcon } from '../../items/ItemIcon';
 import { ItemTooltip } from '../../items/ItemTooltip';
@@ -42,7 +43,7 @@ export function InventoryItemCard({
       <button
         ref={cardRef}
         type="button"
-        className={`item-card inventory-item-card inventory-rarity-${item?.rarity ?? 'uncommon'} ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''} ${isDragSource ? 'is-drag-source' : ''} ${dropPosition ? `is-drop-${dropPosition}` : ''}`}
+        className={`item-card inventory-item-card item-rarity-${item?.rarity ?? 'uncommon'} ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''} ${isDragSource ? 'is-drag-source' : ''} ${dropPosition ? `is-drop-${dropPosition}` : ''}`}
         onClick={(event) => onSelect(stack.itemId, event)}
         onDragStart={dragEnabled ? (event) => onDragStart?.(event, stack.itemId) : undefined}
         onDragOver={dragEnabled ? (event) => onDragOver?.(event, stack.itemId) : undefined}
@@ -53,15 +54,22 @@ export function InventoryItemCard({
         aria-label={`View ${name}, quantity ${formatNumber(stack.quantity)}${stack.locked ? ', locked' : ''}`}
         aria-pressed={selected}
       >
-        <span className="inventory-card-art">
-          <ItemIcon itemId={item?.id ?? stack.itemId} size="tile" framed={false} />
+        <ArtViewport className="inventory-card-art">
+          <ItemIcon
+            itemId={item?.id ?? stack.itemId}
+            size="tile"
+            framed={false}
+            artVariant="item-inventory"
+          />
+        </ArtViewport>
+        <span className="inventory-card-footer">
+          <span className="quantity inventory-card-quantity">×{formatNumber(stack.quantity)}</span>
+          {stack.locked && (
+            <span className="item-card-lock" title="Locked stack" aria-label="Locked stack">
+              <Lock size={14} aria-hidden="true" />
+            </span>
+          )}
         </span>
-        <span className="quantity inventory-card-quantity">×{formatNumber(stack.quantity)}</span>
-        {stack.locked && (
-          <span className="item-card-lock" title="Locked stack" aria-label="Locked stack">
-            <Lock size={14} aria-hidden="true" />
-          </span>
-        )}
       </button>
     </ItemTooltip>
   );

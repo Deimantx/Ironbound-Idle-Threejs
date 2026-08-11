@@ -17,6 +17,7 @@ import type {
 import { formatNumber } from '../../shared/formatters';
 import { getEquipmentBonusLabel, formatEquipmentBonus } from '../../shared/equipmentView';
 import { ItemIcon } from '../../items/ItemIcon';
+import { ArtViewport } from '../../art/ArtViewport';
 import { EnemyArt } from '../../art/EnemyArt';
 import { ItemTooltip } from '../../items/ItemTooltip';
 import { ProfessionToolDetails } from '../../items/ProfessionToolDetails';
@@ -244,12 +245,20 @@ function ItemCard({
   const card = (
     <button
       type="button"
-      className={`collection-card collection-item-card collection-rarity-${item.rarity} ${!discovered ? 'unknown' : ''} ${selected ? 'selected' : ''}`}
+      className={`collection-card collection-item-card item-rarity-${item.rarity} ${!discovered ? 'unknown' : ''} ${selected ? 'selected' : ''}`}
       aria-label={discovered ? item.name : 'Unknown item'}
       aria-current={selected ? 'true' : undefined}
       onClick={onSelect}
     >
-      <ItemIcon itemId={item.id} discovered={discovered} size="tile" framed={false} />
+      <ArtViewport className="collection-item-art-viewport">
+        <ItemIcon
+          itemId={item.id}
+          discovered={discovered}
+          size="tile"
+          framed={false}
+          artVariant="item-collection"
+        />
+      </ArtViewport>
     </button>
   );
   return <ItemTooltip item={item} disabled={!discovered}>{card}</ItemTooltip>;
@@ -404,7 +413,9 @@ function ItemCollectionDetails({
   return (
     <aside className="collection-detail" aria-label={`${item.name} details`}>
       <div className="collection-detail-heading">
-        <ItemIcon itemId={item.id} size="lg" framed={false} artVariant="equipment-slot" />
+        <ArtViewport className="collection-detail-item-viewport">
+          <ItemIcon itemId={item.id} size="lg" framed={false} artVariant="item-equipment" />
+        </ArtViewport>
         <div>
           <span className="eyebrow">{getCollectionItemCategory(item)}</span>
           <h2>{item.name}</h2>

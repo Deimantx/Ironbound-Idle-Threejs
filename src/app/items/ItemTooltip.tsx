@@ -1,6 +1,7 @@
 import type { ReactElement } from 'react';
 import type { ItemDefinition } from '../../game/types';
 import { getEquipmentBonusLabel, formatEquipmentBonus, getEquipmentSlotLabel } from '../shared/equipmentView';
+import { ArtViewport } from '../art/ArtViewport';
 import { ItemIcon } from './ItemIcon';
 import { GameTooltip } from './GameTooltip';
 import { ProfessionToolDetails } from './ProfessionToolDetails';
@@ -20,8 +21,10 @@ export function ItemTooltipContent({ item }: { item?: ItemDefinition }) {
   return (
     <div className="item-tooltip-content">
       <div className="item-tooltip-header">
-        <ItemIcon itemId={item.id} size="sm" />
-        <div>
+        <ArtViewport className="item-tooltip-icon-viewport" aria-hidden="true">
+          <ItemIcon itemId={item.id} size="md" framed={false} artVariant="item-tooltip" />
+        </ArtViewport>
+        <div className="item-tooltip-header-copy">
           <strong>{item.name}</strong>
           <span>
             {titleCase(item.rarity)} · {item.slot ? getEquipmentSlotLabel(item.slot) : titleCase(item.category)}

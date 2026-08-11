@@ -260,19 +260,22 @@ function StatLine({
 function CombatPortrait({
   enemy,
   large = false,
+  targetPreview = false,
   ariaLabel,
 }: {
   enemy: EnemyDefinition;
   large?: boolean;
+  targetPreview?: boolean;
   ariaLabel?: string;
 }) {
+  const variant = targetPreview ? 'preview' : large ? 'arena' : 'preview';
   return (
     <div
-      className={`combat-portrait theme-${enemy.theme} ${large ? 'combat-portrait-large' : ''}`}
+      className={`combat-portrait theme-${enemy.theme} ${large ? 'combat-portrait-large' : ''} ${targetPreview ? 'combat-portrait-target-preview' : ''}`}
       role="img"
       aria-label={ariaLabel ?? `${enemy.name} portrait`}
     >
-      <EnemyArt enemyId={enemy.id} variant={large ? 'arena' : 'preview'} large={large} />
+      <EnemyArt enemyId={enemy.id} variant={variant} large={large && !targetPreview} />
     </div>
   );
 }
@@ -948,7 +951,7 @@ function TargetAnalysis({
           role="group"
           aria-label={`Selected target: ${enemy.name}, level ${enemy.displayLevel}`}
         >
-          <CombatPortrait enemy={enemy} large />
+          <CombatPortrait enemy={enemy} targetPreview />
           <span className="combat-analysis-target-copy">
             <strong>{enemy.name}</strong>
               <span>Enemy Lv {enemy.displayLevel}</span>

@@ -101,6 +101,10 @@ import redknifeRoadCamp from '../../Assets/Art/World/Areas/redknife-road-camp.pn
 export type ArtVariant =
   | 'item-small'
   | 'item-tile'
+  | 'item-tooltip'
+  | 'item-inventory'
+  | 'item-collection'
+  | 'item-equipment'
   | 'equipment-slot'
   | 'enemy-roster'
   | 'enemy-preview'
@@ -124,9 +128,14 @@ export interface ArtAsset {
   variants?: Partial<Record<ArtVariant, ArtTransform>>;
 }
 
-const itemArt = (src: string, base: ArtTransform = {}): ArtAsset => ({
-  src,
-  base,
+const itemArt = (
+  src: string,
+  base: ArtTransform = {},
+  variants: Partial<Record<ArtVariant, ArtTransform>> = {},
+): ArtAsset => ({ src, base, variants });
+
+const collectionOnly = (scale: number): Partial<Record<ArtVariant, ArtTransform>> => ({
+  'item-collection': { scale },
 });
 
 export type ArtSource = string;
@@ -134,44 +143,44 @@ export type ArtSource = string;
 export const GOLD_ART = gold;
 
 export const ITEM_ART: Record<string, ArtAsset> = {
-  'raw-wolf-meat': itemArt(rawWolfMeat),
-  'torn-cloth': itemArt(tornCloth),
+  'raw-wolf-meat': itemArt(rawWolfMeat, {}, collectionOnly(0.9)),
+  'torn-cloth': itemArt(tornCloth, {}, collectionOnly(0.86)),
   'goblin-scrap': itemArt(goblinScrap),
   'redknife-token': itemArt(redknifeToken),
-  'frayed-cloth': itemArt(frayedCloth),
-  'lookouts-sapphire-ring': itemArt(lookoutsSapphireRing),
+  'frayed-cloth': itemArt(frayedCloth, {}, collectionOnly(0.84)),
+  'lookouts-sapphire-ring': itemArt(lookoutsSapphireRing, {}, collectionOnly(0.86)),
   'magic-crystal-box': itemArt(magicCrystalBox),
   'trace-of-nature': itemArt(traceOfNature),
   'redknife-hunting-bow': itemArt(redknifeHuntingBow, { scale: 0.82 }),
   'small-coin-pouch': itemArt(smallCoinPouch),
-  'black-stone': itemArt(blackStone),
+  'black-stone': itemArt(blackStone, {}, collectionOnly(0.9)),
   'stalkers-claw': itemArt(stalkersClaw),
-  'leather-scraps': itemArt(leatherScraps),
-  'iron-metal-scraps': itemArt(ironMetalScraps),
-  'redknife-reinforced-greatsword': itemArt(redknifeReinforcedGreatsword, { scale: 0.8 }),
-  'redknife-cape': itemArt(redknifeCape),
-  'wolf-pelt': itemArt(wolfPelt),
+  'leather-scraps': itemArt(leatherScraps, {}, collectionOnly(0.86)),
+  'iron-metal-scraps': itemArt(ironMetalScraps, {}, collectionOnly(0.86)),
+  'redknife-reinforced-greatsword': itemArt(redknifeReinforcedGreatsword, { scale: 0.8 }, collectionOnly(0.9)),
+  'redknife-cape': itemArt(redknifeCape, {}, collectionOnly(0.84)),
+  'wolf-pelt': itemArt(wolfPelt, {}, collectionOnly(0.88)),
   'vial-of-wolf-blood': itemArt(vialOfWolfBlood),
-  'pristine-wolf-pelt': itemArt(pristineWolfPelt),
-  'rough-gem': itemArt(roughGem),
-  'stone-ore': itemArt(stoneOre),
-  'iron-ore': itemArt(ironOre),
+  'pristine-wolf-pelt': itemArt(pristineWolfPelt, {}, collectionOnly(0.9)),
+  'rough-gem': itemArt(roughGem, {}, collectionOnly(0.88)),
+  'stone-ore': itemArt(stoneOre, {}, collectionOnly(0.84)),
+  'iron-ore': itemArt(ironOre, {}, collectionOnly(0.88)),
   coal: itemArt(coal),
   'worn-pickaxe': itemArt(wornPickaxe, { scale: 0.9 }),
   'iron-pickaxe': itemArt(ironPickaxe, { scale: 0.86 }),
   'steel-pickaxe': itemArt(steelPickaxe, { scale: 0.84 }),
-  'iron-smithing-hammer': itemArt(ironSmithingHammer, { scale: 0.86 }),
+  'iron-smithing-hammer': itemArt(ironSmithingHammer, { scale: 0.86 }, collectionOnly(0.88)),
   'steel-smithing-hammer': itemArt(steelSmithingHammer, { scale: 0.9 }),
-  'iron-bar': itemArt(ironBar),
-  'steel-bar': itemArt(steelBar),
+  'iron-bar': itemArt(ironBar, {}, collectionOnly(0.88)),
+  'steel-bar': itemArt(steelBar, {}, collectionOnly(0.88)),
   'iron-sword': itemArt(ironSword, { scale: 0.92 }),
   'steel-sword': itemArt(steelSword, { scale: 0.86 }),
   'iron-helmet': itemArt(ironHelmet),
-  'steel-helmet': itemArt(steelHelmet),
+  'steel-helmet': itemArt(steelHelmet, {}, collectionOnly(0.9)),
   'iron-armor': itemArt(ironArmor, { scale: 0.82 }),
-  'steel-armor': itemArt(steelArmor, { scale: 0.82 }),
+  'steel-armor': itemArt(steelArmor, { scale: 0.82 }, collectionOnly(0.9)),
   'iron-shield': itemArt(ironShield, { scale: 0.82 }),
-  'steel-shield': itemArt(steelShield, { scale: 0.82 }),
+  'steel-shield': itemArt(steelShield, { scale: 0.82 }, collectionOnly(0.86)),
 };
 
 export const ENEMY_ART: Record<string, ArtAsset> = {

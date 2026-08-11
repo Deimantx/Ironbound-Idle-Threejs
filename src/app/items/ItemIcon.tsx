@@ -55,6 +55,20 @@ export function ItemIcon({
   const artSource = gold ? { src: GOLD_ART } : discovered && itemId ? ITEM_ART[itemId] : undefined;
   const rarity = item?.rarity ?? 'uncommon';
   const resolvedVariant = artVariant ?? (size === 'tile' ? 'item-tile' : 'item-small');
+  const defaultArtScale =
+    resolvedVariant === 'item-tooltip'
+      ? 0.78
+      : resolvedVariant === 'item-inventory'
+        ? 0.94
+        : resolvedVariant === 'item-collection'
+          ? 0.88
+          : resolvedVariant === 'item-equipment'
+            ? 0.92
+            : framed
+              ? 0.86
+              : size === 'tile'
+                ? 0.94
+                : 1;
   const className = framed
     ? `loot-icon loot-icon-${size} loot-icon-${gold ? 'gold' : (item?.category ?? 'unknown')} loot-rarity-${rarity} ${!discovered ? 'is-hidden' : ''}`
     : `item-art item-art-${size} loot-rarity-${rarity} ${!discovered ? 'is-hidden' : ''}`;
@@ -63,7 +77,7 @@ export function ItemIcon({
       {artSource ? (
         <ArtImage
           asset={artSource}
-          defaultScale={framed ? 0.86 : size === 'tile' ? 0.94 : 1}
+          defaultScale={defaultArtScale}
           variant={resolvedVariant}
           alt=""
           aria-hidden="true"
