@@ -247,6 +247,9 @@ function ItemCard({
     <button
       type="button"
       className={`collection-card collection-item-card item-rarity-${item.rarity} ${!discovered ? 'unknown' : ''} ${selected ? 'selected' : ''}`}
+      data-debug-kind={discovered ? 'item-card' : undefined}
+      data-debug-item-id={discovered ? item.id : undefined}
+      data-debug-label={discovered ? item.name : undefined}
       aria-label={discovered ? item.name : 'Unknown item'}
       aria-current={selected ? 'true' : undefined}
       onClick={onSelect}
@@ -520,6 +523,9 @@ function MonsterCard({
     <button
       type="button"
       className={`collection-card ${!discovered ? 'unknown' : ''} ${selected ? 'selected' : ''}`}
+      data-debug-kind={discovered ? 'enemy' : undefined}
+      data-debug-enemy-id={discovered ? enemy.id : undefined}
+      data-debug-label={discovered ? enemy.name : undefined}
       aria-label={discovered ? enemy.name : 'Unknown foe'}
       aria-current={selected ? 'true' : undefined}
       onClick={onSelect}

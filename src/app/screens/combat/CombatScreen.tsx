@@ -597,6 +597,9 @@ function EnemyRoster({
             <button
               type="button"
               className={`combat-enemy-card ${selected ? 'selected' : ''} ${fighting ? 'fighting' : ''}`}
+              data-debug-kind="enemy"
+              data-debug-enemy-id={enemy.id}
+              data-debug-label={enemy.name}
               aria-pressed={selected}
               aria-label={`${action} ${enemy.name}, level ${enemy.displayLevel}`}
               onClick={() => onSelect(enemyId, area.id)}
@@ -725,6 +728,9 @@ function CombatBrowser({
               <button
                 type="button"
                 className={`combat-region-card ${available ? 'available' : 'coming-soon'} ${candidate.id === selectedRegionId ? 'selected' : ''}`}
+                data-debug-kind="combat-region"
+                data-debug-region-id={candidate.id}
+                data-debug-label={candidate.name}
                 disabled={!available}
                 aria-label={`${candidate.name}${available ? '' : ', coming later'}`}
                 key={candidate.id}
@@ -755,6 +761,9 @@ function CombatBrowser({
               <button
                 type="button"
                 className={`combat-region-card ${available ? 'available' : 'coming-soon'} ${candidate.id === selectedSubRegionId ? 'selected' : ''}`}
+                data-debug-kind="combat-sub-region"
+                data-debug-sub-region-id={candidate.id}
+                data-debug-label={candidate.name}
                 aria-label={`${candidate.name}${available ? '' : ', locked'}`}
                 key={candidate.id}
                 onClick={() => onSelectSubRegion(candidate.id)}
@@ -783,6 +792,9 @@ function CombatBrowser({
               <button
                 type="button"
                 className={`combat-area-card ${selected ? 'selected' : ''} ${activeFight ? 'fighting' : ''} ${!unlocked ? 'locked' : ''}`}
+                data-debug-kind="combat-area"
+                data-debug-area-id={candidate.id}
+                data-debug-label={candidate.name}
                 aria-pressed={selected}
                 key={candidate.id}
                 onClick={() => onSelectArea(candidate.id)}

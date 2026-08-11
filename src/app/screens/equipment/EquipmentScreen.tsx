@@ -154,6 +154,10 @@ function EquipmentSlotCard({
       <button
         type="button"
         className={`equipment-slot-card slot-${slot} ${selected ? 'equipment-slot-selected' : ''} ${!itemId ? 'equipment-slot-empty' : ''}`}
+        data-debug-kind="equipment-slot"
+        data-debug-slot-id={slot}
+        data-debug-item-id={item?.id}
+        data-debug-label={item?.name ?? label}
         onClick={() => onSelect(slot)}
         aria-label={`${label} slot${item ? `, ${item.name}` : ', empty'}`}
         aria-pressed={selected}

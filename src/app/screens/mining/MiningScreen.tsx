@@ -468,6 +468,9 @@ export function MiningScreen({ game, uiLayout, requestAction }: MiningScreenProp
                 return (
                   <div
                     className={`list-row mining-node-card ${locked ? 'locked-card' : ''} ${isSelected ? 'is-selected' : ''} ${isActive ? 'is-active' : ''}`}
+                    data-debug-kind="mining-node"
+                    data-debug-mining-node-id={node.id}
+                    data-debug-label={node.name}
                     key={node.id}
                   >
                     <ItemTooltip item={primary}>

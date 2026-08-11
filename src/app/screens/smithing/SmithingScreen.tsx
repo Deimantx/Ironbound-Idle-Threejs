@@ -184,6 +184,9 @@ function ForgeRecipeCard({
   return (
     <article
       className={`smithing-forge-card ${locked ? 'locked-card' : ''} ${active ? 'active' : ''}`}
+      data-debug-kind="smithing-recipe"
+      data-debug-recipe-id={recipe.id}
+      data-debug-label={recipe.name}
     >
       <div className="smithing-forge-card-top">
         <RecipeOutput recipe={recipe} />
@@ -238,6 +241,9 @@ function AnvilRecipeRow({
   return (
     <article
       className={`smithing-anvil-row ${locked ? 'locked-card' : ''} ${active ? 'active' : ''}`}
+      data-debug-kind="smithing-recipe"
+      data-debug-recipe-id={recipe.id}
+      data-debug-label={recipe.name}
       title={recipe.description}
     >
       <RecipeOutput recipe={recipe} />

@@ -79,7 +79,14 @@ export function ItemIcon({
     ? `loot-icon loot-icon-${size} loot-icon-${gold ? 'gold' : (item?.category ?? 'unknown')} loot-rarity-${rarity} ${!discovered ? 'is-hidden' : ''}`
     : `item-art item-art-${size} loot-rarity-${rarity} ${!discovered ? 'is-hidden' : ''}`;
   return (
-    <span className={className.trim()} aria-hidden="true">
+    <span
+      className={className.trim()}
+      aria-hidden="true"
+      data-debug-kind={gold ? 'currency' : item && discovered ? 'item-icon' : undefined}
+      data-debug-id={gold ? 'gold' : undefined}
+      data-debug-item-id={!gold && item && discovered ? item.id : undefined}
+      data-debug-label={gold ? 'Gold' : item && discovered ? item.name : undefined}
+    >
       {artSource ? (
         <ArtImage
           asset={artSource}

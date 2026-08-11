@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Bug, Lock, Paintbrush, Save, Settings, Skull } from 'lucide-react';
+import { Bug, Lock, Paintbrush, Save, ScanSearch, Settings, Skull } from 'lucide-react';
 import { enemyById } from '../content/enemies';
 import { GAME_CONFIG } from '../config/gameConfig';
 import { getDerivedStats } from '../game/formulas/statFormulas';
@@ -48,6 +48,12 @@ import { SettingsScreen } from './screens/settings/SettingsScreen';
 import { HelpScreen } from './screens/help/HelpScreen';
 import { GoldArt } from './art/GoldArt';
 import { NavigationArt } from './art/NavigationArt';
+import { UiInspector } from './debug/ui-inspector/UiInspector';
+import {
+  loadUiInspectorPreferences,
+  saveUiInspectorPreferences,
+  type UiInspectorPreferences,
+} from './debug/ui-inspector/uiInspectorPreferences';
 
 const DebugMenu = import.meta.env.DEV ? lazy(() => import('./debug/DebugMenu')) : null;
 
@@ -293,6 +299,9 @@ function Sidebar({
               <button
                 className={`nav-button ${screen === item.id && !item.locked ? 'active' : ''} ${item.locked ? 'locked-label' : ''}`}
                 key={`${item.label}-${index}`}
+                data-debug-kind="navigation"
+                data-debug-id={item.locked ? item.label.toLowerCase().replace(/[^a-z0-9]+/g, '-') : item.id}
+                data-debug-label={item.label}
                 onClick={() =>
                   item.locked ? onLocked(item.label, item.description) : onNavigate(item.id)
                 }
@@ -320,12 +329,18 @@ function Header({
   onSettings,
   onEditUi,
   onDebug,
+  onToggleUiInspector,
+  showUiInspectorButton,
+  uiInspectorActive,
   debugButtonRef,
 }: {
   game: GameState;
   onSettings: () => void;
   onEditUi: () => void;
   onDebug: () => void;
+  onToggleUiInspector: () => void;
+  showUiInspectorButton: boolean;
+  uiInspectorActive: boolean;
   debugButtonRef?: { current: HTMLButtonElement | null };
 }) {
   const stats = getDerivedStats(game);
@@ -372,6 +387,18 @@ function Header({
         >
           <Paintbrush size={16} />
         </button>
+        {import.meta.env.DEV && showUiInspectorButton && (
+          <button
+            className={`button ghost ${uiInspectorActive ? 'ui-inspector-toolbar-active' : ''}`}
+            onClick={onToggleUiInspector}
+            aria-label="Inspect UI"
+            aria-pressed={uiInspectorActive}
+            title={uiInspectorActive ? 'Stop inspecting UI' : 'Inspect UI'}
+            data-ui-inspector-control
+          >
+            <ScanSearch size={16} />
+          </button>
+        )}
         {import.meta.env.DEV && (
           <button
             ref={debugButtonRef}
@@ -488,6 +515,12 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
   const [lockedFeature, setLockedFeature] = useState({ name: '', description: '' });
   const [editingUi, setEditingUi] = useState(false);
   const [debugOpen, setDebugOpen] = useState(false);
+  const [uiInspectorActive, setUiInspectorActive] = useState(false);
+  const [uiInspectorPreferences, setUiInspectorPreferences] = useState<UiInspectorPreferences>(() =>
+    import.meta.env.DEV
+      ? loadUiInspectorPreferences()
+      : { showToolbarButton: false },
+  );
   const debugButtonRef = useRef<HTMLButtonElement>(null);
   const [confirmation, setConfirmation] = useState<ConfirmDialogOptions | null>(null);
   const [uiLayout, setUiLayout] = useState<UiLayout>(() => loadUiLayout());
@@ -503,6 +536,7 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
   const currentGame = useGameStore((store) => store.game) ?? game;
   const previousDeathCount = useRef(currentGame.statistics.deaths);
   const [deathNotice, setDeathNotice] = useState<EnemyId | null>(null);
+  const showUiInspectorButton = import.meta.env.DEV && uiInspectorPreferences.showToolbarButton;
   const updateUiLayout = (next: UiLayout) => {
     const safeLayout = sanitizeUiLayout(next);
     pendingUiLayout.current = safeLayout;
@@ -529,6 +563,9 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
       saveUiLayout(pendingUiLayout.current);
     };
   }, []);
+  useEffect(() => {
+    if (!showUiInspectorButton) setUiInspectorActive(false);
+  }, [showUiInspectorButton]);
   useEffect(() => {
     const timer = window.setInterval(
       () => useGameStore.getState().tick(Date.now()),
@@ -588,6 +625,33 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
     setDebugOpen(false);
     window.setTimeout(() => debugButtonRef.current?.focus(), 0);
   };
+  const openEditUi = () => {
+    setUiInspectorActive(false);
+    setEditingUi(true);
+  };
+  const toggleUiInspector = () => {
+    if (uiInspectorActive) {
+      setUiInspectorActive(false);
+      return;
+    }
+    setEditingUi(false);
+    setDebugOpen(false);
+    setUiInspectorActive(true);
+  };
+  const toggleDebug = () => {
+    if (debugOpen) {
+      setDebugOpen(false);
+      return;
+    }
+    setUiInspectorActive(false);
+    setDebugOpen(true);
+  };
+  const updateUiInspectorPreference = (showToolbarButton: boolean) => {
+    const next = { showToolbarButton };
+    setUiInspectorPreferences(next);
+    if (import.meta.env.DEV) saveUiInspectorPreferences(next);
+    if (!showToolbarButton) setUiInspectorActive(false);
+  };
   const render = () => {
     switch (screen) {
       case 'home':
@@ -629,6 +693,8 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
               onExit();
             }}
             uiLayout={uiLayout}
+            showUiInspectorButton={uiInspectorPreferences.showToolbarButton}
+            onShowUiInspectorButtonChange={updateUiInspectorPreference}
           />
         );
       case 'help':
@@ -651,13 +717,20 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
     <Header
       game={currentGame}
       onSettings={() => setScreen('settings')}
-      onEditUi={() => setEditingUi(true)}
-      onDebug={() => setDebugOpen((open) => !open)}
+      onEditUi={openEditUi}
+      onDebug={toggleDebug}
+      onToggleUiInspector={toggleUiInspector}
+      showUiInspectorButton={showUiInspectorButton}
+      uiInspectorActive={uiInspectorActive}
       debugButtonRef={debugButtonRef}
     />
   );
   const content = (
-    <main className={`content ${screen === 'home' ? 'content-home' : ''}`} data-ui-region="content">
+    <main
+      className={`content ${screen === 'home' ? 'content-home' : ''}`}
+      data-ui-region="content"
+      data-debug-screen={screen}
+    >
       {render()}
     </main>
   );
@@ -720,10 +793,14 @@ function GameShell({ game, onExit }: { game: GameState; onExit: () => void }) {
           onClose={() => setEditingUi(false)}
         />
       )}
+      <UiInspector active={uiInspectorActive} onDeactivate={() => setUiInspectorActive(false)} />
     </>
   );
   const fallback = (
-    <div className={`app ${editingUi ? 'ui-editor-open' : ''}`} style={getUiStyle(uiLayout)}>
+    <div
+      className={`app ${editingUi ? 'ui-editor-open' : ''} ${uiInspectorActive ? 'ui-inspector-active' : ''}`}
+      style={getUiStyle(uiLayout)}
+    >
       {sidebar}
       <div className="main">
         {header}

@@ -17,6 +17,9 @@ export function CombatTargetPortrait({
   return (
     <div
       className={`combat-target-portrait combat-target-portrait-${context} theme-${enemy.theme}`}
+      data-debug-kind="enemy"
+      data-debug-enemy-id={enemy.id}
+      data-debug-label={enemy.name}
       role={labelled ? 'img' : undefined}
       aria-label={ariaLabel}
       aria-hidden={labelled ? undefined : true}

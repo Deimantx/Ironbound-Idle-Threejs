@@ -12709,6 +12709,93 @@ h3 {
   background: radial-gradient(circle at 50% 38%, rgba(198, 154, 111, 0.2), transparent 70%), #49372e;
 }
 
+/* Development-only UI Inspector. It lives outside the editable layout system. */
+.app.ui-inspector-active,
+.app.ui-inspector-active * {
+  cursor: crosshair !important;
+}
+.ui-inspector-toolbar-active {
+  color: #f1d58e;
+  border-color: #d5aa62;
+  background: rgba(213, 170, 98, 0.16);
+  box-shadow: 0 0 0 1px rgba(213, 170, 98, 0.24);
+}
+.ui-inspector-layer {
+  position: fixed;
+  z-index: 1200;
+  inset: 0;
+  pointer-events: none;
+  color: #e8eee9;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+}
+.ui-inspector-highlight {
+  position: fixed;
+  box-sizing: border-box;
+  border: 1px solid #f1cc73;
+  outline: 1px solid rgba(241, 204, 115, 0.28);
+  background: rgba(241, 204, 115, 0.08);
+  box-shadow: 0 0 0 1px rgba(15, 18, 19, 0.42), 0 0 14px rgba(241, 204, 115, 0.14);
+}
+.ui-inspector-card {
+  position: fixed;
+  width: min(330px, calc(100vw - 16px));
+  max-height: min(280px, calc(100vh - 16px));
+  overflow: auto;
+  padding: 9px 10px 8px;
+  background: rgba(15, 19, 21, 0.97);
+  border: 1px solid #65716d;
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(213, 170, 98, 0.08);
+}
+.ui-inspector-card-heading {
+  margin-bottom: 6px;
+  color: #f1d58e;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.ui-inspector-card-rows {
+  display: grid;
+  gap: 2px;
+}
+.ui-inspector-card-row {
+  display: grid;
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: 8px;
+  min-width: 0;
+}
+.ui-inspector-card-row span {
+  color: #92a29c;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+}
+.ui-inspector-card-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #edf2eb;
+  font-weight: 400;
+}
+.ui-inspector-card-footer {
+  margin-top: 8px;
+  padding-top: 6px;
+  color: #96a19c;
+  border-top: 1px solid #303b3d;
+  font-size: 10px;
+}
+.ui-inspector-copy-toast {
+  position: fixed;
+  right: 14px;
+  bottom: 14px;
+  padding: 7px 10px;
+  color: #101514;
+  background: #f1d58e;
+  border-radius: 4px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, 0.35);
+  font-weight: 700;
+}
+
 @media (max-width: 900px) {
   .debug-tools-content {
     background: #111619;

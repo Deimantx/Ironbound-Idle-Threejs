@@ -44,6 +44,9 @@ export function InventoryItemCard({
         ref={cardRef}
         type="button"
         className={`item-card inventory-item-card item-rarity-${item?.rarity ?? 'uncommon'} ${selected ? 'is-selected' : ''} ${stack.locked ? 'is-locked' : ''} ${isDragSource ? 'is-drag-source' : ''} ${dropPosition ? `is-drop-${dropPosition}` : ''}`}
+        data-debug-kind="item-card"
+        data-debug-item-id={item?.id ?? stack.itemId}
+        data-debug-label={item?.name}
         onClick={(event) => onSelect(stack.itemId, event)}
         onDragStart={dragEnabled ? (event) => onDragStart?.(event, stack.itemId) : undefined}
         onDragOver={dragEnabled ? (event) => onDragOver?.(event, stack.itemId) : undefined}

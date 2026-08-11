@@ -19,11 +19,15 @@ export function SettingsScreen({
   onProfiles,
   onDelete,
   uiLayout,
+  showUiInspectorButton = true,
+  onShowUiInspectorButtonChange,
 }: {
   game: GameState;
   onProfiles: () => void;
   onDelete: () => void;
   uiLayout: UiLayout;
+  showUiInspectorButton?: boolean;
+  onShowUiInspectorButtonChange?: (show: boolean) => void;
 }) {
   const saveNow = useGameStore((store) => store.saveNow);
   const setSettings = useGameStore((store) => store.setSettings);
@@ -164,7 +168,7 @@ export function SettingsScreen({
                 layout={uiLayout}
               >
                 <h2>Presentation</h2>
-                {[
+                {[ 
                   ['sound', 'Sound effects'],
                   ['music', 'Music'],
                   ['compactNumbers', 'Compact numbers'],
@@ -178,6 +182,22 @@ export function SettingsScreen({
                     />
                   </label>
                 ))}
+                {import.meta.env.DEV && (
+                  <div className="settings-developer-tools">
+                    <h3>Developer tools</h3>
+                    <label className="stat-line">
+                      <span>Show UI Inspector button</span>
+                      <input
+                        type="checkbox"
+                        checked={showUiInspectorButton}
+                        onChange={(event) => onShowUiInspectorButtonChange?.(event.target.checked)}
+                      />
+                    </label>
+                    <p className="settings-option-description">
+                      Shows the development-only toolbar control used to identify UI elements while testing.
+                    </p>
+                  </div>
+                )}
               </UiPanelRegionSlot>
               <UiPanelRegionSlot
                 screen="settings"
